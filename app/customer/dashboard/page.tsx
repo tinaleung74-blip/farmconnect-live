@@ -11,18 +11,18 @@ const cards = [
     badge: "Core",
   },
   {
+    title: "Marketplace",
+    icon: "🛒",
+    href: "/customer/marketplace",
+    desc: "Buy chicks, feeds, vitamins, vaccines, and supplements by category.",
+    badge: "Shop",
+  },
+  {
     title: "Caretakers",
     icon: "👨‍🌾",
     href: "/customer/caretakers",
     desc: "Assign trusted farm caretakers to monitor your flock.",
     badge: "Assign",
-  },
-  {
-    title: "Feed & Vitamins",
-    icon: "🌾",
-    href: "/customer/store",
-    desc: "Buy feeds, vitamins, boosters, and farm supplies.",
-    badge: "Store",
   },
   {
     title: "Weight Tracker",
@@ -56,7 +56,7 @@ const cards = [
     title: "Wallet",
     icon: "💰",
     href: "/customer/wallet",
-    desc: "Track earnings, payouts, and wallet transactions.",
+    desc: "Track earnings, payouts, cash-ins, and wallet transactions.",
     badge: "Money",
   },
   {
@@ -98,9 +98,9 @@ export default function DashboardPage() {
               </p>
 
               <p className="mt-4 max-w-2xl text-green-50">
-                Monitor your flock, assign caretakers, track growth, view
-                harvest projections, and manage poultry earnings in one clean
-                dashboard.
+                Monitor your flock, buy farm supplies, assign caretakers, track
+                growth, view harvest projections, and manage poultry earnings in
+                one clean dashboard.
               </p>
             </div>
 
@@ -122,9 +122,9 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
-            <p className="text-gray-500 font-semibold">👨‍🌾 Caretakers</p>
-            <h2 className="text-4xl font-black text-green-700 mt-2">1</h2>
-            <p className="text-sm text-gray-400 mt-1">Assigned farm support</p>
+            <p className="text-gray-500 font-semibold">🛒 Marketplace</p>
+            <h2 className="text-4xl font-black text-green-700 mt-2">5</h2>
+            <p className="text-sm text-gray-400 mt-1">Product categories</p>
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
@@ -135,7 +135,9 @@ export default function DashboardPage() {
 
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
             <p className="text-gray-500 font-semibold">💰 Projected Earnings</p>
-            <h2 className="text-4xl font-black text-green-700 mt-2">₱12,500</h2>
+            <h2 className="text-4xl font-black text-green-700 mt-2">
+              ₱12,500
+            </h2>
             <p className="text-sm text-gray-400 mt-1">Estimated harvest ROI</p>
           </div>
         </section>
@@ -173,9 +175,7 @@ export default function DashboardPage() {
               </p>
 
               <div className="mt-6 flex items-center justify-between">
-                <span className="text-green-700 font-black">
-                  Open Module
-                </span>
+                <span className="text-green-700 font-black">Open Module</span>
 
                 <span className="bg-green-600 text-white rounded-full w-9 h-9 grid place-items-center group-hover:bg-green-700">
                   →
