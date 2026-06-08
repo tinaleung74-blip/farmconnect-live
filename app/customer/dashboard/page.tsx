@@ -8,18 +8,15 @@ export default function DashboardPage() {
           🚜 FarmConnect Dashboard
         </h1>
 
-        <p className="mt-4 text-lg">
-          Welcome to FarmConnect Live
-        </p>
+        <p className="mt-4 text-lg">Welcome to FarmConnect Live</p>
 
         <div className="grid md:grid-cols-3 gap-4 mt-8">
-
           <a href="/customer/chicks" className="bg-white p-6 rounded-xl shadow block">
             🐣 My Flock
           </a>
 
           <a href="/customer/marketplace" className="bg-white p-6 rounded-xl shadow block">
-            🛒 Chick Marketplace
+            🐣 Chick Marketplace
           </a>
 
           <a href="/customer/store" className="bg-white p-6 rounded-xl shadow block">
@@ -27,15 +24,15 @@ export default function DashboardPage() {
           </a>
 
           <a href="/customer/weight-updates" className="bg-white p-6 rounded-xl shadow block">
-            📈 Growth Tracker
+            📈 Chick Growth Tracker
           </a>
 
           <a href="/customer/photo-updates" className="bg-white p-6 rounded-xl shadow block">
-            📸 Growth Photos
+            📸 Chick Growth Photos
           </a>
 
           <a href="/customer/live-camera" className="bg-white p-6 rounded-xl shadow block">
-            📹 Live Camera
+            📹 Chick House Live
           </a>
 
           <a href="/customer/wallet" className="bg-white p-6 rounded-xl shadow block">
@@ -43,13 +40,12 @@ export default function DashboardPage() {
           </a>
 
           <a href="/customer/harvest" className="bg-white p-6 rounded-xl shadow block">
-            🐔 Harvest & Earnings
+            🐔 Harvest / Earnings
           </a>
 
           <a href="/customer/notifications" className="bg-white p-6 rounded-xl shadow block">
-            🔔 Notifications
+            🔔 Farm Alerts
           </a>
-
         </div>
       </div>
     </main>

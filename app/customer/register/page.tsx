@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
@@ -9,21 +8,24 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
 
-  async function handleRegister() {
-    const { error } = await supabase.from("profiles").insert({
-      full_name: fullName,
-      email,
-      phone,
-      password,
-      role: "customer",
-    });
-
-    if (error) {
-      alert(error.message);
+  function handleRegister() {
+    if (!fullName || !email || !phone || !password) {
+      alert("Please complete all fields");
       return;
     }
 
+    localStorage.setItem(
+      "farmconnect_user",
+      JSON.stringify({
+        full_name: fullName,
+        email,
+        phone,
+        role: "customer",
+      })
+    );
+
     alert("Registration successful!");
+    window.location.href = "/customer/login";
   }
 
   return (
