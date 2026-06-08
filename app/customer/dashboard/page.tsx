@@ -3,86 +3,18 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const cards = [
-  {
-    title: "My Flock",
-    icon: "🐣",
-    href: "/customer/chicks",
-    desc: "Manage chick batches, caretaker assignment, survival rate, and harvest schedule.",
-    badge: "Core",
-    meta: "1 active batch",
-  },
-  {
-    title: "Marketplace",
-    icon: "🛒",
-    href: "/customer/marketplace",
-    desc: "Buy chicks, feeds, vitamins, vaccines, and supplements by category.",
-    badge: "Shop",
-    meta: "5 categories",
-  },
-  {
-    title: "Inventory",
-    icon: "📦",
-    href: "/customer/inventory",
-    desc: "View feeds, vitamins, vaccines, and supplies purchased from marketplace.",
-    badge: "Stock",
-    meta: "4 items",
-  },
-  {
-    title: "Weight Tracker",
-    icon: "📈",
-    href: "/customer/weight-updates",
-    desc: "Track daily growth and average weight updates.",
-    badge: "Growth",
-    meta: "22% progress",
-  },
-  {
-    title: "Photo Updates",
-    icon: "📸",
-    href: "/customer/photo-updates",
-    desc: "View latest farm photos and chick development updates.",
-    badge: "Proof",
-    meta: "Weekly reports",
-  },
-  {
-    title: "Live Camera",
-    icon: "📹",
-    href: "/customer/live-camera",
-    desc: "Watch your poultry area through live camera monitoring.",
-    badge: "Live",
-    meta: "Online",
-  },
-  {
-    title: "Harvest",
-    icon: "🐔",
-    href: "/customer/harvest",
-    desc: "View projected revenue, harvest date, and profit estimates.",
-    badge: "ROI",
-    meta: "₱12,500 est.",
-  },
-  {
-    title: "Wallet",
-    icon: "💰",
-    href: "/customer/wallet",
-    desc: "Track earnings, payouts, cash-ins, and wallet transactions.",
-    badge: "Money",
-    meta: "GCash/Maya pending",
-  },
-  {
-    title: "Notifications",
-    icon: "🔔",
-    href: "/customer/notifications",
-    desc: "Receive farm alerts, caretaker reports, and harvest reminders.",
-    badge: "Alerts",
-    meta: "3 updates",
-  },
-];
-
-const activities = [
-  "🐣 Batch A001 assigned to caretaker",
-  "📈 Latest weight updated to 0.55 KG",
-  "📦 Inventory has 4 active supplies",
-  "🐔 Harvest projection updated",
+const buildings = [
+  { title: "My Flock", icon: "🏡🐣", href: "/customer/chicks", pos: "md:col-start-1" },
+  { title: "Marketplace", icon: "🏪🌽", href: "/customer/marketplace", pos: "md:col-start-3" },
+  { title: "Inventory", icon: "🏚️📦", href: "/customer/inventory", pos: "md:col-start-2" },
+  { title: "Weight Tracker", icon: "📈🐔", href: "/customer/weight-updates", pos: "md:col-start-1" },
+  { title: "Photo Updates", icon: "📸🌾", href: "/customer/photo-updates", pos: "md:col-start-3" },
+  { title: "Live Camera", icon: "🗼🎥", href: "/customer/live-camera", pos: "md:col-start-2" },
+  { title: "Harvest", icon: "🏠🐔", href: "/customer/harvest", pos: "md:col-start-1" },
+  { title: "Wallet", icon: "🏦💰", href: "/customer/wallet", pos: "md:col-start-3" },
+  { title: "Notifications", icon: "🔔📢", href: "/customer/notifications", pos: "md:col-start-2" },
+  { title: "Settings", icon: "⚙️🧑", href: "/customer/settings", pos: "md:col-start-1" },
+  { title: "Customer Service", icon: "🎧🤝", href: "/customer/customer-service", pos: "md:col-start-3" },
 ];
 
 export default function DashboardPage() {
@@ -96,146 +28,97 @@ export default function DashboardPage() {
     }
   }, []);
 
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-sky-100 via-green-50 to-green-100 p-4 md:p-8">
-      <div className="pointer-events-none absolute left-[-80px] top-10 h-56 w-56 rounded-full bg-white/80 blur-3xl" />
-      <div className="pointer-events-none absolute right-10 top-24 h-64 w-64 rounded-full bg-white/70 blur-3xl" />
-      <div className="pointer-events-none absolute left-1/3 top-48 h-40 w-40 rounded-full bg-yellow-100/70 blur-3xl" />
+  function logout() {
+    localStorage.removeItem("farmconnect_user");
+    window.location.href = "/customer/login";
+  }
 
-      <div className="pointer-events-none absolute bottom-0 left-[-10%] h-72 w-[120%] rounded-t-[100%] bg-green-300/40" />
-      <div className="pointer-events-none absolute bottom-0 left-[-20%] h-52 w-[140%] rounded-t-[100%] bg-green-500/20" />
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-sky-300 via-lime-100 to-green-300 p-4 md:p-8">
+      <div className="absolute right-8 top-8 h-32 w-32 rounded-full bg-yellow-300 shadow-[0_0_100px_rgba(250,204,21,1)]" />
+      <div className="absolute left-10 top-20 text-7xl">☁️</div>
+      <div className="absolute right-56 top-24 text-7xl">☁️</div>
+      <div className="absolute left-1/2 top-36 text-5xl">☁️</div>
+
+      <div className="absolute bottom-0 left-[-20%] h-96 w-[140%] rounded-t-[100%] bg-green-500" />
+      <div className="absolute bottom-0 left-[-10%] h-72 w-[120%] rounded-t-[100%] bg-lime-400" />
+      <div className="absolute bottom-0 left-0 h-36 w-full bg-green-700/30" />
 
       <div className="relative z-10 mx-auto max-w-7xl">
-        <section className="relative overflow-hidden rounded-[36px] border border-white/40 bg-white/20 p-7 text-white shadow-2xl backdrop-blur-xl md:p-10">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-950/90 via-green-800/75 to-emerald-500/60" />
-          <div className="absolute right-[-80px] top-[-80px] h-72 w-72 rounded-full bg-white/10 blur-2xl" />
-          <div className="absolute bottom-[-90px] left-[-70px] h-80 w-80 rounded-full bg-lime-300/20 blur-3xl" />
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="rounded-full border-4 border-white bg-yellow-200 px-5 py-3 font-black text-green-950 shadow-xl">
+            🚜 FarmConnect Game Farm
+          </div>
 
-          <div className="relative grid gap-8 lg:grid-cols-[1.4fr_.8fr] lg:items-center">
-            <div>
-              <div className="mb-5 flex flex-wrap gap-3">
-                <span className="rounded-full bg-white/15 px-4 py-2 text-sm font-black">
-                  🟢 Live Poultry Portal
-                </span>
-                <span className="rounded-full bg-yellow-300 px-4 py-2 text-sm font-black text-green-950">
-                  Investor Monitoring Active
-                </span>
-              </div>
+          <button
+            onClick={logout}
+            className="rounded-full border-4 border-white bg-red-500 px-5 py-3 font-black text-white shadow-xl hover:bg-red-600"
+          >
+            🚪 Logout
+          </button>
+        </div>
 
-              <h1 className="text-4xl font-black leading-tight md:text-6xl">
-                Own Real Chickens.
-                <br />
-                Track Growth. Earn From Harvest.
-              </h1>
+        <section className="relative mb-8 overflow-hidden rounded-[40px] border-4 border-white bg-gradient-to-br from-green-600 via-lime-500 to-yellow-300 p-7 shadow-2xl md:p-10">
+          <div className="absolute bottom-3 right-10 text-8xl">🐔</div>
+          <div className="absolute bottom-12 right-36 text-5xl">🐣</div>
+          <div className="absolute bottom-4 left-10 text-7xl">🌾</div>
+          <div className="absolute right-8 top-5 text-5xl">🚜</div>
 
-              <p className="mt-5 max-w-2xl text-lg text-green-50">
-                Welcome back, <b>{userName}</b>. Monitor your flock, buy farm
-                supplies, track weight, view harvest projections, and manage
-                farm earnings from one digital livestock dashboard.
-              </p>
+          <div className="relative max-w-3xl">
+            <p className="mb-4 w-fit rounded-full bg-white px-4 py-2 text-sm font-black text-green-800">
+              🌞 Your Digital Poultry Farm Is Active
+            </p>
 
-              <div className="mt-7 flex flex-wrap gap-4">
-                <Link
-                  href="/customer/chicks"
-                  className="rounded-2xl bg-white px-6 py-4 font-black text-green-800 shadow-xl hover:bg-green-50"
-                >
-                  Open My Flock
-                </Link>
+            <h1 className="text-4xl font-black leading-tight text-white drop-shadow md:text-6xl">
+              Welcome, {userName}! 🐣
+            </h1>
 
-                <Link
-                  href="/customer/live-camera"
-                  className="rounded-2xl border border-white/30 bg-white/10 px-6 py-4 font-black text-white hover:bg-white/20"
-                >
-                  Watch Live Farm
-                </Link>
-              </div>
-            </div>
-
-            <div className="rounded-[30px] border border-white/20 bg-white/15 p-6 backdrop-blur">
-              <p className="text-sm font-bold text-green-50">Farm Status</p>
-              <h2 className="mt-2 text-4xl font-black">ACTIVE</h2>
-
-              <div className="mt-6 grid gap-3">
-                {activities.map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-2xl bg-white/15 px-4 py-3 text-sm font-bold"
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <p className="mt-4 text-lg font-black text-green-950">
+              Choose your farm building and manage your livestock like a real
+              farming game.
+            </p>
           </div>
         </section>
 
-        <section className="mt-6 grid gap-5 md:grid-cols-4">
+        <section className="mb-6 grid gap-4 md:grid-cols-4">
           {[
-            ["🐣 Active Flock", "1", "Current chick batch"],
-            ["📈 Growth", "22%", "Target weight progress"],
-            ["📦 Inventory", "4", "Feeds and farm supplies"],
-            ["💰 Projected ROI", "₱12,500", "Estimated harvest earnings"],
-          ].map(([label, value, note]) => (
+            ["🐣 Flock", "1"],
+            ["📈 Growth", "22%"],
+            ["📦 Supplies", "4"],
+            ["💰 ROI", "₱12,500"],
+          ].map(([label, value]) => (
             <div
               key={label}
-              className="rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur"
+              className="rounded-[28px] border-4 border-white bg-white/90 p-5 text-center shadow-xl"
             >
-              <p className="font-bold text-gray-500">{label}</p>
-              <h2 className="mt-2 text-4xl font-black text-green-700">
-                {value}
-              </h2>
-              <p className="mt-1 text-sm text-gray-400">{note}</p>
+              <p className="font-black text-green-700">{label}</p>
+              <h2 className="text-3xl font-black text-green-950">{value}</h2>
             </div>
           ))}
         </section>
 
-        <section className="mb-5 mt-8 flex flex-col justify-between gap-3 md:flex-row md:items-end">
-          <div>
-            <h2 className="text-3xl font-black text-gray-900">
-              Farm Management
-            </h2>
-            <p className="text-gray-500">
-              Choose a module below to manage your poultry investment.
-            </p>
-          </div>
+        <h2 className="mb-4 text-3xl font-black text-green-950">
+          🎮 Choose Your Farm Building
+        </h2>
 
-          <div className="rounded-full bg-green-100 px-5 py-3 text-sm font-black text-green-700">
-            9 customer modules active
-          </div>
-        </section>
-
-        <section className="grid gap-5 md:grid-cols-3">
-          {cards.map((card) => (
+        <section className="grid gap-6 md:grid-cols-3">
+          {buildings.map((item) => (
             <Link
-              key={card.title}
-              href={card.href}
-              className="group rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl"
+              key={item.title}
+              href={item.href}
+              className={`${item.pos} group rounded-[36px] border-4 border-white bg-white/90 p-6 text-center shadow-2xl transition hover:-translate-y-3 hover:scale-105`}
             >
-              <div className="mb-5 flex items-start justify-between">
-                <div className="grid h-16 w-16 place-items-center rounded-3xl bg-[#f3fbf5] text-4xl">
-                  {card.icon}
-                </div>
-
-                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-700">
-                  {card.badge}
-                </span>
+              <div className="mx-auto mb-4 grid h-28 w-28 place-items-center rounded-[34px] bg-gradient-to-br from-yellow-100 to-lime-300 text-5xl shadow-inner">
+                {item.icon}
               </div>
 
-              <h3 className="text-2xl font-black text-gray-900 group-hover:text-green-700">
-                {card.title}
+              <h3 className="text-2xl font-black text-green-950">
+                {item.title}
               </h3>
 
-              <p className="mt-2 min-h-[48px] text-gray-500">{card.desc}</p>
-
-              <div className="mt-5 flex items-center justify-between border-t border-green-50 pt-4">
-                <span className="text-sm font-black text-gray-400">
-                  {card.meta}
-                </span>
-
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-green-700 text-white transition group-hover:bg-green-800">
-                  →
-                </span>
-              </div>
+              <p className="mt-3 rounded-full bg-green-700 px-4 py-2 font-black text-white group-hover:bg-yellow-300 group-hover:text-green-950">
+                Open Building →
+              </p>
             </Link>
           ))}
         </section>
