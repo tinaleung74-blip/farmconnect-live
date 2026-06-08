@@ -3,18 +3,84 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const buildings = [
-  { title: "My Flock", icon: "🏡🐣", href: "/customer/chicks", pos: "md:col-start-1" },
-  { title: "Marketplace", icon: "🏪🌽", href: "/customer/marketplace", pos: "md:col-start-3" },
-  { title: "Inventory", icon: "🏚️📦", href: "/customer/inventory", pos: "md:col-start-2" },
-  { title: "Weight Tracker", icon: "📈🐔", href: "/customer/weight-updates", pos: "md:col-start-1" },
-  { title: "Photo Updates", icon: "📸🌾", href: "/customer/photo-updates", pos: "md:col-start-3" },
-  { title: "Live Camera", icon: "🗼🎥", href: "/customer/live-camera", pos: "md:col-start-2" },
-  { title: "Harvest", icon: "🏠🐔", href: "/customer/harvest", pos: "md:col-start-1" },
-  { title: "Wallet", icon: "🏦💰", href: "/customer/wallet", pos: "md:col-start-3" },
-  { title: "Notifications", icon: "🔔📢", href: "/customer/notifications", pos: "md:col-start-2" },
-  { title: "Settings", icon: "⚙️🧑", href: "/customer/settings", pos: "md:col-start-1" },
-  { title: "Customer Service", icon: "🎧🤝", href: "/customer/customer-service", pos: "md:col-start-3" },
+const cards = [
+  {
+    title: "My Flock",
+    icon: "🐣",
+    href: "/customer/chicks",
+    desc: "Manage chick batches, caretaker assignment, survival rate, and harvest schedule.",
+    badge: "Core",
+  },
+  {
+    title: "Marketplace",
+    icon: "🛒",
+    href: "/customer/marketplace",
+    desc: "Buy chicks, feeds, vitamins, vaccines, and supplements by category.",
+    badge: "Shop",
+  },
+  {
+    title: "Inventory",
+    icon: "📦",
+    href: "/customer/inventory",
+    desc: "View feeds, vitamins, vaccines, and supplies purchased from marketplace.",
+    badge: "Stock",
+  },
+  {
+    title: "Weight Tracker",
+    icon: "📈",
+    href: "/customer/weight-updates",
+    desc: "Track daily growth and average weight updates.",
+    badge: "Growth",
+  },
+  {
+    title: "Photo Updates",
+    icon: "📸",
+    href: "/customer/photo-updates",
+    desc: "View latest farm photos and chick development updates.",
+    badge: "Proof",
+  },
+  {
+    title: "Live Camera",
+    icon: "📹",
+    href: "/customer/live-camera",
+    desc: "Watch your poultry area through live camera monitoring.",
+    badge: "Live",
+  },
+  {
+    title: "Harvest",
+    icon: "🐔",
+    href: "/customer/harvest",
+    desc: "View projected revenue, harvest date, and profit estimates.",
+    badge: "ROI",
+  },
+  {
+    title: "Wallet",
+    icon: "💰",
+    href: "/customer/wallet",
+    desc: "Track earnings, payouts, cash-ins, and wallet transactions.",
+    badge: "Money",
+  },
+  {
+    title: "Notifications",
+    icon: "🔔",
+    href: "/customer/notifications",
+    desc: "Receive farm alerts, caretaker reports, and harvest reminders.",
+    badge: "Alerts",
+  },
+  {
+    title: "Settings",
+    icon: "⚙️",
+    href: "/customer/settings",
+    desc: "Manage profile, account security, and farm preferences.",
+    badge: "Account",
+  },
+  {
+    title: "Customer Service",
+    icon: "🎧",
+    href: "/customer/customer-service",
+    desc: "Ask support, report an issue, or request assistance.",
+    badge: "Help",
+  },
 ];
 
 export default function DashboardPage() {
@@ -47,7 +113,7 @@ export default function DashboardPage() {
       <div className="relative z-10 mx-auto max-w-7xl">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div className="rounded-full border-4 border-white bg-yellow-200 px-5 py-3 font-black text-green-950 shadow-xl">
-            🚜 FarmConnect Game Farm
+            🚜 FarmConnect Live
           </div>
 
           <button
@@ -58,7 +124,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <section className="relative mb-8 overflow-hidden rounded-[40px] border-4 border-white bg-gradient-to-br from-green-600 via-lime-500 to-yellow-300 p-7 shadow-2xl md:p-10">
+        <section className="relative mb-8 overflow-hidden rounded-[40px] border-4 border-white bg-gradient-to-br from-green-700 via-emerald-500 to-lime-400 p-7 text-white shadow-2xl md:p-10">
           <div className="absolute bottom-3 right-10 text-8xl">🐔</div>
           <div className="absolute bottom-12 right-36 text-5xl">🐣</div>
           <div className="absolute bottom-4 left-10 text-7xl">🌾</div>
@@ -74,51 +140,72 @@ export default function DashboardPage() {
             </h1>
 
             <p className="mt-4 text-lg font-black text-green-950">
-              Choose your farm building and manage your livestock like a real
-              farming game.
+              Monitor your flock, buy farm supplies, track growth, view harvest
+              projections, and manage poultry earnings in one dashboard.
             </p>
           </div>
         </section>
 
         <section className="mb-6 grid gap-4 md:grid-cols-4">
           {[
-            ["🐣 Flock", "1"],
-            ["📈 Growth", "22%"],
-            ["📦 Supplies", "4"],
-            ["💰 ROI", "₱12,500"],
-          ].map(([label, value]) => (
+            ["🐣 Active Flock", "1", "Batch A001"],
+            ["📈 Growth", "22%", "On track"],
+            ["📦 Supplies", "4", "In inventory"],
+            ["💰 Est. ROI", "₱12,500", "Harvest value"],
+          ].map(([label, value, note]) => (
             <div
               key={label}
-              className="rounded-[28px] border-4 border-white bg-white/90 p-5 text-center shadow-xl"
+              className="rounded-[28px] border-4 border-white bg-white/90 p-5 shadow-xl backdrop-blur"
             >
               <p className="font-black text-green-700">{label}</p>
-              <h2 className="text-3xl font-black text-green-950">{value}</h2>
+              <h2 className="mt-2 text-3xl font-black text-green-950">
+                {value}
+              </h2>
+              <p className="text-sm font-bold text-gray-500">{note}</p>
             </div>
           ))}
         </section>
 
-        <h2 className="mb-4 text-3xl font-black text-green-950">
-          🎮 Choose Your Farm Building
-        </h2>
+        <section className="mb-5">
+          <h2 className="text-3xl font-black text-green-950">
+            Farm Management
+          </h2>
+          <p className="font-semibold text-green-800">
+            Choose a module below to manage your poultry investment.
+          </p>
+        </section>
 
-        <section className="grid gap-6 md:grid-cols-3">
-          {buildings.map((item) => (
+        <section className="grid gap-5 md:grid-cols-3">
+          {cards.map((card) => (
             <Link
-              key={item.title}
-              href={item.href}
-              className={`${item.pos} group rounded-[36px] border-4 border-white bg-white/90 p-6 text-center shadow-2xl transition hover:-translate-y-3 hover:scale-105`}
+              key={card.title}
+              href={card.href}
+              className="group rounded-[30px] border-4 border-white bg-white/90 p-6 shadow-xl backdrop-blur transition hover:-translate-y-2 hover:shadow-2xl"
             >
-              <div className="mx-auto mb-4 grid h-28 w-28 place-items-center rounded-[34px] bg-gradient-to-br from-yellow-100 to-lime-300 text-5xl shadow-inner">
-                {item.icon}
+              <div className="mb-5 flex items-start justify-between">
+                <div className="grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-lime-100 to-green-200 text-4xl shadow-inner">
+                  {card.icon}
+                </div>
+
+                <span className="rounded-full bg-yellow-200 px-3 py-1 text-xs font-black text-green-950">
+                  {card.badge}
+                </span>
               </div>
 
-              <h3 className="text-2xl font-black text-green-950">
-                {item.title}
+              <h3 className="text-2xl font-black text-green-950 group-hover:text-green-700">
+                {card.title}
               </h3>
 
-              <p className="mt-3 rounded-full bg-green-700 px-4 py-2 font-black text-white group-hover:bg-yellow-300 group-hover:text-green-950">
-                Open Building →
+              <p className="mt-2 min-h-[48px] font-semibold text-gray-600">
+                {card.desc}
               </p>
+
+              <div className="mt-5 flex items-center justify-between border-t border-green-100 pt-4">
+                <span className="font-black text-green-700">Open Module</span>
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-green-700 text-white shadow group-hover:bg-yellow-300 group-hover:text-green-950">
+                  →
+                </span>
+              </div>
             </Link>
           ))}
         </section>
