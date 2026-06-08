@@ -14,22 +14,17 @@ type Flock = {
   caretaker_name: string | null;
 };
 
-const caretakers = [
+const CARETAKERS = [
   "Caretaker 1",
   "Caretaker 2",
   "Caretaker 3",
   "Caretaker 4",
   "Caretaker 5",
-  "Caretaker 6",
-  "Caretaker 7",
-  "Caretaker 8",
-  "Caretaker 9",
-  "Caretaker 10",
 ];
 
 export default function MyFlockPage() {
   const [flocks, setFlocks] = useState<Flock[]>([]);
-  const [selectedCaretakers, setSelectedCaretakers] = useState<Record<string, string>>({});
+  const [selectedCaretaker, setSelectedCaretaker] = useState<Record<string, string>>({});
   const [breed, setBreed] = useState("Broiler");
   const [totalChicks, setTotalChicks] = useState(100);
   const [harvestDate, setHarvestDate] = useState("");
@@ -68,7 +63,7 @@ export default function MyFlockPage() {
       total_chicks: totalChicks,
       alive_count: totalChicks,
       mortality_count: 0,
-      expected_harvest_date: harvestDate,
+      expected_harvest_date: harvestDate || null,
       status: "ACTIVE",
       caretaker_name: null,
     });
@@ -81,16 +76,16 @@ export default function MyFlockPage() {
   }
 
   async function assignCaretaker(flockId: string) {
-    const caretakerName = selectedCaretakers[flockId];
+    const caretaker = selectedCaretaker[flockId];
 
-    if (!caretakerName) {
-      alert("Please select caretaker first");
+    if (!caretaker) {
+      alert("Please select caretaker first.");
       return;
     }
 
     const { error } = await supabase
       .from("flocks")
-      .update({ caretaker_name: caretakerName })
+      .update({ caretaker_name: caretaker })
       .eq("id", flockId);
 
     if (error) {
@@ -98,8 +93,8 @@ export default function MyFlockPage() {
       return;
     }
 
-    alert(`${caretakerName} assigned successfully!`);
-    loadFlocks();
+    alert(`${caretaker} assigned successfully!`);
+    await loadFlocks();
   }
 
   useEffect(() => {
@@ -112,7 +107,7 @@ export default function MyFlockPage() {
         <section className="rounded-3xl bg-gradient-to-r from-green-700 to-emerald-500 text-white p-8 mb-8 shadow-xl">
           <h1 className="text-4xl font-black">🐣 My Flock</h1>
           <p className="mt-3 text-green-50">
-            Manage poultry batches, caretaker assignment, and harvest schedule.
+            Manage your flock, assign caretakers, and monitor harvest schedule.
           </p>
         </section>
 
@@ -120,11 +115,32 @@ export default function MyFlockPage() {
           <h2 className="text-2xl font-black mb-4">Create New Flock</h2>
 
           <div className="grid md:grid-cols-4 gap-4">
-            <input className="border p-4 rounded-2xl" value={breed} onChange={(e) => setBreed(e.target.value)} />
-            <input type="number" className="border p-4 rounded-2xl" value={totalChicks} onChange={(e) => setTotalChicks(Number(e.target.value))} />
-            <input type="date" className="border p-4 rounded-2xl" value={harvestDate} onChange={(e) => setHarvestDate(e.target.value)} />
+            <input
+              className="border p-4 rounded-2xl"
+              value={breed}
+              onChange={(e) => setBreed(e.target.value)}
+              placeholder="Breed"
+            />
 
-            <button onClick={createFlock} className="bg-green-600 text-white rounded-2xl font-black">
+            <input
+              type="number"
+              className="border p-4 rounded-2xl"
+              value={totalChicks}
+              onChange={(e) => setTotalChicks(Number(e.target.value))}
+              placeholder="Total Chicks"
+            />
+
+            <input
+              type="date"
+              className="border p-4 rounded-2xl"
+              value={harvestDate}
+              onChange={(e) => setHarvestDate(e.target.value)}
+            />
+
+            <button
+              onClick={createFlock}
+              className="bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black"
+            >
               🐣 Create Flock
             </button>
           </div>
@@ -139,35 +155,35 @@ export default function MyFlockPage() {
 
             return (
               <div key={flock.id} className="bg-white rounded-3xl shadow border p-7">
-                <div className="flex justify-between mb-5">
+                <div className="flex justify-between gap-4 mb-5">
                   <div>
                     <h2 className="text-3xl font-black">🐥 {flock.batch_no}</h2>
                     <p className="text-gray-500">{flock.breed}</p>
                   </div>
 
-                  <span className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold h-fit">
+                  <span className="h-fit bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold">
                     {flock.status}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-5">
                   <div className="bg-green-50 rounded-2xl p-4">
-                    <p>Total Chicks</p>
+                    <p className="text-gray-500">Total Chicks</p>
                     <h3 className="text-2xl font-black">{flock.total_chicks}</h3>
                   </div>
 
                   <div className="bg-green-50 rounded-2xl p-4">
-                    <p>Alive</p>
+                    <p className="text-gray-500">Alive</p>
                     <h3 className="text-2xl font-black">{flock.alive_count}</h3>
                   </div>
 
                   <div className="bg-yellow-50 rounded-2xl p-4">
-                    <p>Survival Rate</p>
+                    <p className="text-gray-500">Survival Rate</p>
                     <h3 className="text-2xl font-black">{survival}%</h3>
                   </div>
 
                   <div className="bg-blue-50 rounded-2xl p-4">
-                    <p>Harvest Date</p>
+                    <p className="text-gray-500">Harvest Date</p>
                     <h3 className="text-lg font-black">
                       {flock.expected_harvest_date || "Not set"}
                     </h3>
@@ -175,7 +191,7 @@ export default function MyFlockPage() {
                 </div>
 
                 <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-5">
-                  <p className="font-bold">Assigned Caretaker</p>
+                  <p className="font-bold text-gray-700">Assigned Caretaker</p>
                   <p className="text-green-700 font-black text-xl mt-1">
                     👨‍🌾 {flock.caretaker_name || "No caretaker assigned yet"}
                   </p>
@@ -184,16 +200,16 @@ export default function MyFlockPage() {
                 <div className="grid md:grid-cols-2 gap-3">
                   <select
                     className="border p-4 rounded-2xl font-bold"
-                    value={selectedCaretakers[flock.id] || ""}
+                    value={selectedCaretaker[flock.id] || ""}
                     onChange={(e) =>
-                      setSelectedCaretakers({
-                        ...selectedCaretakers,
+                      setSelectedCaretaker({
+                        ...selectedCaretaker,
                         [flock.id]: e.target.value,
                       })
                     }
                   >
                     <option value="">Choose Caretaker</option>
-                    {caretakers.map((name) => (
+                    {CARETAKERS.map((name) => (
                       <option key={name} value={name}>
                         {name}
                       </option>
@@ -202,9 +218,9 @@ export default function MyFlockPage() {
 
                   <button
                     onClick={() => assignCaretaker(flock.id)}
-                    className="bg-green-600 text-white p-4 rounded-2xl font-black"
+                    className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl font-black"
                   >
-                    Assign
+                    Assign Caretaker
                   </button>
                 </div>
               </div>
