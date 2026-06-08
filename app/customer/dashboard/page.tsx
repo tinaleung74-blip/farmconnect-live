@@ -97,9 +97,17 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#eef8f0] p-4 md:p-8">
-      <div className="mx-auto max-w-7xl">
-        <section className="relative overflow-hidden rounded-[36px] bg-gradient-to-br from-green-950 via-green-800 to-emerald-500 p-7 md:p-10 text-white shadow-2xl">
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-sky-100 via-green-50 to-green-100 p-4 md:p-8">
+      <div className="pointer-events-none absolute left-[-80px] top-10 h-56 w-56 rounded-full bg-white/80 blur-3xl" />
+      <div className="pointer-events-none absolute right-10 top-24 h-64 w-64 rounded-full bg-white/70 blur-3xl" />
+      <div className="pointer-events-none absolute left-1/3 top-48 h-40 w-40 rounded-full bg-yellow-100/70 blur-3xl" />
+
+      <div className="pointer-events-none absolute bottom-0 left-[-10%] h-72 w-[120%] rounded-t-[100%] bg-green-300/40" />
+      <div className="pointer-events-none absolute bottom-0 left-[-20%] h-52 w-[140%] rounded-t-[100%] bg-green-500/20" />
+
+      <div className="relative z-10 mx-auto max-w-7xl">
+        <section className="relative overflow-hidden rounded-[36px] border border-white/40 bg-white/20 p-7 text-white shadow-2xl backdrop-blur-xl md:p-10">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-950/90 via-green-800/75 to-emerald-500/60" />
           <div className="absolute right-[-80px] top-[-80px] h-72 w-72 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute bottom-[-90px] left-[-70px] h-80 w-80 rounded-full bg-lime-300/20 blur-3xl" />
 
@@ -170,7 +178,7 @@ export default function DashboardPage() {
           ].map(([label, value, note]) => (
             <div
               key={label}
-              className="rounded-[28px] border border-green-100 bg-white p-6 shadow-sm"
+              className="rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-sm backdrop-blur"
             >
               <p className="font-bold text-gray-500">{label}</p>
               <h2 className="mt-2 text-4xl font-black text-green-700">
@@ -181,7 +189,7 @@ export default function DashboardPage() {
           ))}
         </section>
 
-        <section className="mt-8 mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end">
+        <section className="mb-5 mt-8 flex flex-col justify-between gap-3 md:flex-row md:items-end">
           <div>
             <h2 className="text-3xl font-black text-gray-900">
               Farm Management
@@ -201,7 +209,7 @@ export default function DashboardPage() {
             <Link
               key={card.title}
               href={card.href}
-              className="group rounded-[30px] border border-green-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              className="group rounded-[30px] border border-white/70 bg-white/85 p-6 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl"
             >
               <div className="mb-5 flex items-start justify-between">
                 <div className="grid h-16 w-16 place-items-center rounded-3xl bg-[#f3fbf5] text-4xl">
