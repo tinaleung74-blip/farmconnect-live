@@ -11,11 +11,25 @@ type Flock = {
   alive_count: number;
   expected_harvest_date: string;
   status: string;
+  caretaker_name: string | null;
 };
 
+const caretakers = [
+  "Caretaker 1",
+  "Caretaker 2",
+  "Caretaker 3",
+  "Caretaker 4",
+  "Caretaker 5",
+  "Caretaker 6",
+  "Caretaker 7",
+  "Caretaker 8",
+  "Caretaker 9",
+  "Caretaker 10",
+];
+
 export default function MyFlockPage() {
-  const [caretaker, setCaretaker] = useState("No caretaker assigned yet");
   const [flocks, setFlocks] = useState<Flock[]>([]);
+  const [selectedCaretakers, setSelectedCaretakers] = useState<Record<string, string>>({});
   const [breed, setBreed] = useState("Broiler");
   const [totalChicks, setTotalChicks] = useState(100);
   const [harvestDate, setHarvestDate] = useState("");
@@ -26,11 +40,16 @@ export default function MyFlockPage() {
 
     const profile = JSON.parse(user);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("flocks")
       .select("*")
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: false });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
 
     setFlocks(data || []);
   }
@@ -51,6 +70,7 @@ export default function MyFlockPage() {
       mortality_count: 0,
       expected_harvest_date: harvestDate,
       status: "ACTIVE",
+      caretaker_name: null,
     });
 
     if (error) return alert(error.message);
@@ -60,9 +80,29 @@ export default function MyFlockPage() {
     loadFlocks();
   }
 
+  async function assignCaretaker(flockId: string) {
+    const caretakerName = selectedCaretakers[flockId];
+
+    if (!caretakerName) {
+      alert("Please select caretaker first");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("flocks")
+      .update({ caretaker_name: caretakerName })
+      .eq("id", flockId);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert(`${caretakerName} assigned successfully!`);
+    loadFlocks();
+  }
+
   useEffect(() => {
-    const savedCaretaker = localStorage.getItem("assigned_caretaker");
-    if (savedCaretaker) setCaretaker(savedCaretaker);
     loadFlocks();
   }, []);
 
@@ -72,70 +112,19 @@ export default function MyFlockPage() {
         <section className="rounded-3xl bg-gradient-to-r from-green-700 to-emerald-500 text-white p-8 mb-8 shadow-xl">
           <h1 className="text-4xl font-black">🐣 My Flock</h1>
           <p className="mt-3 text-green-50">
-            Manage your poultry batches, caretaker assignment, and harvest schedule.
+            Manage poultry batches, caretaker assignment, and harvest schedule.
           </p>
         </section>
 
-        <section className="grid md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-2xl p-5 shadow border">
-            <p className="text-gray-500">Total Batches</p>
-            <h2 className="text-3xl font-black text-green-700">{flocks.length}</h2>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 shadow border">
-            <p className="text-gray-500">Total Chicks</p>
-            <h2 className="text-3xl font-black text-green-700">
-              {flocks.reduce((sum, f) => sum + Number(f.total_chicks || 0), 0)}
-            </h2>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 shadow border">
-            <p className="text-gray-500">Alive Count</p>
-            <h2 className="text-3xl font-black text-green-700">
-              {flocks.reduce((sum, f) => sum + Number(f.alive_count || 0), 0)}
-            </h2>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 shadow border">
-            <p className="text-gray-500">Caretaker</p>
-            <h2 className="text-lg font-black text-green-700 truncate">
-              👨‍🌾 {caretaker}
-            </h2>
-          </div>
-        </section>
-
         <section className="bg-white rounded-3xl shadow border p-6 mb-8">
-          <h2 className="text-2xl font-black text-gray-900 mb-4">
-            Create New Flock
-          </h2>
+          <h2 className="text-2xl font-black mb-4">Create New Flock</h2>
 
           <div className="grid md:grid-cols-4 gap-4">
-            <input
-              className="border p-4 rounded-2xl"
-              value={breed}
-              onChange={(e) => setBreed(e.target.value)}
-              placeholder="Breed"
-            />
+            <input className="border p-4 rounded-2xl" value={breed} onChange={(e) => setBreed(e.target.value)} />
+            <input type="number" className="border p-4 rounded-2xl" value={totalChicks} onChange={(e) => setTotalChicks(Number(e.target.value))} />
+            <input type="date" className="border p-4 rounded-2xl" value={harvestDate} onChange={(e) => setHarvestDate(e.target.value)} />
 
-            <input
-              type="number"
-              className="border p-4 rounded-2xl"
-              value={totalChicks}
-              onChange={(e) => setTotalChicks(Number(e.target.value))}
-              placeholder="Total Chicks"
-            />
-
-            <input
-              type="date"
-              className="border p-4 rounded-2xl"
-              value={harvestDate}
-              onChange={(e) => setHarvestDate(e.target.value)}
-            />
-
-            <button
-              onClick={createFlock}
-              className="bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black"
-            >
+            <button onClick={createFlock} className="bg-green-600 text-white rounded-2xl font-black">
               🐣 Create Flock
             </button>
           </div>
@@ -150,35 +139,35 @@ export default function MyFlockPage() {
 
             return (
               <div key={flock.id} className="bg-white rounded-3xl shadow border p-7">
-                <div className="flex justify-between gap-4 mb-5">
+                <div className="flex justify-between mb-5">
                   <div>
                     <h2 className="text-3xl font-black">🐥 {flock.batch_no}</h2>
                     <p className="text-gray-500">{flock.breed}</p>
                   </div>
 
-                  <span className="h-fit bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold">
+                  <span className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold h-fit">
                     {flock.status}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-5">
                   <div className="bg-green-50 rounded-2xl p-4">
-                    <p className="text-gray-500">Total Chicks</p>
+                    <p>Total Chicks</p>
                     <h3 className="text-2xl font-black">{flock.total_chicks}</h3>
                   </div>
 
                   <div className="bg-green-50 rounded-2xl p-4">
-                    <p className="text-gray-500">Alive</p>
+                    <p>Alive</p>
                     <h3 className="text-2xl font-black">{flock.alive_count}</h3>
                   </div>
 
                   <div className="bg-yellow-50 rounded-2xl p-4">
-                    <p className="text-gray-500">Survival Rate</p>
+                    <p>Survival Rate</p>
                     <h3 className="text-2xl font-black">{survival}%</h3>
                   </div>
 
                   <div className="bg-blue-50 rounded-2xl p-4">
-                    <p className="text-gray-500">Harvest Date</p>
+                    <p>Harvest Date</p>
                     <h3 className="text-lg font-black">
                       {flock.expected_harvest_date || "Not set"}
                     </h3>
@@ -186,41 +175,41 @@ export default function MyFlockPage() {
                 </div>
 
                 <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-5">
-                  <p className="font-bold text-gray-700">Assigned Caretaker</p>
+                  <p className="font-bold">Assigned Caretaker</p>
                   <p className="text-green-700 font-black text-xl mt-1">
-                    👨‍🌾 {caretaker}
+                    👨‍🌾 {flock.caretaker_name || "No caretaker assigned yet"}
                   </p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-3">
-                  <a
-                    href="/customer/caretakers"
-                    className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl text-center font-black"
+                  <select
+                    className="border p-4 rounded-2xl font-bold"
+                    value={selectedCaretakers[flock.id] || ""}
+                    onChange={(e) =>
+                      setSelectedCaretakers({
+                        ...selectedCaretakers,
+                        [flock.id]: e.target.value,
+                      })
+                    }
                   >
-                    👨‍🌾 Assign Caretaker
-                  </a>
+                    <option value="">Choose Caretaker</option>
+                    {caretakers.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
 
-                  <a
-                    href="/customer/weight-updates"
-                    className="bg-white border border-green-600 text-green-700 p-4 rounded-2xl text-center font-black"
+                  <button
+                    onClick={() => assignCaretaker(flock.id)}
+                    className="bg-green-600 text-white p-4 rounded-2xl font-black"
                   >
-                    📈 Add Weight Update
-                  </a>
+                    Assign
+                  </button>
                 </div>
               </div>
             );
           })}
-
-          {flocks.length === 0 && (
-            <div className="bg-white rounded-3xl shadow border p-10 text-center lg:col-span-2">
-              <h2 className="text-3xl font-black text-green-700">
-                No flock yet
-              </h2>
-              <p className="mt-2 text-gray-500">
-                Create your first chick batch to start monitoring growth and earnings.
-              </p>
-            </div>
-          )}
         </section>
       </div>
     </main>
