@@ -1,28 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  async function handleLogin() {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("email", email)
-      .eq("password", password)
-      .single();
-
-    if (error || !data) {
-      alert("Invalid email or password");
+  function handleLogin() {
+    if (!email || !password) {
+      alert("Please enter email and password");
       return;
     }
 
-    localStorage.setItem("farmconnect_user", JSON.stringify(data));
+    localStorage.setItem(
+      "farmconnect_user",
+      JSON.stringify({
+        email,
+        role: "customer",
+      })
+    );
 
-   window.location.href = "/customer/dashboard";
+    alert("Login successful!");
+    window.location.href = "/customer/dashboard";
   }
 
   return (
