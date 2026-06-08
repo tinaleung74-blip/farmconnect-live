@@ -7,7 +7,7 @@ const cards = [
     title: "My Flock",
     icon: "🐣",
     href: "/customer/chicks",
-    desc: "Manage chick batches, survival rate, and harvest schedule.",
+    desc: "Manage chick batches, caretaker assignment, survival rate, and harvest schedule.",
     badge: "Core",
   },
   {
@@ -18,11 +18,11 @@ const cards = [
     badge: "Shop",
   },
   {
-    title: "Caretakers",
-    icon: "👨‍🌾",
-    href: "/customer/caretakers",
-    desc: "Assign trusted farm caretakers to monitor your flock.",
-    badge: "Assign",
+    title: "Inventory",
+    icon: "📦",
+    href: "/customer/inventory",
+    desc: "View feeds, vitamins, vaccines, and supplies purchased from marketplace.",
+    badge: "Bag",
   },
   {
     title: "Weight Tracker",
@@ -98,9 +98,9 @@ export default function DashboardPage() {
               </p>
 
               <p className="mt-4 max-w-2xl text-green-50">
-                Monitor your flock, buy farm supplies, assign caretakers, track
-                growth, view harvest projections, and manage poultry earnings in
-                one clean dashboard.
+                Monitor your flock, buy farm supplies, assign caretakers inside
+                My Flock, track growth, view harvest projections, and manage
+                poultry earnings in one clean dashboard.
               </p>
             </div>
 
@@ -128,16 +128,14 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
-            <p className="text-gray-500 font-semibold">⚖ Avg Weight</p>
-            <h2 className="text-4xl font-black text-green-700 mt-2">0.55 KG</h2>
-            <p className="text-sm text-gray-400 mt-1">Growth monitoring</p>
+            <p className="text-gray-500 font-semibold">📦 Inventory Items</p>
+            <h2 className="text-4xl font-black text-green-700 mt-2">4</h2>
+            <p className="text-sm text-gray-400 mt-1">Feeds and vitamins</p>
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
             <p className="text-gray-500 font-semibold">💰 Projected Earnings</p>
-            <h2 className="text-4xl font-black text-green-700 mt-2">
-              ₱12,500
-            </h2>
+            <h2 className="text-4xl font-black text-green-700 mt-2">₱12,500</h2>
             <p className="text-sm text-gray-400 mt-1">Estimated harvest ROI</p>
           </div>
         </section>
