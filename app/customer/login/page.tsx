@@ -29,7 +29,7 @@ export default function LoginPage() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, email, mobile, role, password_hash")
+        .select("id, full_name, email, phone, role, password, wallet_balance")
         .eq("email", cleanEmail)
         .maybeSingle();
 
@@ -44,7 +44,7 @@ export default function LoginPage() {
         return;
       }
 
-      if (String(data.password_hash) !== cleanPassword) {
+      if (String(data.password) !== cleanPassword) {
         setErrorMessage("Invalid password. Please try again.");
         return;
       }
@@ -55,8 +55,9 @@ export default function LoginPage() {
           id: data.id,
           full_name: data.full_name,
           email: data.email,
-          mobile: data.mobile,
+          phone: data.phone,
           role: data.role,
+          wallet_balance: data.wallet_balance,
         })
       );
 
@@ -150,10 +151,7 @@ export default function LoginPage() {
 
           <p className="text-center text-gray-500 mt-6">
             No account yet?{" "}
-            <a
-              href="/customer/register"
-              className="text-green-700 font-black"
-            >
+            <a href="/customer/register" className="text-green-700 font-black">
               Register here
             </a>
           </p>
