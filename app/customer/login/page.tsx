@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -16,11 +16,11 @@ export default function LoginPage() {
   async function handleLogin() {
     setErrorMessage("");
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanLoginId = loginId.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    if (!cleanEmail || !cleanPassword) {
-      setErrorMessage("Please enter email and password.");
+    if (!cleanLoginId || !cleanPassword) {
+      setErrorMessage("Please enter email or phone and password.");
       return;
     }
 
@@ -30,7 +30,7 @@ export default function LoginPage() {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, full_name, email, phone, role, password, wallet_balance")
-        .eq("email", cleanEmail)
+        .or(`email.eq.${cleanLoginId},phone.eq.${cleanLoginId}`)
         .maybeSingle();
 
       if (error) {
@@ -118,13 +118,13 @@ export default function LoginPage() {
           )}
 
           <label className="block font-bold text-gray-700 mb-2">
-            Email Address
+            Email or Phone Number
           </label>
           <input
             className="w-full border border-gray-200 p-4 rounded-2xl mb-5 outline-none focus:border-green-500"
-            placeholder="example@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder="test@gmail.com or 09123456789"
+            value={loginId}
+            onChange={(e) => setLoginId(e.target.value)}
           />
 
           <label className="block font-bold text-gray-700 mb-2">
