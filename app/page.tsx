@@ -1,48 +1,70 @@
-export default function Home() {
+import Link from "next/link";
+
+export default function HomePage() {
   return (
-    <main className="min-h-screen bg-green-50 p-10">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-5xl font-bold text-green-700">
-          🚜 FarmConnect Live
-        </h1>
+    <main style={page}>
+      <section style={card}>
+        <p style={eyebrow}>FarmConnect Live</p>
+        <h1 style={title}>Choose Portal</h1>
+        <p style={subtitle}>Customer, Caretaker, and Admin in one platform.</p>
 
-        <p className="mt-4 text-xl text-gray-700">
-          Raise real chicks online. Watch them grow into harvest-ready chickens.
-        </p>
-
-        <div className="grid md:grid-cols-3 gap-6 mt-10">
-          <div className="bg-white p-6 rounded-2xl shadow">
-            <h2 className="text-2xl font-bold">🐣 Buy Chicks</h2>
-            <p>Choose chick batches and start your online farm journey.</p>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow">
-            <h2 className="text-2xl font-bold">👨‍🌾 Assign Caretaker</h2>
-            <p>Select caretakers who will manage feeding and growth.</p>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow">
-            <h2 className="text-2xl font-bold">🐔 Harvest & Earn</h2>
-            <p>Track progress until your chicks become harvest-ready chickens.</p>
-          </div>
+        <div style={grid}>
+          <Link href="/customer" style={button}>👤 Customer App</Link>
+          <Link href="/caretaker" style={button}>🧑‍🌾 Caretaker App</Link>
+          <Link href="/admin" style={button}>🛡️ Admin App</Link>
         </div>
-
-        <div className="mt-10 flex gap-4">
-          <a
-            href="/customer/register"
-            className="bg-green-600 text-white px-6 py-3 rounded-xl"
-          >
-            Register
-          </a>
-
-          <a
-            href="/customer/login"
-            className="bg-gray-800 text-white px-6 py-3 rounded-xl"
-          >
-            Login
-          </a>
-        </div>
-      </div>
+      </section>
     </main>
   );
 }
+
+const page: React.CSSProperties = {
+  minHeight: "100vh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 24,
+  background: "linear-gradient(135deg, #dcfce7, #fef9c3, #dbeafe)",
+};
+
+const card: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 850,
+  background: "white",
+  borderRadius: 32,
+  padding: 40,
+  textAlign: "center",
+  boxShadow: "0 24px 60px rgba(0,0,0,0.12)",
+};
+
+const eyebrow: React.CSSProperties = {
+  fontWeight: 900,
+  color: "#15803d",
+};
+
+const title: React.CSSProperties = {
+  fontSize: 46,
+  margin: "10px 0",
+  color: "#123524",
+};
+
+const subtitle: React.CSSProperties = {
+  color: "#5b7165",
+  marginBottom: 28,
+};
+
+const grid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+  gap: 16,
+};
+
+const button: React.CSSProperties = {
+  background: "#123524",
+  color: "white",
+  padding: 24,
+  borderRadius: 22,
+  textDecoration: "none",
+  fontWeight: 900,
+  fontSize: 18,
+};
