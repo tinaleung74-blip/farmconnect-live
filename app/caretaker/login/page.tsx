@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 export default function CaretakerLoginPage() {
   const router = useRouter();
+
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,25 +17,39 @@ export default function CaretakerLoginPage() {
     const { data, error } = await supabase
       .from("caretakers")
       .select("*")
-      .eq("phone", phone)
-      .eq("pin", pin)
-      .single();
+      .eq("phone", phone.trim())
+      .eq("pin", pin.trim())
+      .maybeSingle();
+
+    console.log("LOGIN RESULT:", data, error);
 
     setLoading(false);
 
-    if (error || !data) {
+    if (!data) {
       alert("Invalid phone or PIN");
       return;
     }
 
-    localStorage.setItem("farmconnect_caretaker", JSON.stringify(data));
+    localStorage.setItem(
+      "farmconnect_caretaker",
+      JSON.stringify(data)
+    );
+
     router.push("/caretaker/dashboard");
   }
 
   return (
     <main style={page}>
       <div style={card}>
-        <h1>Caretaker Login</h1>
+        <h1
+          style={{
+            fontSize: 32,
+            fontWeight: 800,
+            marginBottom: 20,
+          }}
+        >
+          Caretaker Login
+        </h1>
 
         <input
           style={input}
@@ -51,7 +66,11 @@ export default function CaretakerLoginPage() {
           onChange={(e) => setPin(e.target.value)}
         />
 
-        <button style={button} onClick={handleLogin} disabled={loading}>
+        <button
+          style={button}
+          onClick={handleLogin}
+          disabled={loading}
+        >
           {loading ? "Checking..." : "Login"}
         </button>
       </div>
@@ -80,14 +99,15 @@ const card = {
 const input = {
   width: "100%",
   padding: 14,
-  marginTop: 14,
+  marginBottom: 14,
   borderRadius: 10,
   border: "1px solid #334155",
+  background: "#020617",
+  color: "white",
 };
 
 const button = {
   width: "100%",
-  marginTop: 18,
   padding: 14,
   borderRadius: 10,
   border: "none",
