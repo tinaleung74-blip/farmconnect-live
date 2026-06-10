@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function CaretakerLoginPage() {
   const router = useRouter();
-
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,35 +21,21 @@ export default function CaretakerLoginPage() {
       .eq("pin", pin.trim())
       .maybeSingle();
 
-    console.log("LOGIN RESULT:", data, error);
-
     setLoading(false);
 
-    if (!data) {
+    if (error || !data) {
       alert("Invalid phone or PIN");
       return;
     }
 
-    localStorage.setItem(
-      "farmconnect_caretaker",
-      JSON.stringify(data)
-    );
-
+    localStorage.setItem("farmconnect_caretaker", JSON.stringify(data));
     router.push("/caretaker/dashboard");
   }
 
   return (
     <main style={page}>
       <div style={card}>
-        <h1
-          style={{
-            fontSize: 32,
-            fontWeight: 800,
-            marginBottom: 20,
-          }}
-        >
-          Caretaker Login
-        </h1>
+        <h1 style={title}>Caretaker Login</h1>
 
         <input
           style={input}
@@ -66,11 +52,7 @@ export default function CaretakerLoginPage() {
           onChange={(e) => setPin(e.target.value)}
         />
 
-        <button
-          style={button}
-          onClick={handleLogin}
-          disabled={loading}
-        >
+        <button style={button} onClick={handleLogin} disabled={loading}>
           {loading ? "Checking..." : "Login"}
         </button>
       </div>
@@ -78,7 +60,7 @@ export default function CaretakerLoginPage() {
   );
 }
 
-const page = {
+const page: CSSProperties = {
   minHeight: "100vh",
   background: "#020617",
   color: "white",
@@ -88,7 +70,7 @@ const page = {
   padding: 24,
 };
 
-const card = {
+const card: CSSProperties = {
   width: "100%",
   maxWidth: 420,
   background: "#0f172a",
@@ -96,7 +78,13 @@ const card = {
   borderRadius: 20,
 };
 
-const input = {
+const title: CSSProperties = {
+  fontSize: 32,
+  fontWeight: 800,
+  marginBottom: 20,
+};
+
+const input: CSSProperties = {
   width: "100%",
   padding: 14,
   marginBottom: 14,
@@ -106,7 +94,7 @@ const input = {
   color: "white",
 };
 
-const button = {
+const button: CSSProperties = {
   width: "100%",
   padding: 14,
   borderRadius: 10,
