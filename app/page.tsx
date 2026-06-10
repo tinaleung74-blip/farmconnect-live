@@ -1,70 +1,135 @@
+"use client";
+
 import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main style={page}>
-      <section style={card}>
-        <p style={eyebrow}>FarmConnect Live</p>
-        <h1 style={title}>Choose Portal</h1>
-        <p style={subtitle}>Customer, Caretaker, and Admin in one platform.</p>
+    <main className="min-h-screen bg-gradient-to-br from-green-100 via-white to-blue-100 p-8">
+      <div className="max-w-7xl mx-auto">
 
-        <div style={grid}>
-          <Link href="/customer" style={button}>👤 Customer App</Link>
-          <Link href="/caretaker" style={button}>🧑‍🌾 Caretaker App</Link>
-          <Link href="/admin" style={button}>🛡️ Admin App</Link>
+        <div className="text-center mb-12">
+          <h1 className="text-6xl font-bold text-green-700">
+            FarmConnect Live
+          </h1>
+
+          <p className="text-gray-600 mt-4 text-xl">
+            Professional Livestock Investment Platform
+          </p>
+
+          <p className="text-gray-500 mt-2">
+            Customer • Caretaker • Admin
+          </p>
         </div>
-      </section>
+
+        <div className="grid md:grid-cols-3 gap-8">
+
+          {/* CUSTOMER */}
+          <div className="bg-white rounded-3xl shadow-xl p-8 border">
+            <div className="text-6xl mb-4">🐣</div>
+
+            <h2 className="text-2xl font-bold mb-4">
+              Customer Portal
+            </h2>
+
+            <p className="text-gray-600 mb-6">
+              Invest in livestock, monitor flock growth,
+              harvest reports and earnings.
+            </p>
+
+            <div className="bg-green-50 rounded-xl p-4 mb-6">
+              <div className="font-semibold">
+                Demo Credentials
+              </div>
+
+              <div className="text-sm mt-2">
+                Email: customer@demo.com
+              </div>
+
+              <div className="text-sm">
+                Password: 123456
+              </div>
+            </div>
+
+            <Link
+              href="/customer/login"
+              className="block text-center bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl"
+            >
+              Open Customer Portal
+            </Link>
+          </div>
+
+          {/* CARETAKER */}
+          <div className="bg-white rounded-3xl shadow-xl p-8 border">
+            <div className="text-6xl mb-4">👨‍🌾</div>
+
+            <h2 className="text-2xl font-bold mb-4">
+              Caretaker Portal
+            </h2>
+
+            <p className="text-gray-600 mb-6">
+              Feeding logs, mortality reports,
+              weight updates and farm operations.
+            </p>
+
+            <div className="bg-yellow-50 rounded-xl p-4 mb-6">
+              <div className="font-semibold">
+                Demo Credentials
+              </div>
+
+              <div className="text-sm mt-2">
+                Email: caretaker@demo.com
+              </div>
+
+              <div className="text-sm">
+                Password: 123456
+              </div>
+            </div>
+
+            <Link
+              href="/caretaker/login"
+              className="block text-center bg-yellow-600 hover:bg-yellow-700 text-white py-3 rounded-xl"
+            >
+              Open Caretaker Portal
+            </Link>
+          </div>
+
+          {/* ADMIN */}
+          <div className="bg-white rounded-3xl shadow-xl p-8 border">
+            <div className="text-6xl mb-4">🏢</div>
+
+            <h2 className="text-2xl font-bold mb-4">
+              Admin Portal
+            </h2>
+
+            <p className="text-gray-600 mb-6">
+              Executive dashboard, treasury,
+              risk management and reports.
+            </p>
+
+            <div className="bg-blue-50 rounded-xl p-4 mb-6">
+              <div className="font-semibold">
+                Demo Credentials
+              </div>
+
+              <div className="text-sm mt-2">
+                Email: admin@demo.com
+              </div>
+
+              <div className="text-sm">
+                Password: 123456
+              </div>
+            </div>
+
+            <Link
+              href="/admin"
+              className="block text-center bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl"
+            >
+              Open Admin Portal
+            </Link>
+          </div>
+
+        </div>
+      </div>
     </main>
   );
 }
-
-const page: React.CSSProperties = {
-  minHeight: "100vh",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 24,
-  background: "linear-gradient(135deg, #dcfce7, #fef9c3, #dbeafe)",
-};
-
-const card: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 850,
-  background: "white",
-  borderRadius: 32,
-  padding: 40,
-  textAlign: "center",
-  boxShadow: "0 24px 60px rgba(0,0,0,0.12)",
-};
-
-const eyebrow: React.CSSProperties = {
-  fontWeight: 900,
-  color: "#15803d",
-};
-
-const title: React.CSSProperties = {
-  fontSize: 46,
-  margin: "10px 0",
-  color: "#123524",
-};
-
-const subtitle: React.CSSProperties = {
-  color: "#5b7165",
-  marginBottom: 28,
-};
-
-const grid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-  gap: 16,
-};
-
-const button: React.CSSProperties = {
-  background: "#123524",
-  color: "white",
-  padding: 24,
-  borderRadius: 22,
-  textDecoration: "none",
-  fontWeight: 900,
-  fontSize: 18,
-};
