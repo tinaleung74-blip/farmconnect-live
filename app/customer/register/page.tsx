@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export default function CustomerRegisterPage() {
   const router = useRouter();
+
+  const idFileRef = useRef<HTMLInputElement>(null);
+  const idCameraRef = useRef<HTMLInputElement>(null);
+  const selfieCameraRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -42,6 +46,16 @@ export default function CustomerRegisterPage() {
       return;
     }
 
+    if (!idFrontUrl) {
+      setMessage("Please upload or capture your valid ID.");
+      return;
+    }
+
+    if (!selfieUrl) {
+      setMessage("Please capture your selfie verification.");
+      return;
+    }
+
     if (cleanPassword.length < 6) {
       setMessage("Password must be at least 6 characters.");
       return;
@@ -71,11 +85,10 @@ export default function CustomerRegisterPage() {
             phone: cleanPhone,
             password: cleanPassword,
             wallet_balance: 0,
-
             id_type: cleanIdType,
             id_number: cleanIdNumber,
-            id_front_url: idFrontUrl || "PENDING_UPLOAD",
-            selfie_url: selfieUrl || "PENDING_UPLOAD",
+            id_front_url: idFrontUrl,
+            selfie_url: selfieUrl,
             verification_status: "PENDING",
           },
         ])
@@ -124,15 +137,15 @@ export default function CustomerRegisterPage() {
               <div style={stepNumber}>2</div>
               <div>
                 <h3>ID Verification</h3>
-                <p>Submit your valid ID type and identification number.</p>
+                <p>Upload your valid ID or capture it using your camera.</p>
               </div>
             </div>
 
             <div style={stepCard}>
               <div style={stepNumber}>3</div>
               <div>
-                <h3>Admin Review</h3>
-                <p>Your account starts as PENDING until admin approval.</p>
+                <h3>Selfie Check</h3>
+                <p>Take a selfie for admin identity review.</p>
               </div>
             </div>
 
@@ -209,28 +222,75 @@ export default function CustomerRegisterPage() {
               placeholder="Enter ID number"
             />
 
-            <label style={label}>Upload Valid ID</label>
+            <label style={label}>Upload Valid ID *</label>
             <div style={uploadBox}>
-              <b>📄 Valid ID Upload</b>
-              <p>Placeholder muna. File upload to Supabase Storage next phase.</p>
+              <b>📄 Valid ID Verification</b>
+              <p>
+                Upload a valid government-issued ID or capture it directly using
+                your camera.
+              </p>
+
               <input
-                style={hiddenInput}
-                value={idFrontUrl}
-                onChange={(e) => setIdFrontUrl(e.target.value)}
-                placeholder="Optional ID file URL"
+                ref={idFileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={() => setIdFrontUrl("ID_PHOTO_SELECTED")}
               />
+
+              <input
+                ref={idCameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: "none" }}
+                onChange={() => setIdFrontUrl("ID_CAMERA_CAPTURED")}
+              />
+
+              <div style={buttonRow}>
+                <button
+                  type="button"
+                  style={uploadButton}
+                  onClick={() => idFileRef.current?.click()}
+                >
+                  📁 Upload Photo
+                </button>
+
+                <button
+                  type="button"
+                  style={cameraButton}
+                  onClick={() => idCameraRef.current?.click()}
+                >
+                  📷 Open Camera
+                </button>
+              </div>
+
+              {idFrontUrl && <p style={successText}>✓ ID Captured</p>}
             </div>
 
-            <label style={label}>Selfie Verification</label>
+            <label style={label}>Selfie Verification *</label>
             <div style={uploadBox}>
-              <b>🤳 Selfie Check</b>
-              <p>Placeholder muna. Camera/selfie upload next phase.</p>
+              <b>🤳 Selfie Verification</b>
+              <p>Take a live selfie for identity matching and admin review.</p>
+
               <input
-                style={hiddenInput}
-                value={selfieUrl}
-                onChange={(e) => setSelfieUrl(e.target.value)}
-                placeholder="Optional selfie URL"
+                ref={selfieCameraRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                style={{ display: "none" }}
+                onChange={() => setSelfieUrl("SELFIE_CAMERA_CAPTURED")}
               />
+
+              <button
+                type="button"
+                style={cameraButtonFull}
+                onClick={() => selfieCameraRef.current?.click()}
+              >
+                🤳 Open Camera
+              </button>
+
+              {selfieUrl && <p style={successText}>✓ Selfie Captured</p>}
             </div>
 
             <div style={pendingBox}>
@@ -401,12 +461,50 @@ const uploadBox: React.CSSProperties = {
   color: "#334155",
 };
 
-const hiddenInput: React.CSSProperties = {
-  width: "100%",
-  marginTop: 10,
-  padding: 12,
+const buttonRow: React.CSSProperties = {
+  display: "flex",
+  gap: 10,
+  marginTop: 15,
+};
+
+const uploadButton: React.CSSProperties = {
+  flex: 1,
+  padding: 14,
   borderRadius: 14,
-  border: "1px solid #cbd5e1",
+  border: "none",
+  cursor: "pointer",
+  background: "#2563eb",
+  color: "white",
+  fontWeight: 900,
+};
+
+const cameraButton: React.CSSProperties = {
+  flex: 1,
+  padding: 14,
+  borderRadius: 14,
+  border: "none",
+  cursor: "pointer",
+  background: "#16a34a",
+  color: "white",
+  fontWeight: 900,
+};
+
+const cameraButtonFull: React.CSSProperties = {
+  width: "100%",
+  padding: 14,
+  borderRadius: 14,
+  border: "none",
+  cursor: "pointer",
+  background: "#16a34a",
+  color: "white",
+  fontWeight: 900,
+  marginTop: 15,
+};
+
+const successText: React.CSSProperties = {
+  marginTop: 12,
+  color: "#16a34a",
+  fontWeight: 900,
 };
 
 const pendingBox: React.CSSProperties = {
