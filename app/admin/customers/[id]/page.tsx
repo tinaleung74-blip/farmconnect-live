@@ -1,458 +1,453 @@
 "use client";
 
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+
+type Customer = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  wallet_balance: number | null;
+
+  id_type: string | null;
+  id_number: string | null;
+  id_front_url: string | null;
+  selfie_url: string | null;
+  verification_status: string | null;
+  verification_notes: string | null;
+
+  membership_plan: string | null;
+  membership_fee: number | null;
+  membership_status: string | null;
+  membership_expiry: string | null;
+
+  account_status: string | null;
+};
 
 export default function AdminCustomerDetailPage() {
   const params = useParams();
+  const router = useRouter();
 
-  const [customer, setCustomer] = useState<any>(null);
-  const [flocks, setFlocks] = useState<any[]>([]);
-  const [walletTx, setWalletTx] = useState<any[]>([]);
-  const [riskAlerts, setRiskAlerts] = useState<any[]>([]);
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [rejectReason, setRejectReason] = useState("ID Photo Blurry");
+  const [adminNote, setAdminNote] = useState("");
 
   useEffect(() => {
-    loadCustomerProfile();
+    loadCustomer();
   }, []);
 
-  async function loadCustomerProfile() {
-    const customerId = String(params.id);
+  async function loadCustomer() {
+    setLoading(true);
 
-    const { data: customerData } = await supabase
-      .from("customers")
+    const { data, error } = await supabase
+      .from("profiles")
       .select("*")
-      .eq("id", customerId)
+      .eq("id", params.id)
       .single();
 
-    const { data: flockData } = await supabase
-      .from("flocks")
-      .select("*")
-      .eq("customer_id", customerId)
-      .order("created_at", { ascending: false });
+    if (!error && data) {
+      setCustomer(data as Customer);
+      setAdminNote(data.verification_notes || "");
+    }
 
-    const { data: walletData } = await supabase
-      .from("wallet_transactions")
-      .select("*")
-      .eq("customer_id", customerId)
-      .order("created_at", { ascending: false })
-      .limit(8);
-
-    const { data: riskData } = await supabase
-      .from("risk_alerts")
-      .select("*")
-      .eq("customer_id", customerId)
-      .order("created_at", { ascending: false })
-      .limit(6);
-
-    setCustomer(customerData);
-    setFlocks(flockData || []);
-    setWalletTx(walletData || []);
-    setRiskAlerts(riskData || []);
     setLoading(false);
   }
 
+  async function approveKyc() {
+    if (!customer) return;
+
+    setSaving(true);
+
+    await supabase
+      .from("profiles")
+      .update({
+        verification_status: "APPROVED",
+        verification_notes: "Your identity verification has been approved.",
+        account_status: "VERIFIED",
+      })
+      .eq("id", customer.id);
+
+    await loadCustomer();
+    setSaving(false);
+  }
+
+  async function rejectKyc() {
+    if (!customer) return;
+
+    setSaving(true);
+
+    const finalNote = adminNote.trim()
+      ? `${rejectReason}: ${adminNote.trim()}`
+      : rejectReason;
+
+    await supabase
+      .from("profiles")
+      .update({
+        verification_status: "REJECTED",
+        verification_notes: finalNote,
+        account_status: "REJECTED",
+      })
+      .eq("id", customer.id);
+
+    await loadCustomer();
+    setSaving(false);
+  }
+
+  async function resetPending() {
+    if (!customer) return;
+
+    setSaving(true);
+
+    await supabase
+      .from("profiles")
+      .update({
+        verification_status: "PENDING",
+        verification_notes: "Your verification is under review.",
+        account_status: "PENDING",
+      })
+      .eq("id", customer.id);
+
+    await loadCustomer();
+    setSaving(false);
+  }
+
   if (loading) {
-    return <main style={page}>Loading customer account...</main>;
+    return (
+      <main style={page}>
+        <h1>Loading customer...</h1>
+      </main>
+    );
   }
 
   if (!customer) {
-    return <main style={page}>Customer not found.</main>;
+    return (
+      <main style={page}>
+        <h1>Customer not found</h1>
+        <button style={backButton} onClick={() => router.push("/admin/customers")}>
+          Back to Customers
+        </button>
+      </main>
+    );
   }
 
   return (
     <main style={page}>
-      <Link href="/admin/customers" style={back}>
-        ← Back to Customers
-      </Link>
+      <div style={container}>
+        <button style={backButton} onClick={() => router.push("/admin/customers")}>
+          ← Back to Customers
+        </button>
 
-      <section style={profileHero}>
-        <div style={avatar}>👤</div>
-
-        <div>
-          <p style={eyebrow}>Customer Account</p>
-          <h1 style={title}>{customer.full_name || customer.name || "Unnamed Customer"}</h1>
-          <p style={subtitle}>
-            Admin-controlled customer account. Customer has no direct caretaker access.
-          </p>
-        </div>
-
-        <span style={status}>{customer.status || "ACTIVE"}</span>
-      </section>
-
-      <section style={summaryGrid}>
-        <div style={summaryCard}>
-          <span style={summaryIcon}>💳</span>
-          <p>Wallet Balance</p>
-          <strong>₱{Number(customer.wallet_balance || 0).toLocaleString()}</strong>
-        </div>
-
-        <div style={summaryCard}>
-          <span style={summaryIcon}>🐔</span>
-          <p>Total Flocks</p>
-          <strong>{flocks.length}</strong>
-        </div>
-
-        <div style={summaryCard}>
-          <span style={summaryIcon}>⚠️</span>
-          <p>Risk Alerts</p>
-          <strong>{riskAlerts.length}</strong>
-        </div>
-
-        <div style={summaryCard}>
-          <span style={summaryIcon}>🛡️</span>
-          <p>Risk Score</p>
-          <strong>{customer.risk_score || 0}</strong>
-        </div>
-      </section>
-
-      <section style={twoGrid}>
-        <div style={card}>
-          <h2 style={cardTitle}>Customer Information</h2>
-
-          <div style={infoList}>
-            <p>📧 Email: {customer.email || "No email"}</p>
-            <p>📞 Phone: {customer.phone || "No phone number"}</p>
-            <p>📍 Address: {customer.address || "No address"}</p>
-            <p>🪪 Customer ID: {customer.id}</p>
-            <p>
-              📅 Registered:{" "}
-              {customer.created_at
-                ? new Date(customer.created_at).toLocaleDateString()
-                : "N/A"}
-            </p>
-          </div>
-        </div>
-
-        <div style={card}>
-          <h2 style={cardTitle}>Admin Relationship Rule</h2>
-
-          <div style={ruleBox}>
-            <strong>Customer ↔ Admin only</strong>
-            <p>
-              This account is managed only by the Admin. The customer should not
-              directly contact or access caretaker records.
-            </p>
-          </div>
-
-          <div style={ruleBoxOrange}>
-            <strong>No Customer ↔ Caretaker connection</strong>
-            <p>
-              All reports, updates, complaints, wallet activity, and farm
-              monitoring must pass through Admin.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section style={panel}>
-        <div style={panelHeader}>
+        <div style={header}>
           <div>
-            <p style={eyebrow}>Livestock Ownership</p>
-            <h2 style={sectionTitle}>Customer Flocks</h2>
+            <p style={eyebrow}>ADMIN CUSTOMER REVIEW</p>
+            <h1 style={title}>{customer.full_name || "Unnamed Customer"}</h1>
+            <p style={subtitle}>
+              Review KYC documents, membership status, and account activation.
+            </p>
           </div>
-          <span style={smallBadge}>{flocks.length} Records</span>
-        </div>
 
-        {flocks.length === 0 ? (
-          <p style={muted}>No flock records found for this customer.</p>
-        ) : (
-          <div style={tableWrap}>
-            <table style={table}>
-              <thead>
-                <tr>
-                  <th style={th}>Flock Name</th>
-                  <th style={th}>Animal Type</th>
-                  <th style={th}>Quantity</th>
-                  <th style={th}>Status</th>
-                  <th style={th}>Harvest Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {flocks.map((f) => (
-                  <tr key={f.id}>
-                    <td style={td}>{f.name || f.flock_name || "Unnamed Flock"}</td>
-                    <td style={td}>{f.animal_type || f.livestock_type || "Chicken"}</td>
-                    <td style={td}>{f.quantity || 0}</td>
-                    <td style={td}>{f.status || "GROWING"}</td>
-                    <td style={td}>
-                      {f.harvest_date
-                        ? new Date(f.harvest_date).toLocaleDateString()
-                        : "Not set"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={statusPanel}>
+            <Status label="KYC" value={customer.verification_status || "PENDING"} />
+            <Status label="Membership" value={customer.membership_status || "UNPAID"} />
+            <Status label="Account" value={customer.account_status || "PENDING"} />
           </div>
-        )}
-      </section>
-
-      <section style={twoGrid}>
-        <div style={panel}>
-          <h2 style={sectionTitle}>Recent Wallet Transactions</h2>
-
-          {walletTx.length === 0 ? (
-            <p style={muted}>No wallet transactions found.</p>
-          ) : (
-            <div style={list}>
-              {walletTx.map((tx) => (
-                <div key={tx.id} style={listItem}>
-                  <div>
-                    <strong>{tx.type || "TRANSACTION"}</strong>
-                    <p>{tx.description || tx.reference || "Wallet movement"}</p>
-                  </div>
-                  <span style={amount}>
-                    ₱{Number(tx.amount || 0).toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
-        <div style={panel}>
-          <h2 style={sectionTitle}>Risk Alerts</h2>
+        <div style={grid}>
+          <section style={card}>
+            <h2 style={sectionTitle}>Customer Information</h2>
 
-          {riskAlerts.length === 0 ? (
-            <p style={muted}>No risk alerts found.</p>
-          ) : (
-            <div style={list}>
-              {riskAlerts.map((r) => (
-                <div key={r.id} style={riskItem}>
-                  <strong>⚠️ {r.title || r.alert_type || "Risk Alert"}</strong>
-                  <p>{r.description || r.message || "No description provided"}</p>
-                  <small>
-                    {r.created_at ? new Date(r.created_at).toLocaleString() : "No date"}
-                  </small>
-                </div>
-              ))}
+            <Info label="Full Name" value={customer.full_name} />
+            <Info label="Email" value={customer.email} />
+            <Info label="Phone" value={customer.phone} />
+            <Info
+              label="Wallet Balance"
+              value={`₱${Number(customer.wallet_balance || 0).toLocaleString()}`}
+            />
+          </section>
+
+          <section style={card}>
+            <h2 style={sectionTitle}>KYC Information</h2>
+
+            <Info label="ID Type" value={customer.id_type} />
+            <Info label="ID Number" value={customer.id_number} />
+            <Info label="ID Photo Status" value={customer.id_front_url || "No upload"} />
+            <Info label="Selfie Status" value={customer.selfie_url || "No selfie"} />
+            <Info
+              label="Verification Status"
+              value={customer.verification_status || "PENDING"}
+            />
+            <Info label="Verification Notes" value={customer.verification_notes} />
+          </section>
+
+          <section style={card}>
+            <h2 style={sectionTitle}>Membership Information</h2>
+
+            <Info
+              label="Membership Plan"
+              value={customer.membership_plan || "ANNUAL INVESTOR MEMBERSHIP"}
+            />
+            <Info
+              label="Annual Fee"
+              value={`₱${Number(customer.membership_fee || 999).toLocaleString()}`}
+            />
+            <Info
+              label="Membership Status"
+              value={customer.membership_status || "UNPAID"}
+            />
+            <Info label="Membership Expiry" value={customer.membership_expiry || "-"} />
+          </section>
+
+          <section style={actionCard}>
+            <h2 style={sectionTitle}>KYC Review Actions</h2>
+
+            <div style={approvalBox}>
+              <h3>Approve Customer KYC</h3>
+              <p>
+                This will mark the customer as verified. Membership remains unpaid
+                until the ₱999 Annual Investor Membership payment is completed.
+              </p>
+
+              <button style={approveButton} onClick={approveKyc} disabled={saving}>
+                ✅ Approve KYC
+              </button>
             </div>
-          )}
+
+            <div style={rejectBox}>
+              <h3>Reject Customer KYC</h3>
+
+              <label style={label}>Rejection Reason</label>
+              <select
+                style={input}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              >
+                <option>ID Photo Blurry</option>
+                <option>Selfie Blurry</option>
+                <option>Expired ID</option>
+                <option>Information Mismatch</option>
+                <option>Duplicate Account</option>
+                <option>Incomplete Submission</option>
+                <option>Other</option>
+              </select>
+
+              <label style={label}>Admin Notes</label>
+              <textarea
+                style={textarea}
+                value={adminNote}
+                onChange={(e) => setAdminNote(e.target.value)}
+                placeholder="Example: Please upload a clearer ID photo."
+              />
+
+              <button style={rejectButton} onClick={rejectKyc} disabled={saving}>
+                ❌ Reject KYC
+              </button>
+            </div>
+
+            <button style={pendingButton} onClick={resetPending} disabled={saving}>
+              🔄 Reset to Pending Review
+            </button>
+          </section>
         </div>
-      </section>
+      </div>
     </main>
+  );
+}
+
+function Info({ label, value }: { label: string; value: any }) {
+  return (
+    <div style={infoRow}>
+      <span>{label}</span>
+      <b>{value || "-"}</b>
+    </div>
+  );
+}
+
+function Status({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={statusBox}>
+      <span>{label}</span>
+      <b>{value}</b>
+    </div>
   );
 }
 
 const page: React.CSSProperties = {
   minHeight: "100vh",
-  padding: 32,
-  background:
-    "radial-gradient(circle at top left, #bbf7d0, transparent 30%), radial-gradient(circle at top right, #bfdbfe, transparent 30%), linear-gradient(135deg, #f0fdf4 0%, #eff6ff 55%, #fff7ed 100%)",
+  background: "linear-gradient(135deg, #f8fafc, #ecfdf5, #eff6ff)",
+  padding: 24,
   color: "#0f172a",
 };
 
-const back: React.CSSProperties = {
-  display: "inline-block",
-  marginBottom: 20,
-  color: "#166534",
-  fontWeight: 950,
-  textDecoration: "none",
+const container: React.CSSProperties = {
+  maxWidth: 1250,
+  margin: "0 auto",
 };
 
-const profileHero: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 22,
-  background: "rgba(255,255,255,0.86)",
-  border: "1px solid rgba(255,255,255,0.95)",
-  borderRadius: 32,
-  padding: 30,
-  boxShadow: "0 24px 65px rgba(15,23,42,0.13)",
-  marginBottom: 22,
-};
-
-const avatar: React.CSSProperties = {
-  width: 86,
-  height: 86,
-  borderRadius: 28,
-  background: "linear-gradient(135deg, #38bdf8, #2563eb)",
+const backButton: React.CSSProperties = {
+  border: "none",
+  background: "#0f172a",
   color: "white",
-  display: "grid",
-  placeItems: "center",
-  fontSize: 42,
+  padding: "12px 16px",
+  borderRadius: 14,
+  cursor: "pointer",
+  fontWeight: 900,
+  marginBottom: 20,
+};
+
+const header: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 20,
+  alignItems: "flex-start",
+  marginBottom: 24,
 };
 
 const eyebrow: React.CSSProperties = {
-  margin: 0,
-  color: "#15803d",
+  color: "#2563eb",
   fontWeight: 950,
   letterSpacing: 1,
-  textTransform: "uppercase",
+  fontSize: 12,
 };
 
 const title: React.CSSProperties = {
-  margin: "8px 0",
-  fontSize: 40,
-  lineHeight: 1.05,
+  fontSize: 42,
   fontWeight: 950,
-  color: "#14532d",
+  margin: 0,
 };
 
 const subtitle: React.CSSProperties = {
-  margin: 0,
-  color: "#64748b",
-  lineHeight: 1.5,
+  color: "#475569",
+  fontSize: 16,
 };
 
-const status: React.CSSProperties = {
-  marginLeft: "auto",
-  background: "#dcfce7",
-  color: "#166534",
-  padding: "10px 16px",
-  borderRadius: 999,
-  fontWeight: 950,
-};
-
-const summaryGrid: React.CSSProperties = {
+const statusPanel: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 16,
-  marginBottom: 22,
+  gridTemplateColumns: "1fr",
+  gap: 10,
+  minWidth: 240,
 };
 
-const summaryCard: React.CSSProperties = {
-  padding: 20,
-  borderRadius: 24,
-  background: "rgba(255,255,255,0.88)",
-  boxShadow: "0 16px 38px rgba(15,23,42,0.1)",
+const statusBox: React.CSSProperties = {
+  background: "white",
+  border: "1px solid #e2e8f0",
+  borderRadius: 18,
+  padding: 14,
+  boxShadow: "0 15px 35px rgba(15,23,42,0.08)",
 };
 
-const summaryIcon: React.CSSProperties = {
-  fontSize: 28,
-};
-
-const twoGrid: React.CSSProperties = {
+const grid: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-  gap: 18,
-  marginBottom: 22,
+  gridTemplateColumns: "1fr 1fr",
+  gap: 20,
 };
 
 const card: React.CSSProperties = {
-  background: "rgba(255,255,255,0.9)",
-  borderRadius: 28,
+  background: "white",
+  border: "1px solid #e2e8f0",
+  borderRadius: 26,
   padding: 24,
-  boxShadow: "0 18px 45px rgba(15,23,42,0.1)",
+  boxShadow: "0 25px 55px rgba(15,23,42,0.08)",
 };
 
-const cardTitle: React.CSSProperties = {
-  marginTop: 0,
-  color: "#14532d",
-  fontWeight: 950,
-};
-
-const infoList: React.CSSProperties = {
-  display: "grid",
-  gap: 8,
-  color: "#475569",
-};
-
-const ruleBox: React.CSSProperties = {
-  padding: 16,
-  borderRadius: 18,
-  background: "#ecfdf5",
-  border: "1px solid #bbf7d0",
-  color: "#14532d",
-  marginBottom: 12,
-};
-
-const ruleBoxOrange: React.CSSProperties = {
-  padding: 16,
-  borderRadius: 18,
-  background: "#fff7ed",
-  border: "1px solid #fed7aa",
-  color: "#9a3412",
-};
-
-const panel: React.CSSProperties = {
-  background: "rgba(255,255,255,0.9)",
-  borderRadius: 28,
+const actionCard: React.CSSProperties = {
+  background: "#ffffff",
+  border: "1px solid #bfdbfe",
+  borderRadius: 26,
   padding: 24,
-  boxShadow: "0 18px 45px rgba(15,23,42,0.1)",
-  marginBottom: 22,
-};
-
-const panelHeader: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 16,
-  alignItems: "center",
-  marginBottom: 14,
+  boxShadow: "0 25px 55px rgba(15,23,42,0.1)",
 };
 
 const sectionTitle: React.CSSProperties = {
-  margin: "4px 0 0",
-  color: "#14532d",
+  fontSize: 23,
   fontWeight: 950,
-  fontSize: 26,
+  marginTop: 0,
 };
 
-const smallBadge: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 999,
-  background: "#dcfce7",
-  color: "#166534",
-  fontWeight: 950,
-};
-
-const muted: React.CSSProperties = {
-  color: "#64748b",
-};
-
-const tableWrap: React.CSSProperties = {
-  overflowX: "auto",
-};
-
-const table: React.CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-};
-
-const th: React.CSSProperties = {
-  textAlign: "left",
-  padding: 14,
-  background: "#ecfdf5",
-  color: "#166534",
-  fontSize: 13,
-};
-
-const td: React.CSSProperties = {
-  padding: 14,
+const infoRow: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  padding: "14px 0",
   borderBottom: "1px solid #e2e8f0",
   color: "#334155",
 };
 
-const list: React.CSSProperties = {
-  display: "grid",
-  gap: 12,
+const approvalBox: React.CSSProperties = {
+  background: "#f0fdf4",
+  border: "1px solid #bbf7d0",
+  borderRadius: 20,
+  padding: 18,
+  marginBottom: 18,
 };
 
-const listItem: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 14,
-  padding: 16,
-  borderRadius: 18,
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-};
-
-const amount: React.CSSProperties = {
-  color: "#166534",
-  fontWeight: 950,
-  whiteSpace: "nowrap",
-};
-
-const riskItem: React.CSSProperties = {
-  display: "grid",
-  gap: 6,
-  padding: 16,
-  borderRadius: 18,
+const rejectBox: React.CSSProperties = {
   background: "#fff7ed",
   border: "1px solid #fed7aa",
-  color: "#9a3412",
+  borderRadius: 20,
+  padding: 18,
+  marginBottom: 18,
+};
+
+const label: React.CSSProperties = {
+  display: "block",
+  marginTop: 12,
+  marginBottom: 7,
+  fontWeight: 900,
+  fontSize: 13,
+};
+
+const input: React.CSSProperties = {
+  width: "100%",
+  padding: 13,
+  borderRadius: 14,
+  border: "1px solid #cbd5e1",
+};
+
+const textarea: React.CSSProperties = {
+  width: "100%",
+  minHeight: 90,
+  padding: 13,
+  borderRadius: 14,
+  border: "1px solid #cbd5e1",
+  resize: "vertical",
+};
+
+const approveButton: React.CSSProperties = {
+  width: "100%",
+  padding: 15,
+  borderRadius: 16,
+  border: "none",
+  background: "#16a34a",
+  color: "white",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const rejectButton: React.CSSProperties = {
+  width: "100%",
+  marginTop: 15,
+  padding: 15,
+  borderRadius: 16,
+  border: "none",
+  background: "#dc2626",
+  color: "white",
+  fontWeight: 950,
+  cursor: "pointer",
+};
+
+const pendingButton: React.CSSProperties = {
+  width: "100%",
+  padding: 15,
+  borderRadius: 16,
+  border: "none",
+  background: "#f59e0b",
+  color: "white",
+  fontWeight: 950,
+  cursor: "pointer",
 };
