@@ -21,6 +21,8 @@ export default function CustomerRegisterPage() {
   const [idFrontUrl, setIdFrontUrl] = useState("");
   const [selfieUrl, setSelfieUrl] = useState("");
 
+  const [agreeMembership, setAgreeMembership] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -56,6 +58,11 @@ export default function CustomerRegisterPage() {
       return;
     }
 
+    if (!agreeMembership) {
+      setMessage("You must agree to the Annual Investor Membership Program.");
+      return;
+    }
+
     if (cleanPassword.length < 6) {
       setMessage("Password must be at least 6 characters.");
       return;
@@ -85,11 +92,16 @@ export default function CustomerRegisterPage() {
             phone: cleanPhone,
             password: cleanPassword,
             wallet_balance: 0,
+
             id_type: cleanIdType,
             id_number: cleanIdNumber,
             id_front_url: idFrontUrl,
             selfie_url: selfieUrl,
             verification_status: "PENDING",
+
+            membership_plan: "ANNUAL INVESTOR MEMBERSHIP",
+            membership_fee: 999,
+            membership_status: "UNPAID",
           },
         ])
         .select()
@@ -116,8 +128,8 @@ export default function CustomerRegisterPage() {
           <div style={badge}>FARMCONNECT SECURE ONBOARDING</div>
           <h1 style={title}>Create Customer Account</h1>
           <p style={subtitle}>
-            Complete your account registration and identity verification before
-            joining the FarmConnect livestock investment platform.
+            Complete your account registration, identity verification, and
+            Annual Investor Membership agreement before joining FarmConnect.
           </p>
         </div>
 
@@ -144,8 +156,8 @@ export default function CustomerRegisterPage() {
             <div style={stepCard}>
               <div style={stepNumber}>3</div>
               <div>
-                <h3>Selfie Check</h3>
-                <p>Take a selfie for admin identity review.</p>
+                <h3>Annual Membership</h3>
+                <p>₱999 yearly investor platform access fee.</p>
               </div>
             </div>
 
@@ -155,7 +167,7 @@ export default function CustomerRegisterPage() {
                 Customer accounts are monitored by admin. No direct customer to
                 caretaker communication is allowed.
               </p>
-              <span>PENDING VERIFICATION</span>
+              <span>PENDING VERIFICATION • MEMBERSHIP UNPAID</span>
             </div>
           </div>
 
@@ -291,6 +303,53 @@ export default function CustomerRegisterPage() {
               </button>
 
               {selfieUrl && <p style={successText}>✓ Selfie Captured</p>}
+            </div>
+
+            <div style={divider} />
+
+            <p style={formSubtitle}>Step 3 — Annual Investor Membership</p>
+
+            <div style={membershipCard}>
+              <div style={membershipTop}>
+                <div>
+                  <h3 style={membershipTitle}>🌾 Annual Investor Membership</h3>
+                  <p style={membershipSub}>FarmConnect Investor Access</p>
+                </div>
+
+                <div style={priceBox}>
+                  <b>₱999</b>
+                  <span>/ Year</span>
+                </div>
+              </div>
+
+              <div style={benefitGrid}>
+                <span>✓ Investor Dashboard</span>
+                <span>✓ Livestock Monitoring</span>
+                <span>✓ Harvest & ROI Reports</span>
+                <span>✓ Weight Growth Tracking</span>
+                <span>✓ Farm Photo Updates</span>
+                <span>✓ Wallet Monitoring</span>
+                <span>✓ Risk Reports</span>
+                <span>✓ Priority Support</span>
+                <span>✓ Investor Certificate</span>
+                <span>✓ Future Batch Access</span>
+              </div>
+
+              <label style={checkRow}>
+                <input
+                  type="checkbox"
+                  checked={agreeMembership}
+                  onChange={(e) => setAgreeMembership(e.target.checked)}
+                />
+                <span>
+                  I agree to the Annual Investor Membership Fee of{" "}
+                  <b>₱999 per year</b>.
+                </span>
+              </label>
+
+              <div style={membershipStatus}>
+                Membership Status: <b>UNPAID</b>
+              </div>
             </div>
 
             <div style={pendingBox}>
@@ -505,6 +564,72 @@ const successText: React.CSSProperties = {
   marginTop: 12,
   color: "#16a34a",
   fontWeight: 900,
+};
+
+const membershipCard: React.CSSProperties = {
+  background: "linear-gradient(135deg, #f0fdf4, #eff6ff)",
+  border: "1px solid #bfdbfe",
+  borderRadius: 24,
+  padding: 22,
+};
+
+const membershipTop: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 16,
+  alignItems: "flex-start",
+};
+
+const membershipTitle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 20,
+  fontWeight: 950,
+};
+
+const membershipSub: React.CSSProperties = {
+  marginTop: 6,
+  color: "#475569",
+};
+
+const priceBox: React.CSSProperties = {
+  minWidth: 105,
+  background: "#0f172a",
+  color: "white",
+  padding: 14,
+  borderRadius: 18,
+  textAlign: "center",
+};
+
+const benefitGrid: React.CSSProperties = {
+  marginTop: 18,
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 10,
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#14532d",
+};
+
+const checkRow: React.CSSProperties = {
+  display: "flex",
+  gap: 10,
+  alignItems: "flex-start",
+  marginTop: 20,
+  background: "white",
+  borderRadius: 16,
+  padding: 14,
+  fontSize: 14,
+  cursor: "pointer",
+};
+
+const membershipStatus: React.CSSProperties = {
+  marginTop: 14,
+  background: "#fef3c7",
+  color: "#92400e",
+  padding: 12,
+  borderRadius: 14,
+  fontSize: 13,
+  fontWeight: 800,
 };
 
 const pendingBox: React.CSSProperties = {
