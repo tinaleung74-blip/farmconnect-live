@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 type Caretaker = {
   id: string;
   full_name: string;
-  phone: string | null;
   status: string | null;
+  daily_rate: number | null;
+  level: string | null;
 };
 
-type Hire = {
+type HireRecord = {
   id: string;
   caretaker_id: string;
   caretaker_name: string;
@@ -20,267 +22,316 @@ type Hire = {
   total_fee: number;
   status: string;
   payment_status: string;
-  start_date: string | null;
+  start_date: string;
   end_date: string | null;
 };
 
-const RATE_PER_CHICK = 50;
-const DEFAULT_DURATION = 45;
-
-function money(n: number) {
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
-
-function addDays(days: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function daysLeft(date?: string | null) {
-  if (!date) return 0;
-  return Math.max(
-    0,
-    Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-  );
-}
-
-export default function CaretakersPage() {
+export default function CustomerCaretakersPage() {
+  const [profileId, setProfileId] = useState<string>("");
   const [caretakers, setCaretakers] = useState<Caretaker[]>([]);
-  const [hires, setHires] = useState<Hire[]>([]);
-  const [selectedCaretaker, setSelectedCaretaker] = useState<Caretaker | null>(null);
-  const [totalChicks, setTotalChicks] = useState(100);
-  const [durationDays, setDurationDays] = useState(DEFAULT_DURATION);
+  const [hires, setHires] = useState<HireRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hiring, setHiring] = useState(false);
+  const [savingId, setSavingId] = useState<string>("");
+  const [message, setMessage] = useState("");
 
-  const totalFee = useMemo(
-    () => Number(totalChicks || 0) * RATE_PER_CHICK,
-    [totalChicks]
-  );
+  const [durationDays, setDurationDays] = useState(30);
+  const [totalChicks, setTotalChicks] = useState(100);
+  const ratePerChick = 10;
 
-  function getProfile() {
-    const user = localStorage.getItem("farmconnect_user");
-    return user ? JSON.parse(user) : null;
-  }
+  useEffect(() => {
+    loadPage();
+  }, []);
 
-  async function loadCaretakers() {
-    const { data, error } = await supabase
+  async function loadPage() {
+    setLoading(true);
+    setMessage("");
+
+    const storedProfileId =
+      localStorage.getItem("farmconnect_profile_id") ||
+      localStorage.getItem("profile_id") ||
+      localStorage.getItem("customer_id") ||
+      "";
+
+    setProfileId(storedProfileId);
+
+    const { data: caretakerData, error: caretakerError } = await supabase
       .from("caretakers")
-      .select("id,full_name,phone,status")
-      .eq("status", "HIRED")
+      .select("id,full_name,status,daily_rate,level")
       .order("full_name", { ascending: true });
 
-    if (error) {
-      alert(error.message);
-      return;
+    if (caretakerError) {
+      setMessage("Unable to load caretakers.");
+      console.error(caretakerError);
+    } else {
+      setCaretakers(caretakerData || []);
     }
 
-    setCaretakers(data || []);
-  }
+    if (storedProfileId) {
+      const { data: hireData, error: hireError } = await supabase
+        .from("customer_caretaker_hires")
+        .select("*")
+        .eq("profile_id", storedProfileId)
+        .order("created_at", { ascending: false });
 
-  async function loadMyHires() {
-    const profile = getProfile();
-    if (!profile) return;
+      if (hireError) {
+        setMessage("Unable to load your hired caretakers.");
+        console.error(hireError);
+      } else {
+        setHires(hireData || []);
+      }
+    }
 
-    const { data, error } = await supabase
-      .from("customer_caretaker_hires")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .order("created_at", { ascending: false });
-
-    if (!error) setHires(data || []);
-  }
-
-  async function refreshData() {
-    setLoading(true);
-    await loadCaretakers();
-    await loadMyHires();
     setLoading(false);
   }
 
-  async function hireCaretaker() {
-    const profile = getProfile();
-    if (!profile) return alert("Please login first.");
-    if (!selectedCaretaker) return alert("Choose caretaker first.");
-    if (totalChicks <= 0) return alert("Total chicks must be greater than 0.");
+  const hiredCaretakerIds = useMemo(() => {
+    return new Set(hires.map((hire) => hire.caretaker_id));
+  }, [hires]);
 
-    setHiring(true);
+  function getLevelBadge(level: string | null) {
+    if (level === "EXPERT") return "⭐ EXPERT";
+    if (level === "ADVANCED") return "🔥 ADVANCED";
+    if (level === "MASTER") return "🏆 MASTER";
+    return "🐔 STANDARD";
+  }
+
+  function getDaysRemaining(endDate: string | null) {
+    if (!endDate) return durationDays;
+
+    const today = new Date();
+    const end = new Date(endDate);
+    const diff = end.getTime() - today.getTime();
+
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }
+
+  async function hireCaretaker(caretaker: Caretaker) {
+    if (!profileId) {
+      setMessage("Please login again. Missing customer profile.");
+      return;
+    }
+
+    setSavingId(caretaker.id);
+    setMessage("");
+
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(startDate.getDate() + durationDays);
+
+    const totalFee = totalChicks * ratePerChick;
 
     const { error } = await supabase.from("customer_caretaker_hires").insert({
-      profile_id: profile.id,
-      caretaker_id: selectedCaretaker.id,
-      caretaker_name: selectedCaretaker.full_name,
+      profile_id: profileId,
+      caretaker_id: caretaker.id,
+      caretaker_name: caretaker.full_name,
       duration_days: durationDays,
-      rate_per_chick: RATE_PER_CHICK,
+      rate_per_chick: ratePerChick,
       total_chicks: totalChicks,
       total_fee: totalFee,
       status: "ACTIVE",
       payment_status: "PENDING",
-      start_date: new Date().toISOString().slice(0, 10),
-      end_date: addDays(durationDays),
+      start_date: startDate.toISOString().slice(0, 10),
+      end_date: endDate.toISOString().slice(0, 10),
     });
 
-    setHiring(false);
+    if (error) {
+      console.error(error);
+      setMessage("Hiring failed. Please try again.");
+      setSavingId("");
+      return;
+    }
 
-    if (error) return alert(error.message);
-
-    alert(`${selectedCaretaker.full_name} hired. Fee: ${money(totalFee)}`);
-
-    setSelectedCaretaker(null);
-    setTotalChicks(100);
-    setDurationDays(DEFAULT_DURATION);
-    await refreshData();
+    setMessage(`${caretaker.full_name} hired successfully. Payment pending.`);
+    setSavingId("");
+    await loadPage();
   }
 
-  useEffect(() => {
-    refreshData();
-  }, []);
-
   return (
-    <main className="min-h-screen bg-[#f3fbf5] p-6 md:p-10">
-      <div className="max-w-7xl mx-auto">
-        <section className="rounded-3xl bg-gradient-to-r from-green-700 to-emerald-500 text-white p-8 mb-8 shadow-xl">
-          <p className="font-bold opacity-90">FarmConnect Professional Care</p>
-          <h1 className="text-4xl font-black mt-1">👨‍🌾 Hire Caretaker</h1>
-          <p className="mt-3 text-green-50">
-            Hire a caretaker first. After hiring, they will appear in My Flock Assign Caretaker.
-          </p>
-        </section>
-
-        <section className="grid md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-3xl p-5 shadow border">
-            <p className="text-gray-500 font-bold">Available Caretakers</p>
-            <h2 className="text-3xl font-black text-green-700">{caretakers.length}</h2>
+    <main className="min-h-screen bg-gradient-to-br from-yellow-50 via-green-50 to-orange-100 p-6">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-black text-green-900">
+              🧑‍🌾 Hire FarmConnect Caretaker
+            </h1>
+            <p className="mt-1 text-sm text-green-700">
+              Customer hires through FarmConnect only. No direct customer to caretaker communication.
+            </p>
           </div>
 
-          <div className="bg-white rounded-3xl p-5 shadow border">
-            <p className="text-gray-500 font-bold">My Hired Caretakers</p>
-            <h2 className="text-3xl font-black text-blue-700">{hires.length}</h2>
+          <Link
+            href="/customer/dashboard"
+            className="rounded-xl bg-green-700 px-5 py-3 text-center font-bold text-white shadow hover:bg-green-800"
+          >
+            Back to Dashboard
+          </Link>
+        </div>
+
+        {message && (
+          <div className="mb-5 rounded-2xl border border-green-200 bg-white p-4 font-semibold text-green-800 shadow">
+            {message}
           </div>
+        )}
 
-          <div className="bg-white rounded-3xl p-5 shadow border">
-            <p className="text-gray-500 font-bold">Rate Per Chick</p>
-            <h2 className="text-3xl font-black text-orange-600">
-              {money(RATE_PER_CHICK)}
-            </h2>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-3xl shadow border p-6 mb-8">
-          <h2 className="text-2xl font-black mb-4">Hire Package</h2>
-
-          <div className="grid md:grid-cols-4 gap-4">
+        <section className="mb-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-3xl bg-white p-5 shadow">
+            <p className="text-sm font-bold text-gray-500">Duration</p>
             <select
-              className="border p-4 rounded-2xl font-bold"
-              value={selectedCaretaker?.id || ""}
-              onChange={(e) => {
-                const found = caretakers.find((c) => c.id === e.target.value) || null;
-                setSelectedCaretaker(found);
-              }}
-            >
-              <option value="">Choose Caretaker</option>
-              {caretakers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.full_name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="number"
-              className="border p-4 rounded-2xl"
-              value={totalChicks}
-              onChange={(e) => setTotalChicks(Number(e.target.value))}
-              placeholder="Total Chicks"
-            />
-
-            <input
-              type="number"
-              className="border p-4 rounded-2xl"
               value={durationDays}
               onChange={(e) => setDurationDays(Number(e.target.value))}
-              placeholder="Duration Days"
-            />
-
-            <button
-              onClick={hireCaretaker}
-              disabled={hiring}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-2xl font-black"
+              className="mt-2 w-full rounded-xl border p-3 font-bold"
             >
-              {hiring ? "Hiring..." : "Hire Caretaker"}
-            </button>
+              <option value={15}>15 Days</option>
+              <option value={30}>30 Days</option>
+              <option value={45}>45 Days Full Cycle</option>
+            </select>
           </div>
 
-          <div className="mt-5 bg-green-50 border border-green-100 rounded-2xl p-5">
-            <p className="text-gray-600 font-bold">Estimated Caretaker Fee</p>
-            <h3 className="text-3xl font-black text-green-700">{money(totalFee)}</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              {totalChicks} chicks × {money(RATE_PER_CHICK)} per chick • {durationDays} days
+          <div className="rounded-3xl bg-white p-5 shadow">
+            <p className="text-sm font-bold text-gray-500">Total Chicks</p>
+            <input
+              type="number"
+              value={totalChicks}
+              onChange={(e) => setTotalChicks(Number(e.target.value))}
+              className="mt-2 w-full rounded-xl border p-3 font-bold"
+              min={1}
+            />
+          </div>
+
+          <div className="rounded-3xl bg-white p-5 shadow">
+            <p className="text-sm font-bold text-gray-500">Service Fee</p>
+            <h2 className="mt-2 text-2xl font-black text-green-900">
+              ₱{(totalChicks * ratePerChick).toLocaleString()}
+            </h2>
+            <p className="text-xs text-gray-500">
+              ₱{ratePerChick} per chick / service cycle
             </p>
           </div>
         </section>
 
-        {loading ? (
-          <div className="bg-white rounded-3xl p-8 shadow border">Loading caretakers...</div>
-        ) : (
-          <section className="grid lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-3xl shadow border p-6">
-              <h2 className="text-2xl font-black mb-4">Available Caretakers</h2>
+        <section className="mb-8">
+          <h2 className="mb-4 text-xl font-black text-green-900">
+            Available FarmConnect Caretakers
+          </h2>
 
-              <div className="space-y-3">
-                {caretakers.length === 0 ? (
-                  <p className="text-gray-500">No hired caretakers available yet.</p>
-                ) : (
-                  caretakers.map((c) => (
-                    <div key={c.id} className="border rounded-2xl p-4 bg-green-50">
-                      <h3 className="text-xl font-black">👨‍🌾 {c.full_name}</h3>
-                      <p className="text-sm text-gray-600">Phone: {c.phone || "No phone"}</p>
-                      <p className="text-sm font-bold text-green-700">Status: {c.status}</p>
-                    </div>
-                  ))
-                )}
-              </div>
+          {loading ? (
+            <div className="rounded-3xl bg-white p-8 text-center font-bold shadow">
+              Loading caretakers...
             </div>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+              {caretakers.map((caretaker) => {
+                const alreadyHired = hiredCaretakerIds.has(caretaker.id);
 
-            <div className="bg-white rounded-3xl shadow border p-6">
-              <h2 className="text-2xl font-black mb-4">My Hired Caretakers</h2>
+                return (
+                  <div
+                    key={caretaker.id}
+                    className="rounded-3xl border border-green-100 bg-white p-5 shadow"
+                  >
+                    <div className="mb-3 text-4xl">🧑‍🌾</div>
 
-              <div className="space-y-3">
-                {hires.length === 0 ? (
-                  <p className="text-gray-500">
-                    No caretaker hired yet. Hire one first before assigning in My Flock.
+                    <h3 className="text-lg font-black text-green-900">
+                      {caretaker.full_name}
+                    </h3>
+
+                    <p className="mt-1 text-sm font-bold text-orange-600">
+                      {getLevelBadge(caretaker.level)}
+                    </p>
+
+                    <div className="mt-4 rounded-2xl bg-green-50 p-3">
+                      <p className="text-xs font-bold text-gray-500">Status</p>
+                      <p className="font-black text-green-800">
+                        {caretaker.status || "AVAILABLE"}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 rounded-2xl bg-yellow-50 p-3">
+                      <p className="text-xs font-bold text-gray-500">Daily Rate</p>
+                      <p className="font-black text-yellow-800">
+                        ₱{Number(caretaker.daily_rate || 0).toLocaleString()} / day
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => hireCaretaker(caretaker)}
+                      disabled={alreadyHired || savingId === caretaker.id}
+                      className={`mt-5 w-full rounded-xl px-4 py-3 font-black shadow ${
+                        alreadyHired
+                          ? "bg-gray-300 text-gray-600"
+                          : "bg-green-700 text-white hover:bg-green-800"
+                      }`}
+                    >
+                      {alreadyHired
+                        ? "Already Hired"
+                        : savingId === caretaker.id
+                        ? "Hiring..."
+                        : "Hire Caretaker"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-xl font-black text-green-900">
+            My Hired Caretakers
+          </h2>
+
+          {hires.length === 0 ? (
+            <div className="rounded-3xl bg-white p-6 text-center font-bold text-gray-600 shadow">
+              No hired caretaker yet.
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {hires.map((hire) => (
+                <div
+                  key={hire.id}
+                  className="rounded-3xl border border-green-100 bg-white p-5 shadow"
+                >
+                  <h3 className="text-xl font-black text-green-900">
+                    {hire.caretaker_name}
+                  </h3>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-green-50 p-3">
+                      <p className="text-xs font-bold text-gray-500">Duration</p>
+                      <p className="font-black text-green-800">
+                        {hire.duration_days} days
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-orange-50 p-3">
+                      <p className="text-xs font-bold text-gray-500">Days Left</p>
+                      <p className="font-black text-orange-700">
+                        {getDaysRemaining(hire.end_date)} days
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-yellow-50 p-3">
+                      <p className="text-xs font-bold text-gray-500">Payment</p>
+                      <p className="font-black text-yellow-800">
+                        {hire.payment_status}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-blue-50 p-3">
+                      <p className="text-xs font-bold text-gray-500">Total Fee</p>
+                      <p className="font-black text-blue-800">
+                        ₱{Number(hire.total_fee || 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-4 text-xs font-semibold text-gray-500">
+                    This caretaker can be assigned from My Flock after hiring record is active.
                   </p>
-                ) : (
-                  hires.map((h) => (
-                    <div key={h.id} className="border rounded-2xl p-4 bg-blue-50">
-                      <h3 className="text-xl font-black">👨‍🌾 {h.caretaker_name}</h3>
-                      <p className="text-sm text-gray-600">
-                        Duration: {h.duration_days} days
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Days Remaining: {daysLeft(h.end_date)}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Fee: <b>{money(Number(h.total_fee || 0))}</b>
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Payment: <b>{h.payment_status}</b>
-                      </p>
-                      <p className="text-sm font-bold text-green-700">
-                        Status: {h.status}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
+                </div>
+              ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
       </div>
     </main>
   );
