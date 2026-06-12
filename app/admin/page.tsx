@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 type Stats = {
   customers: number;
   caretakers: number;
+  caretakerHires: number;
   flocks: number;
   cashin: number;
   cashout: number;
@@ -20,6 +21,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats>({
     customers: 0,
     caretakers: 0,
+    caretakerHires: 0,
     flocks: 0,
     cashin: 0,
     cashout: 0,
@@ -46,6 +48,7 @@ export default function AdminDashboardPage() {
     const [
       customers,
       caretakers,
+      caretakerHires,
       flocks,
       cashin,
       cashout,
@@ -55,6 +58,7 @@ export default function AdminDashboardPage() {
     ] = await Promise.all([
       safeCount("customers"),
       safeCount("caretakers"),
+      safeCount("customer_caretaker_hires"),
       safeCount("flocks"),
       safeCount("cashin_requests"),
       safeCount("cashout_requests"),
@@ -66,6 +70,7 @@ export default function AdminDashboardPage() {
     setStats({
       customers,
       caretakers,
+      caretakerHires,
       flocks,
       cashin,
       cashout,
@@ -81,7 +86,7 @@ export default function AdminDashboardPage() {
     {
       title: "Customers",
       value: stats.customers,
-      desc: "Investor / livestock customer accounts",
+      desc: "Investor / poultry customer accounts",
       href: "/admin/customers",
       icon: "👥",
     },
@@ -91,6 +96,13 @@ export default function AdminDashboardPage() {
       desc: "Farm operators and assigned handlers",
       href: "/admin/caretakers",
       icon: "🧑‍🌾",
+    },
+    {
+      title: "Caretaker Hire Requests",
+      value: stats.caretakerHires,
+      desc: "Review, approve, reject, and mark paid",
+      href: "/admin/caretaker-hires",
+      icon: "✅",
     },
     {
       title: "Active Flocks",
@@ -143,8 +155,9 @@ export default function AdminDashboardPage() {
           <p style={eyebrow}>FarmConnect Live Admin</p>
           <h1 style={title}>Executive Admin Dashboard V2</h1>
           <p style={subtitle}>
-            Central command center for customers, caretakers, flocks, treasury,
-            harvest, wallet, risk monitoring, and audit controls.
+            Central command center for customers, caretakers, caretaker hire
+            approvals, flocks, treasury, harvest, wallet, risk monitoring, and
+            audit controls.
           </p>
         </div>
 
@@ -159,6 +172,14 @@ export default function AdminDashboardPage() {
           <p style={summaryLabel}>Platform Status</p>
           <h2 style={summaryValue}>Operational</h2>
           <p style={summaryText}>Customer ↔ Admin / Caretaker ↔ Admin only</p>
+        </div>
+
+        <div style={summaryCard}>
+          <p style={summaryLabel}>Caretaker Hiring</p>
+          <h2 style={summaryValue}>
+            {stats.caretakerHires > 0 ? "Needs Review" : "No Pending View"}
+          </h2>
+          <p style={summaryText}>Approval and payment verification required</p>
         </div>
 
         <div style={summaryCard}>
@@ -193,16 +214,28 @@ export default function AdminDashboardPage() {
         <div>
           <h2 style={sectionTitle}>Admin Control Panel</h2>
           <p style={sectionText}>
-            Use these modules for full platform review, audit, financial
-            monitoring, and investor-ready reporting.
+            Use these modules for full platform review, caretaker hire
+            approvals, audit, financial monitoring, and investor-ready
+            reporting.
           </p>
         </div>
 
         <div style={buttonGrid}>
-          <Link href="/admin/treasury" style={button}>Treasury</Link>
-          <Link href="/admin/transactions" style={button}>Transactions</Link>
-          <Link href="/admin/audit-logs" style={button}>Audit Logs</Link>
-          <Link href="/admin/reports" style={button}>Reports</Link>
+          <Link href="/admin/caretaker-hires" style={button}>
+            Caretaker Hires
+          </Link>
+          <Link href="/admin/treasury" style={button}>
+            Treasury
+          </Link>
+          <Link href="/admin/transactions" style={button}>
+            Transactions
+          </Link>
+          <Link href="/admin/audit-logs" style={button}>
+            Audit Logs
+          </Link>
+          <Link href="/admin/reports" style={button}>
+            Reports
+          </Link>
         </div>
       </section>
     </main>
