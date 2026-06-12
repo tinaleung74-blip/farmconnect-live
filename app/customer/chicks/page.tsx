@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 
 type Flock = {
   id: string;
+  profile_id?: string;
   batch_no: string;
   breed: string;
   total_chicks: number;
@@ -13,6 +14,20 @@ type Flock = {
   expected_harvest_date: string | null;
   status: string;
   caretaker_name: string | null;
+  created_at?: string;
+};
+
+type InventoryItem = {
+  id: string;
+  profile_id: string | null;
+  flock_id: string | null;
+  item_name: string;
+  category: string | null;
+  unit: string | null;
+  starting_qty: number;
+  remaining_qty: number;
+  low_stock_level: number;
+  status: string | null;
   created_at?: string;
 };
 
@@ -38,17 +53,32 @@ function daysUntil(date?: string | null) {
   return Math.ceil((a - b) / (1000 * 60 * 60 * 24));
 }
 
+function inventoryForFlock(inventory: InventoryItem[], flockId: string) {
+  return inventory.filter((item) => item.flock_id === flockId);
+}
+
+function lowStockItems(items: InventoryItem[]) {
+  return items.filter(
+    (item) => Number(item.remaining_qty || 0) <= Number(item.low_stock_level || 0)
+  );
+}
+
 export default function MyFlockPage() {
   const [flocks, setFlocks] = useState<Flock[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedCaretaker, setSelectedCaretaker] = useState<Record<string, string>>({});
   const [breed, setBreed] = useState("Broiler");
   const [totalChicks, setTotalChicks] = useState(100);
   const [harvestDate, setHarvestDate] = useState("");
   const [selectedFlock, setSelectedFlock] = useState<Flock | null>(null);
+  const [loading, setLoading] = useState(true);
 
   async function loadFlocks() {
     const user = localStorage.getItem("farmconnect_user");
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const profile = JSON.parse(user);
 
@@ -60,10 +90,34 @@ export default function MyFlockPage() {
 
     if (error) {
       alert(error.message);
+      setLoading(false);
       return;
     }
 
     setFlocks(data || []);
+    setLoading(false);
+  }
+
+  async function loadInventory() {
+    const user = localStorage.getItem("farmconnect_user");
+    if (!user) return;
+
+    const profile = JSON.parse(user);
+
+    const { data, error } = await supabase
+      .from("flock_inventory")
+      .select("*")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) setInventory(data);
+  }
+
+  async function refreshPageData() {
+    setLoading(true);
+    await loadFlocks();
+    await loadInventory();
+    setLoading(false);
   }
 
   async function createFlock() {
@@ -73,23 +127,41 @@ export default function MyFlockPage() {
     const profile = JSON.parse(user);
     const batchNo = "FC-" + Math.floor(100000 + Math.random() * 900000);
 
-    const { error } = await supabase.from("flocks").insert({
-      profile_id: profile.id,
-      batch_no: batchNo,
-      breed,
-      total_chicks: totalChicks,
-      alive_count: totalChicks,
-      mortality_count: 0,
-      expected_harvest_date: harvestDate || null,
-      status: "ACTIVE",
-      caretaker_name: null,
-    });
+    const { data, error } = await supabase
+      .from("flocks")
+      .insert({
+        profile_id: profile.id,
+        batch_no: batchNo,
+        breed,
+        total_chicks: totalChicks,
+        alive_count: totalChicks,
+        mortality_count: 0,
+        expected_harvest_date: harvestDate || null,
+        status: "ACTIVE",
+        caretaker_name: null,
+      })
+      .select()
+      .single();
 
     if (error) return alert(error.message);
 
-    alert("Flock created successfully");
+    if (data?.id) {
+      await supabase.from("flock_inventory").insert({
+        profile_id: profile.id,
+        flock_id: data.id,
+        item_name: "Starter Feed",
+        category: "FEED",
+        unit: "sack",
+        starting_qty: 20,
+        remaining_qty: 20,
+        low_stock_level: 5,
+        status: "ACTIVE",
+      });
+    }
+
+    alert("Chick batch created successfully");
     setHarvestDate("");
-    loadFlocks();
+    await refreshPageData();
   }
 
   async function assignCaretaker(flockId: string) {
@@ -105,24 +177,34 @@ export default function MyFlockPage() {
     if (error) return alert(error.message);
 
     alert(`${caretaker} assigned successfully!`);
-    await loadFlocks();
+    await refreshPageData();
   }
 
   useEffect(() => {
-    loadFlocks();
+    refreshPageData();
   }, []);
 
   const summary = useMemo(() => {
-    const total = flocks.reduce((sum, f) => sum + Number(f.total_chicks || 0), 0);
     const alive = flocks.reduce((sum, f) => sum + Number(f.alive_count || 0), 0);
     const noCaretaker = flocks.filter((f) => !f.caretaker_name).length;
+
     const nearHarvest = flocks.filter((f) => {
       const left = daysUntil(f.expected_harvest_date);
       return left !== null && left <= 7;
     }).length;
 
-    return { total, alive, noCaretaker, nearHarvest };
-  }, [flocks]);
+    const inventoryAlerts = inventory.filter(
+      (item) => Number(item.remaining_qty || 0) <= Number(item.low_stock_level || 0)
+    ).length;
+
+    return { alive, noCaretaker, nearHarvest, inventoryAlerts };
+  }, [flocks, inventory]);
+
+  const selectedInventory = selectedFlock
+    ? inventoryForFlock(inventory, selectedFlock.id)
+    : [];
+
+  const selectedLowStock = lowStockItems(selectedInventory);
 
   return (
     <main className="min-h-screen bg-[#f3fbf5] p-6 md:p-10">
@@ -131,7 +213,7 @@ export default function MyFlockPage() {
           <p className="font-bold opacity-90">FarmConnect Poultry Ownership</p>
           <h1 className="text-4xl font-black mt-1">🐣 My Flock Command Center</h1>
           <p className="mt-3 text-green-50">
-            Own real chicks, monitor real farm activity, and track harvest readiness.
+            Own real chicks, monitor real farm activity, track supplies, and protect harvest value.
           </p>
         </section>
 
@@ -141,9 +223,14 @@ export default function MyFlockPage() {
             <h2 className="text-3xl font-black text-green-700">{summary.alive}</h2>
           </div>
 
-          <div className="bg-white rounded-3xl p-5 shadow border">
-            <p className="text-gray-500 font-bold">Total Flocks</p>
-            <h2 className="text-3xl font-black text-green-700">{flocks.length}</h2>
+          <div className="bg-white rounded-3xl p-5 shadow border relative">
+            {summary.inventoryAlerts > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
+                {summary.inventoryAlerts}
+              </span>
+            )}
+            <p className="text-gray-500 font-bold">Inventory Alerts</p>
+            <h2 className="text-3xl font-black text-orange-600">{summary.inventoryAlerts}</h2>
           </div>
 
           <div className="bg-white rounded-3xl p-5 shadow border relative">
@@ -202,153 +289,214 @@ export default function MyFlockPage() {
           </div>
         </section>
 
-        <section className="grid lg:grid-cols-2 gap-6">
-          {flocks.map((flock) => {
-            const survival =
-              flock.total_chicks > 0
-                ? Math.round((flock.alive_count / flock.total_chicks) * 100)
-                : 0;
+        {loading ? (
+          <div className="bg-white rounded-3xl p-8 shadow border">
+            Loading flock command center...
+          </div>
+        ) : flocks.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 shadow border">
+            No chick batches yet. Create your first batch above.
+          </div>
+        ) : (
+          <section className="grid lg:grid-cols-2 gap-6">
+            {flocks.map((flock) => {
+              const survival =
+                flock.total_chicks > 0
+                  ? Math.round((flock.alive_count / flock.total_chicks) * 100)
+                  : 0;
 
-            const dayAge = daysBetween(flock.created_at);
-            const growthProgress = Math.min(100, Math.round((dayAge / 35) * 100));
-            const harvestLeft = daysUntil(flock.expected_harvest_date);
+              const dayAge = daysBetween(flock.created_at);
+              const growthProgress = Math.min(100, Math.round((dayAge / 35) * 100));
+              const harvestLeft = daysUntil(flock.expected_harvest_date);
 
-            const riskCount =
-              (survival < 95 ? 1 : 0) +
-              (!flock.caretaker_name ? 1 : 0) +
-              (harvestLeft !== null && harvestLeft <= 7 ? 1 : 0);
+              const flockInventory = inventoryForFlock(inventory, flock.id);
+              const flockLowStock = lowStockItems(flockInventory);
 
-            return (
-              <div key={flock.id} className="bg-white rounded-3xl shadow border p-7 relative">
-                {riskCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
-                    {riskCount}
-                  </span>
-                )}
+              const riskCount =
+                (survival < 95 ? 1 : 0) +
+                (!flock.caretaker_name ? 1 : 0) +
+                (harvestLeft !== null && harvestLeft <= 7 ? 1 : 0) +
+                flockLowStock.length;
 
-                <div className="flex justify-between gap-4 mb-5">
-                  <div>
-                    <h2 className="text-3xl font-black">🐣 {flock.batch_no}</h2>
-                    <p className="text-gray-500">{flock.breed} Chick Batch</p>
+              return (
+                <div key={flock.id} className="bg-white rounded-3xl shadow border p-7 relative">
+                  {riskCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
+                      {riskCount}
+                    </span>
+                  )}
+
+                  <div className="flex justify-between gap-4 mb-5">
+                    <div>
+                      <h2 className="text-3xl font-black">🐣 {flock.batch_no}</h2>
+                      <p className="text-gray-500">{flock.breed} Chick Batch</p>
+                    </div>
+
+                    <span className="h-fit bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold">
+                      {flock.status}
+                    </span>
                   </div>
 
-                  <span className="h-fit bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold">
-                    {flock.status}
-                  </span>
-                </div>
-
-                <div className="mb-5">
-                  <div className="flex justify-between text-sm font-bold text-gray-600 mb-2">
-                    <span>Day {dayAge} / 35 Grow Cycle</span>
-                    <span>{growthProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-4">
-                    <div
-                      className="bg-green-600 h-4 rounded-full"
-                      style={{ width: `${growthProgress}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-5">
-                  <div className="bg-green-50 rounded-2xl p-4">
-                    <p className="text-gray-500">Total Chicks</p>
-                    <h3 className="text-2xl font-black">{flock.total_chicks}</h3>
+                  <div className="mb-5">
+                    <div className="flex justify-between text-sm font-bold text-gray-600 mb-2">
+                      <span>Day {dayAge} / 35 Grow Cycle</span>
+                      <span>{growthProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-4">
+                      <div
+                        className="bg-green-600 h-4 rounded-full"
+                        style={{ width: `${growthProgress}%` }}
+                      />
+                    </div>
                   </div>
 
-                  <div className="bg-green-50 rounded-2xl p-4">
-                    <p className="text-gray-500">Alive Chicks</p>
-                    <h3 className="text-2xl font-black">{flock.alive_count}</h3>
+                  <div className="grid grid-cols-2 gap-4 mb-5">
+                    <div className="bg-green-50 rounded-2xl p-4">
+                      <p className="text-gray-500">Total Chicks</p>
+                      <h3 className="text-2xl font-black">{flock.total_chicks}</h3>
+                    </div>
+
+                    <div className="bg-green-50 rounded-2xl p-4">
+                      <p className="text-gray-500">Alive Chicks</p>
+                      <h3 className="text-2xl font-black">{flock.alive_count}</h3>
+                    </div>
+
+                    <div className="bg-yellow-50 rounded-2xl p-4">
+                      <p className="text-gray-500">Survival Rate</p>
+                      <h3 className="text-2xl font-black">{survival}%</h3>
+                    </div>
+
+                    <div className="bg-blue-50 rounded-2xl p-4">
+                      <p className="text-gray-500">Harvest Countdown</p>
+                      <h3 className="text-lg font-black">
+                        {harvestLeft === null
+                          ? "Not set"
+                          : harvestLeft <= 0
+                          ? "Ready"
+                          : `${harvestLeft} days left`}
+                      </h3>
+                    </div>
                   </div>
 
-                  <div className="bg-yellow-50 rounded-2xl p-4">
-                    <p className="text-gray-500">Survival Rate</p>
-                    <h3 className="text-2xl font-black">{survival}%</h3>
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-5">
+                    <p className="font-bold text-gray-700">Assigned Caretaker</p>
+                    <p className="text-green-700 font-black text-xl mt-1">
+                      👨‍🌾 {flock.caretaker_name || "No caretaker assigned yet"}
+                    </p>
                   </div>
 
-                  <div className="bg-blue-50 rounded-2xl p-4">
-                    <p className="text-gray-500">Harvest Countdown</p>
-                    <h3 className="text-lg font-black">
-                      {harvestLeft === null
-                        ? "Not set"
-                        : harvestLeft <= 0
-                        ? "Ready"
-                        : `${harvestLeft} days left`}
-                    </h3>
+                  <div className="grid md:grid-cols-2 gap-3 mb-5">
+                    <select
+                      className="border p-4 rounded-2xl font-bold"
+                      value={selectedCaretaker[flock.id] || ""}
+                      onChange={(e) =>
+                        setSelectedCaretaker({
+                          ...selectedCaretaker,
+                          [flock.id]: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">Choose Caretaker</option>
+                      {CARETAKERS.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      onClick={() => assignCaretaker(flock.id)}
+                      className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl font-black"
+                    >
+                      Assign Caretaker
+                    </button>
                   </div>
-                </div>
 
-                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-5">
-                  <p className="font-bold text-gray-700">Assigned Caretaker</p>
-                  <p className="text-green-700 font-black text-xl mt-1">
-                    👨‍🌾 {flock.caretaker_name || "No caretaker assigned yet"}
-                  </p>
-                </div>
+                  <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 mb-5">
+                    <div className="flex items-center justify-between">
+                      <p className="font-black text-orange-700">🌾 Inventory Status</p>
+                      {flockLowStock.length > 0 ? (
+                        <span className="bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
+                          {flockLowStock.length} low
+                        </span>
+                      ) : (
+                        <span className="bg-green-600 text-white text-xs font-black px-3 py-1 rounded-full">
+                          healthy
+                        </span>
+                      )}
+                    </div>
 
-                <div className="grid md:grid-cols-2 gap-3 mb-5">
-                  <select
-                    className="border p-4 rounded-2xl font-bold"
-                    value={selectedCaretaker[flock.id] || ""}
-                    onChange={(e) =>
-                      setSelectedCaretaker({
-                        ...selectedCaretaker,
-                        [flock.id]: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Choose Caretaker</option>
-                    {CARETAKERS.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
+                    {flockInventory.length === 0 ? (
+                      <p className="text-sm text-gray-500 mt-3">No inventory assigned yet.</p>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {flockInventory.slice(0, 3).map((item) => {
+                          const isLow =
+                            Number(item.remaining_qty || 0) <=
+                            Number(item.low_stock_level || 0);
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex justify-between bg-white rounded-xl px-4 py-3 text-sm"
+                            >
+                              <span className="font-bold">{item.item_name}</span>
+                              <span
+                                className={
+                                  isLow
+                                    ? "text-red-600 font-black"
+                                    : "text-green-700 font-black"
+                                }
+                              >
+                                {item.remaining_qty} {item.unit || ""}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-3 mb-5">
+                    <div className="bg-orange-50 rounded-2xl p-4">
+                      <p className="text-sm font-bold text-orange-700">Inventory</p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {flockLowStock.length > 0
+                          ? `${flockLowStock.length} low stock alert(s)`
+                          : "Supplies healthy"}
+                      </p>
+                    </div>
+
+                    <div className="bg-red-50 rounded-2xl p-4">
+                      <p className="text-sm font-bold text-red-700">Risk</p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {riskCount > 0 ? `${riskCount} alert(s)` : "Low risk"}
+                      </p>
+                    </div>
+
+                    <div className="bg-purple-50 rounded-2xl p-4">
+                      <p className="text-sm font-bold text-purple-700">Reports</p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Caretaker updates required.
+                      </p>
+                    </div>
+                  </div>
 
                   <button
-                    onClick={() => assignCaretaker(flock.id)}
-                    className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl font-black"
+                    onClick={() => setSelectedFlock(flock)}
+                    className="w-full bg-gray-900 hover:bg-black text-white p-4 rounded-2xl font-black"
                   >
-                    Assign Caretaker
+                    Open Flock Command Center
                   </button>
                 </div>
-
-                <div className="grid md:grid-cols-3 gap-3 mb-5">
-                  <div className="bg-orange-50 rounded-2xl p-4">
-                    <p className="text-sm font-bold text-orange-700">Inventory</p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Feed usage monitoring next.
-                    </p>
-                  </div>
-
-                  <div className="bg-red-50 rounded-2xl p-4">
-                    <p className="text-sm font-bold text-red-700">Risk</p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {riskCount > 0 ? `${riskCount} alert(s)` : "Low risk"}
-                    </p>
-                  </div>
-
-                  <div className="bg-purple-50 rounded-2xl p-4">
-                    <p className="text-sm font-bold text-purple-700">Reports</p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Caretaker updates required.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setSelectedFlock(flock)}
-                  className="w-full bg-gray-900 hover:bg-black text-white p-4 rounded-2xl font-black"
-                >
-                  Open Flock Command Center
-                </button>
-              </div>
-            );
-          })}
-        </section>
+              );
+            })}
+          </section>
+        )}
 
         {selectedFlock && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-3xl w-full p-7 shadow-2xl">
+            <div className="bg-white rounded-3xl max-w-4xl w-full p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between gap-4 mb-5">
                 <div>
                   <h2 className="text-3xl font-black">🐔 {selectedFlock.batch_no}</h2>
@@ -376,6 +524,8 @@ export default function MyFlockPage() {
                   <h3 className="text-2xl font-black">
                     {daysUntil(selectedFlock.expected_harvest_date) === null
                       ? "Not set"
+                      : daysUntil(selectedFlock.expected_harvest_date)! <= 0
+                      ? "Ready"
                       : `${daysUntil(selectedFlock.expected_harvest_date)} days left`}
                   </h3>
                 </div>
@@ -395,11 +545,106 @@ export default function MyFlockPage() {
                 </div>
               </div>
 
+              <div className="mt-5 bg-orange-50 border border-orange-100 rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-black text-orange-700">🌾 Inventory Panel</h3>
+                  {selectedLowStock.length > 0 ? (
+                    <span className="bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
+                      {selectedLowStock.length} low stock
+                    </span>
+                  ) : (
+                    <span className="bg-green-600 text-white text-xs font-black px-3 py-1 rounded-full">
+                      healthy
+                    </span>
+                  )}
+                </div>
+
+                {selectedInventory.length === 0 ? (
+                  <p className="text-sm text-gray-600">No inventory assigned to this flock yet.</p>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {selectedInventory.map((item) => {
+                      const isLow =
+                        Number(item.remaining_qty || 0) <= Number(item.low_stock_level || 0);
+
+                      return (
+                        <div key={item.id} className="bg-white rounded-2xl p-4 border">
+                          <div className="flex justify-between gap-3">
+                            <div>
+                              <p className="font-black">{item.item_name}</p>
+                              <p className="text-xs text-gray-500">
+                                {item.category || "SUPPLY"} • Low level:{" "}
+                                {item.low_stock_level} {item.unit}
+                              </p>
+                            </div>
+
+                            <span
+                              className={
+                                isLow
+                                  ? "text-red-600 font-black"
+                                  : "text-green-700 font-black"
+                              }
+                            >
+                              {item.remaining_qty} {item.unit}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 w-full bg-gray-100 rounded-full h-3">
+                            <div
+                              className={isLow ? "bg-red-500 h-3 rounded-full" : "bg-green-600 h-3 rounded-full"}
+                              style={{
+                                width: `${Math.min(
+                                  100,
+                                  Math.round(
+                                    (Number(item.remaining_qty || 0) /
+                                      Math.max(Number(item.starting_qty || 1), 1)) *
+                                      100
+                                  )
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <div className="mt-5 bg-red-50 border border-red-100 rounded-2xl p-5">
-                <h3 className="font-black text-red-700">Risk Management</h3>
+                <h3 className="font-black text-red-700">⚠️ Risk Management</h3>
+
+                <div className="mt-3 space-y-2 text-sm">
+                  {!selectedFlock.caretaker_name && (
+                    <p className="text-red-700 font-bold">• No caretaker assigned yet.</p>
+                  )}
+
+                  {selectedLowStock.length > 0 && (
+                    <p className="text-red-700 font-bold">
+                      • {selectedLowStock.length} inventory item(s) need reorder.
+                    </p>
+                  )}
+
+                  {daysUntil(selectedFlock.expected_harvest_date) !== null &&
+                    daysUntil(selectedFlock.expected_harvest_date)! <= 7 && (
+                      <p className="text-yellow-700 font-bold">
+                        • Harvest is near. Prepare operations and buyer coordination.
+                      </p>
+                    )}
+
+                  {selectedFlock.caretaker_name &&
+                    selectedLowStock.length === 0 &&
+                    !(
+                      daysUntil(selectedFlock.expected_harvest_date) !== null &&
+                      daysUntil(selectedFlock.expected_harvest_date)! <= 7
+                    ) && <p className="text-green-700 font-bold">• Current risk level is low.</p>}
+                </div>
+              </div>
+
+              <div className="mt-5 bg-purple-50 border border-purple-100 rounded-2xl p-5">
+                <h3 className="font-black text-purple-700">📋 Usage Logs</h3>
                 <p className="text-sm text-gray-700 mt-2">
-                  Next connection: inventory usage, missed caretaker reports,
-                  low feed alerts, weight delay alerts, and harvest readiness.
+                  Next connection: caretaker feed usage will deduct inventory and appear here.
                 </p>
               </div>
             </div>
