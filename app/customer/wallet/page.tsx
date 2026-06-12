@@ -1,13 +1,61 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function WalletPage() {
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [loading, setLoading] = useState(true);
+
   const transactions = [
     { title: "Chick Batch A001 Purchase", amount: "-₱120", date: "2026-06-07" },
     { title: "Caretaker Service Fee", amount: "-₱100", date: "2026-06-07" },
     { title: "Estimated Harvest Profit", amount: "+₱330", date: "Pending" },
   ];
+
+  useEffect(() => {
+    loadWallet();
+  }, []);
+
+  function formatPeso(amount: number) {
+    return new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency: "PHP",
+    }).format(amount || 0);
+  }
+
+  async function loadWallet() {
+    setLoading(true);
+
+    const savedUser =
+      typeof window !== "undefined"
+        ? localStorage.getItem("farmconnect_user")
+        : null;
+
+    if (!savedUser) {
+      setWalletBalance(0);
+      setLoading(false);
+      return;
+    }
+
+    const user = JSON.parse(savedUser);
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("wallet_balance")
+      .eq("email", user.email)
+      .single();
+
+    if (error) {
+      console.error("Wallet load error:", error);
+      setWalletBalance(0);
+    } else {
+      setWalletBalance(Number(data?.wallet_balance || 0));
+    }
+
+    setLoading(false);
+  }
 
   return (
     <main className="min-h-screen bg-[#f3fbf5] p-6 md:p-10">
@@ -18,9 +66,7 @@ export default function WalletPage() {
               💰 Farm Payment Center
             </p>
 
-            <h1 className="text-4xl font-black text-gray-900">
-              Farm Wallet
-            </h1>
+            <h1 className="text-4xl font-black text-gray-900">Farm Wallet</h1>
 
             <p className="text-gray-500 mt-2">
               Track earnings, marketplace expenses, and future GCash/Maya cash-in.
@@ -38,7 +84,9 @@ export default function WalletPage() {
         <section className="grid md:grid-cols-4 gap-5 mb-8">
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
             <p className="text-gray-500 font-semibold">Available Balance</p>
-            <h2 className="text-4xl font-black text-green-700 mt-2">₱0.00</h2>
+            <h2 className="text-4xl font-black text-green-700 mt-2">
+              {loading ? "Loading..." : formatPeso(walletBalance)}
+            </h2>
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
