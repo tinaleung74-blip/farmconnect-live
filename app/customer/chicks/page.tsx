@@ -31,6 +31,19 @@ type InventoryItem = {
   created_at?: string;
 };
 
+type UsageLog = {
+  id: string;
+  profile_id: string | null;
+  flock_id: string | null;
+  inventory_id: string | null;
+  item_name: string | null;
+  qty_used: number;
+  unit: string | null;
+  used_by: string | null;
+  purpose: string | null;
+  created_at?: string;
+};
+
 const CARETAKERS = [
   "Caretaker 1",
   "Caretaker 2",
@@ -66,12 +79,20 @@ function lowStockItems(items: InventoryItem[]) {
 export default function MyFlockPage() {
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
+
   const [selectedCaretaker, setSelectedCaretaker] = useState<Record<string, string>>({});
   const [breed, setBreed] = useState("Broiler");
   const [totalChicks, setTotalChicks] = useState(100);
   const [harvestDate, setHarvestDate] = useState("");
   const [selectedFlock, setSelectedFlock] = useState<Flock | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [selectedInventoryId, setSelectedInventoryId] = useState("");
+  const [qtyUsed, setQtyUsed] = useState(1);
+  const [usedBy, setUsedBy] = useState("");
+  const [purpose, setPurpose] = useState("Morning feeding");
+  const [deducting, setDeducting] = useState(false);
 
   async function loadFlocks() {
     const user = localStorage.getItem("farmconnect_user");
@@ -95,7 +116,6 @@ export default function MyFlockPage() {
     }
 
     setFlocks(data || []);
-    setLoading(false);
   }
 
   async function loadInventory() {
@@ -113,10 +133,26 @@ export default function MyFlockPage() {
     if (!error && data) setInventory(data);
   }
 
+  async function loadUsageLogs() {
+    const user = localStorage.getItem("farmconnect_user");
+    if (!user) return;
+
+    const profile = JSON.parse(user);
+
+    const { data, error } = await supabase
+      .from("inventory_usage_logs")
+      .select("*")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) setUsageLogs(data);
+  }
+
   async function refreshPageData() {
     setLoading(true);
     await loadFlocks();
     await loadInventory();
+    await loadUsageLogs();
     setLoading(false);
   }
 
@@ -180,9 +216,45 @@ export default function MyFlockPage() {
     await refreshPageData();
   }
 
+  async function submitInventoryUsage() {
+    if (!selectedInventoryId) return alert("Please select inventory item.");
+    if (!qtyUsed || qtyUsed <= 0) return alert("Quantity used must be greater than zero.");
+
+    setDeducting(true);
+
+    const { data, error } = await supabase.rpc("use_flock_inventory", {
+      p_inventory_id: selectedInventoryId,
+      p_qty_used: qtyUsed,
+      p_used_by: usedBy || selectedFlock?.caretaker_name || "Caretaker",
+      p_purpose: purpose || "Feeding",
+    });
+
+    setDeducting(false);
+
+    if (error) return alert(error.message);
+    if (!data?.ok) return alert(data?.message || "Failed to deduct inventory.");
+
+    alert(
+      `${data.item_name} deducted successfully. Remaining: ${data.remaining_qty}`
+    );
+
+    setSelectedInventoryId("");
+    setQtyUsed(1);
+    setUsedBy("");
+    setPurpose("Morning feeding");
+
+    await refreshPageData();
+  }
+
   useEffect(() => {
     refreshPageData();
   }, []);
+
+  useEffect(() => {
+    if (selectedFlock?.caretaker_name) {
+      setUsedBy(selectedFlock.caretaker_name);
+    }
+  }, [selectedFlock]);
 
   const summary = useMemo(() => {
     const alive = flocks.reduce((sum, f) => sum + Number(f.alive_count || 0), 0);
@@ -197,14 +269,23 @@ export default function MyFlockPage() {
       (item) => Number(item.remaining_qty || 0) <= Number(item.low_stock_level || 0)
     ).length;
 
-    return { alive, noCaretaker, nearHarvest, inventoryAlerts };
-  }, [flocks, inventory]);
+    const usageToday = usageLogs.filter((log) => {
+      if (!log.created_at) return false;
+      return new Date(log.created_at).toDateString() === new Date().toDateString();
+    }).length;
+
+    return { alive, noCaretaker, nearHarvest, inventoryAlerts, usageToday };
+  }, [flocks, inventory, usageLogs]);
 
   const selectedInventory = selectedFlock
     ? inventoryForFlock(inventory, selectedFlock.id)
     : [];
 
   const selectedLowStock = lowStockItems(selectedInventory);
+
+  const selectedUsageLogs = selectedFlock
+    ? usageLogs.filter((log) => log.flock_id === selectedFlock.id)
+    : [];
 
   return (
     <main className="min-h-screen bg-[#f3fbf5] p-6 md:p-10">
@@ -217,7 +298,7 @@ export default function MyFlockPage() {
           </p>
         </section>
 
-        <section className="grid md:grid-cols-4 gap-4 mb-8">
+        <section className="grid md:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-3xl p-5 shadow border">
             <p className="text-gray-500 font-bold">Active Chicks</p>
             <h2 className="text-3xl font-black text-green-700">{summary.alive}</h2>
@@ -231,6 +312,11 @@ export default function MyFlockPage() {
             )}
             <p className="text-gray-500 font-bold">Inventory Alerts</p>
             <h2 className="text-3xl font-black text-orange-600">{summary.inventoryAlerts}</h2>
+          </div>
+
+          <div className="bg-white rounded-3xl p-5 shadow border">
+            <p className="text-gray-500 font-bold">Usage Today</p>
+            <h2 className="text-3xl font-black text-blue-600">{summary.usageToday}</h2>
           </div>
 
           <div className="bg-white rounded-3xl p-5 shadow border relative">
@@ -311,6 +397,7 @@ export default function MyFlockPage() {
 
               const flockInventory = inventoryForFlock(inventory, flock.id);
               const flockLowStock = lowStockItems(flockInventory);
+              const flockUsageLogs = usageLogs.filter((log) => log.flock_id === flock.id);
 
               const riskCount =
                 (survival < 95 ? 1 : 0) +
@@ -475,15 +562,21 @@ export default function MyFlockPage() {
                     </div>
 
                     <div className="bg-purple-50 rounded-2xl p-4">
-                      <p className="text-sm font-bold text-purple-700">Reports</p>
+                      <p className="text-sm font-bold text-purple-700">Usage Logs</p>
                       <p className="text-xs text-gray-600 mt-1">
-                        Caretaker updates required.
+                        {flockUsageLogs.length} record(s)
                       </p>
                     </div>
                   </div>
 
                   <button
-                    onClick={() => setSelectedFlock(flock)}
+                    onClick={() => {
+                      setSelectedFlock(flock);
+                      setSelectedInventoryId("");
+                      setQtyUsed(1);
+                      setUsedBy(flock.caretaker_name || "");
+                      setPurpose("Morning feeding");
+                    }}
                     className="w-full bg-gray-900 hover:bg-black text-white p-4 rounded-2xl font-black"
                   >
                     Open Flock Command Center
@@ -591,7 +684,11 @@ export default function MyFlockPage() {
 
                           <div className="mt-3 w-full bg-gray-100 rounded-full h-3">
                             <div
-                              className={isLow ? "bg-red-500 h-3 rounded-full" : "bg-green-600 h-3 rounded-full"}
+                              className={
+                                isLow
+                                  ? "bg-red-500 h-3 rounded-full"
+                                  : "bg-green-600 h-3 rounded-full"
+                              }
                               style={{
                                 width: `${Math.min(
                                   100,
@@ -609,6 +706,55 @@ export default function MyFlockPage() {
                     })}
                   </div>
                 )}
+              </div>
+
+              <div className="mt-5 bg-green-50 border border-green-100 rounded-2xl p-5">
+                <h3 className="font-black text-green-700 mb-4">🌾 Record Inventory Usage</h3>
+
+                <div className="grid md:grid-cols-2 gap-3">
+                  <select
+                    className="border p-3 rounded-xl"
+                    value={selectedInventoryId}
+                    onChange={(e) => setSelectedInventoryId(e.target.value)}
+                  >
+                    <option value="">Select Inventory</option>
+                    {selectedInventory.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.item_name} — {item.remaining_qty} {item.unit}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="number"
+                    className="border p-3 rounded-xl"
+                    value={qtyUsed}
+                    onChange={(e) => setQtyUsed(Number(e.target.value))}
+                    placeholder="Qty Used"
+                  />
+
+                  <input
+                    className="border p-3 rounded-xl"
+                    value={usedBy}
+                    onChange={(e) => setUsedBy(e.target.value)}
+                    placeholder="Used By"
+                  />
+
+                  <input
+                    className="border p-3 rounded-xl"
+                    value={purpose}
+                    onChange={(e) => setPurpose(e.target.value)}
+                    placeholder="Purpose"
+                  />
+                </div>
+
+                <button
+                  onClick={submitInventoryUsage}
+                  disabled={deducting}
+                  className="mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-5 py-3 rounded-xl font-black"
+                >
+                  {deducting ? "Deducting..." : "Deduct Inventory"}
+                </button>
               </div>
 
               <div className="mt-5 bg-red-50 border border-red-100 rounded-2xl p-5">
@@ -642,10 +788,40 @@ export default function MyFlockPage() {
               </div>
 
               <div className="mt-5 bg-purple-50 border border-purple-100 rounded-2xl p-5">
-                <h3 className="font-black text-purple-700">📋 Usage Logs</h3>
-                <p className="text-sm text-gray-700 mt-2">
-                  Next connection: caretaker feed usage will deduct inventory and appear here.
-                </p>
+                <h3 className="font-black text-purple-700 mb-4">📋 Usage Logs</h3>
+
+                {selectedUsageLogs.length === 0 ? (
+                  <p className="text-sm text-gray-700">
+                    No usage records yet for this flock.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedUsageLogs.slice(0, 10).map((log) => (
+                      <div key={log.id} className="bg-white rounded-xl p-4 border">
+                        <div className="flex justify-between gap-3">
+                          <div>
+                            <p className="font-black">{log.item_name}</p>
+                            <p className="text-sm text-gray-600">
+                              Used: {log.qty_used} {log.unit}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              By: {log.used_by || "Caretaker"}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Purpose: {log.purpose || "Farm operation"}
+                            </p>
+                          </div>
+
+                          <p className="text-xs text-gray-500">
+                            {log.created_at
+                              ? new Date(log.created_at).toLocaleString()
+                              : "No date"}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
