@@ -28,12 +28,12 @@ type HireRecord = {
 };
 
 export default function CustomerCaretakersPage() {
-  const [profileId, setProfileId] = useState<string>("");
-  const [customerName, setCustomerName] = useState<string>("Customer");
+  const [profileId, setProfileId] = useState("");
+  const [customerName, setCustomerName] = useState("Customer");
   const [caretakers, setCaretakers] = useState<Caretaker[]>([]);
   const [hires, setHires] = useState<HireRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string>("");
+  const [savingId, setSavingId] = useState("");
   const [message, setMessage] = useState("");
 
   const [durationDays, setDurationDays] = useState(30);
@@ -53,7 +53,6 @@ export default function CustomerCaretakersPage() {
       "";
 
     let storedCustomerName = "Customer";
-
     const userRaw = localStorage.getItem("farmconnect_user");
 
     if (userRaw) {
@@ -68,10 +67,7 @@ export default function CustomerCaretakersPage() {
           "";
 
         storedCustomerName =
-          user.full_name ||
-          user.name ||
-          user.email ||
-          "Customer";
+          user.full_name || user.name || user.email || "Customer";
 
         if (storedProfileId) {
           localStorage.setItem("farmconnect_profile_id", storedProfileId);
@@ -81,10 +77,7 @@ export default function CustomerCaretakersPage() {
       }
     }
 
-    return {
-      storedProfileId,
-      storedCustomerName,
-    };
+    return { storedProfileId, storedCustomerName };
   }
 
   async function loadPage() {
@@ -102,7 +95,6 @@ export default function CustomerCaretakersPage() {
       .order("full_name", { ascending: true });
 
     if (caretakerError) {
-      console.error(caretakerError);
       setMessage(`Unable to load caretakers: ${caretakerError.message}`);
     } else {
       setCaretakers(caretakerData || []);
@@ -116,8 +108,7 @@ export default function CustomerCaretakersPage() {
         .order("created_at", { ascending: false });
 
       if (hireError) {
-        console.error(hireError);
-        setMessage(`Unable to load your hired caretakers: ${hireError.message}`);
+        setMessage(`Unable to load hired caretakers: ${hireError.message}`);
       } else {
         setHires(hireData || []);
       }
@@ -128,29 +119,27 @@ export default function CustomerCaretakersPage() {
     setLoading(false);
   }
 
-  const hiredCaretakerIds = useMemo(() => {
-    return new Set(hires.map((hire) => hire.caretaker_id));
+  const requestedCaretakerIds = useMemo(() => {
+    return new Set(
+      hires
+        .filter((hire) => hire.status === "PENDING" || hire.status === "ACTIVE")
+        .map((hire) => hire.caretaker_id)
+    );
   }, [hires]);
+
+  function badgeColor(status: string) {
+    if (status === "ACTIVE") return "bg-green-100 text-green-800";
+    if (status === "PAID") return "bg-green-100 text-green-800";
+    if (status === "PENDING") return "bg-yellow-100 text-yellow-800";
+    if (status === "REJECTED") return "bg-red-100 text-red-800";
+    return "bg-gray-100 text-gray-700";
+  }
 
   function getLevelBadge(level: string | null) {
     if (level === "MASTER") return "🏆 MASTER";
     if (level === "EXPERT") return "⭐ EXPERT";
     if (level === "ADVANCED") return "🔥 ADVANCED";
     return "🐔 STANDARD";
-  }
-
-  function getLevelColor(level: string | null) {
-    if (level === "MASTER") return "bg-purple-100 text-purple-800";
-    if (level === "EXPERT") return "bg-yellow-100 text-yellow-800";
-    if (level === "ADVANCED") return "bg-orange-100 text-orange-800";
-    return "bg-green-100 text-green-800";
-  }
-
-  function getStatusColor(status: string | null) {
-    if (status === "ASSIGNED") return "bg-blue-100 text-blue-800";
-    if (status === "HIRED") return "bg-yellow-100 text-yellow-800";
-    if (status === "AVAILABLE") return "bg-green-100 text-green-800";
-    return "bg-gray-100 text-gray-800";
   }
 
   function getDaysRemaining(endDate: string | null) {
@@ -167,9 +156,7 @@ export default function CustomerCaretakersPage() {
     const { storedProfileId, storedCustomerName } = getStoredProfile();
 
     if (!storedProfileId) {
-      setMessage(
-        "Please login again. Missing customer profile ID from farmconnect_user."
-      );
+      setMessage("Please login again. Missing customer profile ID.");
       return;
     }
 
@@ -187,11 +174,11 @@ export default function CustomerCaretakersPage() {
     const duplicateHire = hires.find(
       (hire) =>
         hire.caretaker_id === caretaker.id &&
-        hire.status === "ACTIVE"
+        (hire.status === "PENDING" || hire.status === "ACTIVE")
     );
 
     if (duplicateHire) {
-      setMessage(`${caretaker.full_name} is already hired for your account.`);
+      setMessage(`${caretaker.full_name} already has a pending or active request.`);
       setSavingId("");
       return;
     }
@@ -204,20 +191,21 @@ export default function CustomerCaretakersPage() {
       rate_per_chick: ratePerChick,
       total_chicks: totalChicks,
       total_fee: totalFee,
-      status: "ACTIVE",
+      status: "PENDING",
       payment_status: "PENDING",
       start_date: startDate.toISOString().slice(0, 10),
       end_date: endDate.toISOString().slice(0, 10),
     });
 
     if (error) {
-      console.error(error);
-      setMessage(`Hiring failed: ${error.message}`);
+      setMessage(`Hiring request failed: ${error.message}`);
       setSavingId("");
       return;
     }
 
-    setMessage(`${caretaker.full_name} hired successfully. Payment pending.`);
+    setMessage(
+      `${caretaker.full_name} request submitted. Status and payment are now pending for admin review.`
+    );
     setSavingId("");
     await loadPage();
   }
@@ -228,17 +216,14 @@ export default function CustomerCaretakersPage() {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="mb-2 w-fit rounded-full bg-green-100 px-4 py-2 text-xs font-black text-green-800">
-              FARMCONNECT VERIFIED CARETAKER SERVICE
+              FARMCONNECT CARETAKER REQUEST CENTER
             </p>
-
             <h1 className="text-3xl font-black text-green-900 md:text-4xl">
               🧑‍🌾 Hire FarmConnect Caretaker
             </h1>
-
             <p className="mt-2 max-w-2xl text-sm font-semibold text-green-700">
-              Customer hires through FarmConnect only. FarmConnect manages
-              operations, payroll, and assignment. No direct customer to
-              caretaker communication.
+              Submit a caretaker request. FarmConnect Admin reviews it first.
+              Status and payment remain pending until approval and verification.
             </p>
           </div>
 
@@ -251,43 +236,43 @@ export default function CustomerCaretakersPage() {
         </div>
 
         <section className="mb-6 grid gap-4 md:grid-cols-4">
-          <div className="rounded-3xl border border-green-100 bg-white p-5 shadow">
+          <div className="rounded-3xl bg-white p-5 shadow">
             <p className="text-xs font-black text-gray-500">CUSTOMER</p>
             <h2 className="mt-2 text-xl font-black text-green-900">
               {customerName}
             </h2>
-            <p className="mt-1 text-xs font-semibold text-gray-500">
+            <p className="text-xs font-semibold text-gray-500">
               {profileId ? "Profile connected" : "Profile not found"}
             </p>
           </div>
 
-          <div className="rounded-3xl border border-green-100 bg-white p-5 shadow">
-            <p className="text-xs font-black text-gray-500">VERIFIED POOL</p>
+          <div className="rounded-3xl bg-white p-5 shadow">
+            <p className="text-xs font-black text-gray-500">CARETAKER POOL</p>
             <h2 className="mt-2 text-3xl font-black text-green-900">
               {caretakers.length}
             </h2>
-            <p className="mt-1 text-xs font-semibold text-gray-500">
-              FarmConnect caretakers
+            <p className="text-xs font-semibold text-gray-500">
+              Verified caretakers
             </p>
           </div>
 
-          <div className="rounded-3xl border border-green-100 bg-white p-5 shadow">
-            <p className="text-xs font-black text-gray-500">MY HIRES</p>
+          <div className="rounded-3xl bg-white p-5 shadow">
+            <p className="text-xs font-black text-gray-500">MY REQUESTS</p>
             <h2 className="mt-2 text-3xl font-black text-green-900">
               {hires.length}
             </h2>
-            <p className="mt-1 text-xs font-semibold text-gray-500">
-              Active service records
+            <p className="text-xs font-semibold text-gray-500">
+              Pending / active requests
             </p>
           </div>
 
-          <div className="rounded-3xl border border-green-100 bg-white p-5 shadow">
-            <p className="text-xs font-black text-gray-500">SERVICE FEE</p>
+          <div className="rounded-3xl bg-white p-5 shadow">
+            <p className="text-xs font-black text-gray-500">REQUEST AMOUNT</p>
             <h2 className="mt-2 text-3xl font-black text-green-900">
               ₱{(totalChicks * ratePerChick).toLocaleString()}
             </h2>
-            <p className="mt-1 text-xs font-semibold text-gray-500">
-              ₱{ratePerChick} per chick / cycle
+            <p className="text-xs font-semibold text-gray-500">
+              Payment status starts pending
             </p>
           </div>
         </section>
@@ -324,27 +309,28 @@ export default function CustomerCaretakersPage() {
           </div>
 
           <div className="rounded-3xl bg-white p-5 shadow">
-            <p className="text-sm font-black text-gray-500">Payment Status</p>
+            <p className="text-sm font-black text-gray-500">Initial Status</p>
             <h2 className="mt-2 text-2xl font-black text-yellow-700">
               PENDING
             </h2>
             <p className="text-xs font-semibold text-gray-500">
-              Payment goes to FarmConnect Treasury first.
+              Admin approval + payment verification required.
             </p>
           </div>
         </section>
 
         <section className="mb-8 rounded-[32px] border border-green-100 bg-white/80 p-5 shadow">
-          <h2 className="mb-2 text-xl font-black text-green-900">
-            How Caretaker Hiring Works
+          <h2 className="mb-3 text-xl font-black text-green-900">
+            Request Flow
           </h2>
 
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-5">
             {[
-              ["1", "Customer hires through FarmConnect"],
-              ["2", "FarmConnect records service contract"],
-              ["3", "Payment status starts as pending"],
-              ["4", "Caretaker becomes assignable in My Flock"],
+              ["1", "Request submitted"],
+              ["2", "Status pending"],
+              ["3", "Payment pending"],
+              ["4", "Admin review"],
+              ["5", "Active after approval"],
             ].map(([step, text]) => (
               <div key={step} className="rounded-2xl bg-green-50 p-4">
                 <div className="mb-2 grid h-8 w-8 place-items-center rounded-full bg-green-700 font-black text-white">
@@ -365,14 +351,10 @@ export default function CustomerCaretakersPage() {
             <div className="rounded-3xl bg-white p-8 text-center font-bold shadow">
               Loading caretakers...
             </div>
-          ) : caretakers.length === 0 ? (
-            <div className="rounded-3xl bg-white p-8 text-center font-bold text-gray-500 shadow">
-              No caretakers found in database.
-            </div>
           ) : (
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
               {caretakers.map((caretaker) => {
-                const alreadyHired = hiredCaretakerIds.has(caretaker.id);
+                const alreadyRequested = requestedCaretakerIds.has(caretaker.id);
 
                 return (
                   <div
@@ -381,12 +363,7 @@ export default function CustomerCaretakersPage() {
                   >
                     <div className="mb-3 flex items-start justify-between">
                       <div className="text-4xl">🧑‍🌾</div>
-
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-black ${getStatusColor(
-                          caretaker.status
-                        )}`}
-                      >
+                      <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-800">
                         {caretaker.status || "AVAILABLE"}
                       </span>
                     </div>
@@ -395,11 +372,7 @@ export default function CustomerCaretakersPage() {
                       {caretaker.full_name}
                     </h3>
 
-                    <p
-                      className={`mt-2 w-fit rounded-full px-3 py-1 text-xs font-black ${getLevelColor(
-                        caretaker.level
-                      )}`}
-                    >
+                    <p className="mt-2 w-fit rounded-full bg-yellow-100 px-3 py-1 text-xs font-black text-yellow-800">
                       {getLevelBadge(caretaker.level)}
                     </p>
 
@@ -415,7 +388,7 @@ export default function CustomerCaretakersPage() {
 
                     <div className="mt-3 rounded-2xl bg-green-50 p-3">
                       <p className="text-xs font-black text-gray-500">
-                        Service Contract
+                        Request Amount
                       </p>
                       <p className="font-black text-green-800">
                         ₱{(totalChicks * ratePerChick).toLocaleString()}
@@ -427,18 +400,18 @@ export default function CustomerCaretakersPage() {
 
                     <button
                       onClick={() => hireCaretaker(caretaker)}
-                      disabled={alreadyHired || savingId === caretaker.id}
+                      disabled={alreadyRequested || savingId === caretaker.id}
                       className={`mt-5 w-full rounded-xl px-4 py-3 font-black shadow ${
-                        alreadyHired
+                        alreadyRequested
                           ? "cursor-not-allowed bg-gray-300 text-gray-600"
                           : "bg-green-700 text-white hover:bg-green-800"
                       }`}
                     >
-                      {alreadyHired
-                        ? "Already Hired"
+                      {alreadyRequested
+                        ? "Request Submitted"
                         : savingId === caretaker.id
-                        ? "Hiring..."
-                        : "Hire Caretaker"}
+                        ? "Submitting..."
+                        : "Submit Hire Request"}
                     </button>
                   </div>
                 );
@@ -449,13 +422,13 @@ export default function CustomerCaretakersPage() {
 
         <section>
           <h2 className="mb-4 text-xl font-black text-green-900">
-            My Hired Caretakers
+            My Caretaker Requests
           </h2>
 
           {hires.length === 0 ? (
             <div className="rounded-3xl bg-white p-6 text-center font-bold text-gray-600 shadow">
-              No hired caretaker yet. Hire one above to make them available in
-              My Flock assignment.
+              No caretaker request yet. Submit one above for FarmConnect Admin
+              review.
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -470,11 +443,15 @@ export default function CustomerCaretakersPage() {
                         {hire.caretaker_name}
                       </h3>
                       <p className="mt-1 text-xs font-bold text-gray-500">
-                        Service Contract ID: {hire.id.slice(0, 8)}
+                        Request ID: {hire.id.slice(0, 8)}
                       </p>
                     </div>
 
-                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-800">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-black ${badgeColor(
+                        hire.status
+                      )}`}
+                    >
                       {hire.status}
                     </span>
                   </div>
@@ -502,7 +479,13 @@ export default function CustomerCaretakersPage() {
                       <p className="text-xs font-black text-gray-500">
                         Payment
                       </p>
-                      <p className="font-black text-yellow-800">
+                      <p
+                        className={`font-black ${
+                          hire.payment_status === "PAID"
+                            ? "text-green-800"
+                            : "text-yellow-800"
+                        }`}
+                      >
                         {hire.payment_status}
                       </p>
                     </div>
@@ -517,12 +500,19 @@ export default function CustomerCaretakersPage() {
                     </div>
                   </div>
 
-                  <Link
-                    href="/customer/chicks"
-                    className="mt-5 block rounded-xl bg-green-700 px-4 py-3 text-center font-black text-white shadow hover:bg-green-800"
-                  >
-                    Assign in My Flock →
-                  </Link>
+                  {hire.status === "ACTIVE" && hire.payment_status === "PAID" ? (
+                    <Link
+                      href="/customer/chicks"
+                      className="mt-5 block rounded-xl bg-green-700 px-4 py-3 text-center font-black text-white shadow hover:bg-green-800"
+                    >
+                      Assign in My Flock →
+                    </Link>
+                  ) : (
+                    <div className="mt-5 rounded-xl bg-yellow-50 p-4 text-sm font-bold text-yellow-800">
+                      Waiting for FarmConnect Admin approval and payment
+                      verification before assignment.
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
