@@ -12,6 +12,13 @@ const cards = [
     badge: "Core",
   },
   {
+    title: "Hire Caretaker",
+    icon: "🧑‍🌾",
+    href: "/customer/caretakers",
+    desc: "Hire a verified FarmConnect caretaker for your premium chick batch.",
+    badge: "Care",
+  },
+  {
     title: "Marketplace",
     icon: "🛒",
     href: "/customer/marketplace",
@@ -132,7 +139,7 @@ export default function DashboardPage() {
 
           <div className="relative max-w-3xl">
             <p className="mb-4 w-fit rounded-full bg-white px-4 py-2 text-sm font-black text-green-800">
-              🌞 Your Digital Poultry Farm Is Active
+              🌞 Your Premium Poultry Operations Are Active
             </p>
 
             <h1 className="text-4xl font-black leading-tight text-white drop-shadow md:text-6xl">
@@ -140,18 +147,35 @@ export default function DashboardPage() {
             </h1>
 
             <p className="mt-4 text-lg font-black text-green-950">
-              Monitor your flock, buy farm supplies, track growth, view harvest
-              projections, and manage poultry earnings in one dashboard.
+              Monitor your premium poultry assets, hire verified caretakers,
+              track growth, view harvest projections, and manage poultry
+              earnings in one dashboard.
             </p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/customer/chicks"
+                className="rounded-full bg-white px-5 py-3 font-black text-green-800 shadow hover:bg-yellow-200"
+              >
+                🐣 Open My Flock
+              </Link>
+
+              <Link
+                href="/customer/caretakers"
+                className="rounded-full bg-yellow-300 px-5 py-3 font-black text-green-950 shadow hover:bg-yellow-400"
+              >
+                🧑‍🌾 Hire Caretaker
+              </Link>
+            </div>
           </div>
         </section>
 
         <section className="mb-6 grid gap-4 md:grid-cols-4">
           {[
             ["🐣 Active Flock", "1", "Batch A001"],
-            ["📈 Growth", "22%", "On track"],
+            ["🧑‍🌾 Caretakers", "4", "Verified pool"],
             ["📦 Supplies", "4", "In inventory"],
-            ["💰 Est. ROI", "₱12,500", "Harvest value"],
+            ["💰 Est. ROI", "₱200,000", "Prime value"],
           ].map(([label, value, note]) => (
             <div
               key={label}
