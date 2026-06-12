@@ -44,13 +44,22 @@ type UsageLog = {
   created_at?: string;
 };
 
-const CARETAKERS = [
-  "Caretaker 1",
-  "Caretaker 2",
-  "Caretaker 3",
-  "Caretaker 4",
-  "Caretaker 5",
-];
+type Caretaker = {
+  id: string;
+  name: string;
+  status: string | null;
+};
+
+const CHICK_PRICE = 1000;
+const CYCLE_DAYS = 45;
+
+function money(n: number) {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
 
 function daysBetween(start?: string | null) {
   if (!start) return 0;
@@ -76,19 +85,65 @@ function lowStockItems(items: InventoryItem[]) {
   );
 }
 
+function getGrowthStage(day: number) {
+  if (day <= 7) {
+    return {
+      icon: "🐣",
+      name: "Hatchling",
+      multiplier: 1,
+      label: "Premium chick starting stage",
+    };
+  }
+
+  if (day <= 15) {
+    return {
+      icon: "🐥",
+      name: "Starter",
+      multiplier: 1.15,
+      label: "Early growth stage",
+    };
+  }
+
+  if (day <= 25) {
+    return {
+      icon: "🐤",
+      name: "Juvenile",
+      multiplier: 1.35,
+      label: "Growing value stage",
+    };
+  }
+
+  if (day <= 35) {
+    return {
+      icon: "🐔",
+      name: "Adolescent",
+      multiplier: 1.65,
+      label: "Premium development stage",
+    };
+  }
+
+  return {
+    icon: "🏆",
+    name: "Prime",
+    multiplier: 2,
+    label: "Projected harvest value stage",
+  };
+}
+
 export default function MyFlockPage() {
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
+  const [caretakers, setCaretakers] = useState<Caretaker[]>([]);
 
   const [selectedCaretaker, setSelectedCaretaker] = useState<Record<string, string>>({});
-  const [breed, setBreed] = useState("Broiler");
+  const [breed, setBreed] = useState("Premium Broiler");
   const [totalChicks, setTotalChicks] = useState(100);
   const [harvestDate, setHarvestDate] = useState("");
   const [selectedFlock, setSelectedFlock] = useState<Flock | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [selectedInventoryId, setSelectedInventoryId] = useState("");
+  const [activeInventory, setActiveInventory] = useState<InventoryItem | null>(null);
   const [qtyUsed, setQtyUsed] = useState(1);
   const [usedBy, setUsedBy] = useState("");
   const [purpose, setPurpose] = useState("Morning feeding");
@@ -148,11 +203,22 @@ export default function MyFlockPage() {
     if (!error && data) setUsageLogs(data);
   }
 
+  async function loadCaretakers() {
+    const { data, error } = await supabase
+      .from("caretakers")
+      .select("id,name,status")
+      .eq("status", "HIRED")
+      .order("name", { ascending: true });
+
+    if (!error && data) setCaretakers(data || []);
+  }
+
   async function refreshPageData() {
     setLoading(true);
     await loadFlocks();
     await loadInventory();
     await loadUsageLogs();
+    await loadCaretakers();
     setLoading(false);
   }
 
@@ -163,6 +229,9 @@ export default function MyFlockPage() {
     const profile = JSON.parse(user);
     const batchNo = "FC-" + Math.floor(100000 + Math.random() * 900000);
 
+    const defaultHarvest = new Date();
+    defaultHarvest.setDate(defaultHarvest.getDate() + CYCLE_DAYS);
+
     const { data, error } = await supabase
       .from("flocks")
       .insert({
@@ -172,7 +241,8 @@ export default function MyFlockPage() {
         total_chicks: totalChicks,
         alive_count: totalChicks,
         mortality_count: 0,
-        expected_harvest_date: harvestDate || null,
+        expected_harvest_date:
+          harvestDate || defaultHarvest.toISOString().slice(0, 10),
         status: "ACTIVE",
         caretaker_name: null,
       })
@@ -195,7 +265,7 @@ export default function MyFlockPage() {
       });
     }
 
-    alert("Chick batch created successfully");
+    alert("Premium chick batch created successfully");
     setHarvestDate("");
     await refreshPageData();
   }
@@ -203,7 +273,7 @@ export default function MyFlockPage() {
   async function assignCaretaker(flockId: string) {
     const caretaker = selectedCaretaker[flockId];
 
-    if (!caretaker) return alert("Please select caretaker first.");
+    if (!caretaker) return alert("Please select hired caretaker first.");
 
     const { error } = await supabase
       .from("flocks")
@@ -217,16 +287,16 @@ export default function MyFlockPage() {
   }
 
   async function submitInventoryUsage() {
-    if (!selectedInventoryId) return alert("Please select inventory item.");
+    if (!activeInventory) return alert("Please choose an inventory item card.");
     if (!qtyUsed || qtyUsed <= 0) return alert("Quantity used must be greater than zero.");
 
     setDeducting(true);
 
     const { data, error } = await supabase.rpc("use_flock_inventory", {
-      p_inventory_id: selectedInventoryId,
+      p_inventory_id: activeInventory.id,
       p_qty_used: qtyUsed,
       p_used_by: usedBy || selectedFlock?.caretaker_name || "Caretaker",
-      p_purpose: purpose || "Feeding",
+      p_purpose: purpose || "Farm operation",
     });
 
     setDeducting(false);
@@ -234,11 +304,9 @@ export default function MyFlockPage() {
     if (error) return alert(error.message);
     if (!data?.ok) return alert(data?.message || "Failed to deduct inventory.");
 
-    alert(
-      `${data.item_name} deducted successfully. Remaining: ${data.remaining_qty}`
-    );
+    alert(`${data.item_name} deducted successfully. Remaining: ${data.remaining_qty}`);
 
-    setSelectedInventoryId("");
+    setActiveInventory(null);
     setQtyUsed(1);
     setUsedBy("");
     setPurpose("Morning feeding");
@@ -291,10 +359,10 @@ export default function MyFlockPage() {
     <main className="min-h-screen bg-[#f3fbf5] p-6 md:p-10">
       <div className="max-w-7xl mx-auto">
         <section className="rounded-3xl bg-gradient-to-r from-green-700 to-emerald-500 text-white p-8 mb-8 shadow-xl">
-          <p className="font-bold opacity-90">FarmConnect Poultry Ownership</p>
+          <p className="font-bold opacity-90">FarmConnect Premium Poultry Ownership</p>
           <h1 className="text-4xl font-black mt-1">🐣 My Flock Command Center</h1>
           <p className="mt-3 text-green-50">
-            Own real chicks, monitor real farm activity, track supplies, and protect harvest value.
+            Own premium chicks, monitor real farm activity, track growth value, and protect harvest returns.
           </p>
         </section>
 
@@ -310,7 +378,7 @@ export default function MyFlockPage() {
                 {summary.inventoryAlerts}
               </span>
             )}
-            <p className="text-gray-500 font-bold">Inventory Alerts</p>
+            <p className="text-gray-500 font-bold">Supply Alerts</p>
             <h2 className="text-3xl font-black text-orange-600">{summary.inventoryAlerts}</h2>
           </div>
 
@@ -341,7 +409,7 @@ export default function MyFlockPage() {
         </section>
 
         <section className="bg-white rounded-3xl shadow border p-6 mb-8">
-          <h2 className="text-2xl font-black mb-4">Create New Chick Batch</h2>
+          <h2 className="text-2xl font-black mb-4">Create New Premium Chick Batch</h2>
 
           <div className="grid md:grid-cols-4 gap-4">
             <input
@@ -373,6 +441,10 @@ export default function MyFlockPage() {
               🐣 Create Batch
             </button>
           </div>
+
+          <p className="text-sm text-gray-500 mt-3">
+            Temporary premium value: {money(CHICK_PRICE)} per chick • Default cycle: {CYCLE_DAYS} days
+          </p>
         </section>
 
         {loading ? (
@@ -392,8 +464,13 @@ export default function MyFlockPage() {
                   : 0;
 
               const dayAge = daysBetween(flock.created_at);
-              const growthProgress = Math.min(100, Math.round((dayAge / 35) * 100));
+              const growthProgress = Math.min(100, Math.round((dayAge / CYCLE_DAYS) * 100));
               const harvestLeft = daysUntil(flock.expected_harvest_date);
+              const stage = getGrowthStage(dayAge);
+
+              const startingValue = Number(flock.total_chicks || 0) * CHICK_PRICE;
+              const currentValue = Math.round(startingValue * stage.multiplier);
+              const projectedValue = Math.round(startingValue * 2);
 
               const flockInventory = inventoryForFlock(inventory, flock.id);
               const flockLowStock = lowStockItems(flockInventory);
@@ -426,7 +503,9 @@ export default function MyFlockPage() {
 
                   <div className="mb-5">
                     <div className="flex justify-between text-sm font-bold text-gray-600 mb-2">
-                      <span>Day {dayAge} / 35 Grow Cycle</span>
+                      <span>
+                        Day {dayAge} / {CYCLE_DAYS} Grow Cycle
+                      </span>
                       <span>{growthProgress}%</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-4">
@@ -435,6 +514,14 @@ export default function MyFlockPage() {
                         style={{ width: `${growthProgress}%` }}
                       />
                     </div>
+                  </div>
+
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-5">
+                    <p className="font-bold text-gray-700">Current Premium Stage</p>
+                    <h3 className="text-2xl font-black text-green-700 mt-1">
+                      {stage.icon} {stage.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">{stage.label}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-5">
@@ -463,12 +550,25 @@ export default function MyFlockPage() {
                           : `${harvestLeft} days left`}
                       </h3>
                     </div>
+
+                    <div className="bg-purple-50 rounded-2xl p-4">
+                      <p className="text-gray-500">Starting Value</p>
+                      <h3 className="text-xl font-black">{money(startingValue)}</h3>
+                    </div>
+
+                    <div className="bg-amber-50 rounded-2xl p-4">
+                      <p className="text-gray-500">Current Value</p>
+                      <h3 className="text-xl font-black">{money(currentValue)}</h3>
+                    </div>
                   </div>
 
                   <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-5">
                     <p className="font-bold text-gray-700">Assigned Caretaker</p>
                     <p className="text-green-700 font-black text-xl mt-1">
                       👨‍🌾 {flock.caretaker_name || "No caretaker assigned yet"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Only hired caretakers can be assigned.
                     </p>
                   </div>
 
@@ -483,10 +583,10 @@ export default function MyFlockPage() {
                         })
                       }
                     >
-                      <option value="">Choose Caretaker</option>
-                      {CARETAKERS.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
+                      <option value="">Choose Hired Caretaker</option>
+                      {caretakers.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          {c.name}
                         </option>
                       ))}
                     </select>
@@ -499,61 +599,7 @@ export default function MyFlockPage() {
                     </button>
                   </div>
 
-                  <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 mb-5">
-                    <div className="flex items-center justify-between">
-                      <p className="font-black text-orange-700">🌾 Inventory Status</p>
-                      {flockLowStock.length > 0 ? (
-                        <span className="bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
-                          {flockLowStock.length} low
-                        </span>
-                      ) : (
-                        <span className="bg-green-600 text-white text-xs font-black px-3 py-1 rounded-full">
-                          healthy
-                        </span>
-                      )}
-                    </div>
-
-                    {flockInventory.length === 0 ? (
-                      <p className="text-sm text-gray-500 mt-3">No inventory assigned yet.</p>
-                    ) : (
-                      <div className="mt-3 space-y-2">
-                        {flockInventory.slice(0, 3).map((item) => {
-                          const isLow =
-                            Number(item.remaining_qty || 0) <=
-                            Number(item.low_stock_level || 0);
-
-                          return (
-                            <div
-                              key={item.id}
-                              className="flex justify-between bg-white rounded-xl px-4 py-3 text-sm"
-                            >
-                              <span className="font-bold">{item.item_name}</span>
-                              <span
-                                className={
-                                  isLow
-                                    ? "text-red-600 font-black"
-                                    : "text-green-700 font-black"
-                                }
-                              >
-                                {item.remaining_qty} {item.unit || ""}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-3 mb-5">
-                    <div className="bg-orange-50 rounded-2xl p-4">
-                      <p className="text-sm font-bold text-orange-700">Inventory</p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {flockLowStock.length > 0
-                          ? `${flockLowStock.length} low stock alert(s)`
-                          : "Supplies healthy"}
-                      </p>
-                    </div>
-
+                  <div className="grid md:grid-cols-2 gap-3 mb-5">
                     <div className="bg-red-50 rounded-2xl p-4">
                       <p className="text-sm font-bold text-red-700">Risk</p>
                       <p className="text-xs text-gray-600 mt-1">
@@ -569,10 +615,17 @@ export default function MyFlockPage() {
                     </div>
                   </div>
 
+                  <div className="bg-gray-50 rounded-2xl p-4 mb-5">
+                    <p className="text-sm text-gray-500 font-bold">Projected Prime Value</p>
+                    <h3 className="text-2xl font-black text-green-700">
+                      {money(projectedValue)}
+                    </h3>
+                  </div>
+
                   <button
                     onClick={() => {
                       setSelectedFlock(flock);
-                      setSelectedInventoryId("");
+                      setActiveInventory(null);
                       setQtyUsed(1);
                       setUsedBy(flock.caretaker_name || "");
                       setPurpose("Morning feeding");
@@ -589,7 +642,7 @@ export default function MyFlockPage() {
 
         {selectedFlock && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-4xl w-full p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-3xl max-w-5xl w-full p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between gap-4 mb-5">
                 <div>
                   <h2 className="text-3xl font-black">🐔 {selectedFlock.batch_no}</h2>
@@ -604,82 +657,106 @@ export default function MyFlockPage() {
                 </button>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-green-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Growth Status</p>
-                  <h3 className="text-2xl font-black">
-                    Day {daysBetween(selectedFlock.created_at)} / 35
-                  </h3>
-                </div>
+              {(() => {
+                const dayAge = daysBetween(selectedFlock.created_at);
+                const stage = getGrowthStage(dayAge);
+                const startingValue = Number(selectedFlock.total_chicks || 0) * CHICK_PRICE;
+                const currentValue = Math.round(startingValue * stage.multiplier);
+                const projectedValue = Math.round(startingValue * 2);
 
-                <div className="bg-blue-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Harvest</p>
-                  <h3 className="text-2xl font-black">
-                    {daysUntil(selectedFlock.expected_harvest_date) === null
-                      ? "Not set"
-                      : daysUntil(selectedFlock.expected_harvest_date)! <= 0
-                      ? "Ready"
-                      : `${daysUntil(selectedFlock.expected_harvest_date)} days left`}
-                  </h3>
-                </div>
+                return (
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="bg-green-50 rounded-2xl p-5">
+                      <p className="font-bold text-gray-500">Growth Status</p>
+                      <h3 className="text-2xl font-black">
+                        Day {dayAge} / {CYCLE_DAYS}
+                      </h3>
+                    </div>
 
-                <div className="bg-yellow-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Chicks Alive</p>
-                  <h3 className="text-2xl font-black">
-                    {selectedFlock.alive_count} / {selectedFlock.total_chicks}
-                  </h3>
-                </div>
+                    <div className="bg-blue-50 rounded-2xl p-5">
+                      <p className="font-bold text-gray-500">Current Stage</p>
+                      <h3 className="text-2xl font-black">
+                        {stage.icon} {stage.name}
+                      </h3>
+                    </div>
 
-                <div className="bg-emerald-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Caretaker</p>
-                  <h3 className="text-2xl font-black">
-                    {selectedFlock.caretaker_name || "Not assigned"}
-                  </h3>
-                </div>
+                    <div className="bg-yellow-50 rounded-2xl p-5">
+                      <p className="font-bold text-gray-500">Chicks Alive</p>
+                      <h3 className="text-2xl font-black">
+                        {selectedFlock.alive_count} / {selectedFlock.total_chicks}
+                      </h3>
+                    </div>
+
+                    <div className="bg-purple-50 rounded-2xl p-5">
+                      <p className="font-bold text-gray-500">Starting Value</p>
+                      <h3 className="text-2xl font-black">{money(startingValue)}</h3>
+                    </div>
+
+                    <div className="bg-amber-50 rounded-2xl p-5">
+                      <p className="font-bold text-gray-500">Current Value</p>
+                      <h3 className="text-2xl font-black">{money(currentValue)}</h3>
+                    </div>
+
+                    <div className="bg-emerald-50 rounded-2xl p-5">
+                      <p className="font-bold text-gray-500">Projected Prime Value</p>
+                      <h3 className="text-2xl font-black">{money(projectedValue)}</h3>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="mt-5 bg-emerald-50 border border-emerald-100 rounded-2xl p-5">
+                <p className="font-bold text-gray-500">Assigned Caretaker</p>
+                <h3 className="text-2xl font-black text-green-700">
+                  👨‍🌾 {selectedFlock.caretaker_name || "Not assigned"}
+                </h3>
               </div>
 
               <div className="mt-5 bg-orange-50 border border-orange-100 rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-black text-orange-700">🌾 Inventory Panel</h3>
-                  {selectedLowStock.length > 0 ? (
+                  {selectedLowStock.length > 0 && (
                     <span className="bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
                       {selectedLowStock.length} low stock
-                    </span>
-                  ) : (
-                    <span className="bg-green-600 text-white text-xs font-black px-3 py-1 rounded-full">
-                      healthy
                     </span>
                   )}
                 </div>
 
                 {selectedInventory.length === 0 ? (
-                  <p className="text-sm text-gray-600">No inventory assigned to this flock yet.</p>
+                  <p className="text-sm text-gray-600">No supplies assigned to this flock yet.</p>
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {selectedInventory.map((item) => {
                       const isLow =
                         Number(item.remaining_qty || 0) <= Number(item.low_stock_level || 0);
 
+                      const percent = Math.min(
+                        100,
+                        Math.round(
+                          (Number(item.remaining_qty || 0) /
+                            Math.max(Number(item.starting_qty || 1), 1)) *
+                            100
+                        )
+                      );
+
                       return (
                         <div key={item.id} className="bg-white rounded-2xl p-4 border">
                           <div className="flex justify-between gap-3">
                             <div>
-                              <p className="font-black">{item.item_name}</p>
-                              <p className="text-xs text-gray-500">
-                                {item.category || "SUPPLY"} • Low level:{" "}
-                                {item.low_stock_level} {item.unit}
+                              <p className="font-black">🌾 {item.item_name}</p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {item.remaining_qty} {item.unit || ""} remaining
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Low level: {item.low_stock_level} {item.unit || ""}
                               </p>
                             </div>
 
-                            <span
-                              className={
-                                isLow
-                                  ? "text-red-600 font-black"
-                                  : "text-green-700 font-black"
-                              }
-                            >
-                              {item.remaining_qty} {item.unit}
-                            </span>
+                            {isLow && (
+                              <span className="h-fit bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
+                                LOW
+                              </span>
+                            )}
                           </div>
 
                           <div className="mt-3 w-full bg-gray-100 rounded-full h-3">
@@ -689,18 +766,21 @@ export default function MyFlockPage() {
                                   ? "bg-red-500 h-3 rounded-full"
                                   : "bg-green-600 h-3 rounded-full"
                               }
-                              style={{
-                                width: `${Math.min(
-                                  100,
-                                  Math.round(
-                                    (Number(item.remaining_qty || 0) /
-                                      Math.max(Number(item.starting_qty || 1), 1)) *
-                                      100
-                                  )
-                                )}%`,
-                              }}
+                              style={{ width: `${percent}%` }}
                             />
                           </div>
+
+                          <button
+                            onClick={() => {
+                              setActiveInventory(item);
+                              setQtyUsed(1);
+                              setUsedBy(selectedFlock.caretaker_name || "");
+                              setPurpose("Morning feeding");
+                            }}
+                            className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-black"
+                          >
+                            Record Usage
+                          </button>
                         </div>
                       );
                     })}
@@ -708,54 +788,59 @@ export default function MyFlockPage() {
                 )}
               </div>
 
-              <div className="mt-5 bg-green-50 border border-green-100 rounded-2xl p-5">
-                <h3 className="font-black text-green-700 mb-4">🌾 Record Inventory Usage</h3>
+              {activeInventory && (
+                <div className="mt-5 bg-green-50 border border-green-100 rounded-2xl p-5">
+                  <div className="flex justify-between gap-3 mb-4">
+                    <div>
+                      <h3 className="font-black text-green-700">
+                        🌾 Record Usage: {activeInventory.item_name}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Remaining: {activeInventory.remaining_qty} {activeInventory.unit}
+                      </p>
+                    </div>
 
-                <div className="grid md:grid-cols-2 gap-3">
-                  <select
-                    className="border p-3 rounded-xl"
-                    value={selectedInventoryId}
-                    onChange={(e) => setSelectedInventoryId(e.target.value)}
+                    <button
+                      onClick={() => setActiveInventory(null)}
+                      className="bg-white border px-3 py-2 rounded-xl font-bold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-3">
+                    <input
+                      type="number"
+                      className="border p-3 rounded-xl"
+                      value={qtyUsed}
+                      onChange={(e) => setQtyUsed(Number(e.target.value))}
+                      placeholder="Qty Used"
+                    />
+
+                    <input
+                      className="border p-3 rounded-xl"
+                      value={usedBy}
+                      onChange={(e) => setUsedBy(e.target.value)}
+                      placeholder="Used By"
+                    />
+
+                    <input
+                      className="border p-3 rounded-xl"
+                      value={purpose}
+                      onChange={(e) => setPurpose(e.target.value)}
+                      placeholder="Purpose"
+                    />
+                  </div>
+
+                  <button
+                    onClick={submitInventoryUsage}
+                    disabled={deducting}
+                    className="mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-5 py-3 rounded-xl font-black"
                   >
-                    <option value="">Select Inventory</option>
-                    {selectedInventory.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.item_name} — {item.remaining_qty} {item.unit}
-                      </option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="number"
-                    className="border p-3 rounded-xl"
-                    value={qtyUsed}
-                    onChange={(e) => setQtyUsed(Number(e.target.value))}
-                    placeholder="Qty Used"
-                  />
-
-                  <input
-                    className="border p-3 rounded-xl"
-                    value={usedBy}
-                    onChange={(e) => setUsedBy(e.target.value)}
-                    placeholder="Used By"
-                  />
-
-                  <input
-                    className="border p-3 rounded-xl"
-                    value={purpose}
-                    onChange={(e) => setPurpose(e.target.value)}
-                    placeholder="Purpose"
-                  />
+                    {deducting ? "Saving..." : "Save Usage"}
+                  </button>
                 </div>
-
-                <button
-                  onClick={submitInventoryUsage}
-                  disabled={deducting}
-                  className="mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-5 py-3 rounded-xl font-black"
-                >
-                  {deducting ? "Deducting..." : "Deduct Inventory"}
-                </button>
-              </div>
+              )}
 
               <div className="mt-5 bg-red-50 border border-red-100 rounded-2xl p-5">
                 <h3 className="font-black text-red-700">⚠️ Risk Management</h3>
@@ -767,7 +852,7 @@ export default function MyFlockPage() {
 
                   {selectedLowStock.length > 0 && (
                     <p className="text-red-700 font-bold">
-                      • {selectedLowStock.length} inventory item(s) need reorder.
+                      • {selectedLowStock.length} supply item(s) need reorder.
                     </p>
                   )}
 
