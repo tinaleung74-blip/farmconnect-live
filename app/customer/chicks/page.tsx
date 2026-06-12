@@ -44,10 +44,21 @@ type UsageLog = {
   created_at?: string;
 };
 
-type Caretaker = {
+type HiredCaretaker = {
   id: string;
-  full_name: string;
+  profile_id: string | null;
+  caretaker_id: string;
+  caretaker_name: string;
+  flock_id: string | null;
+  duration_days: number | null;
+  rate_per_chick: number | null;
+  total_chicks: number | null;
+  total_fee: number | null;
   status: string | null;
+  payment_status: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  created_at?: string;
 };
 
 const CHICK_PRICE = 1000;
@@ -86,18 +97,74 @@ function lowStockItems(items: InventoryItem[]) {
 }
 
 function getGrowthStage(day: number) {
-  if (day <= 7) return { icon: "🐣", name: "Hatchling", multiplier: 1, label: "Premium chick starting stage" };
-  if (day <= 15) return { icon: "🐥", name: "Starter", multiplier: 1.15, label: "Early growth stage" };
-  if (day <= 25) return { icon: "🐤", name: "Juvenile", multiplier: 1.35, label: "Growing value stage" };
-  if (day <= 35) return { icon: "🐔", name: "Adolescent", multiplier: 1.65, label: "Premium development stage" };
-  return { icon: "🏆", name: "Prime", multiplier: 2, label: "Projected harvest value stage" };
+  if (day <= 7) {
+    return {
+      icon: "🐣",
+      name: "Hatchling",
+      multiplier: 1,
+      label: "Premium chick starting stage",
+    };
+  }
+
+  if (day <= 15) {
+    return {
+      icon: "🐥",
+      name: "Starter",
+      multiplier: 1.15,
+      label: "Early growth stage",
+    };
+  }
+
+  if (day <= 25) {
+    return {
+      icon: "🐤",
+      name: "Juvenile",
+      multiplier: 1.35,
+      label: "Growing value stage",
+    };
+  }
+
+  if (day <= 35) {
+    return {
+      icon: "🐔",
+      name: "Adolescent",
+      multiplier: 1.65,
+      label: "Premium development stage",
+    };
+  }
+
+  return {
+    icon: "🏆",
+    name: "Prime",
+    multiplier: 2,
+    label: "Projected harvest value stage",
+  };
+}
+
+function getCurrentProfileId() {
+  const rawProfileId =
+    localStorage.getItem("farmconnect_profile_id") ||
+    localStorage.getItem("profile_id") ||
+    localStorage.getItem("customer_id");
+
+  if (rawProfileId) return rawProfileId;
+
+  const rawUser = localStorage.getItem("farmconnect_user");
+  if (!rawUser) return null;
+
+  try {
+    const profile = JSON.parse(rawUser);
+    return profile?.id || profile?.profile_id || profile?.customer_id || null;
+  } catch {
+    return null;
+  }
 }
 
 export default function MyFlockPage() {
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
-  const [caretakers, setCaretakers] = useState<Caretaker[]>([]);
+  const [caretakers, setCaretakers] = useState<HiredCaretaker[]>([]);
 
   const [selectedCaretaker, setSelectedCaretaker] = useState<Record<string, string>>({});
   const [breed, setBreed] = useState("Premium Broiler");
@@ -113,18 +180,17 @@ export default function MyFlockPage() {
   const [deducting, setDeducting] = useState(false);
 
   async function loadFlocks() {
-    const user = localStorage.getItem("farmconnect_user");
-    if (!user) {
+    const profileId = getCurrentProfileId();
+
+    if (!profileId) {
       setLoading(false);
       return;
     }
 
-    const profile = JSON.parse(user);
-
     const { data, error } = await supabase
       .from("flocks")
       .select("*")
-      .eq("profile_id", profile.id)
+      .eq("profile_id", profileId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -137,41 +203,48 @@ export default function MyFlockPage() {
   }
 
   async function loadInventory() {
-    const user = localStorage.getItem("farmconnect_user");
-    if (!user) return;
-
-    const profile = JSON.parse(user);
+    const profileId = getCurrentProfileId();
+    if (!profileId) return;
 
     const { data } = await supabase
       .from("flock_inventory")
       .select("*")
-      .eq("profile_id", profile.id)
+      .eq("profile_id", profileId)
       .order("created_at", { ascending: false });
 
     setInventory(data || []);
   }
 
   async function loadUsageLogs() {
-    const user = localStorage.getItem("farmconnect_user");
-    if (!user) return;
-
-    const profile = JSON.parse(user);
+    const profileId = getCurrentProfileId();
+    if (!profileId) return;
 
     const { data } = await supabase
       .from("inventory_usage_logs")
       .select("*")
-      .eq("profile_id", profile.id)
+      .eq("profile_id", profileId)
       .order("created_at", { ascending: false });
 
     setUsageLogs(data || []);
   }
 
   async function loadCaretakers() {
+    const profileId = getCurrentProfileId();
+
+    if (!profileId) {
+      setCaretakers([]);
+      return;
+    }
+
     const { data, error } = await supabase
-      .from("caretakers")
-      .select("id,full_name,status")
-      .eq("status", "HIRED")
-      .order("full_name", { ascending: true });
+      .from("customer_caretaker_hires")
+      .select(
+        "id,profile_id,caretaker_id,caretaker_name,flock_id,duration_days,rate_per_chick,total_chicks,total_fee,status,payment_status,start_date,end_date,created_at"
+      )
+      .eq("profile_id", profileId)
+      .eq("status", "ACTIVE")
+      .eq("payment_status", "PAID")
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.log(error.message);
@@ -192,10 +265,9 @@ export default function MyFlockPage() {
   }
 
   async function createFlock() {
-    const user = localStorage.getItem("farmconnect_user");
-    if (!user) return alert("Please login first");
+    const profileId = getCurrentProfileId();
+    if (!profileId) return alert("Please login first");
 
-    const profile = JSON.parse(user);
     const batchNo = "FC-" + Math.floor(100000 + Math.random() * 900000);
 
     const defaultHarvest = new Date();
@@ -204,7 +276,7 @@ export default function MyFlockPage() {
     const { data, error } = await supabase
       .from("flocks")
       .insert({
-        profile_id: profile.id,
+        profile_id: profileId,
         batch_no: batchNo,
         breed,
         total_chicks: totalChicks,
@@ -221,7 +293,7 @@ export default function MyFlockPage() {
 
     if (data?.id) {
       await supabase.from("flock_inventory").insert({
-        profile_id: profile.id,
+        profile_id: profileId,
         flock_id: data.id,
         item_name: "Starter Feed",
         category: "FEED",
@@ -239,18 +311,47 @@ export default function MyFlockPage() {
   }
 
   async function assignCaretaker(flockId: string) {
-    const caretaker = selectedCaretaker[flockId];
+    const hireId = selectedCaretaker[flockId];
 
-    if (!caretaker) return alert("Please select hired caretaker first.");
+    if (!hireId) return alert("Please select ACTIVE + PAID caretaker first.");
 
-    const { error } = await supabase
+    const hire = caretakers.find((item) => item.id === hireId);
+
+    if (!hire) return alert("Caretaker hire record not found.");
+    if (hire.status !== "ACTIVE" || hire.payment_status !== "PAID") {
+      return alert("Only ACTIVE + PAID caretakers can be assigned.");
+    }
+
+    const { error: flockError } = await supabase
       .from("flocks")
-      .update({ caretaker_name: caretaker })
+      .update({
+        caretaker_name: hire.caretaker_name,
+      })
       .eq("id", flockId);
 
-    if (error) return alert(error.message);
+    if (flockError) return alert(flockError.message);
 
-    alert(`${caretaker} assigned successfully!`);
+    const { error: caretakerError } = await supabase
+      .from("caretakers")
+      .update({
+        assigned_flock_id: flockId,
+        assignment_start: new Date().toISOString().slice(0, 10),
+        status: "ASSIGNED",
+      })
+      .eq("id", hire.caretaker_id);
+
+    if (caretakerError) return alert(caretakerError.message);
+
+    const { error: hireError } = await supabase
+      .from("customer_caretaker_hires")
+      .update({
+        flock_id: flockId,
+      })
+      .eq("id", hire.id);
+
+    if (hireError) return alert(hireError.message);
+
+    alert(`${hire.caretaker_name} assigned successfully!`);
     await refreshPageData();
   }
 
@@ -289,6 +390,10 @@ export default function MyFlockPage() {
   useEffect(() => {
     if (selectedFlock?.caretaker_name) setUsedBy(selectedFlock.caretaker_name);
   }, [selectedFlock]);
+
+  const availableCaretakers = useMemo(() => {
+    return caretakers.filter((item) => !item.flock_id);
+  }, [caretakers]);
 
   const summary = useMemo(() => {
     const alive = flocks.reduce((sum, f) => sum + Number(f.alive_count || 0), 0);
@@ -405,12 +510,14 @@ export default function MyFlockPage() {
           </div>
 
           <p className="text-sm text-gray-500 mt-3">
-            Temporary premium value: {money(CHICK_PRICE)} per chick • Default cycle: {CYCLE_DAYS} days
+            Premium value: {money(CHICK_PRICE)} per chick • Default cycle: {CYCLE_DAYS} days
           </p>
         </section>
 
         {loading ? (
-          <div className="bg-white rounded-3xl p-8 shadow border">Loading flock command center...</div>
+          <div className="bg-white rounded-3xl p-8 shadow border">
+            Loading flock command center...
+          </div>
         ) : flocks.length === 0 ? (
           <div className="bg-white rounded-3xl p-8 shadow border">
             No chick batches yet. Create your first batch above.
@@ -463,11 +570,16 @@ export default function MyFlockPage() {
 
                   <div className="mb-5">
                     <div className="flex justify-between text-sm font-bold text-gray-600 mb-2">
-                      <span>Day {dayAge} / {CYCLE_DAYS} Grow Cycle</span>
+                      <span>
+                        Day {dayAge} / {CYCLE_DAYS} Grow Cycle
+                      </span>
                       <span>{growthProgress}%</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-4">
-                      <div className="bg-green-600 h-4 rounded-full" style={{ width: `${growthProgress}%` }} />
+                      <div
+                        className="bg-green-600 h-4 rounded-full"
+                        style={{ width: `${growthProgress}%` }}
+                      />
                     </div>
                   </div>
 
@@ -498,7 +610,11 @@ export default function MyFlockPage() {
                     <div className="bg-blue-50 rounded-2xl p-4">
                       <p className="text-gray-500">Harvest Countdown</p>
                       <h3 className="text-lg font-black">
-                        {harvestLeft === null ? "Not set" : harvestLeft <= 0 ? "Ready" : `${harvestLeft} days left`}
+                        {harvestLeft === null
+                          ? "Not set"
+                          : harvestLeft <= 0
+                          ? "Ready"
+                          : `${harvestLeft} days left`}
                       </h3>
                     </div>
 
@@ -518,7 +634,9 @@ export default function MyFlockPage() {
                     <p className="text-green-700 font-black text-xl mt-1">
                       👨‍🌾 {flock.caretaker_name || "No caretaker assigned yet"}
                     </p>
-                    <p className="text-xs text-gray-500 mt-2">Only hired caretakers can be assigned.</p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Only ACTIVE + PAID caretaker hires can be assigned.
+                    </p>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-3 mb-5">
@@ -532,12 +650,19 @@ export default function MyFlockPage() {
                         })
                       }
                     >
-                      <option value="">Choose Hired Caretaker</option>
-                      {caretakers.map((c) => (
-                        <option key={c.id} value={c.full_name}>
-                          {c.full_name}
+                      <option value="">Choose ACTIVE + PAID Caretaker</option>
+
+                      {availableCaretakers.length === 0 ? (
+                        <option value="" disabled>
+                          No ACTIVE + PAID caretaker available
                         </option>
-                      ))}
+                      ) : (
+                        availableCaretakers.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.caretaker_name}
+                          </option>
+                        ))
+                      )}
                     </select>
 
                     <button
@@ -558,7 +683,9 @@ export default function MyFlockPage() {
 
                     <div className="bg-purple-50 rounded-2xl p-4">
                       <p className="text-sm font-bold text-purple-700">Usage Logs</p>
-                      <p className="text-xs text-gray-600 mt-1">{flockUsageLogs.length} record(s)</p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {flockUsageLogs.length} record(s)
+                      </p>
                     </div>
                   </div>
 
@@ -613,12 +740,16 @@ export default function MyFlockPage() {
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="bg-green-50 rounded-2xl p-5">
                       <p className="font-bold text-gray-500">Growth Status</p>
-                      <h3 className="text-2xl font-black">Day {dayAge} / {CYCLE_DAYS}</h3>
+                      <h3 className="text-2xl font-black">
+                        Day {dayAge} / {CYCLE_DAYS}
+                      </h3>
                     </div>
 
                     <div className="bg-blue-50 rounded-2xl p-5">
                       <p className="font-bold text-gray-500">Current Stage</p>
-                      <h3 className="text-2xl font-black">{stage.icon} {stage.name}</h3>
+                      <h3 className="text-2xl font-black">
+                        {stage.icon} {stage.name}
+                      </h3>
                     </div>
 
                     <div className="bg-yellow-50 rounded-2xl p-5">
@@ -702,7 +833,11 @@ export default function MyFlockPage() {
 
                           <div className="mt-3 w-full bg-gray-100 rounded-full h-3">
                             <div
-                              className={isLow ? "bg-red-500 h-3 rounded-full" : "bg-green-600 h-3 rounded-full"}
+                              className={
+                                isLow
+                                  ? "bg-red-500 h-3 rounded-full"
+                                  : "bg-green-600 h-3 rounded-full"
+                              }
                               style={{ width: `${percent}%` }}
                             />
                           </div>
