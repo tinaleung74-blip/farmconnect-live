@@ -46,7 +46,7 @@ type UsageLog = {
 
 type Caretaker = {
   id: string;
-  name: string;
+  full_name: string;
   status: string | null;
 };
 
@@ -86,48 +86,11 @@ function lowStockItems(items: InventoryItem[]) {
 }
 
 function getGrowthStage(day: number) {
-  if (day <= 7) {
-    return {
-      icon: "🐣",
-      name: "Hatchling",
-      multiplier: 1,
-      label: "Premium chick starting stage",
-    };
-  }
-
-  if (day <= 15) {
-    return {
-      icon: "🐥",
-      name: "Starter",
-      multiplier: 1.15,
-      label: "Early growth stage",
-    };
-  }
-
-  if (day <= 25) {
-    return {
-      icon: "🐤",
-      name: "Juvenile",
-      multiplier: 1.35,
-      label: "Growing value stage",
-    };
-  }
-
-  if (day <= 35) {
-    return {
-      icon: "🐔",
-      name: "Adolescent",
-      multiplier: 1.65,
-      label: "Premium development stage",
-    };
-  }
-
-  return {
-    icon: "🏆",
-    name: "Prime",
-    multiplier: 2,
-    label: "Projected harvest value stage",
-  };
+  if (day <= 7) return { icon: "🐣", name: "Hatchling", multiplier: 1, label: "Premium chick starting stage" };
+  if (day <= 15) return { icon: "🐥", name: "Starter", multiplier: 1.15, label: "Early growth stage" };
+  if (day <= 25) return { icon: "🐤", name: "Juvenile", multiplier: 1.35, label: "Growing value stage" };
+  if (day <= 35) return { icon: "🐔", name: "Adolescent", multiplier: 1.65, label: "Premium development stage" };
+  return { icon: "🏆", name: "Prime", multiplier: 2, label: "Projected harvest value stage" };
 }
 
 export default function MyFlockPage() {
@@ -179,13 +142,13 @@ export default function MyFlockPage() {
 
     const profile = JSON.parse(user);
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("flock_inventory")
       .select("*")
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: false });
 
-    if (!error && data) setInventory(data);
+    setInventory(data || []);
   }
 
   async function loadUsageLogs() {
@@ -194,23 +157,29 @@ export default function MyFlockPage() {
 
     const profile = JSON.parse(user);
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("inventory_usage_logs")
       .select("*")
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: false });
 
-    if (!error && data) setUsageLogs(data);
+    setUsageLogs(data || []);
   }
 
   async function loadCaretakers() {
     const { data, error } = await supabase
       .from("caretakers")
-      .select("id,name,status")
+      .select("id,full_name,status")
       .eq("status", "HIRED")
-      .order("name", { ascending: true });
+      .order("full_name", { ascending: true });
 
-    if (!error && data) setCaretakers(data || []);
+    if (error) {
+      console.log(error.message);
+      setCaretakers([]);
+      return;
+    }
+
+    setCaretakers(data || []);
   }
 
   async function refreshPageData() {
@@ -241,8 +210,7 @@ export default function MyFlockPage() {
         total_chicks: totalChicks,
         alive_count: totalChicks,
         mortality_count: 0,
-        expected_harvest_date:
-          harvestDate || defaultHarvest.toISOString().slice(0, 10),
+        expected_harvest_date: harvestDate || defaultHarvest.toISOString().slice(0, 10),
         status: "ACTIVE",
         caretaker_name: null,
       })
@@ -319,9 +287,7 @@ export default function MyFlockPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedFlock?.caretaker_name) {
-      setUsedBy(selectedFlock.caretaker_name);
-    }
+    if (selectedFlock?.caretaker_name) setUsedBy(selectedFlock.caretaker_name);
   }, [selectedFlock]);
 
   const summary = useMemo(() => {
@@ -345,12 +311,8 @@ export default function MyFlockPage() {
     return { alive, noCaretaker, nearHarvest, inventoryAlerts, usageToday };
   }, [flocks, inventory, usageLogs]);
 
-  const selectedInventory = selectedFlock
-    ? inventoryForFlock(inventory, selectedFlock.id)
-    : [];
-
+  const selectedInventory = selectedFlock ? inventoryForFlock(inventory, selectedFlock.id) : [];
   const selectedLowStock = lowStockItems(selectedInventory);
-
   const selectedUsageLogs = selectedFlock
     ? usageLogs.filter((log) => log.flock_id === selectedFlock.id)
     : [];
@@ -448,9 +410,7 @@ export default function MyFlockPage() {
         </section>
 
         {loading ? (
-          <div className="bg-white rounded-3xl p-8 shadow border">
-            Loading flock command center...
-          </div>
+          <div className="bg-white rounded-3xl p-8 shadow border">Loading flock command center...</div>
         ) : flocks.length === 0 ? (
           <div className="bg-white rounded-3xl p-8 shadow border">
             No chick batches yet. Create your first batch above.
@@ -503,16 +463,11 @@ export default function MyFlockPage() {
 
                   <div className="mb-5">
                     <div className="flex justify-between text-sm font-bold text-gray-600 mb-2">
-                      <span>
-                        Day {dayAge} / {CYCLE_DAYS} Grow Cycle
-                      </span>
+                      <span>Day {dayAge} / {CYCLE_DAYS} Grow Cycle</span>
                       <span>{growthProgress}%</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-4">
-                      <div
-                        className="bg-green-600 h-4 rounded-full"
-                        style={{ width: `${growthProgress}%` }}
-                      />
+                      <div className="bg-green-600 h-4 rounded-full" style={{ width: `${growthProgress}%` }} />
                     </div>
                   </div>
 
@@ -543,11 +498,7 @@ export default function MyFlockPage() {
                     <div className="bg-blue-50 rounded-2xl p-4">
                       <p className="text-gray-500">Harvest Countdown</p>
                       <h3 className="text-lg font-black">
-                        {harvestLeft === null
-                          ? "Not set"
-                          : harvestLeft <= 0
-                          ? "Ready"
-                          : `${harvestLeft} days left`}
+                        {harvestLeft === null ? "Not set" : harvestLeft <= 0 ? "Ready" : `${harvestLeft} days left`}
                       </h3>
                     </div>
 
@@ -567,9 +518,7 @@ export default function MyFlockPage() {
                     <p className="text-green-700 font-black text-xl mt-1">
                       👨‍🌾 {flock.caretaker_name || "No caretaker assigned yet"}
                     </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Only hired caretakers can be assigned.
-                    </p>
+                    <p className="text-xs text-gray-500 mt-2">Only hired caretakers can be assigned.</p>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-3 mb-5">
@@ -585,8 +534,8 @@ export default function MyFlockPage() {
                     >
                       <option value="">Choose Hired Caretaker</option>
                       {caretakers.map((c) => (
-                        <option key={c.id} value={c.name}>
-                          {c.name}
+                        <option key={c.id} value={c.full_name}>
+                          {c.full_name}
                         </option>
                       ))}
                     </select>
@@ -609,17 +558,13 @@ export default function MyFlockPage() {
 
                     <div className="bg-purple-50 rounded-2xl p-4">
                       <p className="text-sm font-bold text-purple-700">Usage Logs</p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {flockUsageLogs.length} record(s)
-                      </p>
+                      <p className="text-xs text-gray-600 mt-1">{flockUsageLogs.length} record(s)</p>
                     </div>
                   </div>
 
                   <div className="bg-gray-50 rounded-2xl p-4 mb-5">
                     <p className="text-sm text-gray-500 font-bold">Projected Prime Value</p>
-                    <h3 className="text-2xl font-black text-green-700">
-                      {money(projectedValue)}
-                    </h3>
+                    <h3 className="text-2xl font-black text-green-700">{money(projectedValue)}</h3>
                   </div>
 
                   <button
@@ -668,16 +613,12 @@ export default function MyFlockPage() {
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="bg-green-50 rounded-2xl p-5">
                       <p className="font-bold text-gray-500">Growth Status</p>
-                      <h3 className="text-2xl font-black">
-                        Day {dayAge} / {CYCLE_DAYS}
-                      </h3>
+                      <h3 className="text-2xl font-black">Day {dayAge} / {CYCLE_DAYS}</h3>
                     </div>
 
                     <div className="bg-blue-50 rounded-2xl p-5">
                       <p className="font-bold text-gray-500">Current Stage</p>
-                      <h3 className="text-2xl font-black">
-                        {stage.icon} {stage.name}
-                      </h3>
+                      <h3 className="text-2xl font-black">{stage.icon} {stage.name}</h3>
                     </div>
 
                     <div className="bg-yellow-50 rounded-2xl p-5">
@@ -761,11 +702,7 @@ export default function MyFlockPage() {
 
                           <div className="mt-3 w-full bg-gray-100 rounded-full h-3">
                             <div
-                              className={
-                                isLow
-                                  ? "bg-red-500 h-3 rounded-full"
-                                  : "bg-green-600 h-3 rounded-full"
-                              }
+                              className={isLow ? "bg-red-500 h-3 rounded-full" : "bg-green-600 h-3 rounded-full"}
                               style={{ width: `${percent}%` }}
                             />
                           </div>
@@ -876,9 +813,7 @@ export default function MyFlockPage() {
                 <h3 className="font-black text-purple-700 mb-4">📋 Usage Logs</h3>
 
                 {selectedUsageLogs.length === 0 ? (
-                  <p className="text-sm text-gray-700">
-                    No usage records yet for this flock.
-                  </p>
+                  <p className="text-sm text-gray-700">No usage records yet for this flock.</p>
                 ) : (
                   <div className="space-y-3">
                     {selectedUsageLogs.slice(0, 10).map((log) => (
@@ -898,9 +833,7 @@ export default function MyFlockPage() {
                           </div>
 
                           <p className="text-xs text-gray-500">
-                            {log.created_at
-                              ? new Date(log.created_at).toLocaleString()
-                              : "No date"}
+                            {log.created_at ? new Date(log.created_at).toLocaleString() : "No date"}
                           </p>
                         </div>
                       </div>
