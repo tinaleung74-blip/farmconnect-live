@@ -6,15 +6,15 @@ import { supabase } from "@/lib/supabase";
 
 type Stats = {
   customers: number;
+  memberships: number;
   caretakers: number;
   caretakerHires: number;
   flocks: number;
   cashin: number;
   cashout: number;
   wallet: number;
-  risks: number;
   sellRequests: number;
-  memberships: number;
+  risks: number;
 };
 
 type WalletTx = {
@@ -36,29 +36,25 @@ export default function AdminDashboardPage() {
   const [walletTx, setWalletTx] = useState<WalletTx[]>([]);
   const [stats, setStats] = useState<Stats>({
     customers: 0,
+    memberships: 0,
     caretakers: 0,
     caretakerHires: 0,
     flocks: 0,
     cashin: 0,
     cashout: 0,
     wallet: 0,
-    risks: 0,
     sellRequests: 0,
-    memberships: 0,
+    risks: 0,
   });
 
   useEffect(() => {
     loadDashboard();
   }, []);
 
-  async function safeCount(table: string, filter?: { column: string; value: string }) {
-    let query = supabase.from(table).select("*", { count: "exact", head: true });
-
-    if (filter) {
-      query = query.eq(filter.column, filter.value);
-    }
-
-    const { count, error } = await query;
+  async function safeCount(table: string) {
+    const { count, error } = await supabase
+      .from(table)
+      .select("*", { count: "exact", head: true });
 
     if (error) {
       console.error(`${table} count error:`, error.message);
@@ -73,27 +69,27 @@ export default function AdminDashboardPage() {
 
     const [
       customers,
+      memberships,
       caretakers,
       caretakerHires,
       flocks,
       cashin,
       cashout,
       wallet,
-      risks,
       sellRequests,
-      memberships,
+      risks,
       walletRes,
     ] = await Promise.all([
       safeCount("profiles"),
+      safeCount("membership_payments"),
       safeCount("caretakers"),
       safeCount("customer_caretaker_hires"),
       safeCount("flocks"),
       safeCount("cashin_requests"),
       safeCount("cashout_requests"),
       safeCount("wallet_transactions"),
-      safeCount("risk_alerts"),
       safeCount("sell_chicken_requests"),
-      safeCount("membership_payments"),
+      safeCount("risk_alerts"),
       supabase
         .from("wallet_transactions")
         .select("id,transaction_type,amount,status")
@@ -102,15 +98,15 @@ export default function AdminDashboardPage() {
 
     setStats({
       customers,
+      memberships,
       caretakers,
       caretakerHires,
       flocks,
       cashin,
       cashout,
       wallet,
-      risks,
       sellRequests,
-      memberships,
+      risks,
     });
 
     setWalletTx((walletRes.data || []) as WalletTx[]);
@@ -144,6 +140,13 @@ export default function AdminDashboardPage() {
   }, [walletTx]);
 
   const cards = [
+    {
+      title: "Analytics",
+      value: "V27",
+      desc: "Revenue, sales, customers, flocks, and business intelligence",
+      href: "/admin/analytics",
+      icon: "📊",
+    },
     {
       title: "Customers",
       value: stats.customers,
@@ -220,12 +223,12 @@ export default function AdminDashboardPage() {
     <main style={page}>
       <section style={hero}>
         <div>
-          <p style={eyebrow}>FarmConnect Live Admin V26.6</p>
+          <p style={eyebrow}>FarmConnect Live Admin V27</p>
           <h1 style={title}>Executive Admin Dashboard</h1>
           <p style={subtitle}>
-            Central command center for customers, KYC, memberships, caretakers,
-            sell chicken approvals, treasury, wallet, risk monitoring, and audit
-            controls.
+            Central command center for analytics, customers, KYC, memberships,
+            caretakers, sell chicken approvals, treasury, wallet, risk
+            monitoring, and audit controls.
           </p>
         </div>
 
@@ -278,13 +281,16 @@ export default function AdminDashboardPage() {
         <div>
           <h2 style={sectionTitle}>Admin Control Panel</h2>
           <p style={sectionText}>
-            Use these modules for customer profiling, membership approval,
-            caretaker hire approvals, sell chicken approvals, treasury, audit,
-            financial monitoring, and investor-ready reporting.
+            Use these modules for analytics, customer profiling, membership
+            approval, caretaker hire approvals, sell chicken approvals,
+            treasury, audit, financial monitoring, and investor-ready reporting.
           </p>
         </div>
 
         <div style={buttonGrid}>
+          <Link href="/admin/analytics" style={button}>
+            Analytics
+          </Link>
           <Link href="/admin/customers" style={button}>
             Customers
           </Link>
