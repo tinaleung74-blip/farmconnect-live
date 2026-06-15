@@ -8,42 +8,42 @@ const cards = [
     title: "My Flock",
     icon: "🐣",
     href: "/customer/chicks",
-    desc: "Manage chick batches, caretaker assignment, survival rate, and harvest schedule.",
+    desc: "Monitor chicks as they grow into mature chickens and ready-to-sell tandang.",
     badge: "Core",
   },
   {
     title: "Hire Caretaker",
     icon: "🧑‍🌾",
     href: "/customer/caretakers",
-    desc: "Hire a verified FarmConnect caretaker for your premium chick batch.",
+    desc: "Hire a verified FarmConnect caretaker for your poultry batch.",
     badge: "Care",
   },
   {
     title: "Marketplace",
     icon: "🛒",
     href: "/customer/marketplace",
-    desc: "Buy chicks, feeds, vitamins, vaccines, and supplements by category.",
+    desc: "Buy chicks, feeds, vitamins, vaccines, and supplements.",
     badge: "Shop",
   },
   {
     title: "Inventory",
     icon: "📦",
     href: "/customer/inventory",
-    desc: "View feeds, vitamins, vaccines, and supplies purchased from marketplace.",
+    desc: "View supplies purchased from marketplace and synced to flock inventory.",
     badge: "Stock",
   },
   {
     title: "Weight Tracker",
     icon: "📈",
     href: "/customer/weight-updates",
-    desc: "Track daily growth and average weight updates.",
+    desc: "View caretaker-submitted chicken weight and growth updates.",
     badge: "Growth",
   },
   {
     title: "Photo Updates",
     icon: "📸",
     href: "/customer/photo-updates",
-    desc: "View latest farm photos and chick development updates.",
+    desc: "View real farm photos as chicks grow into mature chickens.",
     badge: "Proof",
   },
   {
@@ -54,39 +54,39 @@ const cards = [
     badge: "Live",
   },
   {
-    title: "Harvest",
-    icon: "🐔",
-    href: "/customer/harvest",
-    desc: "View projected revenue, harvest date, and profit estimates.",
-    badge: "ROI",
+    title: "Sell Chicken",
+    icon: "🐓",
+    href: "/customer/sell-chicken",
+    desc: "Sell mature chickens one by one when they become tandang and market-ready.",
+    badge: "Sales",
   },
   {
     title: "Wallet",
     icon: "💰",
     href: "/customer/wallet",
-    desc: "Track earnings, payouts, cash-ins, and wallet transactions.",
+    desc: "Cash-in, cash-out, wallet balance, and FarmConnect credits.",
     badge: "Money",
   },
   {
     title: "Notifications",
     icon: "🔔",
     href: "/customer/notifications",
-    desc: "Receive farm alerts, caretaker reports, and harvest reminders.",
+    desc: "Receive farm alerts, caretaker reports, and selling reminders.",
     badge: "Alerts",
   },
   {
     title: "Settings",
     icon: "⚙️",
     href: "/customer/settings",
-    desc: "Manage profile, account security, and farm preferences.",
+    desc: "Manage profile, account security, farm preferences, and notification settings.",
     badge: "Account",
   },
   {
     title: "Customer Service",
-    icon: "🎧",
+    icon: "🤖",
     href: "/customer/customer-service",
-    desc: "Ask support, report an issue, or request assistance.",
-    badge: "Help",
+    desc: "Chat with FarmConnect AI Assistant or request admin support.",
+    badge: "AI Help",
   },
 ];
 
@@ -132,14 +132,14 @@ export default function DashboardPage() {
         </div>
 
         <section className="relative mb-8 overflow-hidden rounded-[40px] border-4 border-white bg-gradient-to-br from-green-700 via-emerald-500 to-lime-400 p-7 text-white shadow-2xl md:p-10">
-          <div className="absolute bottom-3 right-10 text-8xl">🐔</div>
+          <div className="absolute bottom-3 right-10 text-8xl">🐓</div>
           <div className="absolute bottom-12 right-36 text-5xl">🐣</div>
           <div className="absolute bottom-4 left-10 text-7xl">🌾</div>
           <div className="absolute right-8 top-5 text-5xl">🚜</div>
 
           <div className="relative max-w-3xl">
             <p className="mb-4 w-fit rounded-full bg-white px-4 py-2 text-sm font-black text-green-800">
-              🌞 Your Premium Poultry Operations Are Active
+              🌞 Premium Poultry Operations Active
             </p>
 
             <h1 className="text-4xl font-black leading-tight text-white drop-shadow md:text-6xl">
@@ -147,9 +147,9 @@ export default function DashboardPage() {
             </h1>
 
             <p className="mt-4 text-lg font-black text-green-950">
-              Monitor your premium poultry assets, hire verified caretakers,
-              track growth, view harvest projections, and manage poultry
-              earnings in one dashboard.
+              Monitor chicks as they grow into chickens and mature tandang,
+              manage supplies, view caretaker updates, and sell market-ready
+              chickens one by one.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -161,10 +161,10 @@ export default function DashboardPage() {
               </Link>
 
               <Link
-                href="/customer/caretakers"
+                href="/customer/sell-chicken"
                 className="rounded-full bg-yellow-300 px-5 py-3 font-black text-green-950 shadow hover:bg-yellow-400"
               >
-                🧑‍🌾 Hire Caretaker
+                🐓 Sell Chicken
               </Link>
             </div>
           </div>
@@ -172,10 +172,10 @@ export default function DashboardPage() {
 
         <section className="mb-6 grid gap-4 md:grid-cols-4">
           {[
-            ["🐣 Active Flock", "1", "Batch A001"],
-            ["🧑‍🌾 Caretakers", "4", "Verified pool"],
-            ["📦 Supplies", "4", "In inventory"],
-            ["💰 Est. ROI", "₱200,000", "Prime value"],
+            ["🐣 Active Flock", "Live", "Growing poultry"],
+            ["🐓 Mature Chicken", "Ready", "Tandang stage"],
+            ["📦 Supplies", "Synced", "Inventory active"],
+            ["💰 Wallet", "Credits", "FarmConnect system money"],
           ].map(([label, value, note]) => (
             <div
               key={label}
