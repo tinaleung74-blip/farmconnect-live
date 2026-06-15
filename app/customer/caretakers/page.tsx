@@ -33,16 +33,21 @@ const TOTAL_CHICKS = 100;
 const DURATION_DAYS = 30;
 const RATE_PER_CHICK = 10;
 const REQUEST_AMOUNT = TOTAL_CHICKS * RATE_PER_CHICK;
+const TECHNICAL_FEE_RATE = 0.02;
 
 export default function CustomerCaretakersPage() {
   const [caretakers, setCaretakers] = useState<Caretaker[]>([]);
   const [requests, setRequests] = useState<HireRequest[]>([]);
   const [profileId, setProfileId] = useState("");
   const [profileName, setProfileName] = useState("");
+  const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [requestLoading, setRequestLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  const technicalFee = REQUEST_AMOUNT * TECHNICAL_FEE_RATE;
+  const caretakerServiceFund = REQUEST_AMOUNT - technicalFee;
 
   const sortedCaretakers = useMemo(() => {
     return [...caretakers].sort((a, b) => {
@@ -70,6 +75,7 @@ export default function CustomerCaretakersPage() {
     if (!detectedProfile.id) {
       setProfileId("");
       setProfileName("");
+      setWalletBalance(0);
       setErrorMessage(
         "Missing customer profile ID. Please login again before submitting a caretaker hire request."
       );
@@ -81,6 +87,7 @@ export default function CustomerCaretakersPage() {
     setProfileId(detectedProfile.id);
     setProfileName(detectedProfile.name);
 
+    await loadWallet(detectedProfile.id);
     await loadCaretakers();
     await loadRequests(detectedProfile.id);
 
@@ -134,6 +141,22 @@ export default function CustomerCaretakersPage() {
       id: detectedId,
       name: detectedName,
     };
+  }
+
+  async function loadWallet(currentProfileId: string) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id,wallet_balance")
+      .eq("id", currentProfileId)
+      .single();
+
+    if (error) {
+      setWalletBalance(0);
+      setErrorMessage(`Wallet load error: ${error.message}`);
+      return;
+    }
+
+    setWalletBalance(Number(data?.wallet_balance || 0));
   }
 
   async function loadCaretakers() {
@@ -192,20 +215,68 @@ export default function CustomerCaretakersPage() {
     setRequestLoading(true);
 
     const alreadyPendingOrActive = requests.find((request) => {
+      const requestStatus = (request.status || "").toUpperCase();
+      const paymentStatus = (request.payment_status || "").toUpperCase();
+
       return (
         request.caretaker_id === caretaker.id &&
-        ["PENDING", "ACTIVE"].includes((request.status || "").toUpperCase()) &&
-        ["PENDING", "PAID"].includes(
-          (request.payment_status || "").toUpperCase()
-        )
+        [
+          "PENDING",
+          "PENDING_ADMIN_APPROVAL",
+          "APPROVED",
+          "ACTIVE",
+        ].includes(requestStatus) &&
+        ["PENDING", "PAID"].includes(paymentStatus)
       );
     });
 
     if (alreadyPendingOrActive) {
       setRequestLoading(false);
       setErrorMessage(
-        "You already submitted a request for this caretaker. Please wait for FarmConnect Admin review."
+        "You already submitted a paid or pending request for this caretaker. Please wait for FarmConnect Admin review."
       );
+      return;
+    }
+
+    const { data: freshProfile, error: walletFetchError } = await supabase
+      .from("profiles")
+      .select("id,wallet_balance")
+      .eq("id", detectedProfile.id)
+      .single();
+
+    if (walletFetchError || !freshProfile) {
+      setRequestLoading(false);
+      setErrorMessage(
+        `Wallet check error: ${
+          walletFetchError?.message || "Customer wallet not found."
+        }`
+      );
+      return;
+    }
+
+    const currentWalletBalance = Number(freshProfile.wallet_balance || 0);
+
+    if (currentWalletBalance < REQUEST_AMOUNT) {
+      setRequestLoading(false);
+      setWalletBalance(currentWalletBalance);
+      setErrorMessage(
+        `Insufficient wallet balance. Required: ${formatPeso(
+          REQUEST_AMOUNT
+        )}. Available: ${formatPeso(currentWalletBalance)}. Please cash-in first.`
+      );
+      return;
+    }
+
+    const newWalletBalance = currentWalletBalance - REQUEST_AMOUNT;
+
+    const { error: walletDeductError } = await supabase
+      .from("profiles")
+      .update({ wallet_balance: newWalletBalance })
+      .eq("id", detectedProfile.id);
+
+    if (walletDeductError) {
+      setRequestLoading(false);
+      setErrorMessage(`Wallet deduction error: ${walletDeductError.message}`);
       return;
     }
 
@@ -222,28 +293,77 @@ export default function CustomerCaretakersPage() {
       rate_per_chick: RATE_PER_CHICK,
       total_chicks: TOTAL_CHICKS,
       total_fee: REQUEST_AMOUNT,
-      status: "PENDING",
-      payment_status: "PENDING",
+      status: "PENDING_ADMIN_APPROVAL",
+      payment_status: "PAID",
       start_date: today.toISOString().slice(0, 10),
       end_date: endDate.toISOString().slice(0, 10),
     };
 
-    const { error } = await supabase
+    const { error: insertHireError } = await supabase
       .from("customer_caretaker_hires")
       .insert(requestPayload);
 
-    if (error) {
+    if (insertHireError) {
+      await supabase
+        .from("profiles")
+        .update({ wallet_balance: currentWalletBalance })
+        .eq("id", detectedProfile.id);
+
+      setWalletBalance(currentWalletBalance);
       setRequestLoading(false);
-      setErrorMessage(`Submit request error: ${error.message}`);
+      setErrorMessage(
+        `Submit request error: ${insertHireError.message}. Wallet was refunded.`
+      );
       return;
     }
 
-    setMessage(
-      "Caretaker hire request submitted. Waiting for FarmConnect Admin approval and payment verification."
-    );
+    const referenceBase = Date.now();
+
+    const { error: transactionError } = await supabase
+      .from("wallet_transactions")
+      .insert([
+        {
+          profile_id: detectedProfile.id,
+          transaction_type: "CARETAKER_HIRING_PAYMENT",
+          amount: -REQUEST_AMOUNT,
+          reference_no: `FC-CARE-${referenceBase}`,
+          remarks: `Caretaker Hiring - ${caretaker.full_name}`,
+          status: "COMPLETED",
+        },
+        {
+          profile_id: detectedProfile.id,
+          transaction_type: "FARMCONNECT_TECHNICAL_FEE",
+          amount: technicalFee,
+          reference_no: `FC-FEE-${referenceBase}`,
+          remarks: `2% FarmConnect technical fee from caretaker hiring - ${caretaker.full_name}`,
+          status: "COMPLETED",
+        },
+        {
+          profile_id: detectedProfile.id,
+          transaction_type: "CARETAKER_SERVICE_FUND",
+          amount: caretakerServiceFund,
+          reference_no: `FC-CARE-FUND-${referenceBase}`,
+          remarks: `98% caretaker service fund held pending admin approval - ${caretaker.full_name}`,
+          status: "PENDING",
+        },
+      ]);
+
+    setWalletBalance(newWalletBalance);
+
+    if (transactionError) {
+      setMessage(
+        "Caretaker hire payment submitted and wallet deducted. Request is pending Admin approval, but transaction log failed. Please inform Admin."
+      );
+      setErrorMessage(`Wallet transaction log error: ${transactionError.message}`);
+    } else {
+      setMessage(
+        "Caretaker hire paid successfully. Request is now pending FarmConnect Admin approval."
+      );
+    }
 
     await loadRequests(detectedProfile.id);
     await loadCaretakers();
+    await loadWallet(detectedProfile.id);
 
     setRequestLoading(false);
   }
@@ -294,9 +414,8 @@ export default function CustomerCaretakersPage() {
               Hire Caretaker
             </h1>
             <p className="mt-2 max-w-3xl text-lg font-semibold text-slate-600">
-              Submit a caretaker hire request for FarmConnect Admin review.
-              Caretakers become assignable only after approval and payment
-              verification.
+              Pay caretaker hiring from your FarmConnect wallet. FarmConnect
+              Admin will review and approve before assignment becomes active.
             </p>
           </div>
 
@@ -309,7 +428,7 @@ export default function CustomerCaretakersPage() {
         </div>
 
         <div className="mb-6 rounded-[2rem] bg-white p-5 shadow-md ring-1 ring-green-100">
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-5">
             <div className="rounded-3xl bg-green-50 p-5">
               <p className="text-sm font-black text-slate-500">Profile ID</p>
               <p className="mt-1 break-all text-lg font-black text-green-950">
@@ -325,16 +444,54 @@ export default function CustomerCaretakersPage() {
             </div>
 
             <div className="rounded-3xl bg-emerald-50 p-5">
-              <p className="text-sm font-black text-slate-500">Request Model</p>
+              <p className="text-sm font-black text-slate-500">Wallet Balance</p>
               <p className="mt-1 text-lg font-black text-green-950">
-                Pending Approval
+                {formatPeso(walletBalance)}
               </p>
             </div>
 
             <div className="rounded-3xl bg-orange-50 p-5">
+              <p className="text-sm font-black text-slate-500">Request Model</p>
+              <p className="mt-1 text-lg font-black text-green-950">
+                Paid + Pending
+              </p>
+            </div>
+
+            <div className="rounded-3xl bg-lime-50 p-5">
               <p className="text-sm font-black text-slate-500">Assignment</p>
               <p className="mt-1 text-lg font-black text-green-950">
                 Active + Paid Only
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-[2rem] bg-white p-5 shadow-md ring-1 ring-green-100">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-3xl bg-green-50 p-5">
+              <p className="text-sm font-black text-slate-500">
+                Total Hire Payment
+              </p>
+              <p className="mt-1 text-2xl font-black text-green-950">
+                {formatPeso(REQUEST_AMOUNT)}
+              </p>
+            </div>
+
+            <div className="rounded-3xl bg-yellow-50 p-5">
+              <p className="text-sm font-black text-slate-500">
+                FarmConnect 2% Fee
+              </p>
+              <p className="mt-1 text-2xl font-black text-yellow-900">
+                {formatPeso(technicalFee)}
+              </p>
+            </div>
+
+            <div className="rounded-3xl bg-emerald-50 p-5">
+              <p className="text-sm font-black text-slate-500">
+                Caretaker Service Fund 98%
+              </p>
+              <p className="mt-1 text-2xl font-black text-emerald-900">
+                {formatPeso(caretakerServiceFund)}
               </p>
             </div>
           </div>
@@ -362,6 +519,7 @@ export default function CustomerCaretakersPage() {
               {sortedCaretakers.map((caretaker) => {
                 const currentStatus = statusBadge(caretaker.status);
                 const isAvailable = currentStatus === "AVAILABLE";
+                const insufficientBalance = walletBalance < REQUEST_AMOUNT;
 
                 return (
                   <div
@@ -400,7 +558,7 @@ export default function CustomerCaretakersPage() {
 
                     <div className="mt-4 rounded-3xl bg-green-50 p-5">
                       <p className="text-sm font-black text-slate-500">
-                        Request Amount
+                        Hire Payment
                       </p>
                       <p className="mt-1 text-2xl font-black text-green-900">
                         {formatPeso(REQUEST_AMOUNT)}
@@ -408,16 +566,24 @@ export default function CustomerCaretakersPage() {
                       <p className="mt-1 text-sm font-bold text-slate-600">
                         {TOTAL_CHICKS} chicks • {DURATION_DAYS} days
                       </p>
+                      <p className="mt-2 text-xs font-black text-slate-500">
+                        2% FarmConnect fee: {formatPeso(technicalFee)}
+                      </p>
+                      <p className="text-xs font-black text-slate-500">
+                        98% held service fund: {formatPeso(caretakerServiceFund)}
+                      </p>
                     </div>
 
                     <button
                       onClick={() => submitHireRequest(caretaker)}
-                      disabled={requestLoading}
+                      disabled={requestLoading || insufficientBalance}
                       className="mt-6 w-full rounded-2xl bg-green-700 px-5 py-4 text-lg font-black text-white shadow-md transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {requestLoading
-                        ? "Submitting..."
-                        : "Submit Hire Request"}
+                        ? "Processing Payment..."
+                        : insufficientBalance
+                        ? "Insufficient Wallet"
+                        : "Pay & Submit Request"}
                     </button>
                   </div>
                 );
@@ -431,8 +597,8 @@ export default function CustomerCaretakersPage() {
 
               {requests.length === 0 ? (
                 <div className="rounded-[2rem] bg-white p-8 text-center text-lg font-black text-slate-600 shadow-md ring-1 ring-green-100">
-                  No caretaker request yet. Submit one above for FarmConnect
-                  Admin review.
+                  No caretaker request yet. Pay and submit one above for
+                  FarmConnect Admin review.
                 </div>
               ) : (
                 <div className="grid gap-5">
@@ -526,8 +692,8 @@ export default function CustomerCaretakersPage() {
                             </Link>
                           ) : (
                             <p className="text-center text-base font-black text-slate-600">
-                              Waiting for FarmConnect Admin approval and payment
-                              verification before assignment.
+                              Payment received. Waiting for FarmConnect Admin
+                              approval before assignment.
                             </p>
                           )}
                         </div>

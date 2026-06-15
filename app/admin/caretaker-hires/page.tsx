@@ -21,6 +21,8 @@ type HireRequest = {
   created_at: string;
 };
 
+const TECHNICAL_FEE_RATE = 0.02;
+
 export default function AdminCaretakerHiresPage() {
   const [requests, setRequests] = useState<HireRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,70 +75,224 @@ export default function AdminCaretakerHiresPage() {
     });
   }, [requests, search]);
 
-  const pendingCount = requests.filter(
-    (request) => request.status === "PENDING"
+  const pendingCount = requests.filter((request) =>
+    ["PENDING", "PENDING_ADMIN_APPROVAL"].includes(
+      (request.status || "").toUpperCase()
+    )
   ).length;
 
   const activeCount = requests.filter(
-    (request) => request.status === "ACTIVE"
+    (request) => (request.status || "").toUpperCase() === "ACTIVE"
   ).length;
 
   const paidCount = requests.filter(
-    (request) => request.payment_status === "PAID"
+    (request) => (request.payment_status || "").toUpperCase() === "PAID"
   ).length;
 
   const readyForAssignmentCount = requests.filter(
     (request) =>
-      request.status === "ACTIVE" && request.payment_status === "PAID"
+      (request.status || "").toUpperCase() === "ACTIVE" &&
+      (request.payment_status || "").toUpperCase() === "PAID"
   ).length;
 
+  async function assignCaretaker(request: HireRequest) {
+    if (!request.flock_id) return;
+
+    await supabase
+      .from("flocks")
+      .update({
+        caretaker_name: request.caretaker_name,
+      })
+      .eq("id", request.flock_id);
+
+    await supabase
+      .from("caretakers")
+      .update({
+        assigned_flock_id: request.flock_id,
+        assignment_start: new Date().toISOString(),
+        status: "ASSIGNED",
+      })
+      .eq("id", request.caretaker_id);
+
+    await supabase
+      .from("customer_caretaker_hires")
+      .update({
+        flock_id: request.flock_id,
+      })
+      .eq("id", request.id);
+  }
+
   async function approveRequest(request: HireRequest) {
-    await updateRequest(request.id, {
-      status: "ACTIVE",
-    });
-  }
-
-  async function rejectRequest(request: HireRequest) {
-    await updateRequest(request.id, {
-      status: "REJECTED",
-    });
-  }
-
-  async function markPaid(request: HireRequest) {
-    await updateRequest(request.id, {
-      payment_status: "PAID",
-    });
-  }
-
-  async function updateRequest(
-    requestId: string,
-    payload: Partial<Pick<HireRequest, "status" | "payment_status">>
-  ) {
-    setActionLoading(requestId);
+    setActionLoading(request.id);
     setMessage("");
     setErrorMessage("");
 
-    const { error } = await supabase
-      .from("customer_caretaker_hires")
-      .update(payload)
-      .eq("id", requestId);
+    const status = (request.status || "").toUpperCase();
+    const paymentStatus = (request.payment_status || "").toUpperCase();
 
-    if (error) {
-      setErrorMessage(`Update request error: ${error.message}`);
+    if (status === "ACTIVE") {
+      setActionLoading("");
+      setErrorMessage("This caretaker hire request is already active.");
+      return;
+    }
+
+    if (status === "REJECTED") {
+      setActionLoading("");
+      setErrorMessage("Rejected requests cannot be approved again.");
+      return;
+    }
+
+    if (paymentStatus !== "PAID") {
+      setActionLoading("");
+      setErrorMessage(
+        "This request is not paid. Customer must pay first before admin approval."
+      );
+      return;
+    }
+
+    const totalFee = Number(request.total_fee || 0);
+    const technicalFee = totalFee * TECHNICAL_FEE_RATE;
+    const caretakerServiceFund = totalFee - technicalFee;
+    const referenceNo = `FC-CARE-APP-${Date.now()}`;
+
+    const { error: updateError } = await supabase
+      .from("customer_caretaker_hires")
+      .update({
+        status: "ACTIVE",
+        payment_status: "PAID",
+      })
+      .eq("id", request.id);
+
+    if (updateError) {
+      setErrorMessage(`Approve request error: ${updateError.message}`);
       setActionLoading("");
       return;
     }
 
-    const actionText =
-      payload.status === "ACTIVE"
-        ? "approved"
-        : payload.status === "REJECTED"
-        ? "rejected"
-        : payload.payment_status === "PAID"
-        ? "marked as paid"
-        : "updated";
+    await assignCaretaker(request);
 
-    setMessage(`Caretaker hire request ${actionText} successfully.`);
+    await supabase.from("wallet_transactions").insert([
+      {
+        profile_id: request.profile_id,
+        transaction_type: "CARETAKER_HIRE_APPROVED",
+        amount: 0,
+        reference_no: referenceNo,
+        remarks: `Admin approved caretaker hire: ${request.caretaker_name}`,
+        status: "COMPLETED",
+      },
+      {
+        profile_id: request.profile_id,
+        transaction_type: "FARMCONNECT_TECHNICAL_FEE",
+        amount: technicalFee,
+        reference_no: `FC-FEE-${Date.now()}`,
+        remarks: `2% technical fee from caretaker hire: ${request.caretaker_name}`,
+        status: "COMPLETED",
+      },
+      {
+        profile_id: request.profile_id,
+        transaction_type: "CARETAKER_SERVICE_FUND",
+        amount: caretakerServiceFund,
+        reference_no: `FC-CARE-FUND-${Date.now()}`,
+        remarks: `98% caretaker service fund approved: ${request.caretaker_name}`,
+        status: "COMPLETED",
+      },
+    ]);
+
+    setMessage(
+      "Caretaker hire approved successfully. Request is now ACTIVE and PAID."
+    );
+
+    await loadRequests();
+    setActionLoading("");
+  }
+
+  async function rejectRequest(request: HireRequest) {
+    setActionLoading(request.id);
+    setMessage("");
+    setErrorMessage("");
+
+    const status = (request.status || "").toUpperCase();
+
+    if (status === "REJECTED") {
+      setActionLoading("");
+      setErrorMessage("This request is already rejected.");
+      return;
+    }
+
+    if (status === "ACTIVE") {
+      setActionLoading("");
+      setErrorMessage("Active caretaker hire cannot be rejected.");
+      return;
+    }
+
+    const refundAmount = Number(request.total_fee || 0);
+
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("id,wallet_balance")
+      .eq("id", request.profile_id)
+      .single();
+
+    if (profileError || !profileData) {
+      setActionLoading("");
+      setErrorMessage(
+        `Customer wallet load error: ${
+          profileError?.message || "Profile not found."
+        }`
+      );
+      return;
+    }
+
+    const currentWallet = Number(profileData.wallet_balance || 0);
+    const newWallet = currentWallet + refundAmount;
+
+    const { error: refundError } = await supabase
+      .from("profiles")
+      .update({
+        wallet_balance: newWallet,
+      })
+      .eq("id", request.profile_id);
+
+    if (refundError) {
+      setActionLoading("");
+      setErrorMessage(`Wallet refund error: ${refundError.message}`);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from("customer_caretaker_hires")
+      .update({
+        status: "REJECTED",
+        payment_status: "REFUNDED",
+      })
+      .eq("id", request.id);
+
+    if (updateError) {
+      await supabase
+        .from("profiles")
+        .update({
+          wallet_balance: currentWallet,
+        })
+        .eq("id", request.profile_id);
+
+      setActionLoading("");
+      setErrorMessage(
+        `Reject request error: ${updateError.message}. Wallet refund was rolled back.`
+      );
+      return;
+    }
+
+    await supabase.from("wallet_transactions").insert({
+      profile_id: request.profile_id,
+      transaction_type: "CARETAKER_HIRE_REFUND",
+      amount: refundAmount,
+      reference_no: `FC-REFUND-${Date.now()}`,
+      remarks: `Refund for rejected caretaker hire: ${request.caretaker_name}`,
+      status: "COMPLETED",
+    });
+
+    setMessage("Caretaker hire request rejected. Customer wallet refunded.");
+
     await loadRequests();
     setActionLoading("");
   }
@@ -182,6 +338,10 @@ export default function AdminCaretakerHiresPage() {
       return "bg-green-100 text-green-800 ring-green-200";
     }
 
+    if (cleanStatus === "REFUNDED") {
+      return "bg-blue-100 text-blue-800 ring-blue-200";
+    }
+
     return "bg-orange-100 text-orange-800 ring-orange-200";
   }
 
@@ -197,9 +357,8 @@ export default function AdminCaretakerHiresPage() {
               Caretaker Hire Approval Center
             </h1>
             <p className="mt-2 max-w-3xl text-lg font-semibold text-slate-600">
-              Review customer caretaker hire requests. Approve, reject, and
-              verify payment before the caretaker becomes assignable in My
-              Flock.
+              Review paid caretaker hire requests. Approve to activate. Reject
+              to refund customer wallet.
             </p>
           </div>
 
@@ -240,9 +399,7 @@ export default function AdminCaretakerHiresPage() {
           </div>
 
           <div className="rounded-[2rem] bg-white p-5 shadow-md ring-1 ring-green-100">
-            <p className="text-sm font-black text-slate-500">
-              Paid Requests
-            </p>
+            <p className="text-sm font-black text-slate-500">Paid Requests</p>
             <p className="mt-2 text-4xl font-black text-emerald-700">
               {paidCount}
             </p>
@@ -265,8 +422,8 @@ export default function AdminCaretakerHiresPage() {
                 Hire Requests
               </h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                Only ACTIVE + PAID requests can be assigned by customers in My
-                Flock.
+                Only PAID requests can be approved. Rejected paid requests are
+                refunded to customer wallet.
               </p>
             </div>
 
@@ -302,12 +459,20 @@ export default function AdminCaretakerHiresPage() {
         ) : (
           <section className="grid gap-5">
             {filteredRequests.map((request) => {
-              const isPending = request.status === "PENDING";
-              const isActive = request.status === "ACTIVE";
-              const isRejected = request.status === "REJECTED";
-              const isPaid = request.payment_status === "PAID";
+              const status = (request.status || "").toUpperCase();
+              const paymentStatus = (request.payment_status || "").toUpperCase();
+
+              const isPending =
+                status === "PENDING" || status === "PENDING_ADMIN_APPROVAL";
+              const isActive = status === "ACTIVE";
+              const isRejected = status === "REJECTED";
+              const isPaid = paymentStatus === "PAID";
               const isReady = isActive && isPaid;
               const busy = actionLoading === request.id;
+
+              const totalFee = Number(request.total_fee || 0);
+              const technicalFee = totalFee * TECHNICAL_FEE_RATE;
+              const caretakerServiceFund = totalFee - technicalFee;
 
               return (
                 <div
@@ -341,6 +506,12 @@ export default function AdminCaretakerHiresPage() {
                             {request.caretaker_id}
                           </span>
                         </p>
+                        <p className="break-all">
+                          Flock ID:{" "}
+                          <span className="text-slate-800">
+                            {request.flock_id || "Pending customer assignment"}
+                          </span>
+                        </p>
                       </div>
                     </div>
 
@@ -364,6 +535,12 @@ export default function AdminCaretakerHiresPage() {
                       {isReady && (
                         <span className="rounded-full bg-green-700 px-4 py-2 text-sm font-black text-white">
                           READY FOR MY FLOCK
+                        </span>
+                      )}
+
+                      {isPending && isPaid && (
+                        <span className="rounded-full bg-yellow-500 px-4 py-2 text-sm font-black text-yellow-950">
+                          PAID - NEEDS ADMIN REVIEW
                         </span>
                       )}
                     </div>
@@ -434,36 +611,57 @@ export default function AdminCaretakerHiresPage() {
                     </div>
                   </div>
 
+                  <div className="mt-6 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-3xl bg-green-50 p-5">
+                      <p className="text-sm font-black text-slate-500">
+                        Customer Paid
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-green-900">
+                        {formatPeso(totalFee)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-3xl bg-yellow-50 p-5">
+                      <p className="text-sm font-black text-slate-500">
+                        FarmConnect 2% Fee
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-yellow-900">
+                        {formatPeso(technicalFee)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-3xl bg-emerald-50 p-5">
+                      <p className="text-sm font-black text-slate-500">
+                        Caretaker Fund 98%
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-emerald-900">
+                        {formatPeso(caretakerServiceFund)}
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="mt-6 rounded-3xl bg-green-50 p-5">
                     <p className="text-center text-sm font-black text-slate-600">
-                      Assignment Rule: customer can assign caretaker only when
-                      request is ACTIVE and payment is PAID.
+                      Approval Rule: only PAID + PENDING_ADMIN_APPROVAL requests
+                      should be approved. Rejection refunds the customer wallet.
                     </p>
                   </div>
 
-                  <div className="mt-6 grid gap-3 md:grid-cols-3">
+                  <div className="mt-6 grid gap-3 md:grid-cols-2">
                     <button
                       onClick={() => approveRequest(request)}
-                      disabled={busy || isActive || isRejected}
+                      disabled={busy || isActive || isRejected || !isPaid}
                       className="rounded-2xl bg-green-700 px-5 py-4 text-base font-black text-white shadow-md transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {busy ? "Updating..." : "Approve"}
+                      {busy ? "Approving..." : "Approve Paid Request"}
                     </button>
 
                     <button
                       onClick={() => rejectRequest(request)}
-                      disabled={busy || isRejected}
+                      disabled={busy || isRejected || isActive}
                       className="rounded-2xl bg-red-700 px-5 py-4 text-base font-black text-white shadow-md transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {busy ? "Updating..." : "Reject"}
-                    </button>
-
-                    <button
-                      onClick={() => markPaid(request)}
-                      disabled={busy || isPaid || isRejected}
-                      className="rounded-2xl bg-yellow-500 px-5 py-4 text-base font-black text-yellow-950 shadow-md transition hover:bg-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {busy ? "Updating..." : "Mark Paid"}
+                      {busy ? "Rejecting..." : "Reject & Refund"}
                     </button>
                   </div>
                 </div>

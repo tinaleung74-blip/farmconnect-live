@@ -27,6 +27,7 @@ type SellRequest = {
 };
 
 const PRICE_PER_CHICKEN = 350;
+const TECHNICAL_FEE_RATE = 0.02;
 
 function daysOld(date: string) {
   return Math.max(
@@ -56,7 +57,15 @@ export default function SellChickenPage() {
   function getProfile() {
     const user = localStorage.getItem("farmconnect_user");
     if (!user) return null;
-    return JSON.parse(user);
+
+    try {
+      const parsed = JSON.parse(user);
+      return {
+        id: parsed?.id || parsed?.profile_id || parsed?.customer_id || "",
+      };
+    } catch {
+      return null;
+    }
   }
 
   const selectedFlock = useMemo(
@@ -67,6 +76,9 @@ export default function SellChickenPage() {
   const age = selectedFlock ? daysOld(selectedFlock.created_at) : 0;
   const stage = chickenStage(age);
   const totalAmount = quantity * PRICE_PER_CHICKEN;
+  const farmConnectFee = totalAmount * TECHNICAL_FEE_RATE;
+  const customerNetAmount = totalAmount - farmConnectFee;
+
   const canSell =
     !!selectedFlock &&
     age >= 30 &&
@@ -75,7 +87,10 @@ export default function SellChickenPage() {
 
   async function loadData() {
     const profile = getProfile();
-    if (!profile) return;
+    if (!profile?.id) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
 
@@ -92,8 +107,8 @@ export default function SellChickenPage() {
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: false });
 
-    setFlocks(flockData || []);
-    setRequests(requestData || []);
+    setFlocks((flockData || []) as Flock[]);
+    setRequests((requestData || []) as SellRequest[]);
 
     if (flockData && flockData.length > 0 && !selectedFlockId) {
       setSelectedFlockId(flockData[0].id);
@@ -109,7 +124,7 @@ export default function SellChickenPage() {
   async function submitSellRequest() {
     const profile = getProfile();
 
-    if (!profile || !selectedFlock) {
+    if (!profile?.id || !selectedFlock) {
       alert("Please select a flock.");
       return;
     }
@@ -119,27 +134,62 @@ export default function SellChickenPage() {
       return;
     }
 
+    const confirmSubmit = confirm(
+      `Submit sell request for ${quantity} chicken(s)? Chicken count will be reserved immediately while waiting for admin approval.`
+    );
+
+    if (!confirmSubmit) return;
+
     setSubmitting(true);
 
-    const { error } = await supabase.from("sell_chicken_requests").insert({
-      profile_id: profile.id,
-      flock_id: selectedFlock.id,
-      batch_no: selectedFlock.batch_no,
-      breed: selectedFlock.breed,
-      chicken_stage: stage,
-      quantity,
-      price_per_chicken: PRICE_PER_CHICKEN,
-      total_amount: totalAmount,
-      status: "PENDING_ADMIN_APPROVAL",
-    });
+    const currentAlive = Number(selectedFlock.alive_count || 0);
+    const newAliveCount = currentAlive - Number(quantity || 0);
 
-    if (error) {
-      alert(error.message);
+    const { error: reserveError } = await supabase
+      .from("flocks")
+      .update({
+        alive_count: newAliveCount,
+        status: newAliveCount <= 0 ? "RESERVED_FOR_SALE" : "ACTIVE",
+      })
+      .eq("id", selectedFlock.id);
+
+    if (reserveError) {
+      alert(reserveError.message);
       setSubmitting(false);
       return;
     }
 
-    alert("Sell request submitted. Waiting for admin approval.");
+    const { error: insertError } = await supabase
+      .from("sell_chicken_requests")
+      .insert({
+        profile_id: profile.id,
+        flock_id: selectedFlock.id,
+        batch_no: selectedFlock.batch_no,
+        breed: selectedFlock.breed,
+        chicken_stage: stage,
+        quantity,
+        price_per_chicken: PRICE_PER_CHICKEN,
+        total_amount: totalAmount,
+        status: "PENDING_ADMIN_APPROVAL",
+        admin_notes:
+          "Chicken count reserved immediately. Waiting for admin approval.",
+      });
+
+    if (insertError) {
+      await supabase
+        .from("flocks")
+        .update({
+          alive_count: currentAlive,
+          status: "ACTIVE",
+        })
+        .eq("id", selectedFlock.id);
+
+      alert(`${insertError.message}. Reserved chickens were returned.`);
+      setSubmitting(false);
+      return;
+    }
+
+    alert("Sell request submitted. Chickens reserved while waiting for admin approval.");
     setQuantity(1);
     await loadData();
     setSubmitting(false);
@@ -154,7 +204,7 @@ export default function SellChickenPage() {
               🐓 Sell Chicken
             </h1>
             <p className="font-semibold text-green-700">
-              Submit sell requests per chicken. Admin approval required.
+              Submit sell requests. Chicken count is reserved immediately.
             </p>
           </div>
 
@@ -260,10 +310,30 @@ export default function SellChickenPage() {
                   </div>
 
                   <div className="mt-4 rounded-2xl bg-green-50 p-4">
-                    <p className="font-bold text-gray-500">Projected Sale</p>
+                    <p className="font-bold text-gray-500">Gross Sale</p>
                     <h3 className="text-3xl font-black text-green-800">
                       ₱{totalAmount.toLocaleString()}
                     </h3>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    <div className="rounded-2xl bg-orange-50 p-4">
+                      <p className="font-bold text-gray-500">
+                        FarmConnect 2% Fee
+                      </p>
+                      <h3 className="text-xl font-black text-orange-700">
+                        ₱{farmConnectFee.toLocaleString()}
+                      </h3>
+                    </div>
+
+                    <div className="rounded-2xl bg-emerald-50 p-4">
+                      <p className="font-bold text-gray-500">
+                        Net To Wallet After Approval
+                      </p>
+                      <h3 className="text-xl font-black text-emerald-700">
+                        ₱{customerNetAmount.toLocaleString()}
+                      </h3>
+                    </div>
                   </div>
 
                   {!canSell && (
@@ -277,7 +347,7 @@ export default function SellChickenPage() {
                     disabled={!canSell || submitting}
                     className="mt-5 w-full rounded-2xl bg-green-700 p-4 font-black text-white disabled:bg-gray-400"
                   >
-                    {submitting ? "Submitting..." : "Submit Sell Request"}
+                    {submitting ? "Submitting..." : "Submit & Reserve Chicken"}
                   </button>
                 </>
               ) : (
@@ -301,27 +371,36 @@ export default function SellChickenPage() {
                         <th className="p-3 text-left">Batch</th>
                         <th className="p-3 text-left">Stage</th>
                         <th className="p-3 text-left">Qty</th>
-                        <th className="p-3 text-left">Amount</th>
+                        <th className="p-3 text-left">Gross</th>
+                        <th className="p-3 text-left">Net 98%</th>
                         <th className="p-3 text-left">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {requests.map((r) => (
-                        <tr key={r.id} className="border-t">
-                          <td className="p-3 font-bold">
-                            {new Date(r.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="p-3">{r.batch_no}</td>
-                          <td className="p-3">{r.chicken_stage}</td>
-                          <td className="p-3">{r.quantity}</td>
-                          <td className="p-3">
-                            ₱{Number(r.total_amount || 0).toLocaleString()}
-                          </td>
-                          <td className="p-3 font-black text-orange-600">
-                            {r.status}
-                          </td>
-                        </tr>
-                      ))}
+                      {requests.map((r) => {
+                        const gross = Number(r.total_amount || 0);
+                        const net = gross - gross * TECHNICAL_FEE_RATE;
+
+                        return (
+                          <tr key={r.id} className="border-t">
+                            <td className="p-3 font-bold">
+                              {new Date(r.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="p-3">{r.batch_no}</td>
+                            <td className="p-3">{r.chicken_stage}</td>
+                            <td className="p-3">{r.quantity}</td>
+                            <td className="p-3">
+                              ₱{gross.toLocaleString()}
+                            </td>
+                            <td className="p-3 font-black text-green-700">
+                              ₱{net.toLocaleString()}
+                            </td>
+                            <td className="p-3 font-black text-orange-600">
+                              {r.status}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
