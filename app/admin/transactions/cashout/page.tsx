@@ -44,31 +44,64 @@ export default function AdminCashOutPage() {
       .limit(150);
 
     if (error) {
-      console.error("Cash-out error:", error.message);
+      alert(`Cash-out load error: ${error.message}`);
       setRequests([]);
     } else {
-      setRequests(data || []);
+      setRequests((data || []) as CashOutRequest[]);
     }
 
     setLoading(false);
   }
 
-  async function setStatusOnly(id: string, newStatus: string) {
-    setProcessingId(id);
+  async function updateRequestStatus(
+    req: CashOutRequest,
+    newStatus: string,
+    notes: string
+  ) {
+    const currentStatus = status(req.status);
 
-    const { error } = await supabase
-      .from("cashout_requests")
-      .update({ status: newStatus })
-      .eq("id", id);
-
-    if (error) {
-      alert(error.message);
-      setProcessingId("");
+    if (["APPROVED", "RELEASED"].includes(currentStatus)) {
+      alert("Approved or released requests cannot be changed.");
       return;
     }
 
-    await loadCashouts();
-    setProcessingId("");
+    if (currentStatus === "REJECTED") {
+      alert("Rejected requests cannot be changed.");
+      return;
+    }
+
+    setProcessingId(req.id);
+
+    try {
+      const { error } = await supabase
+        .from("cashout_requests")
+        .update({
+          status: newStatus,
+          admin_notes: notes,
+        })
+        .eq("id", req.id);
+
+      if (error) throw error;
+
+      const profileId = req.profile_id || req.customer_id;
+
+      if (profileId) {
+        await supabase.from("wallet_transactions").insert({
+          profile_id: profileId,
+          transaction_type: `CASH_OUT_${newStatus}`,
+          amount: 0,
+          reference_no: `FC-CASHOUT-${newStatus}-${req.id}`,
+          remarks: notes,
+          status: newStatus,
+        });
+      }
+
+      await loadCashouts();
+    } catch (err: any) {
+      alert(err?.message || "Update failed.");
+    } finally {
+      setProcessingId("");
+    }
   }
 
   async function approveCashOut(req: CashOutRequest) {
@@ -76,6 +109,11 @@ export default function AdminCashOutPage() {
 
     if (reqStatus === "APPROVED" || reqStatus === "RELEASED") {
       alert("This cash-out is already approved/released.");
+      return;
+    }
+
+    if (reqStatus === "REJECTED") {
+      alert("Rejected cash-out cannot be approved.");
       return;
     }
 
@@ -95,11 +133,11 @@ export default function AdminCashOutPage() {
     }
 
     const ok = confirm(
-      `Approve cash-out?\n\nRequested: ${money(grossAmount)}\nTechnical Fee 2%: ${money(
-        feeAmount
-      )}\nCustomer Receives: ${money(netAmount)}\n\nThis will deduct ${money(
+      `Approve cash-out after manual payout?\n\nRequested Gross: ${money(
         grossAmount
-      )} from customer wallet.`
+      )}\nFarmConnect Fee 2%: ${money(feeAmount)}\nCustomer Receives: ${money(
+        netAmount
+      )}\n\nThis will deduct ${money(grossAmount)} from customer wallet.`
     );
 
     if (!ok) return;
@@ -109,19 +147,28 @@ export default function AdminCashOutPage() {
     try {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("wallet_balance")
+        .select("id,wallet_balance")
         .eq("id", profileId)
         .maybeSingle();
 
       if (profileError) throw profileError;
 
-      const currentBalance = toNumber(profile?.wallet_balance);
+      if (!profile) {
+        throw new Error("Customer profile not found.");
+      }
+
+      const currentBalance = toNumber(profile.wallet_balance);
 
       if (currentBalance < grossAmount) {
-        throw new Error("Customer wallet balance is not enough.");
+        throw new Error(
+          `Customer wallet balance is not enough. Current balance: ${money(
+            currentBalance
+          )}`
+        );
       }
 
       const newBalance = currentBalance - grossAmount;
+      const referenceBase = Date.now();
 
       const { error: walletUpdateError } = await supabase
         .from("profiles")
@@ -130,35 +177,40 @@ export default function AdminCashOutPage() {
 
       if (walletUpdateError) throw walletUpdateError;
 
-      await supabase.from("wallet_transactions").insert({
-        profile_id: profileId,
-        transaction_type: "CASH_OUT_APPROVED",
-        amount: grossAmount * -1,
-        reference_no: "FC-CASHOUT-" + req.id,
-        remarks: `Cash-out approved. Gross: ${money(
-          grossAmount
-        )}. Fee 2%: ${money(feeAmount)}. Customer receives: ${money(
-          netAmount
-        )}.`,
-        status: "COMPLETED",
-      });
+      const { error: txError } = await supabase
+        .from("wallet_transactions")
+        .insert([
+          {
+            profile_id: profileId,
+            transaction_type: "CASH_OUT_APPROVED",
+            amount: grossAmount * -1,
+            reference_no: `FC-CASHOUT-${referenceBase}`,
+            remarks: `Cash-out approved after manual payout. Gross deducted: ${money(
+              grossAmount
+            )}. Customer receives: ${money(netAmount)}.`,
+            status: "COMPLETED",
+          },
+          {
+            profile_id: profileId,
+            transaction_type: "FARMCONNECT_CASHOUT_FEE",
+            amount: feeAmount,
+            reference_no: `FC-CASHOUT-FEE-${referenceBase}`,
+            remarks: `2% FarmConnect technical fee from cash-out. Gross: ${money(
+              grossAmount
+            )}. Fee: ${money(feeAmount)}.`,
+            status: "COMPLETED",
+          },
+        ]);
 
-      await supabase.from("wallet_transactions").insert({
-        profile_id: profileId,
-        transaction_type: "TECHNICAL_FEE_CASHOUT",
-        amount: feeAmount,
-        reference_no: "FC-FEE-" + req.id,
-        remarks: `FarmConnect technical fee from cash-out request.`,
-        status: "COMPLETED",
-      });
+      if (txError) throw txError;
 
       const { error: requestError } = await supabase
         .from("cashout_requests")
         .update({
           status: "APPROVED",
-          admin_notes: `Approved. Gross ${money(grossAmount)}. Fee ${money(
-            feeAmount
-          )}. Customer receives ${money(netAmount)}.`,
+          admin_notes: `Approved after manual payout. Gross ${money(
+            grossAmount
+          )}. Fee ${money(feeAmount)}. Customer receives ${money(netAmount)}.`,
           approved_at: new Date().toISOString(),
         })
         .eq("id", req.id);
@@ -174,12 +226,126 @@ export default function AdminCashOutPage() {
     }
   }
 
+  async function releaseCashOut(req: CashOutRequest) {
+    const reqStatus = status(req.status);
+
+    if (reqStatus !== "APPROVED") {
+      alert("Only APPROVED cash-out requests can be marked RELEASED.");
+      return;
+    }
+
+    setProcessingId(req.id);
+
+    try {
+      const { error } = await supabase
+        .from("cashout_requests")
+        .update({
+          status: "RELEASED",
+          admin_notes:
+            "Cash-out marked as released. Manual payout already completed.",
+        })
+        .eq("id", req.id);
+
+      if (error) throw error;
+
+      const profileId = req.profile_id || req.customer_id;
+
+      if (profileId) {
+        await supabase.from("wallet_transactions").insert({
+          profile_id: profileId,
+          transaction_type: "CASH_OUT_RELEASED",
+          amount: 0,
+          reference_no: `FC-CASHOUT-RELEASED-${req.id}`,
+          remarks: "Cash-out marked as released by admin.",
+          status: "COMPLETED",
+        });
+      }
+
+      alert("Cash-out marked as released.");
+      await loadCashouts();
+    } catch (err: any) {
+      alert(err?.message || "Release failed.");
+    } finally {
+      setProcessingId("");
+    }
+  }
+
+  async function rejectCashOut(req: CashOutRequest) {
+    const reqStatus = status(req.status);
+
+    if (reqStatus === "REJECTED") {
+      alert("This cash-out is already rejected.");
+      return;
+    }
+
+    if (reqStatus === "APPROVED" || reqStatus === "RELEASED") {
+      alert("Approved or released cash-out cannot be rejected.");
+      return;
+    }
+
+    const ok = confirm("Reject this cash-out request? Wallet will not be deducted.");
+    if (!ok) return;
+
+    setProcessingId(req.id);
+
+    try {
+      const { error } = await supabase
+        .from("cashout_requests")
+        .update({
+          status: "REJECTED",
+          admin_notes:
+            "Rejected by admin. Customer wallet was not deducted.",
+        })
+        .eq("id", req.id);
+
+      if (error) throw error;
+
+      const profileId = req.profile_id || req.customer_id;
+
+      if (profileId) {
+        await supabase.from("wallet_transactions").insert({
+          profile_id: profileId,
+          transaction_type: "CASH_OUT_REJECTED",
+          amount: 0,
+          reference_no: `FC-CASHOUT-REJECTED-${req.id}`,
+          remarks: "Cash-out rejected by admin. Wallet unchanged.",
+          status: "REJECTED",
+        });
+      }
+
+      alert("Cash-out request rejected.");
+      await loadCashouts();
+    } catch (err: any) {
+      alert(err?.message || "Reject failed.");
+    } finally {
+      setProcessingId("");
+    }
+  }
+
   const summary = useMemo(() => {
+    const totalAmount = requests.reduce((sum, r) => sum + toNumber(r.amount), 0);
+    const pendingAmount = requests
+      .filter((r) => status(r.status) === "PENDING")
+      .reduce((sum, r) => sum + toNumber(r.amount), 0);
+    const approvedAmount = requests
+      .filter((r) => status(r.status) === "APPROVED")
+      .reduce((sum, r) => sum + toNumber(r.amount), 0);
+    const feeAmount = requests
+      .filter((r) => ["APPROVED", "RELEASED"].includes(status(r.status)))
+      .reduce((sum, r) => sum + toNumber(r.amount) * TECHNICAL_FEE_PERCENT, 0);
+
     return {
       total: requests.length,
-      amount: requests.reduce((sum, r) => sum + toNumber(r.amount), 0),
+      amount: totalAmount,
       pending: requests.filter((r) => status(r.status) === "PENDING").length,
+      processing: requests.filter((r) => status(r.status) === "PROCESSING")
+        .length,
       approved: requests.filter((r) => status(r.status) === "APPROVED").length,
+      released: requests.filter((r) => status(r.status) === "RELEASED").length,
+      rejected: requests.filter((r) => status(r.status) === "REJECTED").length,
+      pendingAmount,
+      approvedAmount,
+      feeAmount,
     };
   }, [requests]);
 
@@ -198,6 +364,7 @@ export default function AdminCashOutPage() {
       ${r.account_number || ""}
       ${r.gcash_number || ""}
       ${r.status || ""}
+      ${r.admin_notes || ""}
     `.toLowerCase();
 
     return matchFilter && text.includes(search.toLowerCase());
@@ -210,7 +377,8 @@ export default function AdminCashOutPage() {
           <p style={eyebrow}>FarmConnect Transactions</p>
           <h1 style={title}>Cash-Out Requests</h1>
           <p style={subtitle}>
-            Review withdrawal requests. Approval deducts customer wallet and records 2% technical fee.
+            Review withdrawal requests. Admin sends payout manually first, then
+            approves to deduct wallet and record the 2% FarmConnect fee.
           </p>
         </div>
 
@@ -221,9 +389,31 @@ export default function AdminCashOutPage() {
 
       <section style={statsGrid}>
         <Card label="Total Requests" value={summary.total} accent="#2563eb" />
-        <MoneyCard label="Total Amount" value={summary.amount} accent="#dc2626" />
+        <MoneyCard
+          label="Total Requested"
+          value={summary.amount}
+          accent="#dc2626"
+        />
         <Card label="Pending" value={summary.pending} accent="#f59e0b" />
+        <Card label="Processing" value={summary.processing} accent="#2563eb" />
         <Card label="Approved" value={summary.approved} accent="#15803d" />
+        <Card label="Released" value={summary.released} accent="#0f766e" />
+        <Card label="Rejected" value={summary.rejected} accent="#dc2626" />
+        <MoneyCard
+          label="Pending Amount"
+          value={summary.pendingAmount}
+          accent="#f59e0b"
+        />
+        <MoneyCard
+          label="Approved Gross"
+          value={summary.approvedAmount}
+          accent="#15803d"
+        />
+        <MoneyCard
+          label="FarmConnect 2% Fees"
+          value={summary.feeAmount}
+          accent="#7c2d12"
+        />
       </section>
 
       <section style={controlCard}>
@@ -241,10 +431,10 @@ export default function AdminCashOutPage() {
         >
           <option value="ALL">All Requests</option>
           <option value="PENDING">Pending</option>
-          <option value="APPROVED">Approved</option>
-          <option value="REJECTED">Rejected</option>
           <option value="PROCESSING">Processing</option>
+          <option value="APPROVED">Approved</option>
           <option value="RELEASED">Released</option>
+          <option value="REJECTED">Rejected</option>
         </select>
       </section>
 
@@ -253,7 +443,8 @@ export default function AdminCashOutPage() {
           <div>
             <h2 style={sectionTitle}>Withdrawal Release Queue</h2>
             <p style={sectionDesc}>
-              Approve only after admin sends payout manually to GCash/Maya.
+              Approve only after admin manually sends the net payout to
+              customer GCash/Maya.
             </p>
           </div>
           <span style={pill}>{filtered.length} records</span>
@@ -276,6 +467,7 @@ export default function AdminCashOutPage() {
                   <th style={th}>Fee 2%</th>
                   <th style={th}>Receives</th>
                   <th style={th}>Status</th>
+                  <th style={th}>Notes</th>
                   <th style={th}>Action</th>
                 </tr>
               </thead>
@@ -285,16 +477,38 @@ export default function AdminCashOutPage() {
                   const gross = toNumber(r.amount);
                   const fee = gross * TECHNICAL_FEE_PERCENT;
                   const net = gross - fee;
+                  const currentStatus = status(r.status);
+                  const busy = processingId === r.id;
+
+                  const canProcess = currentStatus === "PENDING";
+                  const canApprove =
+                    currentStatus === "PENDING" ||
+                    currentStatus === "PROCESSING";
+                  const canRelease = currentStatus === "APPROVED";
+                  const canReject =
+                    currentStatus === "PENDING" ||
+                    currentStatus === "PROCESSING";
 
                   return (
                     <tr key={r.id} style={tr}>
                       <td style={td}>
-                        {r.created_at ? new Date(r.created_at).toLocaleString() : "—"}
+                        {r.created_at
+                          ? new Date(r.created_at).toLocaleString()
+                          : "—"}
                       </td>
 
-                      <td style={td}>{r.profile_id || r.customer_id || "—"}</td>
+                      <td style={td}>
+                        <span style={mono}>
+                          {r.profile_id || r.customer_id || "—"}
+                        </span>
+                      </td>
 
-                      <td style={td}>{r.channel || r.payment_method || r.method || "GCash / Maya"}</td>
+                      <td style={td}>
+                        {r.channel ||
+                          r.payment_method ||
+                          r.method ||
+                          "GCash / Maya"}
+                      </td>
 
                       <td style={td}>
                         <strong>{r.account_name || "Payout Account"}</strong>
@@ -309,11 +523,15 @@ export default function AdminCashOutPage() {
                       </td>
 
                       <td style={td}>
-                        <strong style={{ color: "#dc2626" }}>{money(fee)}</strong>
+                        <strong style={{ color: "#dc2626" }}>
+                          {money(fee)}
+                        </strong>
                       </td>
 
                       <td style={td}>
-                        <strong style={{ color: "#15803d" }}>{money(net)}</strong>
+                        <strong style={{ color: "#15803d" }}>
+                          {money(net)}
+                        </strong>
                       </td>
 
                       <td style={td}>
@@ -324,43 +542,79 @@ export default function AdminCashOutPage() {
                             color: statusColor(r.status),
                           }}
                         >
-                          {status(r.status)}
+                          {currentStatus}
                         </span>
                       </td>
 
+                      <td style={td}>{r.admin_notes || "—"}</td>
+
                       <td style={td}>
                         <div style={actions}>
-                          <button
-                            style={processBtn}
-                            disabled={processingId === r.id}
-                            onClick={() => setStatusOnly(r.id, "PROCESSING")}
-                          >
-                            Process
-                          </button>
+                          {canProcess && (
+                            <button
+                              style={{
+                                ...processBtn,
+                                opacity: busy ? 0.6 : 1,
+                                cursor: busy ? "not-allowed" : "pointer",
+                              }}
+                              disabled={busy}
+                              onClick={() =>
+                                updateRequestStatus(
+                                  r,
+                                  "PROCESSING",
+                                  "Cash-out is being processed by admin. Manual payout pending/completing."
+                                )
+                              }
+                            >
+                              {busy ? "..." : "Process"}
+                            </button>
+                          )}
 
-                          <button
-                            style={approveBtn}
-                            disabled={processingId === r.id}
-                            onClick={() => approveCashOut(r)}
-                          >
-                            Approve
-                          </button>
+                          {canApprove && (
+                            <button
+                              style={{
+                                ...approveBtn,
+                                opacity: busy ? 0.6 : 1,
+                                cursor: busy ? "not-allowed" : "pointer",
+                              }}
+                              disabled={busy}
+                              onClick={() => approveCashOut(r)}
+                            >
+                              {busy ? "..." : "Approve"}
+                            </button>
+                          )}
 
-                          <button
-                            style={releaseBtn}
-                            disabled={processingId === r.id}
-                            onClick={() => setStatusOnly(r.id, "RELEASED")}
-                          >
-                            Released
-                          </button>
+                          {canRelease && (
+                            <button
+                              style={{
+                                ...releaseBtn,
+                                opacity: busy ? 0.6 : 1,
+                                cursor: busy ? "not-allowed" : "pointer",
+                              }}
+                              disabled={busy}
+                              onClick={() => releaseCashOut(r)}
+                            >
+                              {busy ? "..." : "Released"}
+                            </button>
+                          )}
 
-                          <button
-                            style={rejectBtn}
-                            disabled={processingId === r.id}
-                            onClick={() => setStatusOnly(r.id, "REJECTED")}
-                          >
-                            Reject
-                          </button>
+                          {canReject && (
+                            <button
+                              style={{
+                                ...rejectBtn,
+                                opacity: busy ? 0.6 : 1,
+                                cursor: busy ? "not-allowed" : "pointer",
+                              }}
+                              disabled={busy}
+                              onClick={() => rejectCashOut(r)}
+                            >
+                              {busy ? "..." : "Reject"}
+                            </button>
+                          )}
+
+                          {!canProcess && !canApprove && !canRelease && !canReject && (
+                            <span style={doneText}>Completed</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -375,7 +629,15 @@ export default function AdminCashOutPage() {
   );
 }
 
-function Card({ label, value, accent }: { label: string; value: number; accent: string }) {
+function Card({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: string;
+}) {
   return (
     <div style={statCard}>
       <div style={{ ...statBar, background: accent }} />
@@ -385,7 +647,15 @@ function Card({ label, value, accent }: { label: string; value: number; accent: 
   );
 }
 
-function MoneyCard({ label, value, accent }: { label: string; value: number; accent: string }) {
+function MoneyCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: string;
+}) {
   return (
     <div style={statCard}>
       <div style={{ ...statBar, background: accent }} />
@@ -592,16 +862,104 @@ const pill: React.CSSProperties = {
 };
 
 const tableWrap: React.CSSProperties = { overflowX: "auto" };
-const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", minWidth: 1100 };
-const th: React.CSSProperties = { textAlign: "left", padding: "14px 12px", fontSize: 12, color: "#475569", textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1px solid #e2e8f0" };
-const tr: React.CSSProperties = { borderBottom: "1px solid #f1f5f9" };
-const td: React.CSSProperties = { padding: "15px 12px", fontSize: 14, verticalAlign: "top" };
-const muted: React.CSSProperties = { color: "#64748b", fontSize: 12 };
-const badge: React.CSSProperties = { display: "inline-block", padding: "7px 10px", borderRadius: 999, fontSize: 11, fontWeight: 950 };
-const actions: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap" };
 
-const processBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#2563eb", color: "white", fontWeight: 900, cursor: "pointer" };
-const approveBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#16a34a", color: "white", fontWeight: 900, cursor: "pointer" };
-const releaseBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#0f766e", color: "white", fontWeight: 900, cursor: "pointer" };
-const rejectBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#dc2626", color: "white", fontWeight: 900, cursor: "pointer" };
-const emptyBox: React.CSSProperties = { padding: 30, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center", fontWeight: 850 };
+const table: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  minWidth: 1180,
+};
+
+const th: React.CSSProperties = {
+  textAlign: "left",
+  padding: "14px 12px",
+  fontSize: 12,
+  color: "#475569",
+  textTransform: "uppercase",
+  letterSpacing: 0.8,
+  borderBottom: "1px solid #e2e8f0",
+};
+
+const tr: React.CSSProperties = {
+  borderBottom: "1px solid #f1f5f9",
+};
+
+const td: React.CSSProperties = {
+  padding: "15px 12px",
+  fontSize: 14,
+  verticalAlign: "top",
+};
+
+const muted: React.CSSProperties = {
+  color: "#64748b",
+  fontSize: 12,
+};
+
+const badge: React.CSSProperties = {
+  display: "inline-block",
+  padding: "7px 10px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 950,
+};
+
+const actions: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const processBtn: React.CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  padding: "9px 12px",
+  background: "#2563eb",
+  color: "white",
+  fontWeight: 900,
+};
+
+const approveBtn: React.CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  padding: "9px 12px",
+  background: "#16a34a",
+  color: "white",
+  fontWeight: 900,
+};
+
+const releaseBtn: React.CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  padding: "9px 12px",
+  background: "#0f766e",
+  color: "white",
+  fontWeight: 900,
+};
+
+const rejectBtn: React.CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  padding: "9px 12px",
+  background: "#dc2626",
+  color: "white",
+  fontWeight: 900,
+};
+
+const emptyBox: React.CSSProperties = {
+  padding: 30,
+  borderRadius: 18,
+  background: "#f8fafc",
+  color: "#64748b",
+  textAlign: "center",
+  fontWeight: 850,
+};
+
+const mono: React.CSSProperties = {
+  fontFamily:
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+  fontSize: 12,
+};
+
+const doneText: React.CSSProperties = {
+  color: "#64748b",
+  fontWeight: 900,
+};

@@ -41,10 +41,10 @@ export default function AdminCashInPage() {
       .limit(150);
 
     if (error) {
-      console.error("Cash-in error:", error.message);
+      alert(`Cash-in load error: ${error.message}`);
       setRequests([]);
     } else {
-      setRequests(data || []);
+      setRequests((data || []) as CashInRequest[]);
     }
 
     setLoading(false);
@@ -58,8 +58,15 @@ export default function AdminCashInPage() {
       return;
     }
 
+    if (reqStatus === "REJECTED") {
+      alert("Rejected cash-in requests cannot be approved again.");
+      return;
+    }
+
     const profileId = req.profile_id || req.customer_id;
     const amount = toNumber(req.amount);
+    const referenceNo =
+      req.reference_no || req.reference_number || `FC-CASHIN-${req.id}`;
 
     if (!profileId) {
       alert("Missing profile_id/customer_id. Cannot credit wallet.");
@@ -71,7 +78,12 @@ export default function AdminCashInPage() {
       return;
     }
 
-    const ok = confirm(`Approve cash-in ${money(amount)} and credit customer wallet?`);
+    const ok = confirm(
+      `Approve cash-in ${money(
+        amount
+      )} and credit customer wallet?\n\nReference: ${referenceNo}`
+    );
+
     if (!ok) return;
 
     setProcessingId(req.id);
@@ -79,13 +91,17 @@ export default function AdminCashInPage() {
     try {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("wallet_balance")
+        .select("id,wallet_balance")
         .eq("id", profileId)
         .maybeSingle();
 
       if (profileError) throw profileError;
 
-      const currentBalance = toNumber(profile?.wallet_balance);
+      if (!profile) {
+        throw new Error("Customer profile not found.");
+      }
+
+      const currentBalance = toNumber(profile.wallet_balance);
       const newBalance = currentBalance + amount;
 
       const { error: walletError } = await supabase
@@ -95,14 +111,20 @@ export default function AdminCashInPage() {
 
       if (walletError) throw walletError;
 
-      await supabase.from("wallet_transactions").insert({
-        profile_id: profileId,
-        transaction_type: "CASH_IN_APPROVED",
-        amount,
-        reference_no: req.reference_no || req.reference_number || "FC-CASHIN-" + req.id,
-        remarks: `Cash-in approved by admin.`,
-        status: "COMPLETED",
-      });
+      const { error: txError } = await supabase
+        .from("wallet_transactions")
+        .insert({
+          profile_id: profileId,
+          transaction_type: "CASH_IN_APPROVED",
+          amount,
+          reference_no: referenceNo,
+          remarks: `Cash-in approved by admin via ${
+            req.channel || req.payment_method || req.method || "GCash/Maya"
+          }. Wallet credited ${money(amount)}.`,
+          status: "COMPLETED",
+        });
+
+      if (txError) throw txError;
 
       const { error: requestError } = await supabase
         .from("cashin_requests")
@@ -125,47 +147,87 @@ export default function AdminCashInPage() {
   }
 
   async function rejectCashIn(req: CashInRequest) {
-    if (status(req.status) === "REJECTED") return;
+    const reqStatus = status(req.status);
+
+    if (reqStatus === "REJECTED") {
+      alert("This cash-in is already rejected.");
+      return;
+    }
+
+    if (reqStatus === "APPROVED") {
+      alert("Approved cash-in cannot be rejected.");
+      return;
+    }
 
     const ok = confirm("Reject this cash-in request?");
     if (!ok) return;
 
     setProcessingId(req.id);
 
-    const { error } = await supabase
-      .from("cashin_requests")
-      .update({
-        status: "REJECTED",
-        admin_notes: "Rejected by admin.",
-      })
-      .eq("id", req.id);
+    try {
+      const profileId = req.profile_id || req.customer_id;
+      const referenceNo =
+        req.reference_no || req.reference_number || `FC-CASHIN-${req.id}`;
 
-    if (error) {
-      alert(error.message);
+      const { error } = await supabase
+        .from("cashin_requests")
+        .update({
+          status: "REJECTED",
+          admin_notes:
+            "Rejected by admin. No wallet credit was added to customer wallet.",
+        })
+        .eq("id", req.id);
+
+      if (error) throw error;
+
+      if (profileId) {
+        await supabase.from("wallet_transactions").insert({
+          profile_id: profileId,
+          transaction_type: "CASH_IN_REJECTED",
+          amount: 0,
+          reference_no: referenceNo,
+          remarks: `Cash-in rejected by admin. No wallet credit added.`,
+          status: "REJECTED",
+        });
+      }
+
+      alert("Cash-in request rejected.");
+      await loadCashins();
+    } catch (err: any) {
+      alert(err?.message || "Reject failed.");
+    } finally {
       setProcessingId("");
-      return;
     }
-
-    await loadCashins();
-    setProcessingId("");
   }
 
   const summary = useMemo(() => {
+    const totalAmount = requests.reduce((sum, r) => sum + toNumber(r.amount), 0);
+    const pendingAmount = requests
+      .filter((r) => status(r.status) === "PENDING")
+      .reduce((sum, r) => sum + toNumber(r.amount), 0);
+    const approvedAmount = requests
+      .filter((r) => status(r.status) === "APPROVED")
+      .reduce((sum, r) => sum + toNumber(r.amount), 0);
+
     return {
       total: requests.length,
-      amount: requests.reduce((sum, r) => sum + toNumber(r.amount), 0),
+      amount: totalAmount,
       pending: requests.filter((r) => status(r.status) === "PENDING").length,
       approved: requests.filter((r) => status(r.status) === "APPROVED").length,
+      rejected: requests.filter((r) => status(r.status) === "REJECTED").length,
+      pendingAmount,
+      approvedAmount,
     };
   }, [requests]);
 
   const filtered = requests.filter((r) => {
     const matchFilter = filter === "ALL" || status(r.status) === filter;
+
     const text = `${r.id} ${r.profile_id || ""} ${r.customer_id || ""} ${
       r.channel || ""
     } ${r.payment_method || ""} ${r.method || ""} ${r.reference_no || ""} ${
       r.reference_number || ""
-    } ${r.status || ""}`.toLowerCase();
+    } ${r.status || ""} ${r.admin_notes || ""}`.toLowerCase();
 
     return matchFilter && text.includes(search.toLowerCase());
   });
@@ -177,7 +239,8 @@ export default function AdminCashInPage() {
           <p style={eyebrow}>FarmConnect Transactions</p>
           <h1 style={title}>Cash-In Requests</h1>
           <p style={subtitle}>
-            Review customer funding requests. Approval credits customer wallet balance.
+            Review customer GCash/Maya funding requests. Approval credits the
+            customer wallet balance. Rejecting does not affect wallet balance.
           </p>
         </div>
 
@@ -188,9 +251,24 @@ export default function AdminCashInPage() {
 
       <section style={statsGrid}>
         <Card label="Total Requests" value={summary.total} accent="#2563eb" />
-        <MoneyCard label="Total Amount" value={summary.amount} accent="#16a34a" />
+        <MoneyCard
+          label="Total Submitted"
+          value={summary.amount}
+          accent="#16a34a"
+        />
         <Card label="Pending" value={summary.pending} accent="#f59e0b" />
         <Card label="Approved" value={summary.approved} accent="#15803d" />
+        <Card label="Rejected" value={summary.rejected} accent="#dc2626" />
+        <MoneyCard
+          label="Pending Amount"
+          value={summary.pendingAmount}
+          accent="#f59e0b"
+        />
+        <MoneyCard
+          label="Approved Credit"
+          value={summary.approvedAmount}
+          accent="#15803d"
+        />
       </section>
 
       <section style={controlCard}>
@@ -218,7 +296,7 @@ export default function AdminCashInPage() {
           <div>
             <h2 style={sectionTitle}>Funding Approval Queue</h2>
             <p style={sectionDesc}>
-              Verify actual GCash/Maya payment before approving wallet credit.
+              Verify actual GCash/Maya receipt before approving wallet credit.
             </p>
           </div>
           <span style={pill}>{filtered.length} records</span>
@@ -240,62 +318,95 @@ export default function AdminCashInPage() {
                   <th style={th}>Amount</th>
                   <th style={th}>Proof</th>
                   <th style={th}>Status</th>
+                  <th style={th}>Notes</th>
                   <th style={th}>Action</th>
                 </tr>
               </thead>
 
               <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} style={tr}>
-                    <td style={td}>
-                      {r.created_at ? new Date(r.created_at).toLocaleString() : "—"}
-                    </td>
-                    <td style={td}>{r.profile_id || r.customer_id || "—"}</td>
-                    <td style={td}>{r.channel || r.payment_method || r.method || "Manual Cash-In"}</td>
-                    <td style={td}>{r.reference_no || r.reference_number || r.id}</td>
-                    <td style={td}>
-                      <strong>{money(toNumber(r.amount))}</strong>
-                    </td>
-                    <td style={td}>
-                      {r.proof_url ? (
-                        <a href={r.proof_url} target="_blank" style={link}>
-                          View Proof
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td style={td}>
-                      <span
-                        style={{
-                          ...badge,
-                          background: statusBg(r.status),
-                          color: statusColor(r.status),
-                        }}
-                      >
-                        {status(r.status)}
-                      </span>
-                    </td>
-                    <td style={td}>
-                      <div style={actions}>
-                        <button
-                          style={approveBtn}
-                          disabled={processingId === r.id}
-                          onClick={() => approveCashIn(r)}
+                {filtered.map((r) => {
+                  const currentStatus = status(r.status);
+                  const busy = processingId === r.id;
+                  const canAct = currentStatus === "PENDING";
+
+                  return (
+                    <tr key={r.id} style={tr}>
+                      <td style={td}>
+                        {r.created_at
+                          ? new Date(r.created_at).toLocaleString()
+                          : "—"}
+                      </td>
+                      <td style={td}>
+                        <span style={mono}>
+                          {r.profile_id || r.customer_id || "—"}
+                        </span>
+                      </td>
+                      <td style={td}>
+                        {r.channel ||
+                          r.payment_method ||
+                          r.method ||
+                          "Manual Cash-In"}
+                      </td>
+                      <td style={td}>
+                        {r.reference_no || r.reference_number || r.id}
+                      </td>
+                      <td style={td}>
+                        <strong>{money(toNumber(r.amount))}</strong>
+                      </td>
+                      <td style={td}>
+                        {r.proof_url ? (
+                          <a href={r.proof_url} target="_blank" style={link}>
+                            View Proof
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td style={td}>
+                        <span
+                          style={{
+                            ...badge,
+                            background: statusBg(r.status),
+                            color: statusColor(r.status),
+                          }}
                         >
-                          Approve
-                        </button>
-                        <button
-                          style={rejectBtn}
-                          disabled={processingId === r.id}
-                          onClick={() => rejectCashIn(r)}
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {currentStatus}
+                        </span>
+                      </td>
+                      <td style={td}>{r.admin_notes || "—"}</td>
+                      <td style={td}>
+                        {canAct ? (
+                          <div style={actions}>
+                            <button
+                              style={{
+                                ...approveBtn,
+                                opacity: busy ? 0.6 : 1,
+                                cursor: busy ? "not-allowed" : "pointer",
+                              }}
+                              disabled={busy}
+                              onClick={() => approveCashIn(r)}
+                            >
+                              {busy ? "Processing..." : "Approve"}
+                            </button>
+                            <button
+                              style={{
+                                ...rejectBtn,
+                                opacity: busy ? 0.6 : 1,
+                                cursor: busy ? "not-allowed" : "pointer",
+                              }}
+                              disabled={busy}
+                              onClick={() => rejectCashIn(r)}
+                            >
+                              {busy ? "Processing..." : "Reject"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={doneText}>Completed</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -305,7 +416,15 @@ export default function AdminCashInPage() {
   );
 }
 
-function Card({ label, value, accent }: { label: string; value: number; accent: string }) {
+function Card({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: string;
+}) {
   return (
     <div style={statCard}>
       <div style={{ ...statBar, background: accent }} />
@@ -315,7 +434,15 @@ function Card({ label, value, accent }: { label: string; value: number; accent: 
   );
 }
 
-function MoneyCard({ label, value, accent }: { label: string; value: number; accent: string }) {
+function MoneyCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: string;
+}) {
   return (
     <div style={statCard}>
       <div style={{ ...statBar, background: accent }} />
@@ -359,34 +486,250 @@ function statusColor(value?: string | null) {
   return "#92400e";
 }
 
-const page: React.CSSProperties = { minHeight: "100vh", padding: 28, background: "linear-gradient(135deg, #ecfdf5 0%, #eff6ff 45%, #f8fafc 100%)", color: "#0f172a" };
-const hero: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 20, alignItems: "center", padding: 30, borderRadius: 30, background: "linear-gradient(135deg, #14532d, #16a34a, #2563eb)", color: "white", boxShadow: "0 20px 45px rgba(15,23,42,.18)", marginBottom: 24 };
-const eyebrow: React.CSSProperties = { margin: 0, fontSize: 13, fontWeight: 900, letterSpacing: 1.5, textTransform: "uppercase", opacity: 0.88 };
-const title: React.CSSProperties = { margin: "8px 0", fontSize: 42, fontWeight: 950 };
-const subtitle: React.CSSProperties = { margin: 0, maxWidth: 760, fontSize: 15, lineHeight: 1.6, opacity: 0.92 };
-const refreshBtn: React.CSSProperties = { border: "none", borderRadius: 16, padding: "13px 18px", fontWeight: 950, color: "#14532d", background: "white", cursor: "pointer" };
-const statsGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16, marginBottom: 18 };
-const statCard: React.CSSProperties = { padding: 21, borderRadius: 24, background: "rgba(255,255,255,.94)", border: "1px solid rgba(148,163,184,.28)", boxShadow: "0 15px 32px rgba(15,23,42,.08)" };
-const statBar: React.CSSProperties = { width: 50, height: 8, borderRadius: 999, marginBottom: 14 };
-const statLabel: React.CSSProperties = { margin: 0, color: "#64748b", fontSize: 13, fontWeight: 900 };
-const statValue: React.CSSProperties = { margin: "8px 0 0", fontSize: 34, fontWeight: 950 };
-const statMoney: React.CSSProperties = { margin: "8px 0 0", fontSize: 27, fontWeight: 950 };
-const controlCard: React.CSSProperties = { display: "flex", gap: 12, flexWrap: "wrap", padding: 16, borderRadius: 22, background: "rgba(255,255,255,.86)", border: "1px solid rgba(148,163,184,.25)", marginBottom: 18 };
-const searchInput: React.CSSProperties = { flex: 1, minWidth: 260, padding: "14px 16px", borderRadius: 16, border: "1px solid #cbd5e1", outline: "none" };
-const selectInput: React.CSSProperties = { padding: "14px 16px", borderRadius: 16, border: "1px solid #cbd5e1", outline: "none", fontWeight: 900, background: "white" };
-const card: React.CSSProperties = { padding: 22, borderRadius: 26, background: "rgba(255,255,255,.94)", border: "1px solid rgba(148,163,184,.3)", boxShadow: "0 20px 45px rgba(15,23,42,.08)" };
-const cardHeader: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 14, alignItems: "center", marginBottom: 16 };
-const sectionTitle: React.CSSProperties = { margin: 0, fontSize: 22, fontWeight: 950 };
-const sectionDesc: React.CSSProperties = { margin: "6px 0 0", color: "#64748b", fontSize: 14 };
-const pill: React.CSSProperties = { padding: "8px 12px", borderRadius: 999, background: "#dcfce7", color: "#166534", fontWeight: 950, fontSize: 12 };
-const tableWrap: React.CSSProperties = { overflowX: "auto" };
-const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", minWidth: 920 };
-const th: React.CSSProperties = { textAlign: "left", padding: "14px 12px", fontSize: 12, color: "#475569", textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1px solid #e2e8f0" };
-const tr: React.CSSProperties = { borderBottom: "1px solid #f1f5f9" };
-const td: React.CSSProperties = { padding: "15px 12px", fontSize: 14, verticalAlign: "top" };
-const badge: React.CSSProperties = { display: "inline-block", padding: "7px 10px", borderRadius: 999, fontSize: 11, fontWeight: 950 };
-const actions: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap" };
-const approveBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#16a34a", color: "white", fontWeight: 900, cursor: "pointer" };
-const rejectBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#dc2626", color: "white", fontWeight: 900, cursor: "pointer" };
-const link: React.CSSProperties = { color: "#2563eb", fontWeight: 900, textDecoration: "none" };
-const emptyBox: React.CSSProperties = { padding: 30, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center", fontWeight: 850 };
+const page: React.CSSProperties = {
+  minHeight: "100vh",
+  padding: 28,
+  background: "linear-gradient(135deg, #ecfdf5 0%, #eff6ff 45%, #f8fafc 100%)",
+  color: "#0f172a",
+};
+
+const hero: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 20,
+  alignItems: "center",
+  padding: 30,
+  borderRadius: 30,
+  background: "linear-gradient(135deg, #14532d, #16a34a, #2563eb)",
+  color: "white",
+  boxShadow: "0 20px 45px rgba(15,23,42,.18)",
+  marginBottom: 24,
+};
+
+const eyebrow: React.CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 900,
+  letterSpacing: 1.5,
+  textTransform: "uppercase",
+  opacity: 0.88,
+};
+
+const title: React.CSSProperties = {
+  margin: "8px 0",
+  fontSize: 42,
+  fontWeight: 950,
+};
+
+const subtitle: React.CSSProperties = {
+  margin: 0,
+  maxWidth: 760,
+  fontSize: 15,
+  lineHeight: 1.6,
+  opacity: 0.92,
+};
+
+const refreshBtn: React.CSSProperties = {
+  border: "none",
+  borderRadius: 16,
+  padding: "13px 18px",
+  fontWeight: 950,
+  color: "#14532d",
+  background: "white",
+  cursor: "pointer",
+};
+
+const statsGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+  gap: 16,
+  marginBottom: 18,
+};
+
+const statCard: React.CSSProperties = {
+  padding: 21,
+  borderRadius: 24,
+  background: "rgba(255,255,255,.94)",
+  border: "1px solid rgba(148,163,184,.28)",
+  boxShadow: "0 15px 32px rgba(15,23,42,.08)",
+};
+
+const statBar: React.CSSProperties = {
+  width: 50,
+  height: 8,
+  borderRadius: 999,
+  marginBottom: 14,
+};
+
+const statLabel: React.CSSProperties = {
+  margin: 0,
+  color: "#64748b",
+  fontSize: 13,
+  fontWeight: 900,
+};
+
+const statValue: React.CSSProperties = {
+  margin: "8px 0 0",
+  fontSize: 34,
+  fontWeight: 950,
+};
+
+const statMoney: React.CSSProperties = {
+  margin: "8px 0 0",
+  fontSize: 27,
+  fontWeight: 950,
+};
+
+const controlCard: React.CSSProperties = {
+  display: "flex",
+  gap: 12,
+  flexWrap: "wrap",
+  padding: 16,
+  borderRadius: 22,
+  background: "rgba(255,255,255,.86)",
+  border: "1px solid rgba(148,163,184,.25)",
+  marginBottom: 18,
+};
+
+const searchInput: React.CSSProperties = {
+  flex: 1,
+  minWidth: 260,
+  padding: "14px 16px",
+  borderRadius: 16,
+  border: "1px solid #cbd5e1",
+  outline: "none",
+};
+
+const selectInput: React.CSSProperties = {
+  padding: "14px 16px",
+  borderRadius: 16,
+  border: "1px solid #cbd5e1",
+  outline: "none",
+  fontWeight: 900,
+  background: "white",
+};
+
+const card: React.CSSProperties = {
+  padding: 22,
+  borderRadius: 26,
+  background: "rgba(255,255,255,.94)",
+  border: "1px solid rgba(148,163,184,.3)",
+  boxShadow: "0 20px 45px rgba(15,23,42,.08)",
+};
+
+const cardHeader: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 14,
+  alignItems: "center",
+  marginBottom: 16,
+};
+
+const sectionTitle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 22,
+  fontWeight: 950,
+};
+
+const sectionDesc: React.CSSProperties = {
+  margin: "6px 0 0",
+  color: "#64748b",
+  fontSize: 14,
+};
+
+const pill: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 999,
+  background: "#dcfce7",
+  color: "#166534",
+  fontWeight: 950,
+  fontSize: 12,
+};
+
+const tableWrap: React.CSSProperties = {
+  overflowX: "auto",
+};
+
+const table: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  minWidth: 1040,
+};
+
+const th: React.CSSProperties = {
+  textAlign: "left",
+  padding: "14px 12px",
+  fontSize: 12,
+  color: "#475569",
+  textTransform: "uppercase",
+  letterSpacing: 0.8,
+  borderBottom: "1px solid #e2e8f0",
+};
+
+const tr: React.CSSProperties = {
+  borderBottom: "1px solid #f1f5f9",
+};
+
+const td: React.CSSProperties = {
+  padding: "15px 12px",
+  fontSize: 14,
+  verticalAlign: "top",
+};
+
+const badge: React.CSSProperties = {
+  display: "inline-block",
+  padding: "7px 10px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 950,
+};
+
+const actions: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const approveBtn: React.CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  padding: "9px 12px",
+  background: "#16a34a",
+  color: "white",
+  fontWeight: 900,
+};
+
+const rejectBtn: React.CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  padding: "9px 12px",
+  background: "#dc2626",
+  color: "white",
+  fontWeight: 900,
+};
+
+const link: React.CSSProperties = {
+  color: "#2563eb",
+  fontWeight: 900,
+  textDecoration: "none",
+};
+
+const emptyBox: React.CSSProperties = {
+  padding: 30,
+  borderRadius: 18,
+  background: "#f8fafc",
+  color: "#64748b",
+  textAlign: "center",
+  fontWeight: 850,
+};
+
+const mono: React.CSSProperties = {
+  fontFamily:
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+  fontSize: 12,
+};
+
+const doneText: React.CSSProperties = {
+  color: "#64748b",
+  fontWeight: 900,
+};
