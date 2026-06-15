@@ -28,11 +28,21 @@ type CashRequest = {
   created_at: string;
 };
 
+type PaymentSettings = {
+  id: string;
+  gcash_number: string | null;
+  maya_number: string | null;
+  gcash_name: string | null;
+  maya_name: string | null;
+};
+
 export default function WalletPage() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [cashinRequests, setCashinRequests] = useState<CashRequest[]>([]);
   const [cashoutRequests, setCashoutRequests] = useState<CashRequest[]>([]);
+  const [paymentSettings, setPaymentSettings] =
+    useState<PaymentSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [cashinMethod, setCashinMethod] = useState("GCASH");
@@ -43,6 +53,9 @@ export default function WalletPage() {
   const [cashoutAmount, setCashoutAmount] = useState(0);
   const [cashoutName, setCashoutName] = useState("");
   const [cashoutNumber, setCashoutNumber] = useState("");
+
+  const cashoutFee = cashoutAmount * 0.02;
+  const cashoutReceives = cashoutAmount - cashoutFee;
 
   function getProfile() {
     const savedUser =
@@ -115,10 +128,17 @@ export default function WalletPage() {
       .order("created_at", { ascending: false })
       .limit(10);
 
+    const { data: paymentData } = await supabase
+      .from("payment_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+
     setWalletBalance(Number(profileData?.wallet_balance || 0));
     setTransactions(txData || []);
     setCashinRequests(cashinData || []);
     setCashoutRequests(cashoutData || []);
+    setPaymentSettings(paymentData || null);
     setLoading(false);
   }
 
@@ -139,12 +159,17 @@ export default function WalletPage() {
       return;
     }
 
+    if (!cashinReference.trim()) {
+      alert("Please enter your GCash/Maya reference number.");
+      return;
+    }
+
     const { error } = await supabase.from("cashin_requests").insert({
       profile_id: user.id,
       amount: cashinAmount,
       payment_method: cashinMethod,
       channel: cashinMethod,
-      reference_no: cashinReference || "NO_REFERENCE",
+      reference_no: cashinReference,
       status: "PENDING",
     });
 
@@ -157,7 +182,7 @@ export default function WalletPage() {
       profile_id: user.id,
       transaction_type: "CASH_IN_REQUEST",
       amount: cashinAmount,
-      reference_no: cashinReference || "PENDING-" + Date.now(),
+      reference_no: cashinReference,
       remarks: `${cashinMethod} cash-in request submitted`,
       status: "PENDING",
     });
@@ -211,7 +236,9 @@ export default function WalletPage() {
       transaction_type: "CASH_OUT_REQUEST",
       amount: cashoutAmount * -1,
       reference_no: "FC-CASHOUT-" + Date.now(),
-      remarks: `${cashoutMethod} cash-out request submitted`,
+      remarks: `${cashoutMethod} cash-out request submitted. Fee: ${formatPeso(
+        cashoutFee
+      )}. Customer receives: ${formatPeso(cashoutReceives)}.`,
       status: "PENDING",
     });
 
@@ -234,7 +261,7 @@ export default function WalletPage() {
             <h1 className="text-4xl font-black text-gray-900">Farm Wallet</h1>
 
             <p className="text-gray-500 mt-2">
-              GCash and Maya cash-in/cash-out requests are routed to admin approval.
+              Cash-in through FarmConnect GCash/Maya. Cash-out has 2% technical fee.
             </p>
           </div>
 
@@ -255,16 +282,16 @@ export default function WalletPage() {
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
-            <p className="text-gray-500 font-semibold">GCash</p>
+            <p className="text-gray-500 font-semibold">GCash Number</p>
             <h2 className="text-xl font-black text-green-700 mt-2">
-              Cash-In / Cash-Out
+              {paymentSettings?.gcash_number || "09288985979"}
             </h2>
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
-            <p className="text-gray-500 font-semibold">Maya</p>
+            <p className="text-gray-500 font-semibold">Maya Number</p>
             <h2 className="text-xl font-black text-green-700 mt-2">
-              Cash-In / Cash-Out
+              {paymentSettings?.maya_number || "09498387452"}
             </h2>
           </div>
 
@@ -296,6 +323,37 @@ export default function WalletPage() {
                 <option value="MAYA">Maya</option>
               </select>
 
+              <div className="bg-green-50 rounded-2xl p-4 text-sm text-gray-700">
+                <p className="font-black text-green-800 mb-2">
+                  Send Payment To
+                </p>
+
+                <div className="bg-white rounded-xl p-3 mb-2">
+                  <p className="font-bold">GCash</p>
+                  <p className="text-xl font-black text-green-800">
+                    {paymentSettings?.gcash_number || "09288985979"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Account Name: {paymentSettings?.gcash_name || "FarmConnect"}
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-xl p-3 mb-3">
+                  <p className="font-bold">Maya</p>
+                  <p className="text-xl font-black text-green-800">
+                    {paymentSettings?.maya_number || "09498387452"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Account Name: {paymentSettings?.maya_name || "FarmConnect"}
+                  </p>
+                </div>
+
+                <p>
+                  Send payment first using your selected channel. After payment,
+                  enter the exact amount and reference number from your receipt.
+                </p>
+              </div>
+
               <input
                 type="number"
                 value={cashinAmount}
@@ -310,16 +368,6 @@ export default function WalletPage() {
                 placeholder="GCash/Maya reference number"
                 className="border rounded-2xl p-4 font-bold"
               />
-
-              <div className="bg-green-50 rounded-2xl p-4 text-sm text-gray-700">
-                <p className="font-black text-green-800 mb-1">
-                  Payment Instruction
-                </p>
-                <p>
-                  Send payment using your selected channel, enter your reference
-                  number, then submit for admin verification.
-                </p>
-              </div>
 
               <button
                 onClick={submitCashIn}
@@ -353,6 +401,16 @@ export default function WalletPage() {
                 className="border rounded-2xl p-4 font-bold"
               />
 
+              <div className="bg-red-50 rounded-2xl p-4">
+                <p className="font-black text-red-700">Technical Fee (2%)</p>
+                <p className="font-bold text-gray-700">
+                  Fee: {formatPeso(cashoutFee)}
+                </p>
+                <p className="font-bold text-gray-700">
+                  Customer Receives: {formatPeso(cashoutReceives)}
+                </p>
+              </div>
+
               <input
                 value={cashoutName}
                 onChange={(e) => setCashoutName(e.target.value)}
@@ -372,8 +430,8 @@ export default function WalletPage() {
                   Admin Approval Required
                 </p>
                 <p>
-                  Cash-out will be processed after admin verifies wallet balance
-                  and payout details.
+                  Admin will verify the request and send the net amount manually
+                  to your selected GCash/Maya account.
                 </p>
               </div>
 
@@ -462,8 +520,10 @@ export default function WalletPage() {
                             {req.channel || req.payment_method || "Cash Request"}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {req.reference_no || req.account_number || "No reference"} •{" "}
-                            {new Date(req.created_at).toLocaleDateString()}
+                            {req.reference_no ||
+                              req.account_number ||
+                              "No reference"}{" "}
+                            • {new Date(req.created_at).toLocaleDateString()}
                           </p>
                           <span
                             className={`inline-block mt-2 rounded-full px-3 py-1 text-xs font-black ${statusColor(
