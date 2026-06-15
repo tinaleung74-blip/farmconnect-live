@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Stats = {
@@ -12,12 +12,28 @@ type Stats = {
   cashin: number;
   cashout: number;
   wallet: number;
-  harvests: number;
   risks: number;
+  sellRequests: number;
+  memberships: number;
 };
+
+type WalletTx = {
+  id: string;
+  transaction_type: string | null;
+  amount: number | string | null;
+  status: string | null;
+};
+
+const REVENUE_TYPES = [
+  "MEMBERSHIP_PAYMENT_APPROVED",
+  "FARMCONNECT_TECHNICAL_FEE",
+  "FARMCONNECT_CASHOUT_FEE",
+  "FARMCONNECT_SELL_CHICKEN_FEE",
+];
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
+  const [walletTx, setWalletTx] = useState<WalletTx[]>([]);
   const [stats, setStats] = useState<Stats>({
     customers: 0,
     caretakers: 0,
@@ -26,18 +42,28 @@ export default function AdminDashboardPage() {
     cashin: 0,
     cashout: 0,
     wallet: 0,
-    harvests: 0,
     risks: 0,
+    sellRequests: 0,
+    memberships: 0,
   });
 
   useEffect(() => {
     loadDashboard();
   }, []);
 
-  async function safeCount(table: string) {
-    const { count } = await supabase
-      .from(table)
-      .select("*", { count: "exact", head: true });
+  async function safeCount(table: string, filter?: { column: string; value: string }) {
+    let query = supabase.from(table).select("*", { count: "exact", head: true });
+
+    if (filter) {
+      query = query.eq(filter.column, filter.value);
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      console.error(`${table} count error:`, error.message);
+      return 0;
+    }
 
     return count || 0;
   }
@@ -53,18 +79,25 @@ export default function AdminDashboardPage() {
       cashin,
       cashout,
       wallet,
-      harvests,
       risks,
+      sellRequests,
+      memberships,
+      walletRes,
     ] = await Promise.all([
-      safeCount("customers"),
+      safeCount("profiles"),
       safeCount("caretakers"),
       safeCount("customer_caretaker_hires"),
       safeCount("flocks"),
       safeCount("cashin_requests"),
       safeCount("cashout_requests"),
       safeCount("wallet_transactions"),
-      safeCount("harvests"),
       safeCount("risk_alerts"),
+      safeCount("sell_chicken_requests"),
+      safeCount("membership_payments"),
+      supabase
+        .from("wallet_transactions")
+        .select("id,transaction_type,amount,status")
+        .limit(500),
     ]);
 
     setStats({
@@ -75,20 +108,55 @@ export default function AdminDashboardPage() {
       cashin,
       cashout,
       wallet,
-      harvests,
       risks,
+      sellRequests,
+      memberships,
     });
 
+    setWalletTx((walletRes.data || []) as WalletTx[]);
     setLoading(false);
   }
+
+  const revenue = useMemo(() => {
+    const completed = walletTx.filter((tx) =>
+      ["COMPLETED", "APPROVED", "PAID"].includes(clean(tx.status))
+    );
+
+    const total = completed
+      .filter((tx) => REVENUE_TYPES.includes(String(tx.transaction_type || "")))
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+    const membership = completed
+      .filter((tx) => tx.transaction_type === "MEMBERSHIP_PAYMENT_APPROVED")
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+    const fees = completed
+      .filter((tx) =>
+        [
+          "FARMCONNECT_TECHNICAL_FEE",
+          "FARMCONNECT_CASHOUT_FEE",
+          "FARMCONNECT_SELL_CHICKEN_FEE",
+        ].includes(String(tx.transaction_type || ""))
+      )
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+    return { total, membership, fees };
+  }, [walletTx]);
 
   const cards = [
     {
       title: "Customers",
       value: stats.customers,
-      desc: "Investor / poultry customer accounts",
+      desc: "Profiles, KYC, membership, and anti-scam review",
       href: "/admin/customers",
       icon: "👥",
+    },
+    {
+      title: "Membership Requests",
+      value: stats.memberships,
+      desc: "Approve Annual Investor Membership payments",
+      href: "/admin/memberships",
+      icon: "💳",
     },
     {
       title: "Caretakers",
@@ -100,7 +168,7 @@ export default function AdminDashboardPage() {
     {
       title: "Caretaker Hire Requests",
       value: stats.caretakerHires,
-      desc: "Review, approve, reject, and mark paid",
+      desc: "Review, approve, reject, and refund",
       href: "/admin/caretaker-hires",
       icon: "✅",
     },
@@ -110,6 +178,13 @@ export default function AdminDashboardPage() {
       desc: "Chicken batches under monitoring",
       href: "/admin/reports",
       icon: "🐔",
+    },
+    {
+      title: "Sell Requests",
+      value: stats.sellRequests,
+      desc: "Approve or reject chicken selling requests",
+      href: "/admin/sell-requests",
+      icon: "🐓",
     },
     {
       title: "Cash-In Requests",
@@ -128,16 +203,9 @@ export default function AdminDashboardPage() {
     {
       title: "Wallet Transactions",
       value: stats.wallet,
-      desc: "Ledger and balance movement",
+      desc: "Ledger, fees, revenue, and balance movement",
       href: "/admin/wallet",
       icon: "👛",
-    },
-    {
-      title: "Harvest Records",
-      value: stats.harvests,
-      desc: "Harvest, yield, and ROI tracking",
-      href: "/admin/harvest",
-      icon: "🌾",
     },
     {
       title: "Risk Alerts",
@@ -152,12 +220,12 @@ export default function AdminDashboardPage() {
     <main style={page}>
       <section style={hero}>
         <div>
-          <p style={eyebrow}>FarmConnect Live Admin</p>
-          <h1 style={title}>Executive Admin Dashboard V2</h1>
+          <p style={eyebrow}>FarmConnect Live Admin V26.6</p>
+          <h1 style={title}>Executive Admin Dashboard</h1>
           <p style={subtitle}>
-            Central command center for customers, caretakers, caretaker hire
-            approvals, flocks, treasury, harvest, wallet, risk monitoring, and
-            audit controls.
+            Central command center for customers, KYC, memberships, caretakers,
+            sell chicken approvals, treasury, wallet, risk monitoring, and audit
+            controls.
           </p>
         </div>
 
@@ -175,25 +243,21 @@ export default function AdminDashboardPage() {
         </div>
 
         <div style={summaryCard}>
-          <p style={summaryLabel}>Caretaker Hiring</p>
-          <h2 style={summaryValue}>
-            {stats.caretakerHires > 0 ? "Needs Review" : "No Pending View"}
-          </h2>
-          <p style={summaryText}>Approval and payment verification required</p>
+          <p style={summaryLabel}>FarmConnect Revenue</p>
+          <h2 style={summaryValue}>{money(revenue.total)}</h2>
+          <p style={summaryText}>Membership + platform technical fees</p>
         </div>
 
         <div style={summaryCard}>
-          <p style={summaryLabel}>Risk Level</p>
-          <h2 style={summaryValue}>
-            {stats.risks > 0 ? "Needs Review" : "Normal"}
-          </h2>
-          <p style={summaryText}>Monitor mortality, reports, and delays</p>
+          <p style={summaryLabel}>Membership Revenue</p>
+          <h2 style={summaryValue}>{money(revenue.membership)}</h2>
+          <p style={summaryText}>Annual Investor Membership approvals</p>
         </div>
 
         <div style={summaryCard}>
-          <p style={summaryLabel}>Treasury Control</p>
-          <h2 style={summaryValue}>Admin Managed</h2>
-          <p style={summaryText}>Cash-in and cash-out require admin review</p>
+          <p style={summaryLabel}>Technical Fees</p>
+          <h2 style={summaryValue}>{money(revenue.fees)}</h2>
+          <p style={summaryText}>Caretaker, cash-out, and sell chicken fees</p>
         </div>
       </section>
 
@@ -214,21 +278,33 @@ export default function AdminDashboardPage() {
         <div>
           <h2 style={sectionTitle}>Admin Control Panel</h2>
           <p style={sectionText}>
-            Use these modules for full platform review, caretaker hire
-            approvals, audit, financial monitoring, and investor-ready
-            reporting.
+            Use these modules for customer profiling, membership approval,
+            caretaker hire approvals, sell chicken approvals, treasury, audit,
+            financial monitoring, and investor-ready reporting.
           </p>
         </div>
 
         <div style={buttonGrid}>
+          <Link href="/admin/customers" style={button}>
+            Customers
+          </Link>
+          <Link href="/admin/memberships" style={button}>
+            Memberships
+          </Link>
           <Link href="/admin/caretaker-hires" style={button}>
             Caretaker Hires
+          </Link>
+          <Link href="/admin/sell-requests" style={button}>
+            Sell Requests
           </Link>
           <Link href="/admin/treasury" style={button}>
             Treasury
           </Link>
-          <Link href="/admin/transactions" style={button}>
-            Transactions
+          <Link href="/admin/transactions/cashin" style={button}>
+            Cash-In
+          </Link>
+          <Link href="/admin/transactions/cashout" style={button}>
+            Cash-Out
           </Link>
           <Link href="/admin/audit-logs" style={button}>
             Audit Logs
@@ -236,10 +312,25 @@ export default function AdminDashboardPage() {
           <Link href="/admin/reports" style={button}>
             Reports
           </Link>
+          <Link href="/admin/risk-management" style={button}>
+            Risk
+          </Link>
         </div>
       </section>
     </main>
   );
+}
+
+function clean(value?: string | null) {
+  return String(value || "").toUpperCase();
+}
+
+function money(value: number) {
+  return Number(value || 0).toLocaleString("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 2,
+  });
 }
 
 const page: React.CSSProperties = {
