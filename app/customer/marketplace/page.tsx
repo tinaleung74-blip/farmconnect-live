@@ -18,6 +18,12 @@ type CartItem = Product & {
   quantity: number;
 };
 
+type FlockOption = {
+  id: string;
+  batch_no: string;
+  breed: string;
+};
+
 const products: Product[] = [
   {
     id: "broiler-chick-day1",
@@ -118,12 +124,18 @@ export default function MarketplacePage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedQty, setSelectedQty] = useState<Record<string, number>>({});
   const [checkingOut, setCheckingOut] = useState(false);
+  const [flocks, setFlocks] = useState<FlockOption[]>([]);
+  const [selectedFlockId, setSelectedFlockId] = useState("");
+
+  function getProfile() {
+    const user = localStorage.getItem("farmconnect_user");
+    if (!user) return null;
+    return JSON.parse(user);
+  }
 
   async function loadWallet() {
-    const user = localStorage.getItem("farmconnect_user");
-    if (!user) return;
-
-    const profile = JSON.parse(user);
+    const profile = getProfile();
+    if (!profile) return;
 
     const { data } = await supabase
       .from("profiles")
@@ -134,8 +146,27 @@ export default function MarketplacePage() {
     setWalletBalance(Number(data?.wallet_balance || 0));
   }
 
+  async function loadFlocks() {
+    const profile = getProfile();
+    if (!profile) return;
+
+    const { data } = await supabase
+      .from("flocks")
+      .select("id,batch_no,breed")
+      .eq("profile_id", profile.id)
+      .eq("status", "ACTIVE")
+      .order("created_at", { ascending: false });
+
+    setFlocks(data || []);
+
+    if (data && data.length > 0) {
+      setSelectedFlockId(data[0].id);
+    }
+  }
+
   useEffect(() => {
     loadWallet();
+    loadFlocks();
   }, []);
 
   const filteredProducts =
@@ -150,6 +181,8 @@ export default function MarketplacePage() {
   const cartCount = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
   }, [cart]);
+
+  const hasSupplies = cart.some((item) => item.category !== "CHICKS");
 
   function getQty(productId: string) {
     return selectedQty[productId] || 1;
@@ -182,19 +215,6 @@ export default function MarketplacePage() {
     setCart((prev) => prev.filter((item) => item.id !== productId));
   }
 
-  async function getActiveFlockId(profileId: string) {
-    const { data } = await supabase
-      .from("flocks")
-      .select("id")
-      .eq("profile_id", profileId)
-      .eq("status", "ACTIVE")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    return data?.id || null;
-  }
-
   function getInventoryUnit(category: Product["category"]) {
     if (category === "FEEDS") return "bag";
     if (category === "VITAMINS") return "bottle";
@@ -213,29 +233,27 @@ export default function MarketplacePage() {
 
   async function syncMarketplaceItemToInventory(
     profileId: string,
-    flockId: string | null,
+    flockId: string,
     item: CartItem
   ) {
     const unit = getInventoryUnit(item.category);
     const lowStockLevel = getLowStockLevel(item.category);
 
-    let query = supabase
+    const { data: existing, error: findError } = await supabase
       .from("flock_inventory")
       .select("id, starting_qty, remaining_qty")
       .eq("profile_id", profileId)
+      .eq("flock_id", flockId)
       .eq("item_name", item.name)
-      .eq("category", item.category);
+      .eq("category", item.category)
+      .maybeSingle();
 
-    if (flockId) {
-      query = query.eq("flock_id", flockId);
-    } else {
-      query = query.is("flock_id", null);
+    if (findError) {
+      throw findError;
     }
 
-    const { data: existing } = await query.maybeSingle();
-
     if (existing) {
-      await supabase
+      const { error: updateError } = await supabase
         .from("flock_inventory")
         .update({
           starting_qty: Number(existing.starting_qty || 0) + item.quantity,
@@ -244,10 +262,14 @@ export default function MarketplacePage() {
         })
         .eq("id", existing.id);
 
+      if (updateError) {
+        throw updateError;
+      }
+
       return;
     }
 
-    await supabase.from("flock_inventory").insert({
+    const { error: insertError } = await supabase.from("flock_inventory").insert({
       profile_id: profileId,
       flock_id: flockId,
       item_name: item.name,
@@ -258,12 +280,45 @@ export default function MarketplacePage() {
       low_stock_level: lowStockLevel,
       status: "AVAILABLE",
     });
+
+    if (insertError) {
+      throw insertError;
+    }
+  }
+
+  async function createFlockFromChicks(profileId: string, item: CartItem) {
+    const batchNo = "FC-" + Math.floor(100000 + Math.random() * 900000);
+
+    const harvestDate = new Date();
+    harvestDate.setDate(harvestDate.getDate() + 45);
+
+    const { data, error } = await supabase
+      .from("flocks")
+      .insert({
+        profile_id: profileId,
+        batch_no: batchNo,
+        breed: item.name,
+        total_chicks: item.quantity,
+        alive_count: item.quantity,
+        mortality_count: 0,
+        expected_harvest_date: harvestDate.toISOString().split("T")[0],
+        status: "ACTIVE",
+        caretaker_name: null,
+      })
+      .select("id,batch_no,breed")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
   }
 
   async function checkout() {
-    const user = localStorage.getItem("farmconnect_user");
+    const profile = getProfile();
 
-    if (!user) {
+    if (!profile) {
       alert("Please login first");
       return;
     }
@@ -278,7 +333,10 @@ export default function MarketplacePage() {
       return;
     }
 
-    const profile = JSON.parse(user);
+    if (hasSupplies && !selectedFlockId) {
+      alert("Please create or buy chicks first before buying feeds, vitamins, vaccines, or supplements.");
+      return;
+    }
 
     setCheckingOut(true);
 
@@ -291,65 +349,54 @@ export default function MarketplacePage() {
         .eq("id", profile.id);
 
       if (walletError) {
-        alert(walletError.message);
-        return;
+        throw walletError;
       }
 
-      let targetFlockId = await getActiveFlockId(profile.id);
+      let targetFlockId = selectedFlockId;
 
       for (const item of cart) {
         if (item.category === "CHICKS") {
-          const batchNo =
-            "FC-" + Math.floor(100000 + Math.random() * 900000);
-
-          const harvestDate = new Date();
-          harvestDate.setDate(harvestDate.getDate() + 45);
-
-          const { data: newFlock } = await supabase
-            .from("flocks")
-            .insert({
-              profile_id: profile.id,
-              batch_no: batchNo,
-              breed: item.name,
-              total_chicks: item.quantity,
-              alive_count: item.quantity,
-              mortality_count: 0,
-              expected_harvest_date: harvestDate
-                .toISOString()
-                .split("T")[0],
-              status: "ACTIVE",
-              source: "MARKETPLACE",
-              growth_stage: "Brooding",
-              health_status: "Healthy",
-              timeline_label: `${item.quantity} chicks purchased from marketplace`,
-            })
-            .select("id")
-            .single();
+          const newFlock = await createFlockFromChicks(profile.id, item);
 
           if (newFlock?.id) {
             targetFlockId = newFlock.id;
           }
         } else {
+          if (!targetFlockId) {
+            throw new Error("No active flock selected for inventory sync.");
+          }
+
           await syncMarketplaceItemToInventory(profile.id, targetFlockId, item);
         }
 
-        await supabase.from("wallet_transactions").insert({
-          profile_id: profile.id,
-          transaction_type: "PURCHASE",
-          amount: item.price * item.quantity * -1,
-          reference_no: "FC-MKT-" + Date.now(),
-          remarks: `${item.name} x${item.quantity}`,
-          status: "COMPLETED",
-        });
+        const { error: txError } = await supabase
+          .from("wallet_transactions")
+          .insert({
+            profile_id: profile.id,
+            transaction_type: "PURCHASE",
+            amount: item.price * item.quantity * -1,
+            reference_no:
+              "FC-MKT-" +
+              Date.now() +
+              "-" +
+              Math.floor(Math.random() * 1000),
+            remarks: `${item.name} x${item.quantity}`,
+            status: "COMPLETED",
+          });
+
+        if (txError) {
+          throw txError;
+        }
       }
 
       setWalletBalance(newBalance);
       setCart([]);
+      await loadFlocks();
 
-      alert("Checkout successful! Chicks added to My Flock. Supplies synced to Inventory.");
-    } catch (err) {
-      console.error(err);
-      alert("Checkout failed");
+      alert("Checkout successful! Supplies synced to selected flock inventory.");
+    } catch (err: any) {
+      console.error("CHECKOUT ERROR:", err);
+      alert(err?.message || "Checkout failed");
     } finally {
       setCheckingOut(false);
     }
@@ -365,12 +412,11 @@ export default function MarketplacePage() {
                 🛒 FarmConnect Marketplace
               </p>
 
-              <h1 className="text-4xl md:text-5xl font-black">
-                Poultry Shop
-              </h1>
+              <h1 className="text-4xl md:text-5xl font-black">Poultry Shop</h1>
 
               <p className="mt-3 text-green-50 max-w-2xl">
-                Buy chicks, feeds, vitamins, vaccines, and supplements in one checkout.
+                Buy chicks, feeds, vitamins, vaccines, and supplements. Supplies
+                will sync directly to the selected flock inventory.
               </p>
             </div>
 
@@ -384,6 +430,30 @@ export default function MarketplacePage() {
               </p>
             </div>
           </div>
+        </section>
+
+        <section className="bg-white rounded-3xl p-5 shadow border border-green-100 mb-6">
+          <h2 className="text-xl font-black text-green-900 mb-2">
+            🎯 Select Flock For Supplies
+          </h2>
+
+          <p className="text-gray-500 text-sm mb-3">
+            Feeds, vitamins, vaccines, and supplements will be added to this flock.
+            Chicks will create a new flock automatically.
+          </p>
+
+          <select
+            value={selectedFlockId}
+            onChange={(e) => setSelectedFlockId(e.target.value)}
+            className="w-full border rounded-2xl p-4 font-bold"
+          >
+            <option value="">No active flock selected</option>
+            {flocks.map((flock) => (
+              <option key={flock.id} value={flock.id}>
+                {flock.batch_no} - {flock.breed}
+              </option>
+            ))}
+          </select>
         </section>
 
         <section className="flex gap-3 overflow-x-auto mb-6">
@@ -506,14 +576,10 @@ export default function MarketplacePage() {
           </div>
 
           <aside className="bg-white rounded-3xl p-6 shadow border border-green-100 h-fit sticky top-6">
-            <h2 className="text-2xl font-black mb-4">
-              🛒 Cart
-            </h2>
+            <h2 className="text-2xl font-black mb-4">🛒 Cart</h2>
 
             {cart.length === 0 && (
-              <p className="text-gray-500">
-                Your cart is empty.
-              </p>
+              <p className="text-gray-500">Your cart is empty.</p>
             )}
 
             <div className="grid gap-3">
