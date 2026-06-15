@@ -173,12 +173,6 @@ export default function MyFlockPage() {
   const [selectedFlock, setSelectedFlock] = useState<Flock | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [activeInventory, setActiveInventory] = useState<InventoryItem | null>(null);
-  const [qtyUsed, setQtyUsed] = useState(1);
-  const [usedBy, setUsedBy] = useState("");
-  const [purpose, setPurpose] = useState("Morning feeding");
-  const [deducting, setDeducting] = useState(false);
-
   async function loadFlocks() {
     const profileId = getCurrentProfileId();
 
@@ -355,41 +349,9 @@ export default function MyFlockPage() {
     await refreshPageData();
   }
 
-  async function submitInventoryUsage() {
-    if (!activeInventory) return alert("Please choose an inventory item card.");
-    if (!qtyUsed || qtyUsed <= 0) return alert("Quantity used must be greater than zero.");
-
-    setDeducting(true);
-
-    const { data, error } = await supabase.rpc("use_flock_inventory", {
-      p_inventory_id: activeInventory.id,
-      p_qty_used: qtyUsed,
-      p_used_by: usedBy || selectedFlock?.caretaker_name || "Caretaker",
-      p_purpose: purpose || "Farm operation",
-    });
-
-    setDeducting(false);
-
-    if (error) return alert(error.message);
-    if (!data?.ok) return alert(data?.message || "Failed to deduct inventory.");
-
-    alert(`${data.item_name} deducted successfully. Remaining: ${data.remaining_qty}`);
-
-    setActiveInventory(null);
-    setQtyUsed(1);
-    setUsedBy("");
-    setPurpose("Morning feeding");
-
-    await refreshPageData();
-  }
-
   useEffect(() => {
     refreshPageData();
   }, []);
-
-  useEffect(() => {
-    if (selectedFlock?.caretaker_name) setUsedBy(selectedFlock.caretaker_name);
-  }, [selectedFlock]);
 
   const availableCaretakers = useMemo(() => {
     return caretakers.filter((item) => !item.flock_id);
@@ -695,13 +657,7 @@ export default function MyFlockPage() {
                   </div>
 
                   <button
-                    onClick={() => {
-                      setSelectedFlock(flock);
-                      setActiveInventory(null);
-                      setQtyUsed(1);
-                      setUsedBy(flock.caretaker_name || "");
-                      setPurpose("Morning feeding");
-                    }}
+                    onClick={() => setSelectedFlock(flock)}
                     className="w-full bg-gray-900 hover:bg-black text-white p-4 rounded-2xl font-black"
                   >
                     Open Flock Command Center
@@ -784,135 +740,38 @@ export default function MyFlockPage() {
                 </h3>
               </div>
 
-              <div className="mt-5 bg-orange-50 border border-orange-100 rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-black text-orange-700">🌾 Inventory Panel</h3>
-                  {selectedLowStock.length > 0 && (
-                    <span className="bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
-                      {selectedLowStock.length} low stock
-                    </span>
-                  )}
-                </div>
+              <div className="mt-5 bg-purple-50 border border-purple-100 rounded-2xl p-5">
+                <h3 className="font-black text-purple-700 mb-4">📋 Usage Logs</h3>
 
-                {selectedInventory.length === 0 ? (
-                  <p className="text-sm text-gray-600">No supplies assigned to this flock yet.</p>
+                {selectedUsageLogs.length === 0 ? (
+                  <p className="text-sm text-gray-700">No usage records yet for this flock.</p>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-3">
-                    {selectedInventory.map((item) => {
-                      const isLow =
-                        Number(item.remaining_qty || 0) <= Number(item.low_stock_level || 0);
-
-                      const percent = Math.min(
-                        100,
-                        Math.round(
-                          (Number(item.remaining_qty || 0) /
-                            Math.max(Number(item.starting_qty || 1), 1)) *
-                            100
-                        )
-                      );
-
-                      return (
-                        <div key={item.id} className="bg-white rounded-2xl p-4 border">
-                          <div className="flex justify-between gap-3">
-                            <div>
-                              <p className="font-black">🌾 {item.item_name}</p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {item.remaining_qty} {item.unit || ""} remaining
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Low level: {item.low_stock_level} {item.unit || ""}
-                              </p>
-                            </div>
-
-                            {isLow && (
-                              <span className="h-fit bg-red-600 text-white text-xs font-black px-3 py-1 rounded-full">
-                                LOW
-                              </span>
-                            )}
+                  <div className="space-y-3">
+                    {selectedUsageLogs.slice(0, 20).map((log) => (
+                      <div key={log.id} className="bg-white rounded-xl p-4 border">
+                        <div className="flex justify-between gap-3">
+                          <div>
+                            <p className="font-black">{log.item_name || "Farm Supply"}</p>
+                            <p className="text-sm text-gray-600">
+                              Used: {log.qty_used} {log.unit || ""}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              By: {log.used_by || "Caretaker"}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Purpose: {log.purpose || "Farm operation"}
+                            </p>
                           </div>
 
-                          <div className="mt-3 w-full bg-gray-100 rounded-full h-3">
-                            <div
-                              className={
-                                isLow
-                                  ? "bg-red-500 h-3 rounded-full"
-                                  : "bg-green-600 h-3 rounded-full"
-                              }
-                              style={{ width: `${percent}%` }}
-                            />
-                          </div>
-
-                          <button
-                            onClick={() => {
-                              setActiveInventory(item);
-                              setQtyUsed(1);
-                              setUsedBy(selectedFlock.caretaker_name || "");
-                              setPurpose("Morning feeding");
-                            }}
-                            className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-black"
-                          >
-                            Record Usage
-                          </button>
+                          <p className="text-xs text-gray-500">
+                            {log.created_at ? new Date(log.created_at).toLocaleString() : "No date"}
+                          </p>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
-
-              {activeInventory && (
-                <div className="mt-5 bg-green-50 border border-green-100 rounded-2xl p-5">
-                  <div className="flex justify-between gap-3 mb-4">
-                    <div>
-                      <h3 className="font-black text-green-700">
-                        🌾 Record Usage: {activeInventory.item_name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Remaining: {activeInventory.remaining_qty} {activeInventory.unit}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => setActiveInventory(null)}
-                      className="bg-white border px-3 py-2 rounded-xl font-bold"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-3">
-                    <input
-                      type="number"
-                      className="border p-3 rounded-xl"
-                      value={qtyUsed}
-                      onChange={(e) => setQtyUsed(Number(e.target.value))}
-                      placeholder="Qty Used"
-                    />
-
-                    <input
-                      className="border p-3 rounded-xl"
-                      value={usedBy}
-                      onChange={(e) => setUsedBy(e.target.value)}
-                      placeholder="Used By"
-                    />
-
-                    <input
-                      className="border p-3 rounded-xl"
-                      value={purpose}
-                      onChange={(e) => setPurpose(e.target.value)}
-                      placeholder="Purpose"
-                    />
-                  </div>
-
-                  <button
-                    onClick={submitInventoryUsage}
-                    disabled={deducting}
-                    className="mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-5 py-3 rounded-xl font-black"
-                  >
-                    {deducting ? "Saving..." : "Save Usage"}
-                  </button>
-                </div>
-              )}
 
               <div className="mt-5 bg-red-50 border border-red-100 rounded-2xl p-5">
                 <h3 className="font-black text-red-700">⚠️ Risk Management</h3>
@@ -942,39 +801,6 @@ export default function MyFlockPage() {
                       daysUntil(selectedFlock.expected_harvest_date)! <= 7
                     ) && <p className="text-green-700 font-bold">• Current risk level is low.</p>}
                 </div>
-              </div>
-
-              <div className="mt-5 bg-purple-50 border border-purple-100 rounded-2xl p-5">
-                <h3 className="font-black text-purple-700 mb-4">📋 Usage Logs</h3>
-
-                {selectedUsageLogs.length === 0 ? (
-                  <p className="text-sm text-gray-700">No usage records yet for this flock.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {selectedUsageLogs.slice(0, 10).map((log) => (
-                      <div key={log.id} className="bg-white rounded-xl p-4 border">
-                        <div className="flex justify-between gap-3">
-                          <div>
-                            <p className="font-black">{log.item_name}</p>
-                            <p className="text-sm text-gray-600">
-                              Used: {log.qty_used} {log.unit}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              By: {log.used_by || "Caretaker"}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              Purpose: {log.purpose || "Farm operation"}
-                            </p>
-                          </div>
-
-                          <p className="text-xs text-gray-500">
-                            {log.created_at ? new Date(log.created_at).toLocaleString() : "No date"}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           </div>
