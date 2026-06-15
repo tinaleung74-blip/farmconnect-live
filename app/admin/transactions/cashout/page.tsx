@@ -604,4 +604,4 @@ const processBtn: React.CSSProperties = { border: "none", borderRadius: 12, padd
 const approveBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#16a34a", color: "white", fontWeight: 900, cursor: "pointer" };
 const releaseBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#0f766e", color: "white", fontWeight: 900, cursor: "pointer" };
 const rejectBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#dc2626", color: "white", fontWeight: 900, cursor: "pointer" };
-const emptyBox: React.CSSProperties = { padding: 30, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center", fontWeight: 850 };s
+const emptyBox: React.CSSProperties = { padding: 30, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center", fontWeight: 850 };
