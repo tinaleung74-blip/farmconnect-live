@@ -182,6 +182,84 @@ export default function MarketplacePage() {
     setCart((prev) => prev.filter((item) => item.id !== productId));
   }
 
+  async function getActiveFlockId(profileId: string) {
+    const { data } = await supabase
+      .from("flocks")
+      .select("id")
+      .eq("profile_id", profileId)
+      .eq("status", "ACTIVE")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return data?.id || null;
+  }
+
+  function getInventoryUnit(category: Product["category"]) {
+    if (category === "FEEDS") return "bag";
+    if (category === "VITAMINS") return "bottle";
+    if (category === "VACCINES") return "dose";
+    if (category === "SUPPLEMENTS") return "pack";
+    return "item";
+  }
+
+  function getLowStockLevel(category: Product["category"]) {
+    if (category === "FEEDS") return 5;
+    if (category === "VITAMINS") return 2;
+    if (category === "VACCINES") return 2;
+    if (category === "SUPPLEMENTS") return 3;
+    return 1;
+  }
+
+  async function syncMarketplaceItemToInventory(
+    profileId: string,
+    flockId: string | null,
+    item: CartItem
+  ) {
+    const unit = getInventoryUnit(item.category);
+    const lowStockLevel = getLowStockLevel(item.category);
+
+    let query = supabase
+      .from("flock_inventory")
+      .select("id, starting_qty, remaining_qty")
+      .eq("profile_id", profileId)
+      .eq("item_name", item.name)
+      .eq("category", item.category);
+
+    if (flockId) {
+      query = query.eq("flock_id", flockId);
+    } else {
+      query = query.is("flock_id", null);
+    }
+
+    const { data: existing } = await query.maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from("flock_inventory")
+        .update({
+          starting_qty: Number(existing.starting_qty || 0) + item.quantity,
+          remaining_qty: Number(existing.remaining_qty || 0) + item.quantity,
+          status: "AVAILABLE",
+        })
+        .eq("id", existing.id);
+
+      return;
+    }
+
+    await supabase.from("flock_inventory").insert({
+      profile_id: profileId,
+      flock_id: flockId,
+      item_name: item.name,
+      category: item.category,
+      unit,
+      starting_qty: item.quantity,
+      remaining_qty: item.quantity,
+      low_stock_level: lowStockLevel,
+      status: "AVAILABLE",
+    });
+  }
+
   async function checkout() {
     const user = localStorage.getItem("farmconnect_user");
 
@@ -217,6 +295,8 @@ export default function MarketplacePage() {
         return;
       }
 
+      let targetFlockId = await getActiveFlockId(profile.id);
+
       for (const item of cart) {
         if (item.category === "CHICKS") {
           const batchNo =
@@ -225,30 +305,32 @@ export default function MarketplacePage() {
           const harvestDate = new Date();
           harvestDate.setDate(harvestDate.getDate() + 45);
 
-          await supabase.from("flocks").insert({
-            profile_id: profile.id,
-            batch_no: batchNo,
-            breed: item.name,
-            total_chicks: item.quantity,
-            alive_count: item.quantity,
-            mortality_count: 0,
-            expected_harvest_date: harvestDate
-              .toISOString()
-              .split("T")[0],
-            status: "ACTIVE",
-            source: "MARKETPLACE",
-            growth_stage: "Brooding",
-            health_status: "Healthy",
-            timeline_label: `${item.quantity} chicks purchased from marketplace`,
-          });
+          const { data: newFlock } = await supabase
+            .from("flocks")
+            .insert({
+              profile_id: profile.id,
+              batch_no: batchNo,
+              breed: item.name,
+              total_chicks: item.quantity,
+              alive_count: item.quantity,
+              mortality_count: 0,
+              expected_harvest_date: harvestDate
+                .toISOString()
+                .split("T")[0],
+              status: "ACTIVE",
+              source: "MARKETPLACE",
+              growth_stage: "Brooding",
+              health_status: "Healthy",
+              timeline_label: `${item.quantity} chicks purchased from marketplace`,
+            })
+            .select("id")
+            .single();
+
+          if (newFlock?.id) {
+            targetFlockId = newFlock.id;
+          }
         } else {
-          await supabase.from("inventory_items").insert({
-            profile_id: profile.id,
-            product_name: item.name,
-            category: item.category,
-            quantity: item.quantity,
-            usage_guide: item.usage,
-          });
+          await syncMarketplaceItemToInventory(profile.id, targetFlockId, item);
         }
 
         await supabase.from("wallet_transactions").insert({
@@ -264,7 +346,7 @@ export default function MarketplacePage() {
       setWalletBalance(newBalance);
       setCart([]);
 
-      alert("Checkout successful! Chicks added to My Flock. Supplies added to Inventory.");
+      alert("Checkout successful! Chicks added to My Flock. Supplies synced to Inventory.");
     } catch (err) {
       console.error(err);
       alert("Checkout failed");
