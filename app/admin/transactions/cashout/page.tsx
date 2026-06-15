@@ -5,8 +5,11 @@ import { supabase } from "@/lib/supabase";
 
 type CashOutRequest = {
   id: string;
+  profile_id?: string | null;
   customer_id?: string | null;
   amount?: number | string | null;
+  payment_method?: string | null;
+  channel?: string | null;
   method?: string | null;
   status?: string | null;
   bank_name?: string | null;
@@ -15,13 +18,17 @@ type CashOutRequest = {
   gcash_number?: string | null;
   admin_notes?: string | null;
   created_at?: string | null;
+  approved_at?: string | null;
 };
+
+const TECHNICAL_FEE_PERCENT = 0.02;
 
 export default function AdminCashOutPage() {
   const [requests, setRequests] = useState<CashOutRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [processingId, setProcessingId] = useState("");
 
   useEffect(() => {
     loadCashouts();
@@ -46,7 +53,9 @@ export default function AdminCashOutPage() {
     setLoading(false);
   }
 
-  async function updateStatus(id: string, newStatus: string) {
+  async function setStatusOnly(id: string, newStatus: string) {
+    setProcessingId(id);
+
     const { error } = await supabase
       .from("cashout_requests")
       .update({ status: newStatus })
@@ -54,10 +63,115 @@ export default function AdminCashOutPage() {
 
     if (error) {
       alert(error.message);
+      setProcessingId("");
       return;
     }
 
     await loadCashouts();
+    setProcessingId("");
+  }
+
+  async function approveCashOut(req: CashOutRequest) {
+    const reqStatus = status(req.status);
+
+    if (reqStatus === "APPROVED" || reqStatus === "RELEASED") {
+      alert("This cash-out is already approved/released.");
+      return;
+    }
+
+    const profileId = req.profile_id || req.customer_id;
+    const grossAmount = toNumber(req.amount);
+    const feeAmount = grossAmount * TECHNICAL_FEE_PERCENT;
+    const netAmount = grossAmount - feeAmount;
+
+    if (!profileId) {
+      alert("Missing profile_id/customer_id. Cannot deduct wallet.");
+      return;
+    }
+
+    if (grossAmount <= 0) {
+      alert("Invalid cash-out amount.");
+      return;
+    }
+
+    const ok = confirm(
+      `Approve cash-out?\n\nRequested: ${money(grossAmount)}\nTechnical Fee 2%: ${money(
+        feeAmount
+      )}\nCustomer Receives: ${money(netAmount)}\n\nThis will deduct ${money(
+        grossAmount
+      )} from customer wallet.`
+    );
+
+    if (!ok) return;
+
+    setProcessingId(req.id);
+
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("wallet_balance")
+        .eq("id", profileId)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      const currentBalance = toNumber(profile?.wallet_balance);
+
+      if (currentBalance < grossAmount) {
+        throw new Error("Customer wallet balance is not enough.");
+      }
+
+      const newBalance = currentBalance - grossAmount;
+
+      const { error: walletUpdateError } = await supabase
+        .from("profiles")
+        .update({ wallet_balance: newBalance })
+        .eq("id", profileId);
+
+      if (walletUpdateError) throw walletUpdateError;
+
+      await supabase.from("wallet_transactions").insert({
+        profile_id: profileId,
+        transaction_type: "CASH_OUT_APPROVED",
+        amount: grossAmount * -1,
+        reference_no: "FC-CASHOUT-" + req.id,
+        remarks: `Cash-out approved. Gross: ${money(
+          grossAmount
+        )}. Fee 2%: ${money(feeAmount)}. Customer receives: ${money(
+          netAmount
+        )}.`,
+        status: "COMPLETED",
+      });
+
+      await supabase.from("wallet_transactions").insert({
+        profile_id: profileId,
+        transaction_type: "TECHNICAL_FEE_CASHOUT",
+        amount: feeAmount,
+        reference_no: "FC-FEE-" + req.id,
+        remarks: `FarmConnect technical fee from cash-out request.`,
+        status: "COMPLETED",
+      });
+
+      const { error: requestError } = await supabase
+        .from("cashout_requests")
+        .update({
+          status: "APPROVED",
+          admin_notes: `Approved. Gross ${money(grossAmount)}. Fee ${money(
+            feeAmount
+          )}. Customer receives ${money(netAmount)}.`,
+          approved_at: new Date().toISOString(),
+        })
+        .eq("id", req.id);
+
+      if (requestError) throw requestError;
+
+      alert("Cash-out approved. Wallet deducted and 2% fee recorded.");
+      await loadCashouts();
+    } catch (err: any) {
+      alert(err?.message || "Approval failed.");
+    } finally {
+      setProcessingId("");
+    }
   }
 
   const summary = useMemo(() => {
@@ -74,7 +188,10 @@ export default function AdminCashOutPage() {
 
     const text = `
       ${r.id}
+      ${r.profile_id || ""}
       ${r.customer_id || ""}
+      ${r.payment_method || ""}
+      ${r.channel || ""}
       ${r.method || ""}
       ${r.bank_name || ""}
       ${r.account_name || ""}
@@ -93,8 +210,7 @@ export default function AdminCashOutPage() {
           <p style={eyebrow}>FarmConnect Transactions</p>
           <h1 style={title}>Cash-Out Requests</h1>
           <p style={subtitle}>
-            Review customer withdrawal requests, payout destination, bank or
-            e-wallet details, and admin release status.
+            Review withdrawal requests. Approval deducts customer wallet and records 2% technical fee.
           </p>
         </div>
 
@@ -115,7 +231,7 @@ export default function AdminCashOutPage() {
           style={searchInput}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search customer ID, bank, account name, account number, GCash, status..."
+          placeholder="Search customer ID, account name, account number, GCash, Maya, status..."
         />
 
         <select
@@ -137,8 +253,7 @@ export default function AdminCashOutPage() {
           <div>
             <h2 style={sectionTitle}>Withdrawal Release Queue</h2>
             <p style={sectionDesc}>
-              Cash-out is controlled by admin treasury. No direct customer to
-              caretaker payment flow.
+              Approve only after admin sends payout manually to GCash/Maya.
             </p>
           </div>
           <span style={pill}>{filtered.length} records</span>
@@ -157,83 +272,100 @@ export default function AdminCashOutPage() {
                   <th style={th}>Customer</th>
                   <th style={th}>Method</th>
                   <th style={th}>Destination</th>
-                  <th style={th}>Amount</th>
+                  <th style={th}>Gross</th>
+                  <th style={th}>Fee 2%</th>
+                  <th style={th}>Receives</th>
                   <th style={th}>Status</th>
                   <th style={th}>Action</th>
                 </tr>
               </thead>
 
               <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} style={tr}>
-                    <td style={td}>
-                      {r.created_at
-                        ? new Date(r.created_at).toLocaleString()
-                        : "—"}
-                    </td>
+                {filtered.map((r) => {
+                  const gross = toNumber(r.amount);
+                  const fee = gross * TECHNICAL_FEE_PERCENT;
+                  const net = gross - fee;
 
-                    <td style={td}>{r.customer_id || "—"}</td>
+                  return (
+                    <tr key={r.id} style={tr}>
+                      <td style={td}>
+                        {r.created_at ? new Date(r.created_at).toLocaleString() : "—"}
+                      </td>
 
-                    <td style={td}>{r.method || "Bank / E-Wallet"}</td>
+                      <td style={td}>{r.profile_id || r.customer_id || "—"}</td>
 
-                    <td style={td}>
-                      <strong>{r.bank_name || "Payout Account"}</strong>
-                      <br />
-                      <span style={muted}>
-                        {r.account_name || "—"}
-                      </span>
-                      <br />
-                      <span style={muted}>
-                        {r.account_number || r.gcash_number || "—"}
-                      </span>
-                    </td>
+                      <td style={td}>{r.channel || r.payment_method || r.method || "GCash / Maya"}</td>
 
-                    <td style={td}>
-                      <strong>{money(toNumber(r.amount))}</strong>
-                    </td>
+                      <td style={td}>
+                        <strong>{r.account_name || "Payout Account"}</strong>
+                        <br />
+                        <span style={muted}>
+                          {r.account_number || r.gcash_number || "—"}
+                        </span>
+                      </td>
 
-                    <td style={td}>
-                      <span
-                        style={{
-                          ...badge,
-                          background: statusBg(r.status),
-                          color: statusColor(r.status),
-                        }}
-                      >
-                        {status(r.status)}
-                      </span>
-                    </td>
+                      <td style={td}>
+                        <strong>{money(gross)}</strong>
+                      </td>
 
-                    <td style={td}>
-                      <div style={actions}>
-                        <button
-                          style={processBtn}
-                          onClick={() => updateStatus(r.id, "PROCESSING")}
+                      <td style={td}>
+                        <strong style={{ color: "#dc2626" }}>{money(fee)}</strong>
+                      </td>
+
+                      <td style={td}>
+                        <strong style={{ color: "#15803d" }}>{money(net)}</strong>
+                      </td>
+
+                      <td style={td}>
+                        <span
+                          style={{
+                            ...badge,
+                            background: statusBg(r.status),
+                            color: statusColor(r.status),
+                          }}
                         >
-                          Process
-                        </button>
-                        <button
-                          style={approveBtn}
-                          onClick={() => updateStatus(r.id, "APPROVED")}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          style={releaseBtn}
-                          onClick={() => updateStatus(r.id, "RELEASED")}
-                        >
-                          Released
-                        </button>
-                        <button
-                          style={rejectBtn}
-                          onClick={() => updateStatus(r.id, "REJECTED")}
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {status(r.status)}
+                        </span>
+                      </td>
+
+                      <td style={td}>
+                        <div style={actions}>
+                          <button
+                            style={processBtn}
+                            disabled={processingId === r.id}
+                            onClick={() => setStatusOnly(r.id, "PROCESSING")}
+                          >
+                            Process
+                          </button>
+
+                          <button
+                            style={approveBtn}
+                            disabled={processingId === r.id}
+                            onClick={() => approveCashOut(r)}
+                          >
+                            Approve
+                          </button>
+
+                          <button
+                            style={releaseBtn}
+                            disabled={processingId === r.id}
+                            onClick={() => setStatusOnly(r.id, "RELEASED")}
+                          >
+                            Released
+                          </button>
+
+                          <button
+                            style={rejectBtn}
+                            disabled={processingId === r.id}
+                            onClick={() => setStatusOnly(r.id, "REJECTED")}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -243,15 +375,7 @@ export default function AdminCashOutPage() {
   );
 }
 
-function Card({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent: string;
-}) {
+function Card({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
     <div style={statCard}>
       <div style={{ ...statBar, background: accent }} />
@@ -261,15 +385,7 @@ function Card({
   );
 }
 
-function MoneyCard({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: number;
-  accent: string;
-}) {
+function MoneyCard({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
     <div style={statCard}>
       <div style={{ ...statBar, background: accent }} />
@@ -318,8 +434,7 @@ function statusColor(value?: string | null) {
 const page: React.CSSProperties = {
   minHeight: "100vh",
   padding: 28,
-  background:
-    "linear-gradient(135deg, #fff7ed 0%, #eff6ff 45%, #f8fafc 100%)",
+  background: "linear-gradient(135deg, #fff7ed 0%, #eff6ff 45%, #f8fafc 100%)",
   color: "#0f172a",
 };
 
@@ -476,100 +591,17 @@ const pill: React.CSSProperties = {
   fontSize: 12,
 };
 
-const tableWrap: React.CSSProperties = {
-  overflowX: "auto",
-};
+const tableWrap: React.CSSProperties = { overflowX: "auto" };
+const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", minWidth: 1100 };
+const th: React.CSSProperties = { textAlign: "left", padding: "14px 12px", fontSize: 12, color: "#475569", textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1px solid #e2e8f0" };
+const tr: React.CSSProperties = { borderBottom: "1px solid #f1f5f9" };
+const td: React.CSSProperties = { padding: "15px 12px", fontSize: 14, verticalAlign: "top" };
+const muted: React.CSSProperties = { color: "#64748b", fontSize: 12 };
+const badge: React.CSSProperties = { display: "inline-block", padding: "7px 10px", borderRadius: 999, fontSize: 11, fontWeight: 950 };
+const actions: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap" };
 
-const table: React.CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  minWidth: 980,
-};
-
-const th: React.CSSProperties = {
-  textAlign: "left",
-  padding: "14px 12px",
-  fontSize: 12,
-  color: "#475569",
-  textTransform: "uppercase",
-  letterSpacing: 0.8,
-  borderBottom: "1px solid #e2e8f0",
-};
-
-const tr: React.CSSProperties = {
-  borderBottom: "1px solid #f1f5f9",
-};
-
-const td: React.CSSProperties = {
-  padding: "15px 12px",
-  fontSize: 14,
-  verticalAlign: "top",
-};
-
-const muted: React.CSSProperties = {
-  color: "#64748b",
-  fontSize: 12,
-};
-
-const badge: React.CSSProperties = {
-  display: "inline-block",
-  padding: "7px 10px",
-  borderRadius: 999,
-  fontSize: 11,
-  fontWeight: 950,
-};
-
-const actions: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const processBtn: React.CSSProperties = {
-  border: "none",
-  borderRadius: 12,
-  padding: "9px 12px",
-  background: "#2563eb",
-  color: "white",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const approveBtn: React.CSSProperties = {
-  border: "none",
-  borderRadius: 12,
-  padding: "9px 12px",
-  background: "#16a34a",
-  color: "white",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const releaseBtn: React.CSSProperties = {
-  border: "none",
-  borderRadius: 12,
-  padding: "9px 12px",
-  background: "#0f766e",
-  color: "white",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const rejectBtn: React.CSSProperties = {
-  border: "none",
-  borderRadius: 12,
-  padding: "9px 12px",
-  background: "#dc2626",
-  color: "white",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const emptyBox: React.CSSProperties = {
-  padding: 30,
-  borderRadius: 18,
-  background: "#f8fafc",
-  color: "#64748b",
-  textAlign: "center",
-  fontWeight: 850,
-};
+const processBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#2563eb", color: "white", fontWeight: 900, cursor: "pointer" };
+const approveBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#16a34a", color: "white", fontWeight: 900, cursor: "pointer" };
+const releaseBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#0f766e", color: "white", fontWeight: 900, cursor: "pointer" };
+const rejectBtn: React.CSSProperties = { border: "none", borderRadius: 12, padding: "9px 12px", background: "#dc2626", color: "white", fontWeight: 900, cursor: "pointer" };
+const emptyBox: React.CSSProperties = { padding: 30, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center", fontWeight: 850 };s
