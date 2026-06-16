@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -72,7 +72,7 @@ export default function AdminOperationsPage() {
     ...weightLogs.map((x) => ({
       id: `weight-${x.id}`,
       type: "Weight Log",
-      title: `${x.weight_kg || x.weight || "—"} kg`,
+      title: `${x.weight_kg || x.weight || "â€”"} kg`,
       desc: x.note || x.remarks || x.flock_id || "Caretaker weight update",
       date: x.created_at,
       status: x.status || "RECORDED",
@@ -239,7 +239,7 @@ function status(value?: string | null) {
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "—";
+  if (!value) return "â€”";
   return new Date(value).toLocaleString("en-PH");
 }
 
@@ -435,3 +435,4 @@ const empty: React.CSSProperties = {
   textAlign: "center",
   fontWeight: 850,
 };
+
