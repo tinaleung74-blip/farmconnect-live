@@ -14,7 +14,6 @@ export default function AdminOperationsPage() {
   const [hires, setHires] = useState<Row[]>([]);
   const [walletTx, setWalletTx] = useState<Row[]>([]);
   const [sellRequests, setSellRequests] = useState<Row[]>([]);
-  const [risks, setRisks] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,16 +31,48 @@ export default function AdminOperationsPage() {
       hireRes,
       walletRes,
       sellRes,
-      riskRes,
     ] = await Promise.all([
-      supabase.from("weight_logs").select("*").order("created_at", { ascending: false }).limit(300),
-      supabase.from("photo_logs").select("*").order("created_at", { ascending: false }).limit(300),
-      supabase.from("mortality_logs").select("*").order("created_at", { ascending: false }).limit(300),
-      supabase.from("inventory_usage_logs").select("*").order("created_at", { ascending: false }).limit(300),
-      supabase.from("customer_caretaker_hires").select("*").order("created_at", { ascending: false }).limit(300),
-      supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }).limit(300),
-      supabase.from("sell_chicken_requests").select("*").order("created_at", { ascending: false }).limit(300),
-      supabase.from("risk_alerts").select("*").order("created_at", { ascending: false }).limit(300),
+      supabase
+        .from("animal_weights")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(300),
+
+      supabase
+        .from("photo_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(300),
+
+      supabase
+        .from("mortality_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(300),
+
+      supabase
+        .from("inventory_usage_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(300),
+
+      supabase
+        .from("customer_caretaker_hires")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(300),
+
+      supabase
+        .from("wallet_transactions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(300),
+
+      supabase
+        .from("sell_chicken_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(300),
     ]);
 
     setWeightLogs(weightRes.data || []);
@@ -51,7 +82,6 @@ export default function AdminOperationsPage() {
     setHires(hireRes.data || []);
     setWalletTx(walletRes.data || []);
     setSellRequests(sellRes.data || []);
-    setRisks(riskRes.data || []);
     setLoading(false);
   }
 
@@ -64,19 +94,34 @@ export default function AdminOperationsPage() {
       hires: hires.length,
       cash: walletTx.length,
       sell: sellRequests.length,
-      risks: risks.filter((r) => ["OPEN", "PENDING"].includes(status(r.status))).length,
+      alerts: mortalityLogs.filter((r) => Number(r.mortality_count || 0) > 0)
+        .length,
     };
-  }, [weightLogs, photoLogs, mortalityLogs, usageLogs, hires, walletTx, sellRequests, risks]);
+  }, [
+    weightLogs,
+    photoLogs,
+    mortalityLogs,
+    usageLogs,
+    hires,
+    walletTx,
+    sellRequests,
+  ]);
 
   const activity = [
     ...weightLogs.map((x) => ({
       id: `weight-${x.id}`,
       type: "Weight Log",
       title: `${x.weight_kg || x.weight || "—"} kg`,
-      desc: x.note || x.remarks || x.flock_id || "Caretaker weight update",
+      desc:
+        x.note ||
+        x.remarks ||
+        x.flock_id ||
+        x.animal_id ||
+        "Caretaker weight update",
       date: x.created_at,
       status: x.status || "RECORDED",
     })),
+
     ...photoLogs.map((x) => ({
       id: `photo-${x.id}`,
       type: "Photo Log",
@@ -85,22 +130,27 @@ export default function AdminOperationsPage() {
       date: x.created_at,
       status: x.status || "UPLOADED",
     })),
+
     ...mortalityLogs.map((x) => ({
       id: `mortality-${x.id}`,
       type: "Mortality Log",
-      title: `${x.count || x.dead_count || 0} mortality`,
-      desc: x.reason || x.note || x.flock_id || "Mortality monitoring",
-      date: x.created_at,
+      title: `${x.mortality_count || x.count || x.dead_count || 0} mortality`,
+      desc: x.reason || x.notes || x.flock_id || "Mortality monitoring",
+      date: x.log_date || x.created_at,
       status: x.status || "RECORDED",
     })),
+
     ...usageLogs.map((x) => ({
       id: `usage-${x.id}`,
       type: "Inventory Usage",
       title: x.item_name || "Supply used",
-      desc: `${x.qty_used || x.quantity || 0} ${x.unit || ""} used by ${x.used_by || "farm"}`,
+      desc: `${x.qty_used || x.quantity || 0} ${x.unit || ""} used by ${
+        x.used_by || "farm"
+      }`,
       date: x.used_at || x.created_at,
       status: x.status || "USED",
     })),
+
     ...hires.map((x) => ({
       id: `hire-${x.id}`,
       type: "Caretaker Activity",
@@ -109,6 +159,7 @@ export default function AdminOperationsPage() {
       date: x.created_at,
       status: x.status || "PENDING",
     })),
+
     ...walletTx.map((x) => ({
       id: `cash-${x.id}`,
       type: "Cash Activity",
@@ -117,36 +168,36 @@ export default function AdminOperationsPage() {
       date: x.created_at,
       status: x.status || "COMPLETED",
     })),
+
     ...sellRequests.map((x) => ({
       id: `sell-${x.id}`,
       type: "Sell Activity",
       title: x.batch_no || "Sell chicken request",
-      desc: `${x.quantity || x.total_chickens || 0} chickens / ${money(x.total_amount || x.gross_amount)}`,
+      desc: `${x.quantity || x.total_chickens || 0} chickens / ${money(
+        x.total_amount || x.gross_amount
+      )}`,
       date: x.created_at,
       status: x.status || "PENDING",
     })),
-    ...risks.map((x) => ({
-      id: `risk-${x.id}`,
-      type: "Risk Signal",
-      title: x.title || x.risk_type || "Risk alert",
-      desc: x.description || x.severity || "Risk monitoring",
-      date: x.created_at,
-      status: x.status || "OPEN",
-    })),
   ]
-    .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+    )
     .slice(0, 80);
 
   return (
     <main style={page}>
       <section style={hero}>
         <div>
-          <Link href="/admin" style={back}>? Back Admin</Link>
+          <Link href="/admin" style={back}>
+            ← Back Admin
+          </Link>
           <p style={eyebrow}>FarmConnect V27.2</p>
           <h1 style={title}>Operational Intelligence Center</h1>
           <p style={subtitle}>
             Live farm activity monitoring for caretaker updates, flock health,
-            inventory usage, money movement, sell activity, and risk signals.
+            inventory usage, money movement, sell activity, and farm alerts.
           </p>
         </div>
 
@@ -156,14 +207,19 @@ export default function AdminOperationsPage() {
       </section>
 
       <section style={grid}>
-        <Card label="Weight Logs" value={stats.weight} icon="??" />
-        <Card label="Photo Logs" value={stats.photos} icon="??" />
-        <Card label="Mortality Logs" value={stats.mortality} icon="??" />
-        <Card label="Inventory Usage" value={stats.usage} icon="??" />
-        <Card label="Caretaker Activities" value={stats.hires} icon="?????" />
-        <Card label="Cash Activities" value={stats.cash} icon="??" />
-        <Card label="Sell Activities" value={stats.sell} icon="??" />
-        <Card label="Open Risks" value={stats.risks} icon="??" danger={stats.risks > 0} />
+        <Card label="Weight Logs" value={stats.weight} code="KG" />
+        <Card label="Photo Logs" value={stats.photos} code="PIC" />
+        <Card label="Mortality Logs" value={stats.mortality} code="MORT" />
+        <Card label="Inventory Usage" value={stats.usage} code="USE" />
+        <Card label="Caretaker Activities" value={stats.hires} code="CARE" />
+        <Card label="Cash Activities" value={stats.cash} code="CASH" />
+        <Card label="Sell Activities" value={stats.sell} code="SELL" />
+        <Card
+          label="Farm Alerts"
+          value={stats.alerts}
+          code="ALERT"
+          danger={stats.alerts > 0}
+        />
       </section>
 
       <section style={panel}>
@@ -202,17 +258,22 @@ export default function AdminOperationsPage() {
 function Card({
   label,
   value,
-  icon,
+  code,
   danger,
 }: {
   label: string;
   value: number;
-  icon: string;
+  code: string;
   danger?: boolean;
 }) {
   return (
-    <div style={{ ...card, borderColor: danger ? "#fecaca" : "rgba(148,163,184,.28)" }}>
-      <span style={iconStyle}>{icon}</span>
+    <div
+      style={{
+        ...card,
+        borderColor: danger ? "#fecaca" : "rgba(148,163,184,.28)",
+      }}
+    >
+      <span style={codeBadge}>{code}</span>
       <p>{label}</p>
       <h2 style={{ color: danger ? "#dc2626" : "#0f172a" }}>
         {value.toLocaleString()}
@@ -246,7 +307,11 @@ function formatDate(value?: string | null) {
 function badge(value?: string | null): React.CSSProperties {
   const s = status(value);
 
-  if (["COMPLETED", "APPROVED", "ACTIVE", "PAID", "RECORDED", "UPLOADED", "USED"].includes(s)) {
+  if (
+    ["COMPLETED", "APPROVED", "ACTIVE", "PAID", "RECORDED", "UPLOADED", "USED"].includes(
+      s
+    )
+  ) {
     return { ...badgeBase, background: "#dcfce7", color: "#166534" };
   }
 
@@ -333,8 +398,15 @@ const card: React.CSSProperties = {
   boxShadow: "0 14px 30px rgba(15,23,42,.08)",
 };
 
-const iconStyle: React.CSSProperties = {
-  fontSize: 32,
+const codeBadge: React.CSSProperties = {
+  display: "inline-block",
+  padding: "7px 10px",
+  borderRadius: 999,
+  background: "#e0f2fe",
+  color: "#075985",
+  fontSize: 12,
+  fontWeight: 950,
+  marginBottom: 10,
 };
 
 const panel: React.CSSProperties = {
@@ -435,4 +507,3 @@ const empty: React.CSSProperties = {
   textAlign: "center",
   fontWeight: 850,
 };
-
