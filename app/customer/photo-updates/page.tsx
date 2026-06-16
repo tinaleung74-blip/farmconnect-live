@@ -6,10 +6,12 @@ import { supabase } from "@/lib/supabase";
 
 type AnimalPhoto = {
   id: string;
-  animal_id: string | null;
-  photo_url: string | null;
-  caption: string | null;
-  created_at: string | null;
+  profile_id?: string | null;
+  animal_id?: string | null;
+  flock_id?: string | null;
+  photo_url?: string | null;
+  caption?: string | null;
+  created_at?: string | null;
 };
 
 export default function CustomerPhotoUpdatesPage() {
@@ -23,12 +25,23 @@ export default function CustomerPhotoUpdatesPage() {
   async function loadPhotos() {
     setLoading(true);
 
-    const { data, error } = await supabase
+    const profileId = localStorage.getItem("profile_id");
+
+    let query = supabase
       .from("animal_photos")
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (!error) {
+    if (profileId) {
+      query = query.eq("profile_id", profileId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      alert(`Photo load error: ${error.message}`);
+      setPhotos([]);
+    } else {
       setPhotos(data || []);
     }
 
@@ -40,15 +53,15 @@ export default function CustomerPhotoUpdatesPage() {
       <section style={hero}>
         <div>
           <Link href="/customer/dashboard" style={back}>
-            ← Back to Dashboard
+            Back to Dashboard
           </Link>
 
           <p style={eyebrow}>FarmConnect Live Monitoring</p>
           <h1 style={title}>Photo Updates</h1>
 
           <p style={subtitle}>
-            View the latest farm photos uploaded from caretaker operations.
-            This page is view-only and does not allow direct customer-to-caretaker
+            View the latest farm photos uploaded from caretaker operations. This
+            page is view-only and does not allow direct customer-to-caretaker
             communication.
           </p>
         </div>
@@ -62,7 +75,7 @@ export default function CustomerPhotoUpdatesPage() {
 
       <section style={summaryGrid}>
         <div style={summaryCard}>
-          <span>📸</span>
+          <span>PHOTO</span>
           <div>
             <p>Total Updates</p>
             <strong>{photos.length}</strong>
@@ -70,15 +83,17 @@ export default function CustomerPhotoUpdatesPage() {
         </div>
 
         <div style={summaryCard}>
-          <span>🐔</span>
+          <span>FLOCK</span>
           <div>
-            <p>Animal Records</p>
-            <strong>{new Set(photos.map((p) => p.animal_id)).size}</strong>
+            <p>Linked Records</p>
+            <strong>
+              {new Set(photos.map((p) => p.flock_id || p.animal_id)).size}
+            </strong>
           </div>
         </div>
 
         <div style={summaryCard}>
-          <span>🛡️</span>
+          <span>SAFE</span>
           <div>
             <p>Access Type</p>
             <strong>View Only</strong>
@@ -101,7 +116,7 @@ export default function CustomerPhotoUpdatesPage() {
                 {photo.photo_url ? (
                   <img src={photo.photo_url} alt="Farm update" style={image} />
                 ) : (
-                  <div style={placeholder}>📷 No photo preview</div>
+                  <div style={placeholder}>No photo preview</div>
                 )}
               </div>
 
@@ -112,14 +127,11 @@ export default function CustomerPhotoUpdatesPage() {
                   {photo.caption || "Farm condition update"}
                 </h2>
 
-                <p style={info}>Animal ID: {photo.animal_id || "Not linked"}</p>
-
-                <p style={dateText}>
-                  Uploaded:{" "}
-                  {photo.created_at
-                    ? new Date(photo.created_at).toLocaleString()
-                    : "No date"}
+                <p style={info}>
+                  Flock ID: {photo.flock_id || photo.animal_id || "Not linked"}
                 </p>
+
+                <p style={dateText}>Uploaded: {formatDate(photo.created_at)}</p>
               </div>
             </article>
           ))}
@@ -127,6 +139,11 @@ export default function CustomerPhotoUpdatesPage() {
       )}
     </main>
   );
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "No date";
+  return new Date(value).toLocaleString();
 }
 
 const page: React.CSSProperties = {

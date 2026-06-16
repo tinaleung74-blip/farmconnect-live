@@ -14,13 +14,24 @@ export default function WeightUpdatesPage() {
   async function loadWeights() {
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from("animal_weights")
-      .select("id, animal_id, weight_kg, note, recorded_at")
-      .order("recorded_at", { ascending: false });
+    const profileId = localStorage.getItem("profile_id");
 
-    if (!error && data) {
-      setWeights(data);
+    let query = supabase
+      .from("animal_weights")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (profileId) {
+      query = query.eq("profile_id", profileId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      alert(`Weight load error: ${error.message}`);
+      setWeights([]);
+    } else {
+      setWeights(data || []);
     }
 
     setLoading(false);
@@ -32,7 +43,7 @@ export default function WeightUpdatesPage() {
     <main className="min-h-screen bg-green-50 p-6">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-bold text-green-900 mb-2">
-          ⚖️ Weight Updates
+          Weight Updates
         </h1>
 
         <p className="text-green-700 mb-6">
@@ -50,16 +61,13 @@ export default function WeightUpdatesPage() {
             <div className="bg-white rounded-2xl p-6 shadow mb-6 border border-green-200">
               <p className="text-sm text-gray-500">Latest Weight</p>
               <h2 className="text-4xl font-bold text-green-800">
-                {latest.weight_kg} kg
+                {latest.weight_kg || latest.weight || "—"} kg
               </h2>
               <p className="text-gray-700 mt-2">
-                {latest.note || "No caretaker note."}
+                {latest.note || latest.remarks || "No caretaker note."}
               </p>
               <p className="text-sm text-gray-500 mt-2">
-                Recorded:{" "}
-                {latest.recorded_at
-                  ? new Date(latest.recorded_at).toLocaleString()
-                  : "No date"}
+                Recorded: {formatDate(latest.created_at || latest.recorded_at)}
               </p>
             </div>
 
@@ -72,22 +80,20 @@ export default function WeightUpdatesPage() {
                   <div className="flex justify-between items-start gap-4">
                     <div>
                       <h3 className="text-xl font-bold text-green-900">
-                        {item.weight_kg} kg
+                        {item.weight_kg || item.weight || "—"} kg
                       </h3>
 
                       <p className="text-gray-700 mt-1">
-                        {item.note || "No note from caretaker."}
+                        {item.note || item.remarks || "No note from caretaker."}
                       </p>
 
                       <p className="text-xs text-gray-500 mt-2">
-                        Animal ID: {item.animal_id || "N/A"}
+                        Flock ID: {item.flock_id || item.animal_id || "N/A"}
                       </p>
                     </div>
 
                     <span className="text-sm text-gray-500">
-                      {item.recorded_at
-                        ? new Date(item.recorded_at).toLocaleDateString()
-                        : "No date"}
+                      {formatDate(item.created_at || item.recorded_at)}
                     </span>
                   </div>
                 </div>
@@ -98,4 +104,9 @@ export default function WeightUpdatesPage() {
       </div>
     </main>
   );
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "No date";
+  return new Date(value).toLocaleString();
 }
