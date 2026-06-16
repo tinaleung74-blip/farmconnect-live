@@ -6,7 +6,6 @@ import { supabase } from "@/lib/supabase";
 
 type AnimalPhoto = {
   id: string;
-  profile_id?: string | null;
   animal_id?: string | null;
   flock_id?: string | null;
   photo_url?: string | null;
@@ -25,18 +24,10 @@ export default function CustomerPhotoUpdatesPage() {
   async function loadPhotos() {
     setLoading(true);
 
-    const profileId = localStorage.getItem("profile_id");
-
-    let query = supabase
+    const { data, error } = await supabase
       .from("animal_photos")
       .select("*")
       .order("created_at", { ascending: false });
-
-    if (profileId) {
-      query = query.eq("profile_id", profileId);
-    }
-
-    const { data, error } = await query;
 
     if (error) {
       alert(`Photo load error: ${error.message}`);

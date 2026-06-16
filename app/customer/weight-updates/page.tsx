@@ -14,18 +14,10 @@ export default function WeightUpdatesPage() {
   async function loadWeights() {
     setLoading(true);
 
-    const profileId = localStorage.getItem("profile_id");
-
-    let query = supabase
+    const { data, error } = await supabase
       .from("animal_weights")
       .select("*")
       .order("created_at", { ascending: false });
-
-    if (profileId) {
-      query = query.eq("profile_id", profileId);
-    }
-
-    const { data, error } = await query;
 
     if (error) {
       alert(`Weight load error: ${error.message}`);
@@ -47,7 +39,7 @@ export default function WeightUpdatesPage() {
         </h1>
 
         <p className="text-green-700 mb-6">
-          Monitor your flock weight history uploaded by caretakers.
+          Monitor flock weight history uploaded by caretakers.
         </p>
 
         {loading ? (
