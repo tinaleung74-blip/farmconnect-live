@@ -45,16 +45,44 @@ export default function AdminAnalyticsPage() {
       hireRes,
       riskRes,
     ] = await Promise.all([
-      supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }).limit(1000),
+      supabase
+        .from("wallet_transactions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000),
       supabase.from("profiles").select("*").limit(1000),
       supabase.from("flocks").select("*").limit(1000),
       supabase.from("caretakers").select("*").limit(1000),
-      supabase.from("membership_payments").select("*").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("cashin_requests").select("*").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("cashout_requests").select("*").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("sell_chicken_requests").select("*").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("customer_caretaker_hires").select("*").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("risk_alerts").select("*").order("created_at", { ascending: false }).limit(1000),
+      supabase
+        .from("membership_payments")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("cashin_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("cashout_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("sell_chicken_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("customer_caretaker_hires")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("risk_alerts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000),
     ]);
 
     setWalletTx(walletRes.data || []);
@@ -90,10 +118,19 @@ export default function AdminAnalyticsPage() {
       0
     );
 
-    const membershipRevenue = sumType(completedRevenue, "MEMBERSHIP_PAYMENT_APPROVED");
-    const caretakerFees = sumType(completedRevenue, "FARMCONNECT_TECHNICAL_FEE");
+    const membershipRevenue = sumType(
+      completedRevenue,
+      "MEMBERSHIP_PAYMENT_APPROVED"
+    );
+    const caretakerFees = sumType(
+      completedRevenue,
+      "FARMCONNECT_TECHNICAL_FEE"
+    );
     const cashoutFees = sumType(completedRevenue, "FARMCONNECT_CASHOUT_FEE");
-    const sellFees = sumType(completedRevenue, "FARMCONNECT_SELL_CHICKEN_FEE");
+    const sellFees = sumType(
+      completedRevenue,
+      "FARMCONNECT_SELL_CHICKEN_FEE"
+    );
 
     const walletExposure = profiles.reduce(
       (sum, p) => sum + num(p.wallet_balance),
@@ -105,17 +142,25 @@ export default function AdminAnalyticsPage() {
     );
 
     const totalChickensSold = approvedSellRequests.reduce(
-      (sum, r) => sum + num(r.quantity),
+      (sum, r) => sum + num(r.quantity || r.chickens_sold || r.total_chickens),
       0
     );
 
     const totalChickenSales = approvedSellRequests.reduce(
-      (sum, r) => sum + num(r.total_amount),
+      (sum, r) => sum + num(r.total_amount || r.gross_amount),
       0
     );
 
-    const topBatch = getTopBySum(approvedSellRequests, "batch_no", "total_amount");
-    const topCustomer = getTopBySum(approvedSellRequests, "profile_id", "total_amount");
+    const topBatch = getTopBySum(
+      approvedSellRequests,
+      "batch_no",
+      "total_amount"
+    );
+    const topCustomer = getTopBySum(
+      approvedSellRequests,
+      "profile_id",
+      "total_amount"
+    );
 
     return {
       todayRevenue,
@@ -128,32 +173,57 @@ export default function AdminAnalyticsPage() {
       walletExposure,
 
       totalCustomers: profiles.length,
-      activeMembers: profiles.filter((p) => status(p.membership_status) === "ACTIVE").length,
-      approvedKyc: profiles.filter((p) => status(p.verification_status) === "APPROVED").length,
-      suspendedAccounts: profiles.filter((p) => status(p.account_status) === "SUSPENDED").length,
-      rejectedKyc: profiles.filter((p) => status(p.verification_status) === "REJECTED").length,
+      activeMembers: profiles.filter(
+        (p) => status(p.membership_status) === "ACTIVE"
+      ).length,
+      approvedKyc: profiles.filter(
+        (p) => status(p.verification_status) === "APPROVED"
+      ).length,
+      suspendedAccounts: profiles.filter(
+        (p) => status(p.account_status) === "SUSPENDED"
+      ).length,
+      rejectedKyc: profiles.filter(
+        (p) => status(p.verification_status) === "REJECTED"
+      ).length,
 
       activeFlocks: flocks.filter((f) => status(f.status) === "ACTIVE").length,
       totalFlocks: flocks.length,
-      totalChickensAlive: flocks.reduce((sum, f) => sum + num(f.alive_count || f.total_chicks || f.total_heads), 0),
+      totalChickensAlive: flocks.reduce(
+        (sum, f) =>
+          sum + num(f.alive_count || f.total_chicks || f.total_heads),
+        0
+      ),
 
       activeCaretakers: caretakers.filter((c) =>
-        ["ACTIVE", "AVAILABLE", "ASSIGNED"].includes(status(c.status))
+        ["ACTIVE", "AVAILABLE", "ASSIGNED", "HIRED"].includes(status(c.status))
       ).length,
 
-      pendingMemberships: memberships.filter((x) => status(x.status) === "PENDING").length,
-      pendingCashins: cashins.filter((x) => status(x.status) === "PENDING").length,
-      pendingCashouts: cashouts.filter((x) => ["PENDING", "PROCESSING"].includes(status(x.status))).length,
-      pendingSell: sellRequests.filter((x) => status(x.status) === "PENDING_ADMIN_APPROVAL").length,
-      pendingHires: caretakerHires.filter((x) => status(x.status) === "PENDING_ADMIN_APPROVAL").length,
+      pendingMemberships: memberships.filter(
+        (x) => status(x.status) === "PENDING"
+      ).length,
+      pendingCashins: cashins.filter((x) => status(x.status) === "PENDING")
+        .length,
+      pendingCashouts: cashouts.filter((x) =>
+        ["PENDING", "PROCESSING"].includes(status(x.status))
+      ).length,
+      pendingSell: sellRequests.filter((x) =>
+        ["PENDING", "PENDING_ADMIN_APPROVAL"].includes(status(x.status))
+      ).length,
+      pendingHires: caretakerHires.filter((x) =>
+        ["PENDING", "PENDING_ADMIN_APPROVAL"].includes(status(x.status))
+      ).length,
 
       totalChickensSold,
       totalChickenSales,
       topBatch,
       topCustomer,
 
-      openRisks: riskAlerts.filter((r) => ["OPEN", "PENDING"].includes(status(r.status))).length,
-      criticalRisks: riskAlerts.filter((r) => status(r.severity) === "CRITICAL").length,
+      openRisks: riskAlerts.filter((r) =>
+        ["OPEN", "PENDING"].includes(status(r.status))
+      ).length,
+      criticalRisks: riskAlerts.filter(
+        (r) => status(r.severity) === "CRITICAL"
+      ).length,
     };
   }, [
     walletTx,
@@ -167,6 +237,13 @@ export default function AdminAnalyticsPage() {
     caretakerHires,
     riskAlerts,
   ]);
+
+  const totalPending =
+    analytics.pendingMemberships +
+    analytics.pendingCashins +
+    analytics.pendingCashouts +
+    analytics.pendingSell +
+    analytics.pendingHires;
 
   const revenueFeed = walletTx
     .filter((tx) => REVENUE_TYPES.includes(String(tx.transaction_type || "")))
@@ -204,7 +281,7 @@ export default function AdminAnalyticsPage() {
       id: `sell-${x.id}`,
       type: "Sell Chicken",
       status: x.status,
-      amount: num(x.total_amount),
+      amount: num(x.total_amount || x.gross_amount),
       reference: x.batch_no || x.id,
       date: x.created_at,
       href: "/admin/sell-requests",
@@ -219,39 +296,112 @@ export default function AdminAnalyticsPage() {
       href: "/admin/caretaker-hires",
     })),
   ]
-    .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+    )
     .slice(0, 18);
 
   return (
     <main style={page}>
       <section style={hero}>
         <div>
-          <Link href="/admin" style={back}>← Back Admin</Link>
-          <p style={eyebrow}>FarmConnect V27</p>
-          <h1 style={title}>Analytics Dashboard</h1>
+          <Link href="/admin" style={back}>
+            ← Back Admin
+          </Link>
+          <p style={eyebrow}>FarmConnect V27.1</p>
+          <h1 style={title}>Live Business Command Center</h1>
           <p style={subtitle}>
-            Professional business intelligence for revenue, sales, customers,
-            memberships, poultry operations, pending approvals, and risk.
+            Real-time visibility for revenue, wallet exposure, customer activity,
+            poultry operations, pending approvals, and risk signals.
           </p>
+
+          <div style={heroPills}>
+            <span style={heroPill}>Live Database Sync</span>
+            <span style={heroPill}>No Static Demo Data</span>
+            <span style={heroPill}>Treasury Verified</span>
+          </div>
         </div>
 
         <button onClick={loadAnalytics} style={refreshBtn}>
-          {loading ? "Refreshing..." : "Refresh Analytics"}
+          {loading ? "Refreshing..." : "Refresh Live Data"}
         </button>
       </section>
 
+      <section style={commandStrip}>
+        <div>
+          <p style={stripLabel}>Current Operating Mode</p>
+          <h2 style={stripTitle}>Real-time admin decision dashboard</h2>
+          <span style={stripText}>
+            This screen is for what is happening now: revenue movement, pending
+            queues, wallet exposure, active flocks, and risk checks.
+          </span>
+        </div>
+
+        <div style={stripStats}>
+          <div style={stripBox}>
+            <b>{totalPending}</b>
+            <span>needs action</span>
+          </div>
+          <div style={stripBox}>
+            <b>{analytics.openRisks}</b>
+            <span>open risk</span>
+          </div>
+          <div style={stripBox}>
+            <b>{analytics.activeFlocks}</b>
+            <span>active flocks</span>
+          </div>
+        </div>
+      </section>
+
       <section style={statsGrid}>
-        <BigCard label="Revenue Today" value={money(analytics.todayRevenue)} accent="#16a34a" note="FarmConnect earnings today" />
-        <BigCard label="Revenue This Month" value={money(analytics.monthRevenue)} accent="#2563eb" note="Current month revenue" />
-        <BigCard label="Lifetime Revenue" value={money(analytics.lifetimeRevenue)} accent="#14532d" note="All-time FarmConnect earnings" />
-        <BigCard label="Wallet Exposure" value={money(analytics.walletExposure)} accent="#f97316" note="Total customer wallet balances" />
+        <BigCard
+          label="Revenue Today"
+          value={money(analytics.todayRevenue)}
+          accent="#16a34a"
+          note="FarmConnect earnings today"
+        />
+        <BigCard
+          label="Revenue This Month"
+          value={money(analytics.monthRevenue)}
+          accent="#2563eb"
+          note="Current month revenue"
+        />
+        <BigCard
+          label="Lifetime Revenue"
+          value={money(analytics.lifetimeRevenue)}
+          accent="#14532d"
+          note="All-time FarmConnect earnings"
+        />
+        <BigCard
+          label="Wallet Exposure"
+          value={money(analytics.walletExposure)}
+          accent="#f97316"
+          note="Total customer wallet balances"
+        />
       </section>
 
       <section style={gridFour}>
-        <Metric label="Membership Revenue" value={money(analytics.membershipRevenue)} icon="💳" />
-        <Metric label="Caretaker Fees" value={money(analytics.caretakerFees)} icon="🧑‍🌾" />
-        <Metric label="Cash-Out Fees" value={money(analytics.cashoutFees)} icon="🏦" />
-        <Metric label="Sell Chicken Fees" value={money(analytics.sellFees)} icon="🐓" />
+        <Metric
+          label="Membership Revenue"
+          value={money(analytics.membershipRevenue)}
+          icon="💳"
+        />
+        <Metric
+          label="Caretaker Fees"
+          value={money(analytics.caretakerFees)}
+          icon="🧑‍🌾"
+        />
+        <Metric
+          label="Cash-Out Fees"
+          value={money(analytics.cashoutFees)}
+          icon="🏦"
+        />
+        <Metric
+          label="Sell Chicken Fees"
+          value={money(analytics.sellFees)}
+          icon="🐓"
+        />
       </section>
 
       <section style={gridFive}>
@@ -267,32 +417,49 @@ export default function AdminAnalyticsPage() {
           <div style={cardHeader}>
             <div>
               <h2 style={sectionTitle}>Pending Approval Queue</h2>
-              <p style={muted}>Admin action items that affect money and operations.</p>
+              <p style={muted}>
+                Admin action items that affect customer money and operations.
+              </p>
             </div>
-            <span style={pill}>
-              {analytics.pendingMemberships +
-                analytics.pendingCashins +
-                analytics.pendingCashouts +
-                analytics.pendingSell +
-                analytics.pendingHires}{" "}
-              pending
-            </span>
+            <span style={pill}>{totalPending} pending</span>
           </div>
 
-          <Queue label="Membership Payments" value={analytics.pendingMemberships} href="/admin/memberships" />
-          <Queue label="Cash-In Requests" value={analytics.pendingCashins} href="/admin/transactions/cashin" />
-          <Queue label="Cash-Out Requests" value={analytics.pendingCashouts} href="/admin/transactions/cashout" />
-          <Queue label="Sell Chicken Requests" value={analytics.pendingSell} href="/admin/sell-requests" />
-          <Queue label="Caretaker Hires" value={analytics.pendingHires} href="/admin/caretaker-hires" />
+          <Queue
+            label="Membership Payments"
+            value={analytics.pendingMemberships}
+            href="/admin/memberships"
+          />
+          <Queue
+            label="Cash-In Requests"
+            value={analytics.pendingCashins}
+            href="/admin/transactions/cashin"
+          />
+          <Queue
+            label="Cash-Out Requests"
+            value={analytics.pendingCashouts}
+            href="/admin/transactions/cashout"
+          />
+          <Queue
+            label="Sell Chicken Requests"
+            value={analytics.pendingSell}
+            href="/admin/sell-requests"
+          />
+          <Queue
+            label="Caretaker Hires"
+            value={analytics.pendingHires}
+            href="/admin/caretaker-hires"
+          />
         </section>
 
         <section style={card}>
           <div style={cardHeader}>
             <div>
-              <h2 style={sectionTitle}>Sales Analytics</h2>
-              <p style={muted}>Chicken selling performance from approved sell requests.</p>
+              <h2 style={sectionTitle}>Chicken Sales Pulse</h2>
+              <p style={muted}>
+                Approved selling activity from real customer batches.
+              </p>
             </div>
-            <span style={pill}>Sales</span>
+            <span style={pill}>Live Sales</span>
           </div>
 
           <div style={salesGrid}>
@@ -311,7 +478,11 @@ export default function AdminAnalyticsPage() {
             </div>
             <div style={salesBox}>
               <p>Top Customer ID</p>
-              <h3>{analytics.topCustomer.label ? shortId(analytics.topCustomer.label) : "No sales yet"}</h3>
+              <h3>
+                {analytics.topCustomer.label
+                  ? shortId(analytics.topCustomer.label)
+                  : "No sales yet"}
+              </h3>
               <small>{money(analytics.topCustomer.value)}</small>
             </div>
           </div>
@@ -330,10 +501,26 @@ export default function AdminAnalyticsPage() {
             </span>
           </div>
 
-          <Risk label="Open Risk Alerts" value={analytics.openRisks} href="/admin/risk-management" />
-          <Risk label="Critical Risks" value={analytics.criticalRisks} href="/admin/risk-management" />
-          <Risk label="Rejected KYC" value={analytics.rejectedKyc} href="/admin/customers" />
-          <Risk label="Suspended Accounts" value={analytics.suspendedAccounts} href="/admin/customers" />
+          <Risk
+            label="Open Risk Alerts"
+            value={analytics.openRisks}
+            href="/admin/risk-management"
+          />
+          <Risk
+            label="Critical Risks"
+            value={analytics.criticalRisks}
+            href="/admin/risk-management"
+          />
+          <Risk
+            label="Rejected KYC"
+            value={analytics.rejectedKyc}
+            href="/admin/customers"
+          />
+          <Risk
+            label="Suspended Accounts"
+            value={analytics.suspendedAccounts}
+            href="/admin/customers"
+          />
         </section>
 
         <section style={card}>
@@ -363,8 +550,10 @@ export default function AdminAnalyticsPage() {
       <section style={card}>
         <div style={cardHeader}>
           <div>
-            <h2 style={sectionTitle}>Latest Revenue Feed</h2>
-            <p style={muted}>Revenue-only transactions used by Treasury and Analytics.</p>
+            <h2 style={sectionTitle}>Latest Revenue Movement</h2>
+            <p style={muted}>
+              Revenue-only wallet transactions powering the live dashboard.
+            </p>
           </div>
           <span style={pill}>{revenueFeed.length} records</span>
         </div>
@@ -385,8 +574,11 @@ export default function AdminAnalyticsPage() {
       <section style={card}>
         <div style={cardHeader}>
           <div>
-            <h2 style={sectionTitle}>Latest Operations Feed</h2>
-            <p style={muted}>Membership, cash, sell chicken, and caretaker activities.</p>
+            <h2 style={sectionTitle}>Latest Operations Activity</h2>
+            <p style={muted}>
+              Membership, cash, sell chicken, and caretaker activities from real
+              tables.
+            </p>
           </div>
           <span style={pill}>{latestOperations.length} latest</span>
         </div>
@@ -415,7 +607,17 @@ export default function AdminAnalyticsPage() {
   );
 }
 
-function BigCard({ label, value, accent, note }: { label: string; value: string; accent: string; note: string }) {
+function BigCard({
+  label,
+  value,
+  accent,
+  note,
+}: {
+  label: string;
+  value: string;
+  accent: string;
+  note: string;
+}) {
   return (
     <div style={bigCard}>
       <div style={{ ...bar, background: accent }} />
@@ -426,7 +628,15 @@ function BigCard({ label, value, accent, note }: { label: string; value: string;
   );
 }
 
-function Metric({ label, value, icon }: { label: string; value: string; icon: string }) {
+function Metric({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: string;
+}) {
   return (
     <div style={metric}>
       <span style={metricIcon}>{icon}</span>
@@ -445,7 +655,15 @@ function Mini({ label, value }: { label: string; value: number }) {
   );
 }
 
-function Queue({ label, value, href }: { label: string; value: number; href: string }) {
+function Queue({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: number;
+  href: string;
+}) {
   return (
     <Link href={href} style={queueRow}>
       <span>{label}</span>
@@ -454,7 +672,15 @@ function Queue({ label, value, href }: { label: string; value: number; href: str
   );
 }
 
-function Risk({ label, value, href }: { label: string; value: number; href: string }) {
+function Risk({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: number;
+  href: string;
+}) {
   return (
     <Link href={href} style={riskRow}>
       <span>{label}</span>
@@ -483,10 +709,16 @@ function Table({ rows }: { rows: Row[] }) {
           {rows.map((row) => (
             <tr key={row.id} style={tr}>
               <td style={td}>{row.date}</td>
-              <td style={td}><b>{row.type}</b></td>
+              <td style={td}>
+                <b>{row.type}</b>
+              </td>
               <td style={td}>{row.reference}</td>
-              <td style={td}><b style={{ color: "#15803d" }}>{row.amount}</b></td>
-              <td style={td}><span style={badge(row.status)}>{row.status}</span></td>
+              <td style={td}>
+                <b style={{ color: "#15803d" }}>{row.amount}</b>
+              </td>
+              <td style={td}>
+                <span style={badge(row.status)}>{row.status}</span>
+              </td>
               <td style={td}>{row.remarks}</td>
             </tr>
           ))}
@@ -604,10 +836,10 @@ const hero: React.CSSProperties = {
   alignItems: "center",
   padding: 30,
   borderRadius: 30,
-  background: "linear-gradient(135deg, #064e3b, #047857, #2563eb)",
+  background: "linear-gradient(135deg, #052e16, #047857, #2563eb)",
   color: "white",
   boxShadow: "0 20px 45px rgba(15,23,42,.18)",
-  marginBottom: 24,
+  marginBottom: 18,
 };
 
 const back: React.CSSProperties = {
@@ -641,6 +873,23 @@ const subtitle: React.CSSProperties = {
   opacity: 0.92,
 };
 
+const heroPills: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 10,
+  marginTop: 18,
+};
+
+const heroPill: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 999,
+  background: "rgba(255,255,255,.16)",
+  border: "1px solid rgba(255,255,255,.24)",
+  color: "white",
+  fontSize: 12,
+  fontWeight: 950,
+};
+
 const refreshBtn: React.CSSProperties = {
   border: "none",
   borderRadius: 16,
@@ -649,6 +898,54 @@ const refreshBtn: React.CSSProperties = {
   color: "#064e3b",
   background: "white",
   cursor: "pointer",
+};
+
+const commandStrip: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 18,
+  padding: 22,
+  borderRadius: 26,
+  background: "rgba(15,23,42,.94)",
+  color: "white",
+  boxShadow: "0 18px 38px rgba(15,23,42,.16)",
+  marginBottom: 18,
+};
+
+const stripLabel: React.CSSProperties = {
+  margin: 0,
+  color: "#86efac",
+  fontSize: 12,
+  fontWeight: 950,
+  textTransform: "uppercase",
+  letterSpacing: 1.2,
+};
+
+const stripTitle: React.CSSProperties = {
+  margin: "7px 0",
+  fontSize: 24,
+  fontWeight: 950,
+};
+
+const stripText: React.CSSProperties = {
+  color: "#cbd5e1",
+  fontSize: 14,
+};
+
+const stripStats: React.CSSProperties = {
+  display: "flex",
+  gap: 12,
+  flexWrap: "wrap",
+};
+
+const stripBox: React.CSSProperties = {
+  minWidth: 120,
+  padding: 14,
+  borderRadius: 18,
+  background: "rgba(255,255,255,.09)",
+  border: "1px solid rgba(255,255,255,.12)",
+  textAlign: "center",
 };
 
 const statsGrid: React.CSSProperties = {
