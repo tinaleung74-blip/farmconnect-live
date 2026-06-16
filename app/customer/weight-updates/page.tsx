@@ -17,7 +17,7 @@ export default function WeightUpdatesPage() {
     const { data, error } = await supabase
       .from("animal_weights")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("recorded_at", { ascending: false });
 
     if (error) {
       alert(`Weight load error: ${error.message}`);
@@ -59,7 +59,7 @@ export default function WeightUpdatesPage() {
                 {latest.note || latest.remarks || "No caretaker note."}
               </p>
               <p className="text-sm text-gray-500 mt-2">
-                Recorded: {formatDate(latest.created_at || latest.recorded_at)}
+                Recorded: {formatDate(latest.recorded_at)}
               </p>
             </div>
 
@@ -80,12 +80,12 @@ export default function WeightUpdatesPage() {
                       </p>
 
                       <p className="text-xs text-gray-500 mt-2">
-                        Flock ID: {item.flock_id || item.animal_id || "N/A"}
+                        Animal ID: {item.animal_id || "N/A"}
                       </p>
                     </div>
 
                     <span className="text-sm text-gray-500">
-                      {formatDate(item.created_at || item.recorded_at)}
+                      {formatDate(item.recorded_at)}
                     </span>
                   </div>
                 </div>
