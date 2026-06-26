@@ -6,19 +6,26 @@ import { supabase } from "@/lib/supabase";
 
 type CashIn = {
   id: string;
+  profile_id?: string | null;
   customer_id?: string | null;
   amount?: number | string | null;
   method?: string | null;
+  channel?: string | null;
+  payment_method?: string | null;
   status?: string | null;
+  reference_no?: string | null;
   reference_number?: string | null;
   created_at?: string | null;
 };
 
 type CashOut = {
   id: string;
+  profile_id?: string | null;
   customer_id?: string | null;
   amount?: number | string | null;
   method?: string | null;
+  channel?: string | null;
+  payment_method?: string | null;
   status?: string | null;
   bank_name?: string | null;
   account_name?: string | null;
@@ -27,11 +34,16 @@ type CashOut = {
 
 type WalletTx = {
   id: string;
+  profile_id?: string | null;
   customer_id?: string | null;
+  transaction_type?: string | null;
   type?: string | null;
   amount?: number | string | null;
   status?: string | null;
+  reference_no?: string | null;
   reference?: string | null;
+  description?: string | null;
+  remarks?: string | null;
   created_at?: string | null;
 };
 
@@ -49,24 +61,41 @@ export default function AdminTransactionsPage() {
     setLoading(true);
 
     const [cashinRes, cashoutRes, walletRes] = await Promise.all([
-      supabase.from("cashin_requests").select("*").order("created_at", { ascending: false }).limit(80),
-      supabase.from("cashout_requests").select("*").order("created_at", { ascending: false }).limit(80),
-      supabase.from("wallet_transactions").select("*").order("created_at", { ascending: false }).limit(120),
+      supabase
+        .from("cashin_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(80),
+
+      supabase
+        .from("cashout_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(80),
+
+      supabase
+        .from("wallet_transactions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(120),
     ]);
 
     if (cashinRes.error) console.error(cashinRes.error.message);
     if (cashoutRes.error) console.error(cashoutRes.error.message);
     if (walletRes.error) console.error(walletRes.error.message);
 
-    setCashins(cashinRes.data || []);
-    setCashouts(cashoutRes.data || []);
-    setWallets(walletRes.data || []);
+    setCashins((cashinRes.data || []) as CashIn[]);
+    setCashouts((cashoutRes.data || []) as CashOut[]);
+    setWallets((walletRes.data || []) as WalletTx[]);
     setLoading(false);
   }
 
   const summary = useMemo(() => {
     const cashinTotal = cashins.reduce((sum, x) => sum + toNumber(x.amount), 0);
-    const cashoutTotal = cashouts.reduce((sum, x) => sum + toNumber(x.amount), 0);
+    const cashoutTotal = cashouts.reduce(
+      (sum, x) => sum + toNumber(x.amount),
+      0
+    );
     const walletTotal = wallets.reduce((sum, x) => sum + toNumber(x.amount), 0);
 
     const pending =
@@ -74,10 +103,15 @@ export default function AdminTransactionsPage() {
       cashouts.filter((x) => status(x.status) === "PENDING").length +
       wallets.filter((x) => status(x.status) === "PENDING").length;
 
+    const sellCredits = wallets
+      .filter((x) => walletCategory(x) === "SELL_CHICKEN_CREDIT")
+      .reduce((sum, x) => sum + toNumber(x.amount), 0);
+
     return {
       cashinTotal,
       cashoutTotal,
       walletTotal,
+      sellCredits,
       net: cashinTotal - cashoutTotal,
       pending,
       count: cashins.length + cashouts.length + wallets.length,
@@ -89,31 +123,39 @@ export default function AdminTransactionsPage() {
       id: `cashin-${x.id}`,
       date: x.created_at,
       category: "Cash-In",
-      customer: x.customer_id || "—",
-      reference: x.reference_number || x.id,
+      customer: x.profile_id || x.customer_id || "—",
+      reference: x.reference_no || x.reference_number || x.id,
+      description: x.channel || x.payment_method || x.method || "",
       amount: toNumber(x.amount),
       status: x.status || "PENDING",
     })),
+
     ...cashouts.map((x) => ({
       id: `cashout-${x.id}`,
       date: x.created_at,
       category: "Cash-Out",
-      customer: x.customer_id || "—",
+      customer: x.profile_id || x.customer_id || "—",
       reference: x.account_name || x.bank_name || x.id,
+      description: x.channel || x.payment_method || x.method || "",
       amount: toNumber(x.amount),
       status: x.status || "PENDING",
     })),
+
     ...wallets.map((x) => ({
       id: `wallet-${x.id}`,
       date: x.created_at,
-      category: x.type || "Wallet",
-      customer: x.customer_id || "—",
-      reference: x.reference || x.id,
+      category: x.transaction_type || x.type || "Wallet",
+      customer: x.profile_id || x.customer_id || "—",
+      reference: x.reference_no || x.reference || x.id,
+      description: x.description || x.remarks || "",
       amount: toNumber(x.amount),
       status: x.status || "POSTED",
     })),
   ]
-    .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+    )
     .slice(0, 20);
 
   return (
@@ -123,12 +165,14 @@ export default function AdminTransactionsPage() {
           <p style={eyebrow}>FarmConnect Financial Operations</p>
           <h1 style={title}>Transactions Center</h1>
           <p style={subtitle}>
-            Central transaction command page for cash-in, cash-out, wallet ledger, approvals,
-            and customer fund movement under admin control.
+            Central transaction command page for cash-in, cash-out, wallet
+            ledger, sell chicken credits, approvals, and customer fund movement.
           </p>
         </div>
 
-        <button onClick={loadTransactions} style={refreshBtn}>Refresh</button>
+        <button onClick={loadTransactions} style={refreshBtn}>
+          Refresh
+        </button>
       </section>
 
       <section style={navGrid}>
@@ -147,7 +191,7 @@ export default function AdminTransactionsPage() {
         <Link href="/admin/wallet" style={navCard}>
           <span style={navIcon}>💳</span>
           <strong>Wallet Ledger</strong>
-          <p>Monitor wallet credits, debits, and adjustments.</p>
+          <p>Monitor wallet credits, debits, sell credits, and adjustments.</p>
         </Link>
       </section>
 
@@ -155,6 +199,7 @@ export default function AdminTransactionsPage() {
         <MoneyCard label="Net Transaction Flow" value={summary.net} accent="#2563eb" />
         <MoneyCard label="Cash-In Volume" value={summary.cashinTotal} accent="#16a34a" />
         <MoneyCard label="Cash-Out Volume" value={summary.cashoutTotal} accent="#dc2626" />
+        <MoneyCard label="Sell Chicken Credits" value={summary.sellCredits} accent="#15803d" />
         <CountCard label="Pending Reviews" value={summary.pending} accent="#f59e0b" />
       </section>
 
@@ -163,7 +208,8 @@ export default function AdminTransactionsPage() {
           <div>
             <h2 style={sectionTitle}>Recent Transaction Activity</h2>
             <p style={sectionDesc}>
-              Customer transactions are reviewed by admin. Caretakers do not transact directly with customers.
+              Includes cash-in, cash-out, wallet ledger, and SELL_CHICKEN_CREDIT
+              transactions from admin approval.
             </p>
           </div>
           <span style={pill}>{summary.count} total</span>
@@ -182,20 +228,35 @@ export default function AdminTransactionsPage() {
                   <th style={th}>Category</th>
                   <th style={th}>Customer</th>
                   <th style={th}>Reference</th>
+                  <th style={th}>Description</th>
                   <th style={th}>Amount</th>
                   <th style={th}>Status</th>
                 </tr>
               </thead>
+
               <tbody>
                 {recent.map((tx) => (
                   <tr key={tx.id} style={tr}>
-                    <td style={td}>{tx.date ? new Date(tx.date).toLocaleString() : "—"}</td>
-                    <td style={td}><strong>{tx.category}</strong></td>
+                    <td style={td}>
+                      {tx.date ? new Date(tx.date).toLocaleString() : "—"}
+                    </td>
+                    <td style={td}>
+                      <strong>{tx.category}</strong>
+                    </td>
                     <td style={td}>{tx.customer}</td>
                     <td style={td}>{tx.reference}</td>
-                    <td style={td}><strong>{money(tx.amount)}</strong></td>
+                    <td style={td}>{tx.description || "—"}</td>
                     <td style={td}>
-                      <span style={{ ...badge, background: statusBg(tx.status), color: statusColor(tx.status) }}>
+                      <strong>{money(tx.amount)}</strong>
+                    </td>
+                    <td style={td}>
+                      <span
+                        style={{
+                          ...badge,
+                          background: statusBg(tx.status),
+                          color: statusColor(tx.status),
+                        }}
+                      >
                         {status(tx.status)}
                       </span>
                     </td>
@@ -210,7 +271,19 @@ export default function AdminTransactionsPage() {
   );
 }
 
-function MoneyCard({ label, value, accent }: { label: string; value: number; accent: string }) {
+function walletCategory(x: WalletTx) {
+  return String(x.transaction_type || x.type || "Wallet").toUpperCase();
+}
+
+function MoneyCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: string;
+}) {
   return (
     <div style={statCard}>
       <div style={{ ...statBar, background: accent }} />
@@ -220,7 +293,15 @@ function MoneyCard({ label, value, accent }: { label: string; value: number; acc
   );
 }
 
-function CountCard({ label, value, accent }: { label: string; value: number; accent: string }) {
+function CountCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: string;
+}) {
   return (
     <div style={statCard}>
       <div style={{ ...statBar, background: accent }} />
@@ -284,9 +365,28 @@ const hero: React.CSSProperties = {
   marginBottom: 24,
 };
 
-const eyebrow: React.CSSProperties = { margin: 0, fontSize: 13, fontWeight: 900, letterSpacing: 1.5, textTransform: "uppercase", opacity: .88 };
-const title: React.CSSProperties = { margin: "8px 0", fontSize: 42, fontWeight: 950 };
-const subtitle: React.CSSProperties = { margin: 0, maxWidth: 760, fontSize: 15, lineHeight: 1.6, opacity: .92 };
+const eyebrow: React.CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 900,
+  letterSpacing: 1.5,
+  textTransform: "uppercase",
+  opacity: 0.88,
+};
+
+const title: React.CSSProperties = {
+  margin: "8px 0",
+  fontSize: 42,
+  fontWeight: 950,
+};
+
+const subtitle: React.CSSProperties = {
+  margin: 0,
+  maxWidth: 760,
+  fontSize: 15,
+  lineHeight: 1.6,
+  opacity: 0.92,
+};
 
 const refreshBtn: React.CSSProperties = {
   border: "none",
@@ -336,10 +436,31 @@ const statCard: React.CSSProperties = {
   boxShadow: "0 15px 32px rgba(15,23,42,.08)",
 };
 
-const statBar: React.CSSProperties = { width: 50, height: 8, borderRadius: 999, marginBottom: 14 };
-const statLabel: React.CSSProperties = { margin: 0, color: "#64748b", fontSize: 13, fontWeight: 900 };
-const statMoney: React.CSSProperties = { margin: "8px 0 0", fontSize: 27, fontWeight: 950 };
-const statValue: React.CSSProperties = { margin: "8px 0 0", fontSize: 34, fontWeight: 950 };
+const statBar: React.CSSProperties = {
+  width: 50,
+  height: 8,
+  borderRadius: 999,
+  marginBottom: 14,
+};
+
+const statLabel: React.CSSProperties = {
+  margin: 0,
+  color: "#64748b",
+  fontSize: 13,
+  fontWeight: 900,
+};
+
+const statMoney: React.CSSProperties = {
+  margin: "8px 0 0",
+  fontSize: 27,
+  fontWeight: 950,
+};
+
+const statValue: React.CSSProperties = {
+  margin: "8px 0 0",
+  fontSize: 34,
+  fontWeight: 950,
+};
 
 const card: React.CSSProperties = {
   padding: 22,
@@ -349,15 +470,78 @@ const card: React.CSSProperties = {
   boxShadow: "0 20px 45px rgba(15,23,42,.08)",
 };
 
-const cardHeader: React.CSSProperties = { display: "flex", justifyContent: "space-between", gap: 14, alignItems: "center", marginBottom: 16 };
-const sectionTitle: React.CSSProperties = { margin: 0, fontSize: 22, fontWeight: 950 };
-const sectionDesc: React.CSSProperties = { margin: "6px 0 0", color: "#64748b", fontSize: 14 };
-const pill: React.CSSProperties = { padding: "8px 12px", borderRadius: 999, background: "#dbeafe", color: "#1d4ed8", fontWeight: 950, fontSize: 12 };
+const cardHeader: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 14,
+  alignItems: "center",
+  marginBottom: 16,
+};
 
-const tableWrap: React.CSSProperties = { overflowX: "auto" };
-const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", minWidth: 850 };
-const th: React.CSSProperties = { textAlign: "left", padding: "14px 12px", fontSize: 12, color: "#475569", textTransform: "uppercase", letterSpacing: .8, borderBottom: "1px solid #e2e8f0" };
-const tr: React.CSSProperties = { borderBottom: "1px solid #f1f5f9" };
-const td: React.CSSProperties = { padding: "15px 12px", fontSize: 14, verticalAlign: "top" };
-const badge: React.CSSProperties = { display: "inline-block", padding: "7px 10px", borderRadius: 999, fontSize: 11, fontWeight: 950 };
-const emptyBox: React.CSSProperties = { padding: 30, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center", fontWeight: 850 };
+const sectionTitle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 22,
+  fontWeight: 950,
+};
+
+const sectionDesc: React.CSSProperties = {
+  margin: "6px 0 0",
+  color: "#64748b",
+  fontSize: 14,
+};
+
+const pill: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 999,
+  background: "#dbeafe",
+  color: "#1d4ed8",
+  fontWeight: 950,
+  fontSize: 12,
+};
+
+const tableWrap: React.CSSProperties = {
+  overflowX: "auto",
+};
+
+const table: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  minWidth: 1050,
+};
+
+const th: React.CSSProperties = {
+  textAlign: "left",
+  padding: "14px 12px",
+  fontSize: 12,
+  color: "#475569",
+  textTransform: "uppercase",
+  letterSpacing: 0.8,
+  borderBottom: "1px solid #e2e8f0",
+};
+
+const tr: React.CSSProperties = {
+  borderBottom: "1px solid #f1f5f9",
+};
+
+const td: React.CSSProperties = {
+  padding: "15px 12px",
+  fontSize: 14,
+  verticalAlign: "top",
+};
+
+const badge: React.CSSProperties = {
+  display: "inline-block",
+  padding: "7px 10px",
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 950,
+};
+
+const emptyBox: React.CSSProperties = {
+  padding: 30,
+  borderRadius: 18,
+  background: "#f8fafc",
+  color: "#64748b",
+  textAlign: "center",
+  fontWeight: 850,
+};

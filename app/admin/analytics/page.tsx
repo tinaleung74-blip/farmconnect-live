@@ -23,7 +23,7 @@ export default function AdminAnalyticsPage() {
   const [cashouts, setCashouts] = useState<Row[]>([]);
   const [sellRequests, setSellRequests] = useState<Row[]>([]);
   const [caretakerHires, setCaretakerHires] = useState<Row[]>([]);
-  const [riskAlerts, setRiskAlerts] = useState<Row[]>([]);
+  const [mortalityReports, setMortalityReports] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function AdminAnalyticsPage() {
       cashoutRes,
       sellRes,
       hireRes,
-      riskRes,
+      mortalityRes,
     ] = await Promise.all([
       supabase
         .from("wallet_transactions")
@@ -79,7 +79,7 @@ export default function AdminAnalyticsPage() {
         .order("created_at", { ascending: false })
         .limit(1000),
       supabase
-        .from("risk_alerts")
+        .from("mortality_logs")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(1000),
@@ -94,7 +94,7 @@ export default function AdminAnalyticsPage() {
     setCashouts(cashoutRes.data || []);
     setSellRequests(sellRes.data || []);
     setCaretakerHires(hireRes.data || []);
-    setRiskAlerts(riskRes.data || []);
+    setMortalityReports(mortalityRes.data || []);
     setLoading(false);
   }
 
@@ -218,11 +218,11 @@ export default function AdminAnalyticsPage() {
       topBatch,
       topCustomer,
 
-      openRisks: riskAlerts.filter((r) =>
-        ["OPEN", "PENDING"].includes(status(r.status))
+      openMortalityReports: mortalityReports.filter((r) =>
+        ["OPEN", "PENDING", "REPORTED"].includes(status(r.status))
       ).length,
-      criticalRisks: riskAlerts.filter(
-        (r) => status(r.severity) === "CRITICAL"
+      criticalMortalityReports: mortalityReports.filter((r) =>
+        ["CRITICAL", "HIGH"].includes(status(r.severity || r.priority))
       ).length,
     };
   }, [
@@ -235,7 +235,7 @@ export default function AdminAnalyticsPage() {
     cashouts,
     sellRequests,
     caretakerHires,
-    riskAlerts,
+    mortalityReports,
   ]);
 
   const totalPending =
@@ -295,6 +295,15 @@ export default function AdminAnalyticsPage() {
       date: x.created_at,
       href: "/admin/caretaker-hires",
     })),
+    ...mortalityReports.map((x) => ({
+      id: `mortality-${x.id}`,
+      type: "Mortality Report",
+      status: x.status || "REPORTED",
+      amount: 0,
+      reference: x.flock_id || x.batch_no || x.id,
+      date: x.created_at || x.reported_at || x.log_date,
+      href: "/admin/reports",
+    })),
   ]
     .sort(
       (a, b) =>
@@ -344,8 +353,8 @@ export default function AdminAnalyticsPage() {
             <span>needs action</span>
           </div>
           <div style={stripBox}>
-            <b>{analytics.openRisks}</b>
-            <span>open risk</span>
+            <b>{analytics.openMortalityReports}</b>
+            <span>mortality reports</span>
           </div>
           <div style={stripBox}>
             <b>{analytics.activeFlocks}</b>
@@ -493,23 +502,23 @@ export default function AdminAnalyticsPage() {
         <section style={card}>
           <div style={cardHeader}>
             <div>
-              <h2 style={sectionTitle}>Risk Snapshot</h2>
-              <p style={muted}>Anti-scam and farm risk monitoring.</p>
+              <h2 style={sectionTitle}>Mortality Snapshot</h2>
+              <p style={muted}>Production mortality monitoring from reports.</p>
             </div>
-            <span style={riskPill(analytics.criticalRisks)}>
-              {analytics.criticalRisks > 0 ? "Needs Review" : "Normal"}
+            <span style={riskPill(analytics.criticalMortalityReports)}>
+              {analytics.criticalMortalityReports > 0 ? "Needs Review" : "Normal"}
             </span>
           </div>
 
           <Risk
-            label="Open Risk Alerts"
-            value={analytics.openRisks}
-            href="/admin/risk-management"
+            label="Mortality Reports"
+            value={analytics.openMortalityReports}
+            href="/admin/reports"
           />
           <Risk
-            label="Critical Risks"
-            value={analytics.criticalRisks}
-            href="/admin/risk-management"
+            label="Critical Mortality"
+            value={analytics.criticalMortalityReports}
+            href="/admin/reports"
           />
           <Risk
             label="Rejected KYC"
@@ -576,8 +585,8 @@ export default function AdminAnalyticsPage() {
           <div>
             <h2 style={sectionTitle}>Latest Operations Activity</h2>
             <p style={muted}>
-              Membership, cash, sell chicken, and caretaker activities from real
-              tables.
+              Membership, cash, sell chicken, caretaker, and mortality activities
+              from real tables.
             </p>
           </div>
           <span style={pill}>{latestOperations.length} latest</span>
@@ -595,7 +604,7 @@ export default function AdminAnalyticsPage() {
                   <small>{formatDate(item.date)}</small>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <strong>{money(item.amount)}</strong>
+                  <strong>{item.amount === 0 ? "—" : money(item.amount)}</strong>
                   <span style={badge(item.status)}>{status(item.status)}</span>
                 </div>
               </Link>

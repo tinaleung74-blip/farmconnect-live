@@ -4,11 +4,46 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+type Animal = {
+  id: string;
+  code: string | null;
+  name: string | null;
+  type: string | null;
+};
+
+type AnimalRelation = Animal[] | null;
+
+type AnimalWeight = {
+  id: string;
+  animal_id: string;
+  weight_kg: number | null;
+  note: string | null;
+  recorded_at: string | null;
+  animals: AnimalRelation;
+};
+
+type NormalizedAnimalWeight = AnimalWeight & {
+  animal: Animal | null;
+};
+
+type AnimalPhoto = {
+  id: string;
+  animal_id: string;
+  photo_url: string | null;
+  caption: string | null;
+  created_at: string | null;
+  animals: AnimalRelation;
+};
+
+type NormalizedAnimalPhoto = AnimalPhoto & {
+  animal: Animal | null;
+};
+
 type Row = Record<string, any>;
 
 export default function AdminOperationsPage() {
-  const [weightLogs, setWeightLogs] = useState<Row[]>([]);
-  const [photoLogs, setPhotoLogs] = useState<Row[]>([]);
+  const [weightLogs, setWeightLogs] = useState<NormalizedAnimalWeight[]>([]);
+  const [photoLogs, setPhotoLogs] = useState<NormalizedAnimalPhoto[]>([]);
   const [mortalityLogs, setMortalityLogs] = useState<Row[]>([]);
   const [usageLogs, setUsageLogs] = useState<Row[]>([]);
   const [hires, setHires] = useState<Row[]>([]);
@@ -34,13 +69,37 @@ export default function AdminOperationsPage() {
     ] = await Promise.all([
       supabase
         .from("animal_weights")
-        .select("*")
-        .order("created_at", { ascending: false })
+        .select(`
+          id,
+          animal_id,
+          weight_kg,
+          note,
+          recorded_at,
+          animals (
+            id,
+            code,
+            name,
+            type
+          )
+        `)
+        .order("recorded_at", { ascending: false })
         .limit(300),
 
       supabase
-        .from("photo_logs")
-        .select("*")
+        .from("animal_photos")
+        .select(`
+          id,
+          animal_id,
+          photo_url,
+          caption,
+          created_at,
+          animals (
+            id,
+            code,
+            name,
+            type
+          )
+        `)
         .order("created_at", { ascending: false })
         .limit(300),
 
@@ -75,8 +134,28 @@ export default function AdminOperationsPage() {
         .limit(300),
     ]);
 
-    setWeightLogs(weightRes.data || []);
-    setPhotoLogs(photoRes.data || []);
+    const chickenWeights = (weightRes.data || []).filter((item) => {
+      const animal = item.animals?.[0] ?? null;
+      return String(animal?.type || "").toLowerCase().includes("chicken");
+    });
+
+    const normalizedWeights = chickenWeights.map((row) => ({
+      ...row,
+      animal: row.animals?.[0] ?? null,
+    }));
+
+    const chickenPhotos = (photoRes.data || []).filter((item) => {
+      const animal = item.animals?.[0] ?? null;
+      return String(animal?.type || "").toLowerCase().includes("chicken");
+    });
+
+    const normalizedPhotos = chickenPhotos.map((row) => ({
+      ...row,
+      animal: row.animals?.[0] ?? null,
+    }));
+
+    setWeightLogs(normalizedWeights);
+    setPhotoLogs(normalizedPhotos);
     setMortalityLogs(mortalityRes.data || []);
     setUsageLogs(usageRes.data || []);
     setHires(hireRes.data || []);
@@ -110,25 +189,20 @@ export default function AdminOperationsPage() {
   const activity = [
     ...weightLogs.map((x) => ({
       id: `weight-${x.id}`,
-      type: "Weight Log",
-      title: `${x.weight_kg || x.weight || "—"} kg`,
-      desc:
-        x.note ||
-        x.remarks ||
-        x.flock_id ||
-        x.animal_id ||
-        "Caretaker weight update",
-      date: x.created_at,
-      status: x.status || "RECORDED",
+      type: "Weight Activity",
+      title: `${x.weight_kg ?? "—"} kg`,
+      desc: `${animalLabel(x.animal)} • ${x.note || "Caretaker weight update"}`,
+      date: x.recorded_at,
+      status: "RECORDED",
     })),
 
     ...photoLogs.map((x) => ({
       id: `photo-${x.id}`,
-      type: "Photo Log",
-      title: x.caption || "Photo update",
-      desc: x.flock_id || x.animal_id || "Caretaker photo update",
+      type: "Photo Activity",
+      title: x.caption || "Caretaker photo update",
+      desc: animalLabel(x.animal),
       date: x.created_at,
-      status: x.status || "UPLOADED",
+      status: "UPLOADED",
     })),
 
     ...mortalityLogs.map((x) => ({
@@ -196,8 +270,9 @@ export default function AdminOperationsPage() {
           <p style={eyebrow}>FarmConnect V27.2</p>
           <h1 style={title}>Operational Intelligence Center</h1>
           <p style={subtitle}>
-            Live farm activity monitoring for caretaker updates, flock health,
-            inventory usage, money movement, sell activity, and farm alerts.
+            Live production sync for caretaker photos, chicken weights,
+            inventory usage, mortality logs, wallet activity, sell activity,
+            and caretaker hires.
           </p>
         </div>
 
@@ -207,8 +282,8 @@ export default function AdminOperationsPage() {
       </section>
 
       <section style={grid}>
-        <Card label="Weight Logs" value={stats.weight} code="KG" />
-        <Card label="Photo Logs" value={stats.photos} code="PIC" />
+        <Card label="Weight Activity" value={stats.weight} code="KG" />
+        <Card label="Photo Activity" value={stats.photos} code="PIC" />
         <Card label="Mortality Logs" value={stats.mortality} code="MORT" />
         <Card label="Inventory Usage" value={stats.usage} code="USE" />
         <Card label="Caretaker Activities" value={stats.hires} code="CARE" />
@@ -220,6 +295,99 @@ export default function AdminOperationsPage() {
           code="ALERT"
           danger={stats.alerts > 0}
         />
+      </section>
+
+      <section style={twoColumn}>
+        <section style={panel}>
+          <div style={panelHeader}>
+            <div>
+              <h2 style={sectionTitle}>Chicken Weight Activity</h2>
+              <p style={muted}>
+                Synced from caretaker weight submissions via animal_weights.
+              </p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div style={empty}>Loading weight activity...</div>
+          ) : weightLogs.length === 0 ? (
+            <div style={empty}>No chicken weight activity yet.</div>
+          ) : (
+            <div style={list}>
+              {weightLogs.slice(0, 12).map((item) => {
+                const animal = item.animal;
+
+                return (
+                  <div key={item.id} style={detailItem}>
+                    <div>
+                      <p style={animalType}>{animal?.type || "Chicken"}</p>
+                      <h3 style={detailTitle}>
+                        {animal?.name || "Unnamed Chicken"}
+                      </h3>
+                      <p style={detailMeta}>
+                        Code: {animal?.code || "No code"}
+                      </p>
+                      <p style={bigValue}>{item.weight_kg ?? "—"} kg</p>
+                      <p style={detailDesc}>{item.note || "No note."}</p>
+                    </div>
+                    <small style={dateText}>{formatDate(item.recorded_at)}</small>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section style={panel}>
+          <div style={panelHeader}>
+            <div>
+              <h2 style={sectionTitle}>Chicken Photo Activity</h2>
+              <p style={muted}>
+                Synced from caretaker photo uploads via animal_photos.
+              </p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div style={empty}>Loading photo activity...</div>
+          ) : photoLogs.length === 0 ? (
+            <div style={empty}>No chicken photo activity yet.</div>
+          ) : (
+            <div style={list}>
+              {photoLogs.slice(0, 12).map((item) => {
+                const animal = item.animal;
+
+                return (
+                  <div key={item.id} style={photoItem}>
+                    {item.photo_url ? (
+                      <img
+                        src={item.photo_url}
+                        alt={item.caption || "Chicken photo update"}
+                        style={photoPreview}
+                      />
+                    ) : (
+                      <div style={noPhoto}>No Photo</div>
+                    )}
+
+                    <div>
+                      <p style={animalType}>{animal?.type || "Chicken"}</p>
+                      <h3 style={detailTitle}>
+                        {animal?.name || "Unnamed Chicken"}
+                      </h3>
+                      <p style={detailMeta}>
+                        Code: {animal?.code || "No code"}
+                      </p>
+                      <p style={detailDesc}>
+                        {item.caption || "No caption provided."}
+                      </p>
+                      <small style={dateText}>{formatDate(item.created_at)}</small>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </section>
 
       <section style={panel}>
@@ -280,6 +448,13 @@ function Card({
       </h2>
     </div>
   );
+}
+
+function animalLabel(animal?: Animal | null) {
+  if (!animal) return "Chicken record";
+  return `${animal.name || "Unnamed Chicken"} • ${animal.code || "No code"} • ${
+    animal.type || "Chicken"
+  }`;
 }
 
 function num(value: any) {
@@ -390,6 +565,13 @@ const grid: React.CSSProperties = {
   marginBottom: 20,
 };
 
+const twoColumn: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+  gap: 20,
+  marginBottom: 20,
+};
+
 const card: React.CSSProperties = {
   padding: 20,
   borderRadius: 24,
@@ -446,6 +628,85 @@ const pill: React.CSSProperties = {
   fontSize: 12,
 };
 
+const list: React.CSSProperties = {
+  display: "grid",
+  gap: 14,
+};
+
+const detailItem: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 16,
+  padding: 16,
+  borderRadius: 20,
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+};
+
+const photoItem: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "120px 1fr",
+  gap: 14,
+  padding: 16,
+  borderRadius: 20,
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+};
+
+const photoPreview: React.CSSProperties = {
+  width: 120,
+  height: 100,
+  objectFit: "cover",
+  borderRadius: 16,
+  border: "1px solid #cbd5e1",
+};
+
+const noPhoto: React.CSSProperties = {
+  width: 120,
+  height: 100,
+  display: "grid",
+  placeItems: "center",
+  borderRadius: 16,
+  background: "#e2e8f0",
+  color: "#64748b",
+  fontWeight: 900,
+};
+
+const animalType: React.CSSProperties = {
+  margin: 0,
+  color: "#15803d",
+  fontSize: 12,
+  fontWeight: 950,
+  textTransform: "uppercase",
+};
+
+const detailTitle: React.CSSProperties = {
+  margin: "4px 0",
+  color: "#14532d",
+  fontSize: 18,
+  fontWeight: 950,
+};
+
+const detailMeta: React.CSSProperties = {
+  margin: 0,
+  color: "#64748b",
+  fontSize: 13,
+  fontWeight: 800,
+};
+
+const bigValue: React.CSSProperties = {
+  margin: "10px 0 0",
+  color: "#075985",
+  fontSize: 24,
+  fontWeight: 950,
+};
+
+const detailDesc: React.CSSProperties = {
+  margin: "6px 0 0",
+  color: "#334155",
+  fontSize: 14,
+};
+
 const feed: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
@@ -488,6 +749,7 @@ const dateText: React.CSSProperties = {
   display: "block",
   marginTop: 8,
   color: "#64748b",
+  fontSize: 12,
 };
 
 const badgeBase: React.CSSProperties = {

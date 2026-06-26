@@ -23,6 +23,8 @@ type PaidAssignment = {
 
 type CaretakerProfile = {
   id: string;
+  caretaker_profile_id: string | null;
+  email: string | null;
   full_name: string;
   status: string | null;
   level: string | null;
@@ -89,92 +91,82 @@ export default function CaretakerDashboard() {
     setMessage("");
     setErrorMessage("");
 
-    const detectedCaretaker = getCurrentCaretaker();
+    const resolvedCaretaker = await resolveLoggedInCaretaker();
 
-    if (!detectedCaretaker.id) {
+    if (!resolvedCaretaker) {
       setCaretakerId("");
+      setCaretaker(null);
       setAssignments([]);
-      setErrorMessage(
-        "Missing caretaker ID. Please login again so FarmConnect can load your paid assignments."
-      );
       setLoading(false);
       return;
     }
 
-    setCaretakerId(detectedCaretaker.id);
+    setCaretaker(resolvedCaretaker);
+    setCaretakerId(resolvedCaretaker.id);
 
-    await loadCaretakerProfile(detectedCaretaker.id);
-    await loadPaidAssignments(detectedCaretaker.id);
+    await loadPaidAssignments(resolvedCaretaker.id);
 
     setLoading(false);
   }
 
-  function getCurrentCaretaker() {
-    if (typeof window === "undefined") {
-      return { id: "", name: "" };
+  async function resolveLoggedInCaretaker() {
+    const { data: authData, error: authError } =
+      await supabase.auth.getUser();
+
+    const authUser = authData?.user;
+
+    if (authError || !authUser) {
+      setErrorMessage(
+        authError?.message ||
+          "Please login again so FarmConnect can verify your caretaker account."
+      );
+      return null;
     }
 
-    const directCaretakerId =
-      localStorage.getItem("farmconnect_caretaker_id") ||
-      localStorage.getItem("caretaker_id") ||
-      "";
+    const selectFields =
+      "id,caretaker_profile_id,email,full_name,status,level";
 
-    let detectedId = directCaretakerId;
-    let detectedName = "";
-
-    const rawCaretaker =
-      localStorage.getItem("farmconnect_caretaker") ||
-      localStorage.getItem("caretaker_user") ||
-      localStorage.getItem("farmconnect_user") ||
-      "";
-
-    if (rawCaretaker) {
-      try {
-        const parsedCaretaker = JSON.parse(rawCaretaker);
-
-        detectedId =
-          detectedId ||
-          parsedCaretaker?.caretaker_id ||
-          parsedCaretaker?.id ||
-          "";
-
-        detectedName =
-          parsedCaretaker?.full_name ||
-          parsedCaretaker?.name ||
-          parsedCaretaker?.email ||
-          "";
-      } catch {
-        detectedName = rawCaretaker;
-      }
-    }
-
-    if (detectedId) {
-      localStorage.setItem("farmconnect_caretaker_id", detectedId);
-      localStorage.setItem("caretaker_id", detectedId);
-    }
-
-    return {
-      id: detectedId,
-      name: detectedName,
-    };
-  }
-
-  async function loadCaretakerProfile(currentCaretakerId: string) {
-    const { data, error } = await supabase
+    const { data: profileMatch, error: profileError } = await supabase
       .from("caretakers")
-      .select("id,full_name,status,level")
-      .eq("id", currentCaretakerId)
+      .select(selectFields)
+      .eq("caretaker_profile_id", authUser.id)
       .maybeSingle();
 
-    if (error) {
-      setCaretaker(null);
-      setErrorMessage(`Caretaker profile load error: ${error.message}`);
-      return;
+    if (profileError) {
+      setErrorMessage(`Caretaker profile lookup error: ${profileError.message}`);
+      return null;
     }
 
-    if (data) {
-      setCaretaker(data as CaretakerProfile);
+    if (profileMatch) {
+      return profileMatch as CaretakerProfile;
     }
+
+    if (!authUser.email) {
+      setErrorMessage(
+        "No caretaker profile found for this login. Please ask FarmConnect Admin to link your account."
+      );
+      return null;
+    }
+
+    const { data: emailMatch, error: emailError } = await supabase
+      .from("caretakers")
+      .select(selectFields)
+      .eq("email", authUser.email)
+      .maybeSingle();
+
+    if (emailError) {
+      setErrorMessage(`Caretaker email lookup error: ${emailError.message}`);
+      return null;
+    }
+
+    if (!emailMatch) {
+      setErrorMessage(
+        "No caretaker profile found for this login. Please ask FarmConnect Admin to link your caretaker profile."
+      );
+      return null;
+    }
+
+    return emailMatch as CaretakerProfile;
   }
 
   async function loadPaidAssignments(currentCaretakerId: string) {

@@ -1,31 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+
+type Profile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  wallet_balance: number | null;
+};
 
 type WalletTransaction = {
   id: string;
-  profile_id: string;
-  transaction_type: string;
-  amount: number;
-  reference_no: string | null;
-  remarks: string | null;
-  status: string;
-  created_at: string;
+  profile_id?: string | null;
+  customer_id?: string | null;
+  transaction_type?: string | null;
+  type?: string | null;
+  amount?: number | string | null;
+  reference_no?: string | null;
+  reference?: string | null;
+  remarks?: string | null;
+  description?: string | null;
+  status?: string | null;
+  created_at?: string | null;
 };
 
 type CashRequest = {
   id: string;
-  profile_id: string;
-  amount: number;
+  profile_id?: string | null;
+  customer_id?: string | null;
+  amount?: number | string | null;
   payment_method?: string | null;
   channel?: string | null;
+  method?: string | null;
   account_name?: string | null;
   account_number?: string | null;
   reference_no?: string | null;
-  status: string;
-  created_at: string;
+  reference_number?: string | null;
+  status?: string | null;
+  created_at?: string | null;
 };
 
 type PaymentSettings = {
@@ -36,7 +50,10 @@ type PaymentSettings = {
   maya_name: string | null;
 };
 
+const CASHOUT_FEE_RATE = 0.02;
+
 export default function WalletPage() {
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [walletBalance, setWalletBalance] = useState(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [cashinRequests, setCashinRequests] = useState<CashRequest[]>([]);
@@ -44,6 +61,7 @@ export default function WalletPage() {
   const [paymentSettings, setPaymentSettings] =
     useState<PaymentSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   const [cashinMethod, setCashinMethod] = useState("GCASH");
   const [cashinAmount, setCashinAmount] = useState(0);
@@ -54,45 +72,52 @@ export default function WalletPage() {
   const [cashoutName, setCashoutName] = useState("");
   const [cashoutNumber, setCashoutNumber] = useState("");
 
-  const cashoutFee = cashoutAmount * 0.02;
+  const cashoutFee = cashoutAmount * CASHOUT_FEE_RATE;
   const cashoutReceives = cashoutAmount - cashoutFee;
+  const loginRequired = !profile;
 
-  function getProfile() {
-    const savedUser =
-      typeof window !== "undefined"
-        ? localStorage.getItem("farmconnect_user")
-        : null;
+  useEffect(() => {
+    loadWallet();
+  }, []);
 
-    if (!savedUser) return null;
-    return JSON.parse(savedUser);
-  }
+  async function resolveProfile() {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
 
-  function formatPeso(amount: number) {
-    return new Intl.NumberFormat("en-PH", {
-      style: "currency",
-      currency: "PHP",
-      maximumFractionDigits: 2,
-    }).format(Number(amount || 0));
-  }
-
-  function statusColor(status: string) {
-    if (status === "APPROVED" || status === "COMPLETED") {
-      return "bg-green-100 text-green-700";
+    if (authError || !authData.user) {
+      setMessage("Login required.");
+      return null;
     }
 
-    if (status === "REJECTED" || status === "FAILED") {
-      return "bg-red-100 text-red-700";
-    }
+    const authUser = authData.user;
 
-    return "bg-yellow-100 text-yellow-700";
+    const { data: profileById } = await supabase
+      .from("profiles")
+      .select("id,email,full_name,wallet_balance")
+      .eq("id", authUser.id)
+      .maybeSingle();
+
+    if (profileById) return profileById as Profile;
+
+    const { data: profileByEmail } = await supabase
+      .from("profiles")
+      .select("id,email,full_name,wallet_balance")
+      .eq("email", authUser.email)
+      .maybeSingle();
+
+    if (profileByEmail) return profileByEmail as Profile;
+
+    setMessage("Login required. Customer profile not found.");
+    return null;
   }
 
   async function loadWallet() {
     setLoading(true);
+    setMessage("");
 
-    const user = getProfile();
+    const resolvedProfile = await resolveProfile();
+    setProfile(resolvedProfile);
 
-    if (!user) {
+    if (!resolvedProfile?.id) {
       setWalletBalance(0);
       setTransactions([]);
       setCashinRequests([]);
@@ -101,56 +126,76 @@ export default function WalletPage() {
       return;
     }
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("wallet_balance")
-      .eq("id", user.id)
-      .maybeSingle();
+    const profileId = resolvedProfile.id;
 
-    const { data: txData } = await supabase
-      .from("wallet_transactions")
-      .select("*")
-      .eq("profile_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(20);
+    const [
+      profileRes,
+      txRes,
+      cashinRes,
+      cashoutRes,
+      paymentRes,
+    ] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id,email,full_name,wallet_balance")
+        .eq("id", profileId)
+        .maybeSingle(),
 
-    const { data: cashinData } = await supabase
-      .from("cashin_requests")
-      .select("*")
-      .eq("profile_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(10);
+      supabase
+        .from("wallet_transactions")
+        .select("*")
+        .eq("profile_id", profileId)
+        .order("created_at", { ascending: false })
+        .limit(30),
 
-    const { data: cashoutData } = await supabase
-      .from("cashout_requests")
-      .select("*")
-      .eq("profile_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(10);
+      supabase
+        .from("cashin_requests")
+        .select("*")
+        .eq("profile_id", profileId)
+        .order("created_at", { ascending: false })
+        .limit(15),
 
-    const { data: paymentData } = await supabase
-      .from("payment_settings")
-      .select("*")
-      .limit(1)
-      .maybeSingle();
+      supabase
+        .from("cashout_requests")
+        .select("*")
+        .eq("profile_id", profileId)
+        .order("created_at", { ascending: false })
+        .limit(15),
 
-    setWalletBalance(Number(profileData?.wallet_balance || 0));
-    setTransactions(txData || []);
-    setCashinRequests(cashinData || []);
-    setCashoutRequests(cashoutData || []);
-    setPaymentSettings(paymentData || null);
+      supabase
+        .from("payment_settings")
+        .select("*")
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    if (profileRes.error) {
+      setMessage(`Wallet profile load error: ${profileRes.error.message}`);
+    }
+
+    if (txRes.error) {
+      setMessage(`Wallet history load error: ${txRes.error.message}`);
+    }
+
+    if (cashinRes.error) {
+      setMessage(`Cash-in history load error: ${cashinRes.error.message}`);
+    }
+
+    if (cashoutRes.error) {
+      setMessage(`Cash-out history load error: ${cashoutRes.error.message}`);
+    }
+
+    setWalletBalance(Number(profileRes.data?.wallet_balance || 0));
+    setTransactions((txRes.data || []) as WalletTransaction[]);
+    setCashinRequests((cashinRes.data || []) as CashRequest[]);
+    setCashoutRequests((cashoutRes.data || []) as CashRequest[]);
+    setPaymentSettings((paymentRes.data as PaymentSettings) || null);
     setLoading(false);
   }
 
-  useEffect(() => {
-    loadWallet();
-  }, []);
-
   async function submitCashIn() {
-    const user = getProfile();
-
-    if (!user) {
-      alert("Please login first.");
+    if (!profile?.id) {
+      alert("Login required.");
       return;
     }
 
@@ -164,28 +209,37 @@ export default function WalletPage() {
       return;
     }
 
-    const { error } = await supabase.from("cashin_requests").insert({
-      profile_id: user.id,
+    const referenceNo = cashinReference.trim();
+
+    const { error: requestError } = await supabase.from("cashin_requests").insert({
+      profile_id: profile.id,
       amount: cashinAmount,
       payment_method: cashinMethod,
       channel: cashinMethod,
-      reference_no: cashinReference,
+      reference_no: referenceNo,
       status: "PENDING",
+      created_at: new Date().toISOString(),
     });
 
-    if (error) {
-      alert(error.message);
+    if (requestError) {
+      alert(requestError.message);
       return;
     }
 
-    await supabase.from("wallet_transactions").insert({
-      profile_id: user.id,
+    const { error: txError } = await supabase.from("wallet_transactions").insert({
+      profile_id: profile.id,
       transaction_type: "CASH_IN_REQUEST",
       amount: cashinAmount,
-      reference_no: cashinReference,
-      remarks: `${cashinMethod} cash-in request submitted`,
+      reference_no: referenceNo,
+      remarks: `${cashinMethod} cash-in request submitted. Waiting for admin approval.`,
       status: "PENDING",
+      created_at: new Date().toISOString(),
     });
+
+    if (txError) {
+      alert(txError.message);
+      return;
+    }
 
     alert(`${cashinMethod} cash-in request submitted. Waiting for admin approval.`);
     setCashinAmount(0);
@@ -194,10 +248,8 @@ export default function WalletPage() {
   }
 
   async function submitCashOut() {
-    const user = getProfile();
-
-    if (!user) {
-      alert("Please login first.");
+    if (!profile?.id) {
+      alert("Login required.");
       return;
     }
 
@@ -211,36 +263,48 @@ export default function WalletPage() {
       return;
     }
 
-    if (!cashoutName || !cashoutNumber) {
+    if (!cashoutName.trim() || !cashoutNumber.trim()) {
       alert("Please enter account name and mobile number.");
       return;
     }
 
-    const { error } = await supabase.from("cashout_requests").insert({
-      profile_id: user.id,
-      amount: cashoutAmount,
-      payment_method: cashoutMethod,
-      channel: cashoutMethod,
-      account_name: cashoutName,
-      account_number: cashoutNumber,
-      status: "PENDING",
-    });
+    const referenceNo = `FC-CASHOUT-${Date.now()}`;
 
-    if (error) {
-      alert(error.message);
+    const { error: requestError } = await supabase
+      .from("cashout_requests")
+      .insert({
+        profile_id: profile.id,
+        amount: cashoutAmount,
+        payment_method: cashoutMethod,
+        channel: cashoutMethod,
+        account_name: cashoutName.trim(),
+        account_number: cashoutNumber.trim(),
+        reference_no: referenceNo,
+        status: "PENDING",
+        created_at: new Date().toISOString(),
+      });
+
+    if (requestError) {
+      alert(requestError.message);
       return;
     }
 
-    await supabase.from("wallet_transactions").insert({
-      profile_id: user.id,
+    const { error: txError } = await supabase.from("wallet_transactions").insert({
+      profile_id: profile.id,
       transaction_type: "CASH_OUT_REQUEST",
       amount: cashoutAmount * -1,
-      reference_no: "FC-CASHOUT-" + Date.now(),
+      reference_no: referenceNo,
       remarks: `${cashoutMethod} cash-out request submitted. Fee: ${formatPeso(
         cashoutFee
-      )}. Customer receives: ${formatPeso(cashoutReceives)}.`,
+      )}. Customer receives: ${formatPeso(cashoutReceives)}. Waiting for admin approval.`,
       status: "PENDING",
+      created_at: new Date().toISOString(),
     });
+
+    if (txError) {
+      alert(txError.message);
+      return;
+    }
 
     alert(`${cashoutMethod} cash-out request submitted. Waiting for admin approval.`);
     setCashoutAmount(0);
@@ -248,6 +312,22 @@ export default function WalletPage() {
     setCashoutNumber("");
     await loadWallet();
   }
+
+  const pendingRequests = useMemo(
+    () =>
+      [...cashinRequests, ...cashoutRequests].filter(
+        (r) => statusText(r.status) === "PENDING"
+      ).length,
+    [cashinRequests, cashoutRequests]
+  );
+
+  const combinedRequests = useMemo(() => {
+    return [...cashinRequests, ...cashoutRequests].sort(
+      (a, b) =>
+        new Date(b.created_at ?? 0).getTime() -
+        new Date(a.created_at ?? 0).getTime()
+    );
+  }, [cashinRequests, cashoutRequests]);
 
   return (
     <main className="min-h-screen bg-[#f3fbf5] p-6 md:p-10">
@@ -263,6 +343,12 @@ export default function WalletPage() {
             <p className="text-gray-500 mt-2">
               Cash-in through FarmConnect GCash/Maya. Cash-out has 2% technical fee.
             </p>
+
+            {profile && (
+              <p className="text-sm text-green-700 font-bold mt-2">
+                Customer: {profile.full_name || profile.email || "Profile"}
+              </p>
+            )}
           </div>
 
           <Link
@@ -272,6 +358,18 @@ export default function WalletPage() {
             ← Dashboard
           </Link>
         </div>
+
+        {message && (
+          <div className="bg-white rounded-3xl p-5 mb-6 shadow border border-yellow-100 text-yellow-700 font-black">
+            {message}
+          </div>
+        )}
+
+        {loginRequired && !loading && (
+          <div className="bg-white rounded-3xl p-6 mb-6 shadow border border-red-100 text-red-700 font-black">
+            Login required.
+          </div>
+        )}
 
         <section className="grid md:grid-cols-4 gap-5 mb-8">
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
@@ -298,11 +396,7 @@ export default function WalletPage() {
           <div className="bg-white rounded-3xl p-6 shadow border border-green-100">
             <p className="text-gray-500 font-semibold">Pending Requests</p>
             <h2 className="text-4xl font-black text-orange-500 mt-2">
-              {
-                [...cashinRequests, ...cashoutRequests].filter(
-                  (r) => r.status === "PENDING"
-                ).length
-              }
+              {pendingRequests}
             </h2>
           </div>
         </section>
@@ -317,7 +411,8 @@ export default function WalletPage() {
               <select
                 value={cashinMethod}
                 onChange={(e) => setCashinMethod(e.target.value)}
-                className="border rounded-2xl p-4 font-bold"
+                disabled={loginRequired}
+                className="border rounded-2xl p-4 font-bold disabled:bg-gray-100"
               >
                 <option value="GCASH">GCash</option>
                 <option value="MAYA">Maya</option>
@@ -358,22 +453,25 @@ export default function WalletPage() {
                 type="number"
                 value={cashinAmount}
                 onChange={(e) => setCashinAmount(Number(e.target.value))}
+                disabled={loginRequired}
                 placeholder="Cash-in amount"
-                className="border rounded-2xl p-4 font-bold"
+                className="border rounded-2xl p-4 font-bold disabled:bg-gray-100"
               />
 
               <input
                 value={cashinReference}
                 onChange={(e) => setCashinReference(e.target.value)}
+                disabled={loginRequired}
                 placeholder="GCash/Maya reference number"
-                className="border rounded-2xl p-4 font-bold"
+                className="border rounded-2xl p-4 font-bold disabled:bg-gray-100"
               />
 
               <button
                 onClick={submitCashIn}
-                className="bg-green-700 hover:bg-green-800 text-white p-4 rounded-2xl font-black"
+                disabled={loginRequired}
+                className="bg-green-700 hover:bg-green-800 text-white p-4 rounded-2xl font-black disabled:bg-gray-400"
               >
-                Submit Cash-In Request
+                {loginRequired ? "Login Required" : "Submit Cash-In Request"}
               </button>
             </div>
           </div>
@@ -387,7 +485,8 @@ export default function WalletPage() {
               <select
                 value={cashoutMethod}
                 onChange={(e) => setCashoutMethod(e.target.value)}
-                className="border rounded-2xl p-4 font-bold"
+                disabled={loginRequired}
+                className="border rounded-2xl p-4 font-bold disabled:bg-gray-100"
               >
                 <option value="GCASH">GCash</option>
                 <option value="MAYA">Maya</option>
@@ -397,8 +496,9 @@ export default function WalletPage() {
                 type="number"
                 value={cashoutAmount}
                 onChange={(e) => setCashoutAmount(Number(e.target.value))}
+                disabled={loginRequired}
                 placeholder="Cash-out amount"
-                className="border rounded-2xl p-4 font-bold"
+                className="border rounded-2xl p-4 font-bold disabled:bg-gray-100"
               />
 
               <div className="bg-red-50 rounded-2xl p-4">
@@ -414,15 +514,17 @@ export default function WalletPage() {
               <input
                 value={cashoutName}
                 onChange={(e) => setCashoutName(e.target.value)}
+                disabled={loginRequired}
                 placeholder="GCash/Maya account name"
-                className="border rounded-2xl p-4 font-bold"
+                className="border rounded-2xl p-4 font-bold disabled:bg-gray-100"
               />
 
               <input
                 value={cashoutNumber}
                 onChange={(e) => setCashoutNumber(e.target.value)}
+                disabled={loginRequired}
                 placeholder="GCash/Maya mobile number"
-                className="border rounded-2xl p-4 font-bold"
+                className="border rounded-2xl p-4 font-bold disabled:bg-gray-100"
               />
 
               <div className="bg-yellow-50 rounded-2xl p-4 text-sm text-gray-700">
@@ -437,9 +539,10 @@ export default function WalletPage() {
 
               <button
                 onClick={submitCashOut}
-                className="bg-green-700 hover:bg-green-800 text-white p-4 rounded-2xl font-black"
+                disabled={loginRequired}
+                className="bg-green-700 hover:bg-green-800 text-white p-4 rounded-2xl font-black disabled:bg-gray-400"
               >
-                Submit Cash-Out Request
+                {loginRequired ? "Login Required" : "Submit Cash-Out Request"}
               </button>
             </div>
           </div>
@@ -455,41 +558,46 @@ export default function WalletPage() {
               <p className="text-gray-500">No wallet transactions yet.</p>
             ) : (
               <div className="space-y-3">
-                {transactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="border border-green-100 rounded-2xl p-4"
-                  >
-                    <div className="flex justify-between gap-4">
-                      <div>
-                        <p className="font-black text-gray-900">
-                          {tx.remarks || tx.transaction_type}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {tx.reference_no || "No reference"} •{" "}
-                          {new Date(tx.created_at).toLocaleDateString()}
-                        </p>
-                        <span
-                          className={`inline-block mt-2 rounded-full px-3 py-1 text-xs font-black ${statusColor(
-                            tx.status
-                          )}`}
-                        >
-                          {tx.status}
-                        </span>
-                      </div>
+                {transactions.map((tx) => {
+                  const txType = tx.transaction_type || tx.type || "Wallet";
+                  const txRef = tx.reference_no || tx.reference || "No reference";
+                  const txRemarks = tx.remarks || tx.description || txType;
 
-                      <p
-                        className={`font-black ${
-                          Number(tx.amount || 0) >= 0
-                            ? "text-green-700"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {formatPeso(Number(tx.amount || 0))}
-                      </p>
+                  return (
+                    <div
+                      key={tx.id}
+                      className="border border-green-100 rounded-2xl p-4"
+                    >
+                      <div className="flex justify-between gap-4">
+                        <div>
+                          <p className="font-black text-gray-900">
+                            {txRemarks}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {txRef} • {formatDate(tx.created_at)}
+                          </p>
+                          <span
+                            className={`inline-block mt-2 rounded-full px-3 py-1 text-xs font-black ${statusColor(
+                              tx.status
+                            )}`}
+                          >
+                            {statusText(tx.status)}
+                          </span>
+                        </div>
+
+                        <p
+                          className={`font-black ${
+                            Number(tx.amount || 0) >= 0
+                              ? "text-green-700"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {formatPeso(Number(tx.amount || 0))}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -499,17 +607,18 @@ export default function WalletPage() {
               📋 Cash Request History
             </h2>
 
-            {[...cashinRequests, ...cashoutRequests].length === 0 ? (
+            {combinedRequests.length === 0 ? (
               <p className="text-gray-500">No cash requests yet.</p>
             ) : (
               <div className="space-y-3">
-                {[...cashinRequests, ...cashoutRequests]
-                  .sort(
-                    (a, b) =>
-                      new Date(b.created_at).getTime() -
-                      new Date(a.created_at).getTime()
-                  )
-                  .map((req) => (
+                {combinedRequests.map((req) => {
+                  const requestRef =
+                    req.reference_no ||
+                    req.reference_number ||
+                    req.account_number ||
+                    "No reference";
+
+                  return (
                     <div
                       key={req.id}
                       className="border border-green-100 rounded-2xl p-4"
@@ -517,20 +626,20 @@ export default function WalletPage() {
                       <div className="flex justify-between gap-4">
                         <div>
                           <p className="font-black text-gray-900">
-                            {req.channel || req.payment_method || "Cash Request"}
+                            {req.channel ||
+                              req.payment_method ||
+                              req.method ||
+                              "Cash Request"}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {req.reference_no ||
-                              req.account_number ||
-                              "No reference"}{" "}
-                            • {new Date(req.created_at).toLocaleDateString()}
+                            {requestRef} • {formatDate(req.created_at)}
                           </p>
                           <span
                             className={`inline-block mt-2 rounded-full px-3 py-1 text-xs font-black ${statusColor(
                               req.status
                             )}`}
                           >
-                            {req.status}
+                            {statusText(req.status)}
                           </span>
                         </div>
 
@@ -539,7 +648,8 @@ export default function WalletPage() {
                         </p>
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -547,4 +657,35 @@ export default function WalletPage() {
       </div>
     </main>
   );
+}
+
+function formatPeso(amount: number) {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 2,
+  }).format(Number(amount || 0));
+}
+
+function statusText(value?: string | null) {
+  return String(value || "PENDING").toUpperCase();
+}
+
+function statusColor(value?: string | null) {
+  const s = statusText(value);
+
+  if (s === "APPROVED" || s === "COMPLETED" || s === "POSTED") {
+    return "bg-green-100 text-green-700";
+  }
+
+  if (s === "REJECTED" || s === "FAILED") {
+    return "bg-red-100 text-red-700";
+  }
+
+  return "bg-yellow-100 text-yellow-700";
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "No date";
+  return new Date(value).toLocaleDateString("en-PH");
 }

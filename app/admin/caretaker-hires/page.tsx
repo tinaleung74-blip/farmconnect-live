@@ -212,6 +212,7 @@ export default function AdminCaretakerHiresPage() {
     setErrorMessage("");
 
     const status = (request.status || "").toUpperCase();
+    const paymentStatus = (request.payment_status || "").toUpperCase();
 
     if (status === "REJECTED") {
       setActionLoading("");
@@ -225,39 +226,14 @@ export default function AdminCaretakerHiresPage() {
       return;
     }
 
+    if (paymentStatus === "REFUNDED") {
+      setActionLoading("");
+      setErrorMessage("This request has already been refunded.");
+      return;
+    }
+
     const refundAmount = Number(request.total_fee || 0);
-
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("id,wallet_balance")
-      .eq("id", request.profile_id)
-      .single();
-
-    if (profileError || !profileData) {
-      setActionLoading("");
-      setErrorMessage(
-        `Customer wallet load error: ${
-          profileError?.message || "Profile not found."
-        }`
-      );
-      return;
-    }
-
-    const currentWallet = Number(profileData.wallet_balance || 0);
-    const newWallet = currentWallet + refundAmount;
-
-    const { error: refundError } = await supabase
-      .from("profiles")
-      .update({
-        wallet_balance: newWallet,
-      })
-      .eq("id", request.profile_id);
-
-    if (refundError) {
-      setActionLoading("");
-      setErrorMessage(`Wallet refund error: ${refundError.message}`);
-      return;
-    }
+    const referenceNo = `FC-REFUND-${Date.now()}`;
 
     const { error: updateError } = await supabase
       .from("customer_caretaker_hires")
@@ -268,30 +244,32 @@ export default function AdminCaretakerHiresPage() {
       .eq("id", request.id);
 
     if (updateError) {
-      await supabase
-        .from("profiles")
-        .update({
-          wallet_balance: currentWallet,
-        })
-        .eq("id", request.profile_id);
-
       setActionLoading("");
-      setErrorMessage(
-        `Reject request error: ${updateError.message}. Wallet refund was rolled back.`
-      );
+      setErrorMessage(`Reject request error: ${updateError.message}`);
       return;
     }
 
-    await supabase.from("wallet_transactions").insert({
+    const { error: txError } = await supabase.from("wallet_transactions").insert({
       profile_id: request.profile_id,
       transaction_type: "CARETAKER_HIRE_REFUND",
       amount: refundAmount,
-      reference_no: `FC-REFUND-${Date.now()}`,
+      reference_no: referenceNo,
       remarks: `Refund for rejected caretaker hire: ${request.caretaker_name}`,
       status: "COMPLETED",
     });
 
-    setMessage("Caretaker hire request rejected. Customer wallet refunded.");
+    if (txError) {
+      setActionLoading("");
+      setErrorMessage(
+        `Refund transaction error: ${txError.message}. No manual wallet balance update was performed.`
+      );
+      await loadRequests();
+      return;
+    }
+
+    setMessage(
+      "Caretaker hire request rejected. Refund was recorded through wallet_transactions only."
+    );
 
     await loadRequests();
     setActionLoading("");
@@ -358,7 +336,7 @@ export default function AdminCaretakerHiresPage() {
             </h1>
             <p className="mt-2 max-w-3xl text-lg font-semibold text-slate-600">
               Review paid caretaker hire requests. Approve to activate. Reject
-              to refund customer wallet.
+              to create a production refund wallet transaction.
             </p>
           </div>
 
@@ -422,8 +400,8 @@ export default function AdminCaretakerHiresPage() {
                 Hire Requests
               </h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                Only PAID requests can be approved. Rejected paid requests are
-                refunded to customer wallet.
+                Only PAID requests can be approved. Rejected paid requests create
+                a CARETAKER_HIRE_REFUND wallet transaction only.
               </p>
             </div>
 
@@ -643,7 +621,8 @@ export default function AdminCaretakerHiresPage() {
                   <div className="mt-6 rounded-3xl bg-green-50 p-5">
                     <p className="text-center text-sm font-black text-slate-600">
                       Approval Rule: only PAID + PENDING_ADMIN_APPROVAL requests
-                      should be approved. Rejection refunds the customer wallet.
+                      should be approved. Rejection creates one refund wallet
+                      transaction and never updates profiles.wallet_balance.
                     </p>
                   </div>
 

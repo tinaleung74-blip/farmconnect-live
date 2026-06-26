@@ -1,167 +1,199 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-export default function AdminCaretakersPage() {
-  const [caretakers, setCaretakers] = useState<any[]>([]);
+export default function AdminCaretakerDetailPage() {
+  const params = useParams();
+
+  const [caretaker, setCaretaker] = useState<any>(null);
+  const [feedingLogs, setFeedingLogs] = useState<any[]>([]);
+  const [mortalityLogs, setMortalityLogs] = useState<any[]>([]);
+  const [weightLogs, setWeightLogs] = useState<any[]>([]);
+  const [photoLogs, setPhotoLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    loadCaretakers();
+    loadCaretakerProfile();
   }, []);
 
-  async function loadCaretakers() {
-    const { data } = await supabase
+  async function loadCaretakerProfile() {
+    const caretakerId = String(params.id);
+
+    const { data: caretakerData } = await supabase
       .from("caretakers")
       .select("*")
-      .order("created_at", { ascending: false });
+      .eq("id", caretakerId)
+      .single();
 
-    setCaretakers(data || []);
+    const { data: feedingData } = await supabase
+      .from("feeding_logs")
+      .select("*")
+      .eq("caretaker_id", caretakerId)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    const { data: mortalityData } = await supabase
+      .from("mortality_logs")
+      .select("*")
+      .eq("caretaker_id", caretakerId)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    const { data: weightData } = await supabase
+      .from("weight_logs")
+      .select("*")
+      .eq("caretaker_id", caretakerId)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    const { data: photoData } = await supabase
+      .from("photo_logs")
+      .select("*")
+      .eq("caretaker_id", caretakerId)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    setCaretaker(caretakerData);
+    setFeedingLogs(feedingData || []);
+    setMortalityLogs(mortalityData || []);
+    setWeightLogs(weightData || []);
+    setPhotoLogs(photoData || []);
     setLoading(false);
   }
 
-  const filteredCaretakers = useMemo(() => {
-    const keyword = search.toLowerCase();
-
-    return caretakers.filter((c) => {
-      return (
-        String(c.full_name || c.name || "").toLowerCase().includes(keyword) ||
-        String(c.phone || "").toLowerCase().includes(keyword) ||
-        String(c.location || "").toLowerCase().includes(keyword) ||
-        String(c.farm_area || "").toLowerCase().includes(keyword)
-      );
-    });
-  }, [caretakers, search]);
+  if (loading) return <main style={page}>Loading caretaker profile...</main>;
+  if (!caretaker) return <main style={page}>Caretaker not found.</main>;
 
   return (
     <main style={page}>
+      <Link href="/admin/caretakers" style={back}>
+        ← Back to Caretakers
+      </Link>
+
       <section style={hero}>
-        <div>
-          <Link href="/admin" style={back}>
-            ← Back to Dashboard
-          </Link>
+        <div style={avatar}>👨‍🌾</div>
 
-          <p style={eyebrow}>FarmConnect Admin V2</p>
-          <h1 style={title}>Caretaker Management</h1>
+        <div>
+          <p style={eyebrow}>Caretaker Profile</p>
+          <h1 style={title}>
+            {caretaker.full_name || caretaker.name || "Unnamed Caretaker"}
+          </h1>
           <p style={subtitle}>
-            Monitor caretaker accounts, farm assignments, field activity,
-            report discipline, and operational trust level.
+            Admin-controlled field worker profile. Caretaker reports only to Admin.
           </p>
         </div>
 
-        <div style={heroCard}>
-          <span>Total Caretakers</span>
-          <strong>{caretakers.length}</strong>
-          <small>Caretaker ↔ Admin only</small>
-        </div>
-      </section>
-
-      <section style={toolbar}>
-        <div>
-          <h2 style={sectionTitle}>Caretaker Directory</h2>
-          <p style={muted}>
-            Admin-only monitoring for field workers and farm operators.
-          </p>
-        </div>
-
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search caretaker name, phone, location..."
-          style={searchBox}
-        />
+        <span style={status}>{caretaker.status || "ACTIVE"}</span>
       </section>
 
       <section style={statsGrid}>
         <div style={statCard}>
-          <span>👨‍🌾</span>
-          <div>
-            <p>Registered Caretakers</p>
-            <strong>{caretakers.length}</strong>
-          </div>
+          <span>🌾</span>
+          <p>Feeding Logs</p>
+          <strong>{feedingLogs.length}</strong>
         </div>
 
         <div style={statCard}>
-          <span>✅</span>
-          <div>
-            <p>Active Workers</p>
-            <strong>
-              {caretakers.filter((c) => (c.status || "ACTIVE") === "ACTIVE").length}
-            </strong>
-          </div>
+          <span>⚰️</span>
+          <p>Mortality Logs</p>
+          <strong>{mortalityLogs.length}</strong>
         </div>
 
         <div style={statCard}>
-          <span>📋</span>
-          <div>
-            <p>Report Compliance</p>
-            <strong>Tracked</strong>
-          </div>
+          <span>⚖️</span>
+          <p>Weight Logs</p>
+          <strong>{weightLogs.length}</strong>
         </div>
 
         <div style={statCard}>
-          <span>🛡️</span>
-          <div>
-            <p>Admin Supervision</p>
-            <strong>Required</strong>
-          </div>
+          <span>📸</span>
+          <p>Photo Logs</p>
+          <strong>{photoLogs.length}</strong>
         </div>
       </section>
 
-      <section style={rulePanel}>
-        <div>
-          <strong>Relationship Control Rule</strong>
-          <p>
-            Caretakers report only to Admin. Customers do not directly access
-            caretaker accounts, contact details, reports, or private field logs.
-          </p>
+      <section style={twoGrid}>
+        <div style={card}>
+          <h2 style={cardTitle}>Caretaker Information</h2>
+          <p>📞 Phone: {caretaker.phone || "No phone number"}</p>
+          <p>📍 Location: {caretaker.location || "No location set"}</p>
+          <p>🏡 Farm Area: {caretaker.farm_area || "Not assigned"}</p>
+          <p>🐔 Assigned Flock: {caretaker.assigned_flock || "Not assigned"}</p>
+          <p>🪪 Caretaker ID: {caretaker.id}</p>
+        </div>
+
+        <div style={card}>
+          <h2 style={cardTitle}>Admin Relationship Rule</h2>
+
+          <div style={ruleGreen}>
+            <strong>Caretaker ↔ Admin only</strong>
+            <p>
+              All updates, reports, issues, and accountability records must be
+              submitted to Admin only.
+            </p>
+          </div>
+
+          <div style={ruleOrange}>
+            <strong>No Customer ↔ Caretaker connection</strong>
+            <p>
+              Customer must not directly access caretaker contact details, private logs,
+              or field operations.
+            </p>
+          </div>
         </div>
       </section>
 
       <section style={grid}>
-        {loading ? (
-          <div style={empty}>Loading caretakers...</div>
-        ) : filteredCaretakers.length === 0 ? (
-          <div style={empty}>No caretakers found.</div>
-        ) : (
-          filteredCaretakers.map((c) => (
-            <Link key={c.id} href={`/admin/caretakers/${c.id}`} style={card}>
-              <div style={topRow}>
-                <div style={avatar}>👨‍🌾</div>
-                <span style={status}>{c.status || "ACTIVE"}</span>
-              </div>
-
-              <h2 style={name}>{c.full_name || c.name || "Unnamed Caretaker"}</h2>
-
-              <p style={info}>📞 {c.phone || "No phone number"}</p>
-              <p style={info}>📍 {c.location || "Farm location not set"}</p>
-              <p style={info}>🏡 Farm Area: {c.farm_area || "Not assigned"}</p>
-              <p style={info}>🐔 Assigned Flock: {c.assigned_flock || "Not assigned"}</p>
-
-              <div style={metrics}>
-                <div>
-                  <strong>{c.total_reports || 0}</strong>
-                  <span>Reports</span>
-                </div>
-                <div>
-                  <strong>{c.risk_score || 0}</strong>
-                  <span>Risk</span>
-                </div>
-                <div>
-                  <strong>{c.rating || "N/A"}</strong>
-                  <span>Rating</span>
-                </div>
-              </div>
-
-              <button style={button}>Open Caretaker Profile →</button>
-            </Link>
-          ))
-        )}
+        <LogPanel title="🌾 Feeding Logs" logs={feedingLogs} type="feeding" />
+        <LogPanel title="⚰️ Mortality Logs" logs={mortalityLogs} type="mortality" />
+        <LogPanel title="⚖️ Weight Logs" logs={weightLogs} type="weight" />
+        <LogPanel title="📸 Photo Logs" logs={photoLogs} type="photo" />
       </section>
     </main>
+  );
+}
+
+function LogPanel({
+  title,
+  logs,
+  type,
+}: {
+  title: string;
+  logs: any[];
+  type: string;
+}) {
+  return (
+    <div style={panel}>
+      <h2 style={panelTitle}>{title}</h2>
+
+      {logs.length === 0 ? (
+        <p style={muted}>No records found.</p>
+      ) : (
+        <div style={list}>
+          {logs.map((log) => (
+            <div key={log.id} style={listItem}>
+              <strong>
+                {type === "feeding" && (log.feed_type || "Feeding Report")}
+                {type === "mortality" && `${log.count || 0} mortality reported`}
+                {type === "weight" && `${log.average_weight || log.weight || 0} kg`}
+                {type === "photo" && (log.caption || "Photo Update")}
+              </strong>
+
+              <p>{log.notes || log.description || log.message || "No notes provided"}</p>
+
+              <small>
+                {log.created_at
+                  ? new Date(log.created_at).toLocaleString()
+                  : "No date"}
+              </small>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -169,29 +201,38 @@ const page: React.CSSProperties = {
   minHeight: "100vh",
   padding: 32,
   background:
-    "radial-gradient(circle at top left, #fde68a, transparent 28%), radial-gradient(circle at top right, #bbf7d0, transparent 30%), linear-gradient(135deg, #fff7ed 0%, #f0fdf4 48%, #eff6ff 100%)",
+    "radial-gradient(circle at top left, #fde68a, transparent 30%), radial-gradient(circle at top right, #bbf7d0, transparent 28%), linear-gradient(135deg, #fff7ed 0%, #f0fdf4 50%, #eff6ff 100%)",
   color: "#0f172a",
-};
-
-const hero: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 22,
-  alignItems: "center",
-  marginBottom: 22,
-  background: "rgba(255,255,255,0.86)",
-  border: "1px solid rgba(255,255,255,0.95)",
-  borderRadius: 32,
-  padding: 30,
-  boxShadow: "0 24px 65px rgba(15,23,42,0.13)",
 };
 
 const back: React.CSSProperties = {
   display: "inline-block",
-  marginBottom: 14,
+  marginBottom: 20,
   color: "#166534",
   fontWeight: 950,
   textDecoration: "none",
+};
+
+const hero: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 22,
+  background: "rgba(255,255,255,0.88)",
+  borderRadius: 32,
+  padding: 30,
+  boxShadow: "0 24px 65px rgba(15,23,42,0.13)",
+  marginBottom: 22,
+};
+
+const avatar: React.CSSProperties = {
+  width: 86,
+  height: 86,
+  borderRadius: 28,
+  background: "linear-gradient(135deg, #f59e0b, #f97316)",
+  color: "white",
+  display: "grid",
+  placeItems: "center",
+  fontSize: 42,
 };
 
 const eyebrow: React.CSSProperties = {
@@ -204,7 +245,7 @@ const eyebrow: React.CSSProperties = {
 
 const title: React.CSSProperties = {
   margin: "8px 0",
-  fontSize: 42,
+  fontSize: 40,
   lineHeight: 1.05,
   fontWeight: 950,
   color: "#14532d",
@@ -212,159 +253,100 @@ const title: React.CSSProperties = {
 
 const subtitle: React.CSSProperties = {
   margin: 0,
-  color: "#475569",
-  maxWidth: 760,
-  fontSize: 16,
-  lineHeight: 1.5,
-};
-
-const heroCard: React.CSSProperties = {
-  minWidth: 220,
-  padding: 24,
-  borderRadius: 26,
-  background: "linear-gradient(135deg, #f59e0b, #f97316)",
-  color: "white",
-  display: "grid",
-  gap: 8,
-  boxShadow: "0 22px 45px rgba(249,115,22,0.3)",
-};
-
-const toolbar: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 18,
-  alignItems: "center",
-  marginBottom: 18,
-};
-
-const sectionTitle: React.CSSProperties = {
-  margin: 0,
-  color: "#14532d",
-  fontSize: 28,
-  fontWeight: 950,
-};
-
-const muted: React.CSSProperties = {
-  margin: "6px 0 0",
   color: "#64748b",
 };
 
-const searchBox: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 420,
-  padding: "15px 18px",
-  borderRadius: 18,
-  border: "1px solid #fed7aa",
-  outline: "none",
-  boxShadow: "0 12px 30px rgba(15,23,42,0.08)",
-  fontSize: 14,
+const status: React.CSSProperties = {
+  marginLeft: "auto",
+  background: "#dcfce7",
+  color: "#166534",
+  padding: "10px 16px",
+  borderRadius: 999,
+  fontWeight: 950,
 };
 
 const statsGrid: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
   gap: 16,
-  marginBottom: 18,
+  marginBottom: 22,
 };
 
 const statCard: React.CSSProperties = {
-  display: "flex",
-  gap: 14,
-  alignItems: "center",
-  padding: 18,
-  borderRadius: 24,
-  background: "rgba(255,255,255,0.86)",
-  boxShadow: "0 15px 38px rgba(15,23,42,0.09)",
-};
-
-const rulePanel: React.CSSProperties = {
   padding: 20,
   borderRadius: 24,
-  background: "#fff7ed",
-  color: "#9a3412",
-  border: "1px solid #fed7aa",
+  background: "rgba(255,255,255,0.9)",
+  boxShadow: "0 16px 38px rgba(15,23,42,0.1)",
+};
+
+const twoGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+  gap: 18,
   marginBottom: 22,
-  boxShadow: "0 14px 34px rgba(15,23,42,0.08)",
+};
+
+const card: React.CSSProperties = {
+  background: "rgba(255,255,255,0.9)",
+  borderRadius: 28,
+  padding: 24,
+  boxShadow: "0 18px 45px rgba(15,23,42,0.1)",
+};
+
+const cardTitle: React.CSSProperties = {
+  marginTop: 0,
+  color: "#14532d",
+  fontWeight: 950,
+};
+
+const ruleGreen: React.CSSProperties = {
+  padding: 16,
+  borderRadius: 18,
+  background: "#ecfdf5",
+  border: "1px solid #bbf7d0",
+  color: "#14532d",
+  marginBottom: 12,
+};
+
+const ruleOrange: React.CSSProperties = {
+  padding: 16,
+  borderRadius: 18,
+  background: "#fff7ed",
+  border: "1px solid #fed7aa",
+  color: "#9a3412",
 };
 
 const grid: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))",
-  gap: 20,
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+  gap: 18,
 };
 
-const card: React.CSSProperties = {
-  textDecoration: "none",
-  color: "#0f172a",
+const panel: React.CSSProperties = {
   background: "rgba(255,255,255,0.9)",
-  border: "1px solid rgba(255,255,255,0.95)",
   borderRadius: 28,
   padding: 22,
-  boxShadow: "0 18px 45px rgba(15,23,42,0.12)",
+  boxShadow: "0 18px 45px rgba(15,23,42,0.1)",
+};
+
+const panelTitle: React.CSSProperties = {
+  marginTop: 0,
+  color: "#14532d",
+  fontWeight: 950,
+};
+
+const muted: React.CSSProperties = {
+  color: "#64748b",
+};
+
+const list: React.CSSProperties = {
   display: "grid",
   gap: 12,
 };
 
-const topRow: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-};
-
-const avatar: React.CSSProperties = {
-  width: 58,
-  height: 58,
-  borderRadius: 20,
-  background: "linear-gradient(135deg, #f59e0b, #f97316)",
-  display: "grid",
-  placeItems: "center",
-  fontSize: 28,
-  color: "white",
-};
-
-const status: React.CSSProperties = {
-  background: "#dcfce7",
-  color: "#166534",
-  padding: "7px 12px",
-  borderRadius: 999,
-  fontSize: 12,
-  fontWeight: 950,
-};
-
-const name: React.CSSProperties = {
-  margin: 0,
-  fontSize: 22,
-  fontWeight: 950,
-  color: "#14532d",
-};
-
-const info: React.CSSProperties = {
-  margin: 0,
-  color: "#475569",
-  fontSize: 14,
-};
-
-const metrics: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, 1fr)",
-  gap: 10,
-  marginTop: 8,
-};
-
-const button: React.CSSProperties = {
-  marginTop: 8,
-  border: "none",
-  borderRadius: 16,
-  padding: "12px 14px",
-  background: "#14532d",
-  color: "white",
-  fontWeight: 950,
-};
-
-const empty: React.CSSProperties = {
-  gridColumn: "1 / -1",
-  background: "rgba(255,255,255,0.9)",
-  borderRadius: 24,
-  padding: 30,
-  color: "#64748b",
+const listItem: React.CSSProperties = {
+  padding: 16,
+  borderRadius: 18,
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
 };

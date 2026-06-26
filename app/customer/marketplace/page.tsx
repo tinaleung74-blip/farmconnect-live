@@ -1,634 +1,444 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type Product = {
+type PoultryCategory = "ALL" | "FEEDS" | "VITAMINS" | "VACCINES" | "SUPPLEMENTS";
+
+type Profile = {
   id: string;
-  name: string;
-  category: "CHICKS" | "FEEDS" | "VITAMINS" | "VACCINES" | "SUPPLEMENTS";
-  icon: string;
-  price: number;
-  stock: number;
-  details: string;
-  usage: string;
+  full_name: string | null;
+  email: string | null;
 };
 
-type CartItem = Product & {
-  quantity: number;
-};
-
-type FlockOption = {
+type Wallet = {
   id: string;
-  batch_no: string;
-  breed: string;
+  profile_id: string;
+  balance: number | null;
 };
 
-const products: Product[] = [
-  {
-    id: "broiler-chick-day1",
-    name: "Broiler Chick - Day 1",
-    category: "CHICKS",
-    icon: "🐣",
-    price: 120,
-    stock: 5000,
-    details: "Day-old broiler chick for fast meat production.",
-    usage: "Place inside brooder house with heat, clean water, and starter feed.",
-  },
-  {
-    id: "broiler-chick-day7",
-    name: "Broiler Chick - Day 7",
-    category: "CHICKS",
-    icon: "🐥",
-    price: 150,
-    stock: 2500,
-    details: "Stronger chick with early-stage growth monitoring.",
-    usage: "Continue starter feed and daily water monitoring.",
-  },
-  {
-    id: "starter-feed",
-    name: "Starter Feed Bag",
-    category: "FEEDS",
-    icon: "🌾",
-    price: 350,
-    stock: 300,
-    details: "Feed for chicks from Day 1 to Day 14.",
-    usage: "Use daily during brooding stage.",
-  },
-  {
-    id: "grower-feed",
-    name: "Grower Feed Bag",
-    category: "FEEDS",
-    icon: "🌽",
-    price: 420,
-    stock: 250,
-    details: "Feed for growing chickens after starter stage.",
-    usage: "Use from Day 15 until harvest stage.",
-  },
-  {
-    id: "vitamin-a",
-    name: "Vitamin A Booster",
-    category: "VITAMINS",
-    icon: "💊",
-    price: 100,
-    stock: 200,
-    details: "Supports immunity, eyes, and growth performance.",
-    usage: "Mix with drinking water based on caretaker recommendation.",
-  },
-  {
-    id: "multivitamins",
-    name: "Multivitamins",
-    category: "VITAMINS",
-    icon: "🧪",
-    price: 180,
-    stock: 180,
-    details: "Daily vitamin support for healthier flock growth.",
-    usage: "Use during stress, weather changes, or growth monitoring.",
-  },
-  {
-    id: "nd-vaccine",
-    name: "ND Vaccine",
-    category: "VACCINES",
-    icon: "💉",
-    price: 250,
-    stock: 100,
-    details: "Vaccine support for poultry disease protection.",
-    usage: "Use only with caretaker or veterinary guidance.",
-  },
-  {
-    id: "electrolytes",
-    name: "Electrolytes",
-    category: "SUPPLEMENTS",
-    icon: "🧴",
-    price: 90,
-    stock: 160,
-    details: "Hydration support for chicks during heat and stress.",
-    usage: "Mix with water during hot weather or after transport.",
-  },
-];
+type MarketplaceProduct = {
+  id: string;
+  product_key?: string | null;
+  name: string | null;
+  price: number | null;
+  note?: string | null;
+  stock_status?: string | null;
+  image_url?: string | null;
+  icon?: string | null;
+  category: string | null;
+  unit?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+  stock?: number | null;
+  available_stock?: number | null;
+  stock_qty?: number | null;
+  quantity?: number | null;
+};
 
-const categories = [
+const CATEGORIES: PoultryCategory[] = [
   "ALL",
-  "CHICKS",
   "FEEDS",
   "VITAMINS",
   "VACCINES",
   "SUPPLEMENTS",
 ];
 
-const quickQty = [1, 5, 10, 25, 50, 100];
+function peso(value: number) {
+  return `₱${Number(value || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function normalize(value: string | null | undefined) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function normalizeCategory(value: string | null | undefined): PoultryCategory {
+  const raw = normalize(value);
+
+  if (raw.includes("FEED")) return "FEEDS";
+  if (raw.includes("VITAMIN")) return "VITAMINS";
+  if (raw.includes("VACCINE")) return "VACCINES";
+  if (raw.includes("SUPPLEMENT")) return "SUPPLEMENTS";
+
+  if (
+    raw === "FEEDS" ||
+    raw === "VITAMINS" ||
+    raw === "VACCINES" ||
+    raw === "SUPPLEMENTS"
+  ) {
+    return raw as PoultryCategory;
+  }
+
+  return "ALL";
+}
+
+function getAvailableStock(product: MarketplaceProduct) {
+  const numericStock =
+    product.available_stock ??
+    product.stock_qty ??
+    product.stock ??
+    product.quantity ??
+    null;
+
+  if (numericStock === null || numericStock === undefined) {
+    return null;
+  }
+
+  return Number(numericStock || 0);
+}
+
+function isUnavailable(product: MarketplaceProduct) {
+  const stockStatus = normalize(product.stock_status || "AVAILABLE");
+  const stock = getAvailableStock(product);
+
+  if (stock !== null && stock <= 0) return true;
+
+  return (
+    stockStatus === "OUT_OF_STOCK" ||
+    stockStatus === "OUT OF STOCK" ||
+    stockStatus === "UNAVAILABLE" ||
+    stockStatus === "SOLD_OUT" ||
+    stockStatus === "SOLD OUT"
+  );
+}
+
+function productIcon(product: MarketplaceProduct) {
+  const category = normalizeCategory(product.category);
+
+  if (product.icon) return product.icon;
+  if (category === "FEEDS") return "🌾";
+  if (category === "VITAMINS") return "💊";
+  if (category === "VACCINES") return "💉";
+  if (category === "SUPPLEMENTS") return "🧪";
+
+  return "🐔";
+}
 
 export default function MarketplacePage() {
-  const [activeCategory, setActiveCategory] = useState("ALL");
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedQty, setSelectedQty] = useState<Record<string, number>>({});
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [flocks, setFlocks] = useState<FlockOption[]>([]);
-  const [selectedFlockId, setSelectedFlockId] = useState("");
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [products, setProducts] = useState<MarketplaceProduct[]>([]);
+  const [activeCategory, setActiveCategory] = useState<PoultryCategory>("ALL");
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [purchaseProcessingId, setPurchaseProcessingId] = useState<string | null>(
+    null
+  );
 
-  function getProfile() {
-    const user = localStorage.getItem("farmconnect_user");
-    if (!user) return null;
-    return JSON.parse(user);
-  }
+  async function resolveCustomerProfile() {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  async function loadWallet() {
-    const profile = getProfile();
-    if (!profile) return;
+    if (authError) throw authError;
+    if (!user) throw new Error("Customer session not found.");
 
-    const { data } = await supabase
+    const email = user.email?.trim().toLowerCase() || "";
+
+    const { data, error } = await supabase
       .from("profiles")
-      .select("wallet_balance")
-      .eq("id", profile.id)
+      .select("id, full_name, email")
+      .or(`id.eq.${user.id},email.eq.${email}`)
       .maybeSingle();
 
-    setWalletBalance(Number(data?.wallet_balance || 0));
+    if (error) throw error;
+    if (!data) throw new Error("Customer profile not found.");
+
+    setProfile(data);
+    return data as Profile;
   }
 
-  async function loadFlocks() {
-    const profile = getProfile();
-    if (!profile) return;
+  async function loadMarketplace() {
+    setLoading(true);
+    setMessage("");
 
-    const { data } = await supabase
-      .from("flocks")
-      .select("id,batch_no,breed")
-      .eq("profile_id", profile.id)
-      .eq("status", "ACTIVE")
-      .order("created_at", { ascending: false });
+    try {
+      const currentProfile = await resolveCustomerProfile();
 
-    setFlocks(data || []);
+      const [{ data: walletRows }, { data: productRows, error: productError }] =
+        await Promise.all([
+          supabase
+            .from("wallets")
+            .select("id, profile_id, balance, created_at")
+            .eq("profile_id", currentProfile.id)
+            .order("created_at", { ascending: false })
+            .limit(1),
 
-    if (data && data.length > 0) {
-      setSelectedFlockId(data[0].id);
+          supabase
+            .from("marketplace_products")
+            .select("*")
+            .eq("status", "ACTIVE")
+            .order("created_at", { ascending: false }),
+        ]);
+
+      if (productError) throw productError;
+
+      setWallet((walletRows?.[0] as Wallet) || null);
+      setProducts((productRows || []) as MarketplaceProduct[]);
+    } catch (error: any) {
+      setMessage(error?.message || "Unable to load marketplace.");
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadWallet();
-    loadFlocks();
+    loadMarketplace();
   }, []);
 
-  const filteredProducts =
-    activeCategory === "ALL"
-      ? products
-      : products.filter((p) => p.category === activeCategory);
-
-  const cartTotal = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  }, [cart]);
-
-  const cartCount = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
-  }, [cart]);
-
-  const hasSupplies = cart.some((item) => item.category !== "CHICKS");
-
-  function getQty(productId: string) {
-    return selectedQty[productId] || 1;
-  }
-
-  function setQty(productId: string, qty: number) {
-    if (qty < 1) qty = 1;
-    setSelectedQty((prev) => ({ ...prev, [productId]: qty }));
-  }
-
-  function addToCart(product: Product) {
-    const quantity = getQty(product.id);
-
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-
-      if (existing) {
-        return prev.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-
-      return [...prev, { ...product, quantity }];
+  const poultryProducts = useMemo(() => {
+    return products.filter((product) => {
+      const category = normalizeCategory(product.category);
+      return ["FEEDS", "VITAMINS", "VACCINES", "SUPPLEMENTS"].includes(category);
     });
-  }
+  }, [products]);
 
-  function removeFromCart(productId: string) {
-    setCart((prev) => prev.filter((item) => item.id !== productId));
-  }
+  const filteredProducts = useMemo(() => {
+    if (activeCategory === "ALL") return poultryProducts;
 
-  function getInventoryUnit(category: Product["category"]) {
-    if (category === "FEEDS") return "bag";
-    if (category === "VITAMINS") return "bottle";
-    if (category === "VACCINES") return "dose";
-    if (category === "SUPPLEMENTS") return "pack";
-    return "item";
-  }
+    return poultryProducts.filter(
+      (product) => normalizeCategory(product.category) === activeCategory
+    );
+  }, [poultryProducts, activeCategory]);
 
-  function getLowStockLevel(category: Product["category"]) {
-    if (category === "FEEDS") return 5;
-    if (category === "VITAMINS") return 2;
-    if (category === "VACCINES") return 2;
-    if (category === "SUPPLEMENTS") return 3;
-    return 1;
-  }
+  const counts = useMemo(() => {
+    return {
+      ALL: poultryProducts.length,
+      FEEDS: poultryProducts.filter(
+        (product) => normalizeCategory(product.category) === "FEEDS"
+      ).length,
+      VITAMINS: poultryProducts.filter(
+        (product) => normalizeCategory(product.category) === "VITAMINS"
+      ).length,
+      VACCINES: poultryProducts.filter(
+        (product) => normalizeCategory(product.category) === "VACCINES"
+      ).length,
+      SUPPLEMENTS: poultryProducts.filter(
+        (product) => normalizeCategory(product.category) === "SUPPLEMENTS"
+      ).length,
+    };
+  }, [poultryProducts]);
 
-  async function syncMarketplaceItemToInventory(
-    profileId: string,
-    flockId: string,
-    item: CartItem
-  ) {
-    const unit = getInventoryUnit(item.category);
-    const lowStockLevel = getLowStockLevel(item.category);
+  async function purchaseProduct(product: MarketplaceProduct) {
+    if (!profile) return setMessage("Profile not found.");
+    if (!wallet) return setMessage("Wallet not found.");
+    if (purchaseProcessingId) return;
 
-    const { data: existing, error: findError } = await supabase
-      .from("flock_inventory")
-      .select("id, starting_qty, remaining_qty")
-      .eq("profile_id", profileId)
-      .eq("flock_id", flockId)
-      .eq("item_name", item.name)
-      .eq("category", item.category)
-      .maybeSingle();
+    const price = Number(product.price || 0);
 
-    if (findError) {
-      throw findError;
+    if (price <= 0) return setMessage("Invalid product price.");
+    if (Number(wallet.balance || 0) < price) {
+      return setMessage("Insufficient wallet balance.");
+    }
+    if (isUnavailable(product)) {
+      return setMessage("Product stock is unavailable.");
     }
 
-    if (existing) {
-      const { error: updateError } = await supabase
-        .from("flock_inventory")
-        .update({
-          starting_qty: Number(existing.starting_qty || 0) + item.quantity,
-          remaining_qty: Number(existing.remaining_qty || 0) + item.quantity,
-          status: "AVAILABLE",
-        })
-        .eq("id", existing.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("flock_inventory").insert({
-      profile_id: profileId,
-      flock_id: flockId,
-      item_name: item.name,
-      category: item.category,
-      unit,
-      starting_qty: item.quantity,
-      remaining_qty: item.quantity,
-      low_stock_level: lowStockLevel,
-      status: "AVAILABLE",
-    });
-
-    if (insertError) {
-      throw insertError;
-    }
-  }
-
-  async function createFlockFromChicks(profileId: string, item: CartItem) {
-    const batchNo = "FC-" + Math.floor(100000 + Math.random() * 900000);
-
-    const harvestDate = new Date();
-    harvestDate.setDate(harvestDate.getDate() + 45);
-
-    const { data, error } = await supabase
-      .from("flocks")
-      .insert({
-        profile_id: profileId,
-        batch_no: batchNo,
-        breed: item.name,
-        total_chicks: item.quantity,
-        alive_count: item.quantity,
-        mortality_count: 0,
-        expected_harvest_date: harvestDate.toISOString().split("T")[0],
-        status: "ACTIVE",
-        caretaker_name: null,
-      })
-      .select("id,batch_no,breed")
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    return data;
-  }
-
-  async function checkout() {
-    const profile = getProfile();
-
-    if (!profile) {
-      alert("Please login first");
-      return;
-    }
-
-    if (cart.length === 0) {
-      alert("Cart is empty");
-      return;
-    }
-
-    if (walletBalance < cartTotal) {
-      alert("Insufficient wallet balance");
-      return;
-    }
-
-    if (hasSupplies && !selectedFlockId) {
-      alert("Please create or buy chicks first before buying feeds, vitamins, vaccines, or supplements.");
-      return;
-    }
-
-    setCheckingOut(true);
+    setPurchaseProcessingId(product.id);
+    setMessage("");
 
     try {
-      const newBalance = walletBalance - cartTotal;
+      const { error } = await supabase.rpc("purchase_marketplace_item", {
+        p_profile_id: profile.id,
+        p_product_id: product.id,
+        p_quantity: 1,
+      });
 
-      const { error: walletError } = await supabase
-        .from("profiles")
-        .update({ wallet_balance: newBalance })
-        .eq("id", profile.id);
+      if (error) throw error;
 
-      if (walletError) {
-        throw walletError;
-      }
+      setMessage(
+        `${product.name || "Product"} purchased successfully. Wallet, flock inventory, customer inventory, and admin transactions are synced by production RPC.`
+      );
 
-      let targetFlockId = selectedFlockId;
-
-      for (const item of cart) {
-        if (item.category === "CHICKS") {
-          const newFlock = await createFlockFromChicks(profile.id, item);
-
-          if (newFlock?.id) {
-            targetFlockId = newFlock.id;
-          }
-        } else {
-          if (!targetFlockId) {
-            throw new Error("No active flock selected for inventory sync.");
-          }
-
-          await syncMarketplaceItemToInventory(profile.id, targetFlockId, item);
-        }
-
-        const { error: txError } = await supabase
-          .from("wallet_transactions")
-          .insert({
-            profile_id: profile.id,
-            transaction_type: "PURCHASE",
-            amount: item.price * item.quantity * -1,
-            reference_no:
-              "FC-MKT-" +
-              Date.now() +
-              "-" +
-              Math.floor(Math.random() * 1000),
-            remarks: `${item.name} x${item.quantity}`,
-            status: "COMPLETED",
-          });
-
-        if (txError) {
-          throw txError;
-        }
-      }
-
-      setWalletBalance(newBalance);
-      setCart([]);
-      await loadFlocks();
-
-      alert("Checkout successful! Supplies synced to selected flock inventory.");
-    } catch (err: any) {
-      console.error("CHECKOUT ERROR:", err);
-      alert(err?.message || "Checkout failed");
+      await loadMarketplace();
+    } catch (error: any) {
+      setMessage(error?.message || "Purchase failed.");
     } finally {
-      setCheckingOut(false);
+      setPurchaseProcessingId(null);
     }
   }
 
   return (
-    <main className="min-h-screen bg-[#f3fbf5] p-6 md:p-10">
-      <div className="max-w-7xl mx-auto">
-        <section className="rounded-[32px] bg-gradient-to-r from-green-800 via-green-600 to-emerald-500 text-white p-8 mb-8 shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-            <div>
-              <p className="bg-white/20 w-fit px-4 py-2 rounded-full text-sm font-bold mb-4">
-                🛒 FarmConnect Marketplace
-              </p>
+    <main className="min-h-screen bg-gradient-to-br from-green-50 via-white to-yellow-50 p-6 text-gray-900">
+      <div className="mx-auto max-w-7xl">
+        <section className="mb-6 flex flex-col justify-between gap-4 rounded-3xl border bg-white p-6 shadow md:flex-row md:items-center">
+          <div>
+            <Link
+              href="/customer/dashboard"
+              className="mb-3 inline-block text-sm font-black text-green-700"
+            >
+              ← Back to Dashboard
+            </Link>
 
-              <h1 className="text-4xl md:text-5xl font-black">Poultry Shop</h1>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-green-700">
+              FarmConnect Marketplace
+            </p>
 
-              <p className="mt-3 text-green-50 max-w-2xl">
-                Buy chicks, feeds, vitamins, vaccines, and supplements. Supplies
-                will sync directly to the selected flock inventory.
-              </p>
-            </div>
+            <h1 className="mt-2 text-4xl font-black text-green-950">
+              Poultry Supplies Marketplace
+            </h1>
 
-            <div className="bg-white/15 rounded-3xl p-5 min-w-[260px]">
-              <p className="text-green-50">Wallet Balance</p>
-              <h2 className="text-3xl font-black">
-                ₱{walletBalance.toLocaleString()}
-              </h2>
-              <p className="text-sm text-green-50 mt-1">
-                Cart Items: {cartCount}
-              </p>
-            </div>
+            <p className="mt-2 max-w-3xl font-bold text-gray-600">
+              Buy feeds, vitamins, vaccines, and supplements using the production
+              marketplace RPC. Wallet deduction, wallet transaction, flock
+              inventory, and admin transaction sync are handled by Supabase.
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-green-900 p-6 text-white shadow">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-green-200">
+              Wallet Balance
+            </p>
+            <strong className="mt-2 block text-3xl">
+              {peso(Number(wallet?.balance || 0))}
+            </strong>
+            <small className="text-green-100">
+              {profile?.full_name || profile?.email || "Customer Account"}
+            </small>
           </div>
         </section>
 
-        <section className="bg-white rounded-3xl p-5 shadow border border-green-100 mb-6">
-          <h2 className="text-xl font-black text-green-900 mb-2">
-            🎯 Select Flock For Supplies
-          </h2>
+        {message && (
+          <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-4 font-bold text-green-800">
+            {message}
+          </div>
+        )}
 
-          <p className="text-gray-500 text-sm mb-3">
-            Feeds, vitamins, vaccines, and supplements will be added to this flock.
-            Chicks will create a new flock automatically.
-          </p>
-
-          <select
-            value={selectedFlockId}
-            onChange={(e) => setSelectedFlockId(e.target.value)}
-            className="w-full border rounded-2xl p-4 font-bold"
-          >
-            <option value="">No active flock selected</option>
-            {flocks.map((flock) => (
-              <option key={flock.id} value={flock.id}>
-                {flock.batch_no} - {flock.breed}
-              </option>
-            ))}
-          </select>
-        </section>
-
-        <section className="flex gap-3 overflow-x-auto mb-6">
-          {categories.map((cat) => (
+        <section className="mb-6 grid gap-3 rounded-3xl border bg-white p-3 shadow md:grid-cols-5">
+          {CATEGORIES.map((category) => (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-5 py-3 rounded-full font-black whitespace-nowrap ${
-                activeCategory === cat
-                  ? "bg-green-700 text-white"
-                  : "bg-white text-green-700 border border-green-100"
+              key={category}
+              onClick={() => setActiveCategory(category)}
+              className={`rounded-2xl p-4 text-left font-black transition ${
+                activeCategory === category
+                  ? "bg-green-900 text-white"
+                  : "bg-green-50 text-green-900 hover:bg-green-100"
               }`}
             >
-              {cat === "ALL" ? "All Products" : cat}
+              <span className="block text-lg">
+                {category === "ALL" && "🐔"}
+                {category === "FEEDS" && "🌾"}
+                {category === "VITAMINS" && "💊"}
+                {category === "VACCINES" && "💉"}
+                {category === "SUPPLEMENTS" && "🧪"}
+              </span>
+              <span>{category === "ALL" ? "All Products" : category}</span>
+              <small className="block opacity-70">
+                {counts[category]} item(s)
+              </small>
             </button>
           ))}
         </section>
 
-        <section className="grid lg:grid-cols-[1fr_360px] gap-6">
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {loading ? (
+          <div className="rounded-3xl border bg-white p-8 text-center font-black shadow">
+            Loading marketplace...
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="rounded-3xl border bg-white p-8 text-center shadow">
+            <h2 className="text-2xl font-black">No poultry products found.</h2>
+            <p className="mt-2 font-bold text-gray-500">
+              Add active marketplace_products under FEEDS, VITAMINS, VACCINES,
+              or SUPPLEMENTS.
+            </p>
+          </div>
+        ) : (
+          <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {filteredProducts.map((product) => {
-              const qty = getQty(product.id);
+              const stock = getAvailableStock(product);
+              const unavailable = isUnavailable(product);
+              const processing = purchaseProcessingId === product.id;
 
               return (
-                <div
+                <article
                   key={product.id}
-                  className="bg-white rounded-3xl p-6 shadow border border-green-100"
+                  className="overflow-hidden rounded-3xl border bg-white shadow transition hover:-translate-y-1 hover:shadow-xl"
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="text-5xl">{product.icon}</div>
+                  <div className="relative h-44 bg-green-50">
+                    {product.image_url ? (
+                      <img
+                        src={product.image_url}
+                        alt={product.name || "Marketplace product"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-6xl">
+                        {productIcon(product)}
+                      </div>
+                    )}
 
-                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-black">
-                      {product.category}
+                    <span
+                      className={`absolute right-4 top-4 rounded-full px-3 py-1 text-xs font-black ${
+                        unavailable
+                          ? "bg-red-100 text-red-700"
+                          : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {unavailable ? "UNAVAILABLE" : "AVAILABLE"}
                     </span>
                   </div>
 
-                  <h2 className="text-2xl font-black text-gray-900">
-                    {product.name}
-                  </h2>
+                  <div className="p-5">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-800">
+                        {normalizeCategory(product.category)}
+                      </span>
 
-                  <p className="text-gray-500 mt-2 min-h-[48px]">
-                    {product.details}
-                  </p>
+                      <span className="text-sm font-black text-gray-500">
+                        {product.unit || "Unit"}
+                      </span>
+                    </div>
 
-                  <div className="mt-4 bg-green-50 rounded-2xl p-4">
-                    <p className="text-sm text-gray-500">Usage Guide</p>
-                    <p className="font-semibold text-gray-800">
-                      {product.usage}
+                    <h2 className="text-2xl font-black text-green-950">
+                      {product.name || "Marketplace Product"}
+                    </h2>
+
+                    <p className="mt-2 min-h-12 text-sm font-bold text-gray-600">
+                      {product.note || "Poultry production supply item."}
                     </p>
-                  </div>
 
-                  <div className="mt-4 flex justify-between">
-                    <div>
-                      <p className="text-gray-500">Price</p>
-                      <h3 className="text-2xl font-black text-green-700">
-                        ₱{product.price}
-                      </h3>
-                    </div>
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl bg-yellow-50 p-4">
+                        <p className="text-xs font-black uppercase text-gray-500">
+                          Price
+                        </p>
+                        <strong className="text-xl text-green-800">
+                          {peso(Number(product.price || 0))}
+                        </strong>
+                      </div>
 
-                    <div className="text-right">
-                      <p className="text-gray-500">Stock</p>
-                      <h3 className="font-black">{product.stock}</h3>
-                    </div>
-                  </div>
-
-                  <div className="mt-5">
-                    <p className="font-bold mb-2">Quantity</p>
-
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {quickQty.map((q) => (
-                        <button
-                          key={q}
-                          onClick={() => setQty(product.id, q)}
-                          className={`px-3 py-2 rounded-xl font-black ${
-                            qty === q
-                              ? "bg-green-600 text-white"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {q}x
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setQty(product.id, qty - 1)}
-                        className="w-10 h-10 rounded-xl bg-gray-100 font-black"
-                      >
-                        -
-                      </button>
-
-                      <input
-                        type="number"
-                        value={qty}
-                        onChange={(e) =>
-                          setQty(product.id, Number(e.target.value))
-                        }
-                        className="w-full border rounded-xl p-3 text-center font-black"
-                      />
-
-                      <button
-                        onClick={() => setQty(product.id, qty + 1)}
-                        className="w-10 h-10 rounded-xl bg-gray-100 font-black"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => addToCart(product)}
-                    className="mt-5 w-full bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl font-black"
-                  >
-                    Add To Cart
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          <aside className="bg-white rounded-3xl p-6 shadow border border-green-100 h-fit sticky top-6">
-            <h2 className="text-2xl font-black mb-4">🛒 Cart</h2>
-
-            {cart.length === 0 && (
-              <p className="text-gray-500">Your cart is empty.</p>
-            )}
-
-            <div className="grid gap-3">
-              {cart.map((item) => (
-                <div
-                  key={item.id}
-                  className="border border-green-100 rounded-2xl p-4"
-                >
-                  <div className="flex justify-between gap-3">
-                    <div>
-                      <p className="font-black">
-                        {item.icon} {item.name}
-                      </p>
-                      <p className="text-gray-500">
-                        ₱{item.price} x {item.quantity}
-                      </p>
+                      <div className="rounded-2xl bg-blue-50 p-4">
+                        <p className="text-xs font-black uppercase text-gray-500">
+                          Available Stock
+                        </p>
+                        <strong className="text-xl text-blue-800">
+                          {stock === null ? product.stock_status || "Available" : stock}
+                        </strong>
+                      </div>
                     </div>
 
                     <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-red-600 font-black"
+                      onClick={() => purchaseProduct(product)}
+                      disabled={unavailable || processing}
+                      className="mt-5 w-full rounded-2xl bg-green-700 p-4 font-black text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
                     >
-                      X
+                      {processing
+                        ? "Processing..."
+                        : unavailable
+                          ? "Out of Stock"
+                          : `Buy Now • ${peso(Number(product.price || 0))}`}
                     </button>
                   </div>
-
-                  <p className="text-right font-black text-green-700 mt-2">
-                    ₱{(item.price * item.quantity).toLocaleString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t mt-5 pt-5">
-              <div className="flex justify-between font-black text-lg">
-                <span>Total</span>
-                <span>₱{cartTotal.toLocaleString()}</span>
-              </div>
-
-              <button
-                onClick={checkout}
-                disabled={checkingOut || cart.length === 0}
-                className="mt-5 w-full bg-green-700 disabled:bg-gray-400 text-white p-4 rounded-2xl font-black"
-              >
-                {checkingOut ? "Checking out..." : "Checkout"}
-              </button>
-            </div>
-          </aside>
-        </section>
+                </article>
+              );
+            })}
+          </section>
+        )}
       </div>
     </main>
   );

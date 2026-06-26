@@ -14,7 +14,7 @@ type Stats = {
   cashout: number;
   wallet: number;
   sellRequests: number;
-  risks: number;
+  mortalityReports: number;
 };
 
 type WalletTx = {
@@ -44,7 +44,7 @@ export default function AdminDashboardPage() {
     cashout: 0,
     wallet: 0,
     sellRequests: 0,
-    risks: 0,
+    mortalityReports: 0,
   });
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
       cashout,
       wallet,
       sellRequests,
-      risks,
+      mortalityReports,
       walletRes,
     ] = await Promise.all([
       safeCount("profiles"),
@@ -89,7 +89,7 @@ export default function AdminDashboardPage() {
       safeCount("cashout_requests"),
       safeCount("wallet_transactions"),
       safeCount("sell_chicken_requests"),
-      safeCount("risk_alerts"),
+      safeCount("mortality_logs"),
       supabase
         .from("wallet_transactions")
         .select("id,transaction_type,amount,status")
@@ -106,7 +106,7 @@ export default function AdminDashboardPage() {
       cashout,
       wallet,
       sellRequests,
-      risks,
+      mortalityReports,
     });
 
     setWalletTx((walletRes.data || []) as WalletTx[]);
@@ -211,11 +211,25 @@ export default function AdminDashboardPage() {
       icon: "👛",
     },
     {
-      title: "Risk Alerts",
-      value: stats.risks,
-      desc: "Mortality, delay, and farm warnings",
-      href: "/admin/risk-management",
+      title: "Poultry Monitoring",
+      value: stats.mortalityReports,
+      desc: "Mortality Reports from production caretaker monitoring",
+      href: "/admin/reports",
       icon: "⚠️",
+    },
+    {
+      title: "Reports",
+      value: "Live",
+      desc: "Production farm reports from operations and caretaker activity",
+      href: "/admin/reports",
+      icon: "📋",
+    },
+    {
+      title: "Treasury",
+      value: money(revenue.total),
+      desc: "Membership revenue and FarmConnect platform fees",
+      href: "/admin/treasury",
+      icon: "🏛️",
     },
   ];
 
@@ -227,8 +241,8 @@ export default function AdminDashboardPage() {
           <h1 style={title}>Executive Admin Dashboard</h1>
           <p style={subtitle}>
             Central command center for analytics, customers, KYC, memberships,
-            caretakers, sell chicken approvals, treasury, wallet, risk
-            monitoring, and audit controls.
+            caretakers, sell chicken approvals, treasury, wallet, poultry
+            monitoring, mortality reports, and audit controls.
           </p>
         </div>
 
@@ -283,7 +297,8 @@ export default function AdminDashboardPage() {
           <p style={sectionText}>
             Use these modules for analytics, customer profiling, membership
             approval, caretaker hire approvals, sell chicken approvals,
-            treasury, audit, financial monitoring, and investor-ready reporting.
+            treasury, audit, financial monitoring, mortality reports, and
+            investor-ready reporting.
           </p>
         </div>
 
@@ -296,6 +311,9 @@ export default function AdminDashboardPage() {
           </Link>
           <Link href="/admin/memberships" style={button}>
             Memberships
+          </Link>
+          <Link href="/admin/caretakers" style={button}>
+            Caretakers
           </Link>
           <Link href="/admin/caretaker-hires" style={button}>
             Caretaker Hires
@@ -312,14 +330,14 @@ export default function AdminDashboardPage() {
           <Link href="/admin/transactions/cashout" style={button}>
             Cash-Out
           </Link>
-          <Link href="/admin/audit-logs" style={button}>
-            Audit Logs
+          <Link href="/admin/wallet" style={button}>
+            Wallet
           </Link>
           <Link href="/admin/reports" style={button}>
             Reports
           </Link>
-          <Link href="/admin/risk-management" style={button}>
-            Risk
+          <Link href="/admin/analytics" style={button}>
+            Analytics
           </Link>
         </div>
       </section>

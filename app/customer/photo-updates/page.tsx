@@ -4,13 +4,22 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+type Animal = {
+  id: string;
+  code: string | null;
+  name: string | null;
+  type: string | null;
+};
+
+type AnimalRelation = Animal | Animal[] | null;
+
 type AnimalPhoto = {
   id: string;
-  animal_id?: string | null;
-  flock_id?: string | null;
-  photo_url?: string | null;
-  caption?: string | null;
-  created_at?: string | null;
+  animal_id: string | null;
+  photo_url: string | null;
+  caption: string | null;
+  created_at: string | null;
+  animals: AnimalRelation;
 };
 
 export default function CustomerPhotoUpdatesPage() {
@@ -26,16 +35,34 @@ export default function CustomerPhotoUpdatesPage() {
 
     const { data, error } = await supabase
       .from("animal_photos")
-      .select("*")
+      .select(`
+        id,
+        animal_id,
+        photo_url,
+        caption,
+        created_at,
+        animals (
+          id,
+          code,
+          name,
+          type
+        )
+      `)
       .order("created_at", { ascending: false });
 
     if (error) {
       alert(`Photo load error: ${error.message}`);
       setPhotos([]);
-    } else {
-      setPhotos(data || []);
+      setLoading(false);
+      return;
     }
 
+    const chickenOnly = (data || []).filter((item: any) => {
+      const animal = normalizeAnimal(item.animals);
+      return String(animal?.type || "").toLowerCase().includes("chicken");
+    });
+
+    setPhotos(chickenOnly as AnimalPhoto[]);
     setLoading(false);
   }
 
@@ -51,14 +78,13 @@ export default function CustomerPhotoUpdatesPage() {
           <h1 style={title}>Photo Updates</h1>
 
           <p style={subtitle}>
-            View the latest farm photos uploaded from caretaker operations. This
-            page is view-only and does not allow direct customer-to-caretaker
-            communication.
+            View-only chicken photo updates uploaded by caretakers. Customers
+            can monitor updates but cannot upload, edit, or delete records.
           </p>
         </div>
 
         <div style={heroCard}>
-          <span>Latest Photos</span>
+          <span>Latest Chicken Photos</span>
           <strong>{photos.length}</strong>
           <small>Caretaker uploads</small>
         </div>
@@ -68,18 +94,16 @@ export default function CustomerPhotoUpdatesPage() {
         <div style={summaryCard}>
           <span>PHOTO</span>
           <div>
-            <p>Total Updates</p>
+            <p>Chicken Photo Updates</p>
             <strong>{photos.length}</strong>
           </div>
         </div>
 
         <div style={summaryCard}>
-          <span>FLOCK</span>
+          <span>CHICKEN</span>
           <div>
-            <p>Linked Records</p>
-            <strong>
-              {new Set(photos.map((p) => p.flock_id || p.animal_id)).size}
-            </strong>
+            <p>Chicken Records</p>
+            <strong>{new Set(photos.map((p) => p.animal_id)).size}</strong>
           </div>
         </div>
 
@@ -93,11 +117,11 @@ export default function CustomerPhotoUpdatesPage() {
       </section>
 
       {loading ? (
-        <section style={empty}>Loading photo updates...</section>
+        <section style={empty}>Loading chicken photo updates...</section>
       ) : photos.length === 0 ? (
         <section style={empty}>
-          No caretaker photo updates yet. Once the caretaker uploads farm photos,
-          they will appear here.
+          No chicken photo updates yet. Once the caretaker uploads monitoring
+          photos, they will appear here.
         </section>
       ) : (
         <section style={grid}>
@@ -105,7 +129,11 @@ export default function CustomerPhotoUpdatesPage() {
             <article key={photo.id} style={card}>
               <div style={imageWrap}>
                 {photo.photo_url ? (
-                  <img src={photo.photo_url} alt="Farm update" style={image} />
+                  <img
+                    src={photo.photo_url}
+                    alt={photo.caption || "Chicken photo update"}
+                    style={image}
+                  />
                 ) : (
                   <div style={placeholder}>No photo preview</div>
                 )}
@@ -115,14 +143,24 @@ export default function CustomerPhotoUpdatesPage() {
                 <div style={badge}>Caretaker Photo Update</div>
 
                 <h2 style={cardTitle}>
-                  {photo.caption || "Farm condition update"}
+                  {normalizeAnimal(photo.animals)?.name || "Unnamed Chicken"}
                 </h2>
 
                 <p style={info}>
-                  Flock ID: {photo.flock_id || photo.animal_id || "Not linked"}
+                  Chicken Code: {normalizeAnimal(photo.animals)?.code || "No code"}
                 </p>
 
-                <p style={dateText}>Uploaded: {formatDate(photo.created_at)}</p>
+                <p style={info}>
+                  Chicken Type: {normalizeAnimal(photo.animals)?.type || "Chicken"}
+                </p>
+
+                <p style={captionText}>
+                  {photo.caption || "No caption provided."}
+                </p>
+
+                <p style={dateText}>
+                  Uploaded: {formatDate(photo.created_at)}
+                </p>
               </div>
             </article>
           ))}
@@ -132,9 +170,14 @@ export default function CustomerPhotoUpdatesPage() {
   );
 }
 
+function normalizeAnimal(value: AnimalRelation): Animal | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
+}
+
 function formatDate(value?: string | null) {
   if (!value) return "No date";
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleString("en-PH");
 }
 
 const page: React.CSSProperties = {
@@ -280,7 +323,13 @@ const cardTitle: React.CSSProperties = {
 
 const info: React.CSSProperties = {
   color: "#475569",
-  marginTop: 10,
+  margin: "8px 0 0",
+  fontWeight: 800,
+};
+
+const captionText: React.CSSProperties = {
+  color: "#334155",
+  marginTop: 12,
 };
 
 const dateText: React.CSSProperties = {

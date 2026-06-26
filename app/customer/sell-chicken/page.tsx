@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+type Profile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+};
+
 type Flock = {
   id: string;
   batch_no: string;
@@ -11,6 +17,14 @@ type Flock = {
   alive_count: number;
   created_at: string;
   status: string;
+};
+
+type PriceSetting = {
+  id: string;
+  price_per_chicken: number;
+  technical_fee_rate: number;
+  status: string;
+  updated_at: string;
 };
 
 type SellRequest = {
@@ -25,9 +39,6 @@ type SellRequest = {
   status: string;
   created_at: string;
 };
-
-const PRICE_PER_CHICKEN = 350;
-const TECHNICAL_FEE_RATE = 0.02;
 
 function daysOld(date: string) {
   return Math.max(
@@ -47,26 +58,15 @@ function chickenStage(days: number) {
 }
 
 export default function SellChickenPage() {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [priceSetting, setPriceSetting] = useState<PriceSetting | null>(null);
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [requests, setRequests] = useState<SellRequest[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  function getProfile() {
-    const user = localStorage.getItem("farmconnect_user");
-    if (!user) return null;
-
-    try {
-      const parsed = JSON.parse(user);
-      return {
-        id: parsed?.id || parsed?.profile_id || parsed?.customer_id || "",
-      };
-    } catch {
-      return null;
-    }
-  }
+  const [message, setMessage] = useState("");
 
   const selectedFlock = useMemo(
     () => flocks.find((f) => f.id === selectedFlockId),
@@ -75,40 +75,126 @@ export default function SellChickenPage() {
 
   const age = selectedFlock ? daysOld(selectedFlock.created_at) : 0;
   const stage = chickenStage(age);
-  const totalAmount = quantity * PRICE_PER_CHICKEN;
-  const farmConnectFee = totalAmount * TECHNICAL_FEE_RATE;
+
+  const pricePerChicken = Number(priceSetting?.price_per_chicken || 0);
+  const technicalFeeRate = Number(priceSetting?.technical_fee_rate || 0.02);
+
+  const totalAmount = quantity * pricePerChicken;
+  const farmConnectFee = totalAmount * technicalFeeRate;
   const customerNetAmount = totalAmount - farmConnectFee;
 
   const canSell =
+    !!profile &&
+    !!priceSetting &&
+    pricePerChicken > 0 &&
     !!selectedFlock &&
     age >= 30 &&
     quantity >= 1 &&
     quantity <= Number(selectedFlock.alive_count || 0);
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function resolveProfile() {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      setMessage("Login required.");
+      return null;
+    }
+
+    const authUser = authData.user;
+
+    const { data: profileById } = await supabase
+      .from("profiles")
+      .select("id,email,full_name")
+      .eq("id", authUser.id)
+      .maybeSingle();
+
+    if (profileById) return profileById as Profile;
+
+    const { data: profileByEmail } = await supabase
+      .from("profiles")
+      .select("id,email,full_name")
+      .eq("email", authUser.email)
+      .maybeSingle();
+
+    if (profileByEmail) return profileByEmail as Profile;
+
+    setMessage("Login required. Customer profile not found.");
+    return null;
+  }
+
+  async function loadActivePriceSetting() {
+    const { data, error } = await supabase
+      .from("sell_chicken_price_settings")
+      .select("id,price_per_chicken,technical_fee_rate,status,updated_at")
+      .eq("status", "ACTIVE")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      setPriceSetting(null);
+      setMessage(`Sell price load error: ${error.message}`);
+      return null;
+    }
+
+    if (!data) {
+      setPriceSetting(null);
+      setMessage("No active sell chicken price set by admin.");
+      return null;
+    }
+
+    setPriceSetting(data as PriceSetting);
+    return data as PriceSetting;
+  }
+
   async function loadData() {
-    const profile = getProfile();
-    if (!profile?.id) {
+    setLoading(true);
+    setMessage("");
+
+    const [resolvedProfile] = await Promise.all([
+      resolveProfile(),
+      loadActivePriceSetting(),
+    ]);
+
+    setProfile(resolvedProfile);
+
+    if (!resolvedProfile?.id) {
+      setFlocks([]);
+      setRequests([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-
-    const { data: flockData } = await supabase
+    const { data: flockData, error: flockError } = await supabase
       .from("flocks")
       .select("id,batch_no,breed,alive_count,created_at,status")
-      .eq("profile_id", profile.id)
+      .eq("profile_id", resolvedProfile.id)
       .eq("status", "ACTIVE")
       .order("created_at", { ascending: false });
 
-    const { data: requestData } = await supabase
+    const { data: requestData, error: requestError } = await supabase
       .from("sell_chicken_requests")
       .select("*")
-      .eq("profile_id", profile.id)
+      .eq("profile_id", resolvedProfile.id)
       .order("created_at", { ascending: false });
 
-    setFlocks((flockData || []) as Flock[]);
-    setRequests((requestData || []) as SellRequest[]);
+    if (flockError) {
+      setMessage(`Flock load error: ${flockError.message}`);
+      setFlocks([]);
+    } else {
+      setFlocks((flockData || []) as Flock[]);
+    }
+
+    if (requestError) {
+      setMessage(`Sell history load error: ${requestError.message}`);
+      setRequests([]);
+    } else {
+      setRequests((requestData || []) as SellRequest[]);
+    }
 
     if (flockData && flockData.length > 0 && !selectedFlockId) {
       setSelectedFlockId(flockData[0].id);
@@ -117,14 +203,18 @@ export default function SellChickenPage() {
     setLoading(false);
   }
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   async function submitSellRequest() {
-    const profile = getProfile();
+    if (!profile?.id) {
+      alert("Login required.");
+      return;
+    }
 
-    if (!profile?.id || !selectedFlock) {
+    if (!priceSetting) {
+      alert("No active sell chicken price set by admin.");
+      return;
+    }
+
+    if (!selectedFlock) {
       alert("Please select a flock.");
       return;
     }
@@ -135,7 +225,7 @@ export default function SellChickenPage() {
     }
 
     const confirmSubmit = confirm(
-      `Submit sell request for ${quantity} chicken(s)? Chicken count will be reserved immediately while waiting for admin approval.`
+      `Submit sell request for ${quantity} chicken(s) at ₱${pricePerChicken.toLocaleString()} each? Chicken count will be reserved immediately while waiting for admin approval.`
     );
 
     if (!confirmSubmit) return;
@@ -159,21 +249,23 @@ export default function SellChickenPage() {
       return;
     }
 
+    const insertPayload: Record<string, any> = {
+      profile_id: profile.id,
+      flock_id: selectedFlock.id,
+      batch_no: selectedFlock.batch_no,
+      breed: selectedFlock.breed,
+      chicken_stage: stage,
+      quantity,
+      price_per_chicken: pricePerChicken,
+      total_amount: totalAmount,
+      status: "PENDING_ADMIN_APPROVAL",
+      admin_notes:
+        "Chicken count reserved immediately. Waiting for admin approval.",
+    };
+
     const { error: insertError } = await supabase
       .from("sell_chicken_requests")
-      .insert({
-        profile_id: profile.id,
-        flock_id: selectedFlock.id,
-        batch_no: selectedFlock.batch_no,
-        breed: selectedFlock.breed,
-        chicken_stage: stage,
-        quantity,
-        price_per_chicken: PRICE_PER_CHICKEN,
-        total_amount: totalAmount,
-        status: "PENDING_ADMIN_APPROVAL",
-        admin_notes:
-          "Chicken count reserved immediately. Waiting for admin approval.",
-      });
+      .insert(insertPayload);
 
     if (insertError) {
       await supabase
@@ -206,6 +298,11 @@ export default function SellChickenPage() {
             <p className="font-semibold text-green-700">
               Submit sell requests. Chicken count is reserved immediately.
             </p>
+            {profile && (
+              <p className="mt-1 text-sm font-bold text-green-700">
+                Customer: {profile.full_name || profile.email || "Profile"}
+              </p>
+            )}
           </div>
 
           <Link
@@ -216,9 +313,31 @@ export default function SellChickenPage() {
           </Link>
         </div>
 
+        {message && (
+          <div className="mb-6 rounded-3xl bg-white p-5 font-black text-orange-700 shadow">
+            {message}
+          </div>
+        )}
+
+        {priceSetting && (
+          <div className="mb-6 rounded-3xl bg-white p-5 shadow">
+            <p className="font-bold text-gray-500">Current Admin Sell Price</p>
+            <h2 className="text-3xl font-black text-green-800">
+              ₱{pricePerChicken.toLocaleString()} per chicken
+            </h2>
+            <p className="mt-1 font-bold text-orange-700">
+              Technical Fee: {(technicalFeeRate * 100).toLocaleString()}%
+            </p>
+          </div>
+        )}
+
         {loading ? (
           <div className="rounded-3xl bg-white p-8 text-center font-black shadow">
             Loading sell data...
+          </div>
+        ) : !profile ? (
+          <div className="rounded-3xl bg-white p-8 text-center font-black text-red-700 shadow">
+            Login required.
           </div>
         ) : (
           <section className="grid gap-6 lg:grid-cols-[1fr_420px]">
@@ -302,10 +421,10 @@ export default function SellChickenPage() {
 
                   <div className="mt-4 rounded-2xl bg-yellow-50 p-4">
                     <p className="font-bold text-gray-500">
-                      Price per chicken
+                      Live Price per chicken
                     </p>
                     <h3 className="text-2xl font-black text-green-800">
-                      ₱{PRICE_PER_CHICKEN.toLocaleString()}
+                      ₱{pricePerChicken.toLocaleString()}
                     </h3>
                   </div>
 
@@ -319,7 +438,7 @@ export default function SellChickenPage() {
                   <div className="mt-4 grid gap-3">
                     <div className="rounded-2xl bg-orange-50 p-4">
                       <p className="font-bold text-gray-500">
-                        FarmConnect 2% Fee
+                        FarmConnect Fee
                       </p>
                       <h3 className="text-xl font-black text-orange-700">
                         ₱{farmConnectFee.toLocaleString()}
@@ -338,7 +457,8 @@ export default function SellChickenPage() {
 
                   {!canSell && (
                     <div className="mt-4 rounded-2xl bg-red-50 p-4 font-bold text-red-700">
-                      Chicken must reach Young Tandang or Mature Tandang stage.
+                      Login, active admin price, valid quantity, and Young
+                      Tandang or Mature Tandang stage are required.
                     </div>
                   )}
 
@@ -371,15 +491,16 @@ export default function SellChickenPage() {
                         <th className="p-3 text-left">Batch</th>
                         <th className="p-3 text-left">Stage</th>
                         <th className="p-3 text-left">Qty</th>
+                        <th className="p-3 text-left">Price</th>
                         <th className="p-3 text-left">Gross</th>
-                        <th className="p-3 text-left">Net 98%</th>
+                        <th className="p-3 text-left">Net</th>
                         <th className="p-3 text-left">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {requests.map((r) => {
                         const gross = Number(r.total_amount || 0);
-                        const net = gross - gross * TECHNICAL_FEE_RATE;
+                        const net = gross - gross * technicalFeeRate;
 
                         return (
                           <tr key={r.id} className="border-t">
@@ -389,6 +510,9 @@ export default function SellChickenPage() {
                             <td className="p-3">{r.batch_no}</td>
                             <td className="p-3">{r.chicken_stage}</td>
                             <td className="p-3">{r.quantity}</td>
+                            <td className="p-3">
+                              ₱{Number(r.price_per_chicken || 0).toLocaleString()}
+                            </td>
                             <td className="p-3">
                               ₱{gross.toLocaleString()}
                             </td>
