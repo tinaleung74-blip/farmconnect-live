@@ -37,8 +37,8 @@ export default function HomePage() {
         }}
       />
 
-      <div className="absolute inset-0 bg-gradient-to-b from-white/55 via-white/20 to-white/85" />
-      <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-white via-white/80 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/35 via-emerald-950/15 to-emerald-950/45" />
+<div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-emerald-950/75 via-emerald-950/25 to-transparent" />
 
       <section className="relative z-10 flex min-h-screen flex-col items-center px-5 py-8">
         <header className="mb-10 w-full max-w-7xl rounded-[28px] border border-white/60 bg-white/70 px-6 py-4 shadow-2xl backdrop-blur-xl">
