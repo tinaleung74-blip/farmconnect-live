@@ -401,9 +401,8 @@ function formatDate(value?: string | null) {
 
 const page: React.CSSProperties = {
   minHeight: "100vh",
-  background:
-    "radial-gradient(circle at top left, rgba(254,202,202,0.92), transparent 34%), linear-gradient(180deg, #fff7ed 0%, #fee2e2 45%, #ecfccb 100%)",
-  padding: 20,
+  background: "radial-gradient(circle at top left, rgba(255,199,0,0.38), transparent 34%), linear-gradient(180deg, #ffffff 0%, #fff7cf 55%, #ffe68a 100%)",
+  padding: "18px clamp(14px, 3vw, 28px) 28px",
   fontFamily: "Arial, sans-serif",
 };
 
@@ -422,7 +421,7 @@ const topNav: React.CSSProperties = {
 };
 
 const backLink: React.CSSProperties = {
-  color: "#991b1b",
+  color: "#854d0e",
   fontWeight: 900,
   textDecoration: "none",
   background: "rgba(255,255,255,0.9)",
@@ -438,7 +437,7 @@ const navLinks: React.CSSProperties = {
 };
 
 const navLink: React.CSSProperties = {
-  color: "#7f1d1d",
+  color: "#0f172a",
   background: "rgba(255,255,255,0.8)",
   border: "1px solid rgba(153,27,27,0.12)",
   borderRadius: 999,
@@ -449,7 +448,7 @@ const navLink: React.CSSProperties = {
 };
 
 const hero: React.CSSProperties = {
-  background: "linear-gradient(135deg, #dc2626, #f97316)",
+  background: "linear-gradient(135deg, #facc15, #fbbf24)",
   borderRadius: 30,
   padding: 24,
   color: "white",
@@ -541,7 +540,7 @@ const summaryIcon: React.CSSProperties = {
   borderRadius: 18,
   display: "grid",
   placeItems: "center",
-  background: "#fee2e2",
+  background: "#fef3c7",
   fontSize: 28,
 };
 
@@ -555,7 +554,7 @@ const summaryLabel: React.CSSProperties = {
 
 const summaryValue: React.CSSProperties = {
   margin: "4px 0",
-  color: "#7f1d1d",
+  color: "#0f172a",
   fontSize: 30,
   fontWeight: 900,
 };
@@ -569,8 +568,8 @@ const summaryHint: React.CSSProperties = {
 
 const notice: React.CSSProperties = {
   marginTop: 18,
-  background: "#fee2e2",
-  color: "#991b1b",
+  background: "#fef3c7",
+  color: "#854d0e",
   padding: 16,
   borderRadius: 18,
   border: "1px solid rgba(153,27,27,0.14)",
@@ -610,7 +609,7 @@ const sectionHeader: React.CSSProperties = {
 
 const sectionEyebrow: React.CSSProperties = {
   margin: 0,
-  color: "#b91c1c",
+  color: "#ca8a04",
   fontSize: 12,
   fontWeight: 900,
   letterSpacing: 1.2,
@@ -619,14 +618,14 @@ const sectionEyebrow: React.CSSProperties = {
 
 const sectionTitle: React.CSSProperties = {
   margin: "4px 0 0",
-  color: "#7f1d1d",
+  color: "#0f172a",
   fontSize: 26,
   fontWeight: 900,
 };
 
 const refreshButton: React.CSSProperties = {
   border: "none",
-  background: "#991b1b",
+  background: "#854d0e",
   color: "white",
   borderRadius: 14,
   padding: "11px 15px",
@@ -667,11 +666,11 @@ const selectedBox: React.CSSProperties = {
   justifyContent: "space-between",
   gap: 12,
   flexWrap: "wrap",
-  background: "#fff7ed",
-  color: "#7c2d12",
+  background: "#fffbeb",
+  color: "#854d0e",
   padding: 14,
   borderRadius: 16,
-  border: "1px solid #fed7aa",
+  border: "1px solid #fde68a",
 };
 
 const button: React.CSSProperties = {
@@ -679,7 +678,7 @@ const button: React.CSSProperties = {
   padding: 16,
   borderRadius: 18,
   border: "none",
-  background: "linear-gradient(135deg, #dc2626, #f97316)",
+  background: "linear-gradient(135deg, #facc15, #fbbf24)",
   color: "white",
   fontSize: 17,
   fontWeight: 900,
@@ -689,12 +688,12 @@ const button: React.CSSProperties = {
 
 const guideCard: React.CSSProperties = {
   ...card,
-  background: "#fff7ed",
+  background: "#fffbeb",
 };
 
 const guideTitle: React.CSSProperties = {
   margin: "4px 0 16px",
-  color: "#7c2d12",
+  color: "#854d0e",
   fontSize: 24,
   fontWeight: 900,
 };
@@ -714,8 +713,8 @@ const guideItem: React.CSSProperties = {
 };
 
 const historyBadge: React.CSSProperties = {
-  background: "#fee2e2",
-  color: "#991b1b",
+  background: "#fef3c7",
+  color: "#854d0e",
   borderRadius: 999,
   padding: "8px 12px",
   fontSize: 12,
@@ -753,8 +752,8 @@ const countBadge: React.CSSProperties = {
   borderRadius: 22,
   display: "grid",
   placeItems: "center",
-  background: "#fee2e2",
-  color: "#991b1b",
+  background: "#fef3c7",
+  color: "#854d0e",
   fontWeight: 900,
 };
 
@@ -764,7 +763,7 @@ const historyBody: React.CSSProperties = {
 
 const typeText: React.CSSProperties = {
   margin: 0,
-  color: "#b91c1c",
+  color: "#ca8a04",
   fontSize: 12,
   fontWeight: 900,
   textTransform: "uppercase",

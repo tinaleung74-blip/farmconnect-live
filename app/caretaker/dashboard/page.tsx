@@ -31,7 +31,7 @@ type CaretakerProfile = {
 };
 
 const navLinks = [
-  { href: "/caretaker", label: "Portal" },
+  { href: "/caretaker", label: "Dashboard" },
   { href: "/caretaker/tasks", label: "Tasks" },
   { href: "/caretaker/feeding", label: "Feeding" },
   { href: "/caretaker/photos", label: "Photos" },
@@ -40,49 +40,12 @@ const navLinks = [
   { href: "/caretaker/notes", label: "Notes" },
 ];
 
-const cards = [
-  {
-    title: "Tasks",
-    icon: "🧑‍🌾",
-    desc: "Review active paid chicken jobs",
-    href: "/caretaker/tasks",
-    color: "#86efac",
-  },
-  {
-    title: "Feeding Update",
-    icon: "🌽",
-    desc: "Record feeds given today",
-    href: "/caretaker/feeding",
-    color: "#facc15",
-  },
-  {
-    title: "Weight Update",
-    icon: "⚖️",
-    desc: "Upload latest flock weight",
-    href: "/caretaker/weight",
-    color: "#38bdf8",
-  },
-  {
-    title: "Photo Update",
-    icon: "📸",
-    desc: "Upload chicken/farm photo",
-    href: "/caretaker/photos",
-    color: "#fb7185",
-  },
-  {
-    title: "Mortality Report",
-    icon: "🐔",
-    desc: "Report dead/lost chickens",
-    href: "/caretaker/mortality",
-    color: "#f97316",
-  },
-  {
-    title: "Notes / Concern",
-    icon: "📝",
-    desc: "Send concern to admin",
-    href: "/caretaker/notes",
-    color: "#a78bfa",
-  },
+const quickActions = [
+  { title: "Feeding", icon: "🌽", desc: "Submit daily feed log", href: "/caretaker/feeding", color: "from-yellow-400 to-orange-500" },
+  { title: "Weight", icon: "⚖️", desc: "Upload latest weight", href: "/caretaker/weight", color: "from-sky-400 to-blue-600" },
+  { title: "Photos", icon: "📸", desc: "Send farm photo update", href: "/caretaker/photos", color: "from-pink-400 to-rose-600" },
+  { title: "Mortality", icon: "🐔", desc: "Report lost/dead chicken", href: "/caretaker/mortality", color: "from-orange-500 to-red-600" },
+  { title: "Notes", icon: "📝", desc: "Send concern to admin", href: "/caretaker/notes", color: "from-violet-400 to-purple-600" },
 ];
 
 export default function CaretakerDashboard() {
@@ -90,7 +53,6 @@ export default function CaretakerDashboard() {
   const [assignments, setAssignments] = useState<PaidAssignment[]>([]);
   const [caretaker, setCaretaker] = useState<CaretakerProfile | null>(null);
   const [caretakerId, setCaretakerId] = useState("");
-  const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const activeAssignmentCount = assignments.length;
@@ -105,7 +67,6 @@ export default function CaretakerDashboard() {
 
   async function initializeDashboard() {
     setLoading(true);
-    setMessage("");
     setErrorMessage("");
 
     const resolvedCaretaker = await resolveLoggedInCaretaker();
@@ -120,28 +81,20 @@ export default function CaretakerDashboard() {
 
     setCaretaker(resolvedCaretaker);
     setCaretakerId(resolvedCaretaker.id);
-
     await loadPaidAssignments(resolvedCaretaker.id);
-
     setLoading(false);
   }
 
   async function resolveLoggedInCaretaker() {
-    const { data: authData, error: authError } =
-      await supabase.auth.getUser();
-
+    const { data: authData, error: authError } = await supabase.auth.getUser();
     const authUser = authData?.user;
 
     if (authError || !authUser) {
-      setErrorMessage(
-        authError?.message ||
-          "Please login again so FarmConnect can verify your caretaker account."
-      );
+      setErrorMessage("Please login again so FarmConnect can verify your caretaker account.");
       return null;
     }
 
-    const selectFields =
-      "id,caretaker_profile_id,email,full_name,status,level";
+    const selectFields = "id,caretaker_profile_id,email,full_name,status,level";
 
     const { data: profileMatch, error: profileError } = await supabase
       .from("caretakers")
@@ -154,14 +107,10 @@ export default function CaretakerDashboard() {
       return null;
     }
 
-    if (profileMatch) {
-      return profileMatch as CaretakerProfile;
-    }
+    if (profileMatch) return profileMatch as CaretakerProfile;
 
     if (!authUser.email) {
-      setErrorMessage(
-        "No caretaker profile found for this login. Please ask FarmConnect Admin to link your account."
-      );
+      setErrorMessage("No caretaker profile found for this login. Please ask Admin to link your account.");
       return null;
     }
 
@@ -177,9 +126,7 @@ export default function CaretakerDashboard() {
     }
 
     if (!emailMatch) {
-      setErrorMessage(
-        "No caretaker profile found for this login. Please ask FarmConnect Admin to link your caretaker profile."
-      );
+      setErrorMessage("No caretaker profile found for this login. Please ask Admin to link your caretaker profile.");
       return null;
     }
 
@@ -190,7 +137,7 @@ export default function CaretakerDashboard() {
     const { data, error } = await supabase
       .from("customer_caretaker_hires")
       .select(
-        "id,profile_id,caretaker_id,caretaker_name,flock_id,duration_days,rate_per_chick,total_chicks,total_fee,status,payment_status,start_date,end_date,created_at"
+        "id,profile_id,caretaker_id,caretaker_name,flock_id,duration_days,rate_per_chick,total_chicks,total_fee,status,payment_status,start_date,end_date,created_at",
       )
       .eq("caretaker_id", currentCaretakerId)
       .eq("status", "ACTIVE")
@@ -206,10 +153,13 @@ export default function CaretakerDashboard() {
     setAssignments((data || []) as PaidAssignment[]);
   }
 
-  function formatPeso(amount: number | null | undefined) {
-    const safeAmount = Number(amount || 0);
+  async function signOut() {
+    await supabase.auth.signOut();
+    window.location.href = "/caretaker/login";
+  }
 
-    return safeAmount.toLocaleString("en-PH", {
+  function formatPeso(amount: number | null | undefined) {
+    return Number(amount || 0).toLocaleString("en-PH", {
       style: "currency",
       currency: "PHP",
       maximumFractionDigits: 0,
@@ -218,7 +168,6 @@ export default function CaretakerDashboard() {
 
   function formatDate(date: string | null) {
     if (!date) return "Pending";
-
     return new Date(date).toLocaleDateString("en-PH", {
       year: "numeric",
       month: "short",
@@ -227,536 +176,253 @@ export default function CaretakerDashboard() {
   }
 
   return (
-    <main style={page}>
-      <nav style={topNav}>
-        <Link href="/caretaker" style={brandLink}>
-          🌾 FarmConnect Caretaker
-        </Link>
-        <div style={navPills}>
-          {navLinks.map((item) => (
-            <Link key={item.href} href={item.href} style={navPill}>
-              {item.label}
+    <main className="relative min-h-screen overflow-hidden bg-[#fff8dc] text-slate-950">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+        style={{ backgroundImage: "url('/farmconnect-hero-wallpaper.jpg.jpg')" }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-yellow-50/85 to-yellow-100/90" />
+
+      <section className="relative z-10 mx-auto max-w-7xl px-4 py-5 pb-28 md:px-8">
+        <header className="sticky top-4 z-30 rounded-[28px] border border-yellow-200 bg-white/80 px-5 py-4 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <Link href="/caretaker" className="text-xl font-black text-slate-950">
+              🌾 FarmConnect Caretaker
             </Link>
-          ))}
-        </div>
-      </nav>
 
-      <section style={hero}>
-        <div>
-          <p style={small}>FarmConnect Caretaker</p>
-          <h1 style={title}>Good day, Ka-Farm! 🌾</h1>
-          <p style={subtitle}>
-            {caretaker?.full_name
-              ? `Welcome back, ${caretaker.full_name}.`
-              : "Simple upload lang. Piliin ang gagawin today."}
-          </p>
-          <div style={heroActions}>
-            <Link href="/caretaker/tasks" style={heroButton}>View Tasks</Link>
-            <Link href="/caretaker/feeding" style={heroGhostButton}>Submit Feeding</Link>
+            <nav className="hidden flex-wrap items-center gap-2 lg:flex">
+              {navLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-full px-4 py-2 text-sm font-black text-slate-950/85 transition hover:bg-yellow-100 hover:text-slate-950"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+
+            <button
+              onClick={signOut}
+              className="rounded-full bg-yellow-400 px-5 py-2 text-sm font-black text-slate-950 transition hover:bg-yellow-300"
+            >
+              Logout
+            </button>
           </div>
-        </div>
-        <div style={sun}>☀️</div>
-      </section>
+        </header>
 
-      <section style={statusBox}>
-        <div>
-          <b>Today&apos;s Status</b>
-          <p style={muted}>
-            {loading
-              ? "Checking your FarmConnect assignments..."
-              : activeAssignmentCount > 0
-              ? "You have active paid customer assignments."
-              : "No paid assignment yet. Wait for FarmConnect Admin assignment."}
-          </p>
-        </div>
-        <span style={badge}>
-          {activeAssignmentCount > 0 ? "ASSIGNED" : "ACTIVE"}
-        </span>
-      </section>
-
-      <section style={summaryGrid}>
-        <div style={summaryCard}>
-          <p style={summaryLabel}>Paid Assignments</p>
-          <h2 style={summaryValue}>{loading ? "..." : activeAssignmentCount}</h2>
-          <p style={summaryText}>ACTIVE + PAID only</p>
-        </div>
-
-        <div style={summaryCard}>
-          <p style={summaryLabel}>Total Chicks Under Care</p>
-          <h2 style={summaryValue}>{loading ? "..." : totalChicks}</h2>
-          <p style={summaryText}>Customer-owned poultry assets</p>
-        </div>
-
-        <div style={summaryCard}>
-          <p style={summaryLabel}>Caretaker ID</p>
-          <h2 style={summarySmallValue}>
-            {caretakerId ? caretakerId.slice(0, 8) : "Missing"}
-          </h2>
-          <p style={summaryText}>Used for assignment matching</p>
-        </div>
-      </section>
-
-      {message && <div style={successBox}>{message}</div>}
-
-      {errorMessage && <div style={errorBox}>{errorMessage}</div>}
-
-      <section style={assignmentPanel}>
-        <div style={sectionHeader}>
-          <div>
-            <p style={smallDark}>New Paid Assignments</p>
-            <h2 style={sectionTitle}>Caretaker Job Notifications</h2>
-            <p style={sectionText}>
-              Approved and paid customer hire requests appear here automatically.
+        <section className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_.8fr]">
+          <div className="rounded-[36px] border border-yellow-200 bg-white/85 p-7 shadow-2xl backdrop-blur-xl md:p-10">
+            <p className="w-fit rounded-full bg-yellow-400 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-slate-950">
+              Live Farm Operations
             </p>
+
+            <h1 className="mt-5 text-4xl font-black leading-tight md:text-6xl">
+              Good day, {caretaker?.full_name || "Ka-Farm"} 👨‍🌾
+            </h1>
+
+            <p className="mt-4 max-w-2xl text-lg font-semibold leading-8 text-slate-950/80">
+              Monitor your assigned poultry jobs, submit daily farm updates, and keep Admin informed with real-time field reports.
+            </p>
+
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href="/caretaker/tasks" className="rounded-2xl bg-yellow-400 px-6 py-4 font-black text-slate-950 shadow-xl transition hover:bg-yellow-300">
+                View Tasks
+              </Link>
+              <Link href="/caretaker/feeding" className="rounded-2xl bg-yellow-400 px-6 py-4 font-black text-slate-950 shadow-xl transition hover:bg-amber-200">
+                Submit Feeding
+              </Link>
+              <button
+                onClick={initializeDashboard}
+                className="rounded-2xl border border-yellow-200 bg-white px-6 py-4 font-black text-slate-950 transition hover:bg-yellow-50"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
 
-          <button onClick={initializeDashboard} style={refreshButton}>
-            Refresh
-          </button>
-        </div>
-
-        {loading ? (
-          <div style={emptyBox}>Loading paid assignments...</div>
-        ) : assignments.length === 0 ? (
-          <div style={emptyBox}>
-            No new paid assignment yet. Once Admin approves and marks paid, the
-            job will appear here.
-          </div>
-        ) : (
-          <div style={assignmentGrid}>
-            {assignments.map((assignment) => (
-              <div key={assignment.id} style={assignmentCard}>
-                <div style={assignmentTop}>
-                  <div>
-                    <p style={assignmentLabel}>PAID CUSTOMER ASSIGNMENT</p>
-                    <h3 style={assignmentTitle}>
-                      {assignment.total_chicks} Premium Chicks
-                    </h3>
-                  </div>
-
-                  <div style={paidBadge}>PAID</div>
-                </div>
-
-                <div style={assignmentDetails}>
-                  <div style={detailBox}>
-                    <p style={detailLabel}>Customer/Profile</p>
-                    <p style={detailValue}>{assignment.profile_id.slice(0, 8)}</p>
-                  </div>
-
-                  <div style={detailBox}>
-                    <p style={detailLabel}>Duration</p>
-                    <p style={detailValue}>{assignment.duration_days} days</p>
-                  </div>
-
-                  <div style={detailBox}>
-                    <p style={detailLabel}>Total Fee</p>
-                    <p style={detailValue}>{formatPeso(assignment.total_fee)}</p>
-                  </div>
-
-                  <div style={detailBox}>
-                    <p style={detailLabel}>Start</p>
-                    <p style={detailValue}>{formatDate(assignment.start_date)}</p>
-                  </div>
-                </div>
-
-                <div style={assignmentNote}>
-                  FarmConnect Admin has approved and verified this customer
-                  caretaker request. Complete daily updates for this assignment.
-                </div>
+          <aside className="rounded-[36px] border border-yellow-200 bg-white/80 p-7 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-yellow-600">
+                  Status
+                </p>
+                <h2 className="mt-2 text-3xl font-black">
+                  {loading ? "Checking..." : activeAssignmentCount > 0 ? "Assigned" : "Standby"}
+                </h2>
               </div>
-            ))}
+              <div className="grid h-20 w-20 place-items-center rounded-3xl bg-yellow-100 text-5xl">
+                🐔
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-white/10 bg-yellow-50 p-5">
+              <p className="text-sm font-bold text-slate-500">Caretaker ID</p>
+              <p className="mt-2 text-2xl font-black text-slate-950">
+                {caretakerId ? caretakerId.slice(0, 8) : "Missing"}
+              </p>
+              <p className="mt-2 text-sm font-semibold text-slate-950/60">
+                Used for assignment matching.
+              </p>
+            </div>
+          </aside>
+        </section>
+
+        {errorMessage && (
+          <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 p-5 text-center font-black text-red-700 backdrop-blur-xl">
+            {errorMessage}
           </div>
         )}
+
+        <section className="mt-6 grid gap-4 md:grid-cols-3">
+          <StatCard label="Paid Assignments" value={loading ? "..." : activeAssignmentCount} note="ACTIVE + PAID only" icon="📋" />
+          <StatCard label="Chicks Under Care" value={loading ? "..." : totalChicks} note="Customer-owned poultry assets" icon="🐣" />
+          <StatCard label="Farm Status" value={activeAssignmentCount > 0 ? "Live" : "Ready"} note="Realtime caretaker operations" icon="🟢" />
+        </section>
+
+        <section className="mt-6 rounded-[36px] border border-yellow-200 bg-white/80 p-6 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-yellow-600">
+                Quick Actions
+              </p>
+              <h2 className="mt-2 text-3xl font-black">Daily Farm Updates</h2>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="group rounded-[28px] border border-white/10 bg-white p-5 shadow-xl transition hover:-translate-y-1 hover:bg-yellow-50"
+              >
+                <div className={`grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br ${action.color} text-4xl shadow-lg transition group-hover:scale-110`}>
+                  {action.icon}
+                </div>
+                <h3 className="mt-4 text-xl font-black">{action.title}</h3>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-950/65">
+                  {action.desc}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-[36px] border border-yellow-200 bg-white/80 p-6 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-yellow-600">
+                New Paid Assignments
+              </p>
+              <h2 className="mt-2 text-3xl font-black">Caretaker Job Notifications</h2>
+              <p className="mt-2 font-semibold text-slate-950/70">
+                Approved and paid customer hire requests appear here automatically.
+              </p>
+            </div>
+
+            <button
+              onClick={initializeDashboard}
+              className="rounded-2xl bg-yellow-400 px-6 py-4 font-black text-slate-950 shadow-xl transition hover:bg-yellow-300"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="mt-6 rounded-3xl bg-white/10 p-6 text-center font-black text-slate-950/80">
+              Loading paid assignments...
+            </div>
+          ) : assignments.length === 0 ? (
+            <div className="mt-6 rounded-3xl border border-yellow-200 bg-white p-8 text-center">
+              <div className="text-6xl">🌾</div>
+              <h3 className="mt-4 text-2xl font-black">No active paid assignment yet</h3>
+              <p className="mx-auto mt-2 max-w-2xl font-semibold leading-7 text-slate-950/65">
+                Once Admin approves and marks a customer caretaker request as paid, the job will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-4">
+              {assignments.map((assignment) => (
+                <div
+                  key={assignment.id}
+                  className="rounded-[30px] border border-emerald-300/15 bg-yellow-50 p-5 shadow-xl"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-600">
+                        Paid Customer Assignment
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black">
+                        {assignment.total_chicks} Premium Chicks
+                      </h3>
+                    </div>
+
+                    <span className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-black text-slate-950">
+                      PAID
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 md:grid-cols-4">
+                    <Info label="Customer" value={assignment.profile_id.slice(0, 8)} />
+                    <Info label="Duration" value={`${assignment.duration_days} days`} />
+                    <Info label="Total Fee" value={formatPeso(assignment.total_fee)} />
+                    <Info label="Start" value={formatDate(assignment.start_date)} />
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Link href="/caretaker/feeding" className="rounded-2xl bg-yellow-400 px-5 py-3 font-black text-slate-950">
+                      Submit Feeding
+                    </Link>
+                    <Link href="/caretaker/photos" className="rounded-2xl bg-white/10 px-5 py-3 font-black text-slate-950">
+                      Upload Photo
+                    </Link>
+                    <Link href="/caretaker/weight" className="rounded-2xl bg-white/10 px-5 py-3 font-black text-slate-950">
+                      Add Weight
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </section>
 
-      <section style={grid}>
-        {cards.map((card) => (
-          <Link key={card.title} href={card.href} style={cardBox}>
-            <div style={{ ...iconBox, background: card.color }}>
-              {card.icon}
-            </div>
-            <h2 style={cardTitle}>{card.title}</h2>
-            <p style={cardDesc}>{card.desc}</p>
+      <nav className="fixed bottom-4 left-1/2 z-40 flex w-[calc(100%-24px)] max-w-xl -translate-x-1/2 justify-around rounded-full border border-yellow-200 bg-white/95 p-2 text-xs font-black text-slate-950 shadow-2xl backdrop-blur-xl lg:hidden">
+        {navLinks.slice(0, 5).map((item) => (
+          <Link key={item.href} href={item.href} className="rounded-full px-3 py-2 hover:bg-yellow-100">
+            {item.label}
           </Link>
         ))}
-      </section>
+      </nav>
     </main>
   );
 }
 
-const page: React.CSSProperties = {
-  minHeight: "100vh",
-  background:
-    "radial-gradient(circle at top left, rgba(250,204,21,0.28), transparent 32%), linear-gradient(180deg, #ecfccb 0%, #fef9c3 35%, #dbeafe 100%)",
-  padding: "18px clamp(14px, 3vw, 28px) 28px",
-  fontFamily: "Arial, sans-serif",
-};
+function StatCard({ label, value, note, icon }: { label: string; value: string | number; note: string; icon: string }) {
+  return (
+    <div className="rounded-[30px] border border-yellow-200 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.12em] text-emerald-100/70">
+            {label}
+          </p>
+          <h2 className="mt-3 text-4xl font-black text-slate-950">{value}</h2>
+          <p className="mt-2 font-semibold text-slate-950/60">{note}</p>
+        </div>
+        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/10 text-3xl">
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-const topNav: React.CSSProperties = {
-  maxWidth: 1180,
-  margin: "0 auto 18px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  flexWrap: "wrap",
-};
-
-const brandLink: React.CSSProperties = {
-  color: "#14532d",
-  fontWeight: 950,
-  textDecoration: "none",
-  background: "rgba(255,255,255,0.76)",
-  border: "1px solid rgba(34,197,94,0.18)",
-  borderRadius: 999,
-  padding: "10px 14px",
-  boxShadow: "0 10px 22px rgba(15,23,42,0.06)",
-};
-
-const navPills: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-  overflowX: "auto",
-  maxWidth: "100%",
-  paddingBottom: 4,
-};
-
-const navPill: React.CSSProperties = {
-  whiteSpace: "nowrap",
-  textDecoration: "none",
-  color: "#166534",
-  background: "rgba(255,255,255,0.82)",
-  border: "1px solid rgba(34,197,94,0.18)",
-  borderRadius: 999,
-  padding: "10px 13px",
-  fontSize: 13,
-  fontWeight: 900,
-};
-
-const hero: React.CSSProperties = {
-  maxWidth: 1180,
-  margin: "0 auto",
-  background: "linear-gradient(135deg, #16a34a, #84cc16)",
-  color: "white",
-  borderRadius: 32,
-  padding: "clamp(22px, 4vw, 34px)",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 18,
-  flexWrap: "wrap",
-  boxShadow: "0 22px 48px rgba(34,197,94,0.28)",
-};
-
-const small: React.CSSProperties = {
-  margin: 0,
-  opacity: 0.9,
-  fontWeight: 700,
-};
-
-const smallDark: React.CSSProperties = {
-  margin: 0,
-  color: "#15803d",
-  fontSize: 13,
-  fontWeight: 900,
-  letterSpacing: 1.2,
-  textTransform: "uppercase",
-};
-
-const title: React.CSSProperties = {
-  margin: "8px 0",
-  fontSize: "clamp(30px, 6vw, 46px)",
-  lineHeight: 1.05,
-  fontWeight: 950,
-};
-
-const subtitle: React.CSSProperties = {
-  margin: 0,
-  fontSize: 16,
-  lineHeight: 1.6,
-};
-
-const heroActions: React.CSSProperties = {
-  marginTop: 18,
-  display: "flex",
-  gap: 10,
-  flexWrap: "wrap",
-};
-
-const heroButton: React.CSSProperties = {
-  background: "white",
-  color: "#15803d",
-  borderRadius: 16,
-  padding: "12px 16px",
-  textDecoration: "none",
-  fontWeight: 950,
-  boxShadow: "0 12px 24px rgba(15,23,42,0.12)",
-};
-
-const heroGhostButton: React.CSSProperties = {
-  ...heroButton,
-  background: "rgba(255,255,255,0.18)",
-  color: "white",
-  border: "1px solid rgba(255,255,255,0.32)",
-};
-
-const sun: React.CSSProperties = {
-  fontSize: 54,
-};
-
-const statusBox: React.CSSProperties = {
-  maxWidth: 1180,
-  margin: "18px auto 0",
-  background: "rgba(255,255,255,0.85)",
-  borderRadius: 22,
-  padding: 18,
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  border: "1px solid rgba(34,197,94,0.2)",
-};
-
-const muted: React.CSSProperties = {
-  margin: "6px 0 0",
-  color: "#64748b",
-};
-
-const badge: React.CSSProperties = {
-  background: "#dcfce7",
-  color: "#166534",
-  padding: "8px 14px",
-  borderRadius: 999,
-  fontWeight: 900,
-};
-
-const summaryGrid: React.CSSProperties = {
-  maxWidth: 1180,
-  margin: "18px auto 0",
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 14,
-};
-
-const summaryCard: React.CSSProperties = {
-  background: "rgba(255,255,255,0.9)",
-  borderRadius: 22,
-  padding: 18,
-  border: "1px solid rgba(34,197,94,0.18)",
-  boxShadow: "0 10px 24px rgba(15,23,42,0.06)",
-};
-
-const summaryLabel: React.CSSProperties = {
-  margin: 0,
-  color: "#64748b",
-  fontSize: 13,
-  fontWeight: 900,
-};
-
-const summaryValue: React.CSSProperties = {
-  margin: "8px 0",
-  fontSize: 34,
-  fontWeight: 900,
-  color: "#14532d",
-};
-
-const summarySmallValue: React.CSSProperties = {
-  margin: "8px 0",
-  fontSize: 28,
-  fontWeight: 900,
-  color: "#14532d",
-};
-
-const summaryText: React.CSSProperties = {
-  margin: 0,
-  color: "#64748b",
-};
-
-const successBox: React.CSSProperties = {
-  marginTop: 18,
-  background: "#dcfce7",
-  color: "#166534",
-  borderRadius: 20,
-  padding: 16,
-  textAlign: "center",
-  fontWeight: 900,
-};
-
-const errorBox: React.CSSProperties = {
-  marginTop: 18,
-  background: "#fee2e2",
-  color: "#991b1b",
-  borderRadius: 20,
-  padding: 16,
-  textAlign: "center",
-  fontWeight: 900,
-};
-
-const assignmentPanel: React.CSSProperties = {
-  maxWidth: 1180,
-  margin: "20px auto 0",
-  background: "rgba(255,255,255,0.95)",
-  borderRadius: 28,
-  padding: 22,
-  border: "1px solid rgba(34,197,94,0.16)",
-  boxShadow: "0 12px 28px rgba(15,23,42,0.08)",
-};
-
-const sectionHeader: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 16,
-  alignItems: "flex-start",
-  flexWrap: "wrap",
-};
-
-const sectionTitle: React.CSSProperties = {
-  margin: "6px 0",
-  fontSize: 26,
-  color: "#14532d",
-  fontWeight: 900,
-};
-
-const sectionText: React.CSSProperties = {
-  margin: 0,
-  color: "#64748b",
-};
-
-const refreshButton: React.CSSProperties = {
-  border: "none",
-  background: "#15803d",
-  color: "white",
-  borderRadius: 14,
-  padding: "12px 18px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const emptyBox: React.CSSProperties = {
-  marginTop: 18,
-  background: "#f8fafc",
-  borderRadius: 20,
-  padding: 18,
-  textAlign: "center",
-  color: "#64748b",
-  fontWeight: 800,
-};
-
-const assignmentGrid: React.CSSProperties = {
-  marginTop: 18,
-  display: "grid",
-  gap: 14,
-};
-
-const assignmentCard: React.CSSProperties = {
-  background: "#f0fdf4",
-  border: "1px solid rgba(34,197,94,0.18)",
-  borderRadius: 22,
-  padding: 18,
-};
-
-const assignmentTop: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  alignItems: "flex-start",
-};
-
-const assignmentLabel: React.CSSProperties = {
-  margin: 0,
-  color: "#15803d",
-  fontSize: 12,
-  fontWeight: 900,
-  letterSpacing: 1.1,
-};
-
-const assignmentTitle: React.CSSProperties = {
-  margin: "6px 0 0",
-  fontSize: 22,
-  color: "#14532d",
-  fontWeight: 900,
-};
-
-const paidBadge: React.CSSProperties = {
-  background: "#16a34a",
-  color: "white",
-  borderRadius: 999,
-  padding: "8px 14px",
-  fontSize: 13,
-  fontWeight: 900,
-};
-
-const assignmentDetails: React.CSSProperties = {
-  marginTop: 14,
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-  gap: 12,
-};
-
-const detailBox: React.CSSProperties = {
-  background: "white",
-  borderRadius: 16,
-  padding: 14,
-};
-
-const detailLabel: React.CSSProperties = {
-  margin: 0,
-  color: "#64748b",
-  fontSize: 12,
-  fontWeight: 900,
-};
-
-const detailValue: React.CSSProperties = {
-  margin: "6px 0 0",
-  color: "#0f172a",
-  fontWeight: 900,
-};
-
-const assignmentNote: React.CSSProperties = {
-  marginTop: 14,
-  background: "white",
-  borderRadius: 16,
-  padding: 14,
-  color: "#334155",
-  fontWeight: 700,
-  lineHeight: 1.5,
-};
-
-const grid: React.CSSProperties = {
-  maxWidth: 1180,
-  margin: "20px auto 0",
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 16,
-};
-
-const cardBox: React.CSSProperties = {
-  background: "rgba(255,255,255,0.95)",
-  borderRadius: 26,
-  padding: 22,
-  textDecoration: "none",
-  color: "#0f172a",
-  border: "1px solid rgba(15,23,42,0.08)",
-  boxShadow: "0 12px 28px rgba(15,23,42,0.08)",
-};
-
-const iconBox: React.CSSProperties = {
-  width: 62,
-  height: 62,
-  borderRadius: 20,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 34,
-  marginBottom: 14,
-};
-
-const cardTitle: React.CSSProperties = {
-  margin: 0,
-  fontSize: 20,
-  fontWeight: 900,
-};
-
-const cardDesc: React.CSSProperties = {
-  margin: "8px 0 0",
-  color: "#64748b",
-};
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-yellow-50 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.15em] text-slate-500">{label}</p>
+      <p className="mt-2 font-black text-slate-950">{value}</p>
+    </div>
+  );
+}

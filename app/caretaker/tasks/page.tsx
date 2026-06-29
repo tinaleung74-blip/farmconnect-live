@@ -239,7 +239,7 @@ function formatDate(value?: string | null) {
 
 const page: React.CSSProperties = {
   minHeight: "100vh",
-  background: "radial-gradient(circle at top left, rgba(34,197,94,0.20), transparent 32%), linear-gradient(180deg, #ecfccb, #dbeafe)",
+  background: "radial-gradient(circle at top left, rgba(255,199,0,0.38), transparent 34%), linear-gradient(180deg, #ffffff 0%, #fff7cf 55%, #ffe68a 100%)",
   padding: "18px clamp(14px, 3vw, 28px) 28px",
   fontFamily: "Arial, sans-serif",
 };
@@ -265,7 +265,7 @@ const navPills: React.CSSProperties = {
 const navPill: React.CSSProperties = {
   whiteSpace: "nowrap",
   textDecoration: "none",
-  color: "#15803d",
+  color: "#ca8a04",
   background: "rgba(255,255,255,0.9)",
   border: "1px solid rgba(34,197,94,0.18)",
   borderRadius: 999,
@@ -277,7 +277,7 @@ const navPill: React.CSSProperties = {
 const back: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  color: "#15803d",
+  color: "#ca8a04",
   fontWeight: 950,
   textDecoration: "none",
   background: "rgba(255,255,255,0.9)",
@@ -322,7 +322,7 @@ const refreshButton: React.CSSProperties = {
   padding: "12px 16px",
   borderRadius: 16,
   border: "none",
-  background: "#16a34a",
+  background: "#facc15",
   color: "white",
   fontWeight: 950,
   cursor: "pointer",
@@ -331,7 +331,7 @@ const refreshButton: React.CSSProperties = {
 
 const notice: React.CSSProperties = {
   background: "#dcfce7",
-  color: "#166534",
+  color: "#854d0e",
   padding: 12,
   borderRadius: 14,
   marginBottom: 14,
@@ -366,7 +366,7 @@ const badge: React.CSSProperties = {
   margin: 0,
   marginBottom: 8,
   background: "#dcfce7",
-  color: "#166534",
+  color: "#854d0e",
   borderRadius: 999,
   padding: "5px 10px",
   fontSize: 12,
@@ -375,7 +375,7 @@ const badge: React.CSSProperties = {
 
 const taskTitle: React.CSSProperties = {
   margin: 0,
-  color: "#14532d",
+  color: "#0f172a",
   fontSize: 20,
   fontWeight: 900,
 };
@@ -403,7 +403,7 @@ const actionButton: React.CSSProperties = {
   textAlign: "center",
   padding: "10px 12px",
   borderRadius: 12,
-  background: "#0ea5e9",
+  background: "#facc15",
   color: "white",
   textDecoration: "none",
   fontWeight: 900,
@@ -411,5 +411,5 @@ const actionButton: React.CSSProperties = {
 
 const dangerButton: React.CSSProperties = {
   ...actionButton,
-  background: "#dc2626",
+  background: "#f59e0b",
 };

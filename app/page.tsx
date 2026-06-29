@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+const HERO_IMAGE = "/farmconnect-hero-wallpaper.jpg";
+
 const portals = [
   {
     title: "Customer Portal",
@@ -32,17 +34,21 @@ const portals = [
 
 export default function HomePage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-emerald-950 text-white">
-      <img
-        src="/images/farmconnect-hero-wallpaper.jpg"
-        alt="FarmConnect background"
-        className="absolute inset-0 h-full w-full object-cover object-center"
+    <main className="relative min-h-screen w-full overflow-hidden bg-emerald-950 text-white">
+      {/* FULLSCREEN BACKGROUND */}
+      <div
+        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url("${HERO_IMAGE}")`,
+        }}
       />
 
-      <div className="absolute inset-0 bg-black/35" />
-      <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 via-transparent to-emerald-950/70" />
+      {/* OVERLAYS */}
+      <div className="fixed inset-0 z-[1] bg-black/35" />
+      <div className="fixed inset-0 z-[2] bg-gradient-to-b from-emerald-950/20 via-transparent to-emerald-950/85" />
 
-      <section className="relative z-10 flex min-h-screen flex-col items-center px-5 py-8">
+      {/* CONTENT */}
+      <section className="relative z-10 flex min-h-screen w-full flex-col items-center px-5 py-8">
         <header className="mb-10 w-full max-w-7xl rounded-[28px] border border-white/25 bg-white/15 px-6 py-4 shadow-2xl backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <Link href="/" className="text-2xl font-black text-white md:text-3xl">

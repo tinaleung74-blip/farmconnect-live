@@ -274,7 +274,7 @@ function formatDate(value?: string | null) {
 const page: React.CSSProperties = {
   minHeight: "100vh",
   padding: 28,
-  background: "linear-gradient(135deg, #ecfdf5 0%, #f8fafc 45%, #eff6ff 100%)",
+  background: "linear-gradient(135deg, #06152c 0%, #0b2b5c 38%, #eef6ff 38%, #f8fafc 100%)",
   color: "#0f172a",
 };
 
@@ -286,7 +286,7 @@ const hero: React.CSSProperties = {
   alignItems: "center",
   padding: 30,
   borderRadius: 30,
-  background: "linear-gradient(135deg, #052e16, #047857, #2563eb)",
+  background: "linear-gradient(135deg, #06152c, #0f3c88, #2563eb)",
   color: "white",
   boxShadow: "0 20px 45px rgba(15,23,42,.18)",
   marginBottom: 22,
@@ -328,7 +328,7 @@ const refreshBtn: React.CSSProperties = {
   borderRadius: 16,
   padding: "13px 18px",
   fontWeight: 950,
-  color: "#064e3b",
+  color: "#0f3c88",
   background: "white",
   cursor: "pointer",
 };
@@ -453,7 +453,7 @@ const typeText: React.CSSProperties = {
 
 const itemTitle: React.CSSProperties = {
   margin: "4px 0",
-  color: "#14532d",
+  color: "#0f3c88",
   fontSize: 18,
   fontWeight: 950,
 };

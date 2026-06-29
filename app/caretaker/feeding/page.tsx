@@ -544,7 +544,7 @@ function formatDate(value?: string | null) {
 
 const page: React.CSSProperties = {
   minHeight: "100vh",
-  background: "radial-gradient(circle at top left, rgba(14,165,233,0.18), transparent 32%), linear-gradient(180deg, #dbeafe, #ecfccb)",
+  background: "radial-gradient(circle at top left, rgba(255,199,0,0.38), transparent 34%), linear-gradient(180deg, #ffffff 0%, #fff7cf 55%, #ffe68a 100%)",
   padding: "18px clamp(14px, 3vw, 28px) 28px",
   fontFamily: "Arial, sans-serif",
 };
@@ -570,7 +570,7 @@ const navPills: React.CSSProperties = {
 const navPill: React.CSSProperties = {
   whiteSpace: "nowrap",
   textDecoration: "none",
-  color: "#0369a1",
+  color: "#ca8a04",
   background: "rgba(255,255,255,0.88)",
   border: "1px solid rgba(14,165,233,0.18)",
   borderRadius: 999,
@@ -582,7 +582,7 @@ const navPill: React.CSSProperties = {
 const back: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  color: "#0369a1",
+  color: "#ca8a04",
   fontWeight: 950,
   textDecoration: "none",
   background: "rgba(255,255,255,0.9)",
@@ -625,7 +625,7 @@ const input: React.CSSProperties = {
   border: "1px solid #cbd5e1",
   background: "#f8fafc",
   fontSize: 16,
-  outlineColor: "#0ea5e9",
+  outlineColor: "#facc15",
   width: "100%",
   boxSizing: "border-box",
 };
@@ -635,7 +635,7 @@ const button: React.CSSProperties = {
   padding: 17,
   borderRadius: 18,
   border: "none",
-  background: "linear-gradient(135deg, #0284c7, #0ea5e9)",
+  background: "linear-gradient(135deg, #facc15, #fbbf24)",
   color: "white",
   fontSize: 17,
   fontWeight: 950,
@@ -644,8 +644,8 @@ const button: React.CSSProperties = {
 };
 
 const notice: React.CSSProperties = {
-  background: "#dbeafe",
-  color: "#075985",
+  background: "#fef3c7",
+  color: "#854d0e",
   padding: 14,
   borderRadius: 16,
   marginBottom: 16,
@@ -688,7 +688,7 @@ const noPhoto: React.CSSProperties = {
 
 const typeText: React.CSSProperties = {
   margin: 0,
-  color: "#15803d",
+  color: "#ca8a04",
   fontSize: 12,
   fontWeight: 900,
   textTransform: "uppercase",
@@ -696,7 +696,7 @@ const typeText: React.CSSProperties = {
 
 const animalName: React.CSSProperties = {
   margin: "4px 0",
-  color: "#14532d",
+  color: "#0f172a",
   fontSize: 20,
   fontWeight: 900,
 };
@@ -716,7 +716,7 @@ const detailText: React.CSSProperties = {
 
 const statusText: React.CSSProperties = {
   margin: "8px 0 0",
-  color: "#075985",
+  color: "#854d0e",
   fontWeight: 900,
 };
 
