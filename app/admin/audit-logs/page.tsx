@@ -236,7 +236,7 @@ const page: React.CSSProperties = {
   minHeight: "100vh",
   padding: 28,
   background:
-    "linear-gradient(135deg, #f0fdf4 0%, #eff6ff 45%, #fff7ed 100%)",
+    "linear-gradient(135deg, #06152c 0%, #0b2b5c 38%, #eef6ff 38%, #f8fafc 100%)",
   color: "#0f172a",
 };
 
@@ -248,7 +248,7 @@ const hero: React.CSSProperties = {
   alignItems: "center",
   padding: 28,
   borderRadius: 28,
-  background: "linear-gradient(135deg, #14532d, #166534, #2563eb)",
+  background: "linear-gradient(135deg, #06152c, #0f3c88, #2563eb)",
   color: "white",
   boxShadow: "0 20px 45px rgba(15, 23, 42, 0.18)",
   marginBottom: 24,
@@ -291,7 +291,7 @@ const refreshBtn: React.CSSProperties = {
   borderRadius: 16,
   padding: "13px 18px",
   fontWeight: 900,
-  color: "#14532d",
+  color: "#0f3c88",
   background: "white",
   cursor: "pointer",
 };

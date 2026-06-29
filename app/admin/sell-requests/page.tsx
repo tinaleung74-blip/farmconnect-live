@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type SellRequest = {
@@ -12,355 +12,243 @@ type SellRequest = {
   breed: string | null;
   chicken_stage: string | null;
   quantity: number | null;
-  price_per_chicken: number | null;
-  total_amount: number | null;
+  price_per_chicken: number | string | null;
+  total_amount: number | string | null;
   status: string | null;
-  admin_notes?: string | null;
-  created_at: string;
+  admin_notes: string | null;
+  created_at: string | null;
+  approved_at: string | null;
+  animal_id: string | null;
+  latest_photo_id: string | null;
+  latest_weight_id: string | null;
+  farmconnect_fee: number | string | null;
+  customer_net_amount: number | string | null;
 };
+type Animal = { id: string; code: string | null; name: string | null; breed: string | null; current_weight: number | string | null; health_status: string | null; image_url: string | null; status: string | null };
+type Photo = { id: string; photo_url: string | null; caption: string | null; created_at: string | null };
+type Weight = { id: string; weight_kg: number | string | null; note: string | null; recorded_at: string | null };
 
-type PriceSetting = {
-  price_per_chicken: number;
-  technical_fee_rate: number;
-};
+const FEE_RATE = 0.02;
 
-const DEFAULT_TECHNICAL_FEE_RATE = 0.02;
+function money(value: any) {
+  return Number(value || 0).toLocaleString("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 2 });
+}
+function dateText(value?: string | null) {
+  if (!value) return "No date";
+  return new Date(value).toLocaleString("en-PH");
+}
+function statusText(value?: string | null) {
+  return String(value || "PENDING").replaceAll("_", " ").toUpperCase();
+}
 
 export default function AdminSellRequestsPage() {
   const [requests, setRequests] = useState<SellRequest[]>([]);
-  const [priceSetting, setPriceSetting] = useState<PriceSetting | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [weights, setWeights] = useState<Weight[]>([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [offerPrice, setOfferPrice] = useState("");
+  const [adminNotes, setAdminNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     setLoading(true);
     setMessage("");
-
-    await Promise.all([loadActivePriceSetting(), loadRequests()]);
-
-    setLoading(false);
-  }
-
-  async function loadActivePriceSetting() {
-    const { data, error } = await supabase
-      .from("sell_chicken_price_settings")
-      .select("price_per_chicken, technical_fee_rate")
-      .eq("status", "ACTIVE")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      setMessage(`Price setting load error: ${error.message}`);
-      setPriceSetting(null);
-      return;
-    }
-
-    setPriceSetting((data as PriceSetting) || null);
-  }
-
-  async function loadRequests() {
     const { data, error } = await supabase
       .from("sell_chicken_requests")
-      .select("*")
+      .select("id,profile_id,flock_id,batch_no,breed,chicken_stage,quantity,price_per_chicken,total_amount,status,admin_notes,created_at,approved_at,animal_id,latest_photo_id,latest_weight_id,farmconnect_fee,customer_net_amount")
       .order("created_at", { ascending: false });
 
     if (error) {
-      setMessage(`Sell requests load error: ${error.message}`);
+      setMessage(error.message);
       setRequests([]);
+      setLoading(false);
       return;
     }
 
-    setRequests((data || []) as SellRequest[]);
+    const rows = (data || []) as SellRequest[];
+    setRequests(rows);
+    const animalIds = rows.map((row) => row.animal_id).filter(Boolean) as string[];
+    const photoIds = rows.map((row) => row.latest_photo_id).filter(Boolean) as string[];
+    const weightIds = rows.map((row) => row.latest_weight_id).filter(Boolean) as string[];
+
+    const [animalRes, photoRes, weightRes] = await Promise.all([
+      animalIds.length ? supabase.from("animals").select("id,code,name,breed,current_weight,health_status,image_url,status").in("id", animalIds) : Promise.resolve({ data: [] as any[] }),
+      photoIds.length ? supabase.from("animal_photos").select("id,photo_url,caption,created_at").in("id", photoIds) : Promise.resolve({ data: [] as any[] }),
+      weightIds.length ? supabase.from("animal_weights").select("id,weight_kg,note,recorded_at").in("id", weightIds) : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    setAnimals((animalRes.data || []) as Animal[]);
+    setPhotos((photoRes.data || []) as Photo[]);
+    setWeights((weightRes.data || []) as Weight[]);
+    if (!selectedId && rows[0]) setSelectedId(rows[0].id);
+    setLoading(false);
   }
 
-  function activeFeeRate() {
-    return Number(priceSetting?.technical_fee_rate ?? DEFAULT_TECHNICAL_FEE_RATE);
-  }
+  const selected = requests.find((row) => row.id === selectedId) || requests[0] || null;
+  const animal = selected?.animal_id ? animals.find((row) => row.id === selected.animal_id) || null : null;
+  const photo = selected?.latest_photo_id ? photos.find((row) => row.id === selected.latest_photo_id) || null : null;
+  const weight = selected?.latest_weight_id ? weights.find((row) => row.id === selected.latest_weight_id) || null : null;
+  const image = photo?.photo_url || animal?.image_url || "/farmconnect/roosters/fc-stage-4-adult-rooster-base.jpg";
 
-  function grossAmount(request: SellRequest) {
-    return Number(request.total_amount || 0);
-  }
+  const counts = useMemo(() => {
+    return {
+      total: requests.length,
+      pending: requests.filter((x) => String(x.status || "").toUpperCase() === "PENDING_ADMIN_APPROVAL").length,
+      offered: requests.filter((x) => ["OFFER_SENT", "APPROVED"].includes(String(x.status || "").toUpperCase())).length,
+      rejected: requests.filter((x) => String(x.status || "").toUpperCase() === "REJECTED").length,
+    };
+  }, [requests]);
 
-  function farmConnectFee(request: SellRequest) {
-    return grossAmount(request) * activeFeeRate();
-  }
+  async function sendOffer() {
+    if (!selected) return;
+    const gross = Number(offerPrice);
+    if (!Number.isFinite(gross) || gross <= 0) return setMessage("Enter valid final offer price.");
+    const fee = gross * FEE_RATE;
+    const net = gross - fee;
+    const ok = window.confirm(`Send final offer ${money(gross)} to customer?`);
+    if (!ok) return;
 
-  function customerNet(request: SellRequest) {
-    return grossAmount(request) - farmConnectFee(request);
-  }
-
-  async function approveRequest(request: SellRequest) {
-    const confirmApprove = confirm(
-      `Approve sell request and credit customer wallet with ${money(
-        customerNet(request)
-      )}?`
-    );
-
-    if (!confirmApprove) return;
-
-    setProcessingId(request.id);
+    setProcessing(true);
     setMessage("");
-
-    const gross = grossAmount(request);
-    const fee = farmConnectFee(request);
-    const net = customerNet(request);
-
-    const referenceNo = `SELL-${request.id.slice(0, 8).toUpperCase()}`;
-
-    const { error: walletError } = await supabase
-      .from("wallet_transactions")
-      .insert({
-        profile_id: request.profile_id,
-        transaction_type: "SELL_CHICKEN_CREDIT",
-        amount: net,
-        reference_no: referenceNo,
-        description: `Sell chicken approved. Gross: ${money(
-          gross
-        )}, FarmConnect fee: ${money(fee)}, Net: ${money(net)}`,
-        status: "COMPLETED",
-        created_at: new Date().toISOString(),
-      });
-
-    if (walletError) {
-      setMessage(`Wallet credit error: ${walletError.message}`);
-      setProcessingId(null);
-      return;
-    }
-
-    const { error: updateError } = await supabase
+    const { error } = await supabase
       .from("sell_chicken_requests")
       .update({
-        status: "APPROVED",
-        admin_notes: `Approved. Customer net credited using current active pricing policy. Fee: ${money(
-          fee
-        )}. Net: ${money(net)}.`,
+        price_per_chicken: gross,
+        total_amount: gross,
+        farmconnect_fee: fee,
+        customer_net_amount: net,
+        status: "OFFER_SENT",
+        admin_notes: adminNotes || `Admin valuation sent. Gross ${money(gross)}, fee ${money(fee)}, net ${money(net)}.`,
+        approved_at: new Date().toISOString(),
       })
-      .eq("id", request.id);
+      .eq("id", selected.id);
 
-    if (updateError) {
-      setMessage(`Approval update error: ${updateError.message}`);
-      setProcessingId(null);
+    if (error) {
+      setProcessing(false);
+      setMessage(error.message);
       return;
     }
 
-    setMessage("✅ Sell request approved and wallet credited.");
-    await loadRequests();
-    setProcessingId(null);
+    await supabase.from("notifications").insert({
+      customer_id: selected.profile_id,
+      title: "Rooster final offer sent",
+      message: `Admin valued ${animal?.name || selected.batch_no || "your rooster"} at ${money(gross)}. Net after FarmConnect fee: ${money(net)}.`,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    });
+
+    setProcessing(false);
+    setOfferPrice("");
+    setAdminNotes("");
+    setMessage("Final offer sent to customer notification center.");
+    await loadData();
   }
 
-  async function rejectRequest(request: SellRequest) {
-    const confirmReject = confirm(
-      "Reject this sell request? Reserved chickens will be restored to the flock."
-    );
-
-    if (!confirmReject) return;
-
-    setProcessingId(request.id);
-    setMessage("");
-
-    if (request.flock_id) {
-      const { data: flockData } = await supabase
-        .from("flocks")
-        .select("alive_count")
-        .eq("id", request.flock_id)
-        .maybeSingle();
-
-      const restoredAlive =
-        Number(flockData?.alive_count || 0) + Number(request.quantity || 0);
-
-      const { error: restoreError } = await supabase
-        .from("flocks")
-        .update({
-          alive_count: restoredAlive,
-          status: "ACTIVE",
-        })
-        .eq("id", request.flock_id);
-
-      if (restoreError) {
-        setMessage(`Flock restore error: ${restoreError.message}`);
-        setProcessingId(null);
-        return;
-      }
-    }
-
-    const { error: updateError } = await supabase
+  async function rejectRequest() {
+    if (!selected) return;
+    const ok = window.confirm("Reject this sell request?");
+    if (!ok) return;
+    setProcessing(true);
+    const { error } = await supabase
       .from("sell_chicken_requests")
-      .update({
-        status: "REJECTED",
-        admin_notes: "Rejected by admin. Reserved chickens restored.",
-      })
-      .eq("id", request.id);
-
-    if (updateError) {
-      setMessage(`Reject update error: ${updateError.message}`);
-      setProcessingId(null);
-      return;
+      .update({ status: "REJECTED", admin_notes: adminNotes || "Rejected by admin after evaluation." })
+      .eq("id", selected.id);
+    if (error) {
+      setProcessing(false);
+      return setMessage(error.message);
     }
-
-    setMessage("✅ Sell request rejected and flock restored.");
-    await loadRequests();
-    setProcessingId(null);
+    if (selected.animal_id) await supabase.from("animals").update({ status: "ACTIVE" }).eq("id", selected.animal_id);
+    await supabase.from("notifications").insert({ customer_id: selected.profile_id, title: "Sell request rejected", message: "Admin rejected your rooster sell request after evaluation.", is_read: false, created_at: new Date().toISOString() });
+    setProcessing(false);
+    setMessage("Request rejected and rooster returned to active status.");
+    await loadData();
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-green-100 p-6">
+    <main className="min-h-screen bg-[#fff7ed] p-4 pb-28 text-[#18181b] md:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-4xl font-black text-green-900">
-              🐓 Admin Sell Requests
-            </h1>
-            <p className="font-semibold text-green-700">
-              Customer receives Net Amount based on current active pricing policy.
-            </p>
-          </div>
-
-          <Link
-            href="/admin"
-            className="rounded-full bg-green-700 px-5 py-3 font-black text-white"
-          >
-            Back Admin
-          </Link>
-        </div>
-
-        {message && (
-          <div className="mb-6 rounded-3xl bg-white p-5 font-black text-green-700 shadow">
-            {message}
-          </div>
-        )}
-
-        <section className="mb-6 grid gap-5 md:grid-cols-3">
-          <Card label="Sell Requests" value={requests.length} />
-          <Card
-            label="Active Fee Policy"
-            value={`${(activeFeeRate() * 100).toLocaleString()}%`}
-          />
-          <Card
-            label="Active Sell Price"
-            value={money(priceSetting?.price_per_chicken || 0)}
-          />
+        <section className="rounded-[34px] bg-gradient-to-br from-[#7f0000] via-[#c40000] to-[#facc15] p-6 text-white shadow-2xl md:p-8">
+          <Link href="/admin" className="mb-5 inline-flex rounded-full bg-white/15 px-4 py-2 font-black text-white">← Back Admin</Link>
+          <p className="w-fit rounded-full bg-[#facc15] px-4 py-2 text-sm font-black text-[#7f0000]">Sell Approval Queue</p>
+          <h1 className="mt-4 text-4xl font-black md:text-6xl">Admin rooster valuation.</h1>
+          <p className="mt-3 max-w-3xl font-semibold text-white/85">Review one rooster at a time, check latest caretaker photo and weight, then send final offer price to the customer.</p>
+          <button onClick={loadData} className="mt-5 rounded-2xl bg-white px-5 py-3 font-black text-[#b40000]">{loading ? "Refreshing..." : "Refresh Requests"}</button>
         </section>
 
-        {loading ? (
-          <div className="rounded-3xl bg-white p-8 text-center font-black shadow">
-            Loading sell requests...
-          </div>
-        ) : requests.length === 0 ? (
-          <div className="rounded-3xl bg-white p-10 text-center shadow">
-            <h2 className="text-2xl font-black text-gray-900">
-              No sell requests yet.
-            </h2>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-3xl bg-white p-6 shadow-xl">
-            <table className="w-full text-sm">
-              <thead className="bg-green-50 text-green-900">
-                <tr>
-                  <th className="p-3 text-left">Date</th>
-                  <th className="p-3 text-left">Batch</th>
-                  <th className="p-3 text-left">Breed</th>
-                  <th className="p-3 text-left">Stage</th>
-                  <th className="p-3 text-left">Qty</th>
-                  <th className="p-3 text-left">Price</th>
-                  <th className="p-3 text-left">Gross</th>
-                  <th className="p-3 text-left">Fee</th>
-                  <th className="p-3 text-left">Net</th>
-                  <th className="p-3 text-left">Status</th>
-                  <th className="p-3 text-left">Action</th>
-                </tr>
-              </thead>
+        {message && <div className="mt-5 rounded-2xl bg-white p-4 font-black text-[#b40000] shadow">{message}</div>}
 
-              <tbody>
-                {requests.map((request) => {
-                  const isPending =
-                    String(request.status || "").toUpperCase() ===
-                    "PENDING_ADMIN_APPROVAL";
+        <section className="mt-5 grid gap-4 md:grid-cols-4">
+          <Stat label="Total" value={counts.total} />
+          <Stat label="Pending" value={counts.pending} />
+          <Stat label="Offered" value={counts.offered} />
+          <Stat label="Rejected" value={counts.rejected} />
+        </section>
 
-                  return (
-                    <tr key={request.id} className="border-t">
-                      <td className="p-3 font-bold">
-                        {formatDate(request.created_at)}
-                      </td>
-                      <td className="p-3">{request.batch_no || "—"}</td>
-                      <td className="p-3">{request.breed || "—"}</td>
-                      <td className="p-3">{request.chicken_stage || "—"}</td>
-                      <td className="p-3">{request.quantity || 0}</td>
-                      <td className="p-3">
-                        {money(request.price_per_chicken || 0)}
-                      </td>
-                      <td className="p-3">{money(grossAmount(request))}</td>
-                      <td className="p-3 text-orange-700 font-black">
-                        {money(farmConnectFee(request))}
-                      </td>
-                      <td className="p-3 text-green-700 font-black">
-                        {money(customerNet(request))}
-                      </td>
-                      <td className="p-3 font-black text-orange-600">
-                        {request.status}
-                      </td>
-                      <td className="p-3">
-                        {isPending ? (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => approveRequest(request)}
-                              disabled={processingId === request.id}
-                              className="rounded-xl bg-green-700 px-4 py-2 font-black text-white disabled:bg-gray-400"
-                            >
-                              Approve
-                            </button>
-
-                            <button
-                              onClick={() => rejectRequest(request)}
-                              disabled={processingId === request.id}
-                              className="rounded-xl bg-red-600 px-4 py-2 font-black text-white disabled:bg-gray-400"
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="font-bold text-gray-400">
-                            Completed
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_430px]">
+          <div className="rounded-[30px] bg-white p-5 shadow-xl">
+            <h2 className="text-2xl font-black">Requests</h2>
+            <div className="mt-4 space-y-3">
+              {requests.map((request) => (
+                <button key={request.id} onClick={() => setSelectedId(request.id)} className={`w-full rounded-2xl border p-4 text-left transition ${selected?.id === request.id ? "border-[#facc15] bg-orange-50" : "border-orange-100 bg-white"}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase text-[#b40000]">{request.chicken_stage || "Rooster"}</p>
+                      <h3 className="font-black">{request.batch_no || request.id.slice(0, 8)}</h3>
+                      <p className="text-sm font-bold text-zinc-500">Qty 1 • {dateText(request.created_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      <b className="text-[#b40000]">{Number(request.total_amount || 0) > 0 ? money(request.total_amount) : "No offer"}</b>
+                      <p className="mt-1 rounded-full bg-yellow-100 px-3 py-1 text-xs font-black text-yellow-800">{statusText(request.status)}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+              {!loading && requests.length === 0 && <p className="rounded-2xl bg-orange-50 p-8 text-center font-black text-zinc-500">No sell requests yet.</p>}
+            </div>
           </div>
-        )}
+
+          <aside className="sticky top-24 h-fit rounded-[30px] bg-white p-5 shadow-2xl">
+            <h2 className="text-2xl font-black">Valuation Panel</h2>
+            {selected ? (
+              <>
+                <div className="mt-4 overflow-hidden rounded-[24px] bg-orange-50">
+                  <img src={image} alt="Rooster evidence" className="h-64 w-full object-cover" />
+                </div>
+                <p className="mt-4 text-xs font-black uppercase tracking-[0.16em] text-[#b40000]">Evidence</p>
+                <h3 className="mt-1 text-3xl font-black">{animal?.name || selected.batch_no || "Rooster"}</h3>
+                <p className="font-bold text-zinc-500">{animal?.code || selected.batch_no || "No code"} • {animal?.breed || selected.breed || "Premium Rooster"}</p>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <Info label="Health" value={animal?.health_status || "No record"} />
+                  <Info label="Weight" value={weight?.weight_kg ? `${weight.weight_kg} kg` : animal?.current_weight ? `${animal.current_weight} kg` : "No record"} />
+                  <Info label="Photo Date" value={dateText(photo?.created_at)} />
+                  <Info label="Status" value={statusText(selected.status)} />
+                </div>
+                <div className="mt-5 rounded-[24px] bg-orange-50 p-5">
+                  <label className="text-xs font-black uppercase text-[#b40000]">Final Offer Price</label>
+                  <input value={offerPrice} onChange={(e) => setOfferPrice(e.target.value)} type="number" min="1" step="0.01" placeholder="Example: 5200" className="mt-2 w-full rounded-2xl border border-orange-200 px-4 py-3 text-2xl font-black outline-none focus:border-[#b40000]" />
+                  <p className="mt-2 text-sm font-bold text-zinc-600">FarmConnect fee 2%: {money(Number(offerPrice || 0) * FEE_RATE)}</p>
+                  <p className="text-sm font-black text-[#b40000]">Customer net: {money(Number(offerPrice || 0) * (1 - FEE_RATE))}</p>
+                </div>
+                <textarea value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Admin valuation notes..." className="mt-3 h-28 w-full rounded-2xl border border-orange-200 p-4 font-bold outline-none focus:border-[#b40000]" />
+                <button onClick={sendOffer} disabled={processing} className="mt-3 w-full rounded-2xl bg-[#b40000] px-5 py-4 font-black text-white disabled:bg-zinc-300">{processing ? "Processing..." : "Send Final Offer"}</button>
+                <button onClick={rejectRequest} disabled={processing} className="mt-3 w-full rounded-2xl bg-zinc-900 px-5 py-4 font-black text-white disabled:bg-zinc-300">Reject Request</button>
+              </>
+            ) : <p className="mt-4 rounded-2xl bg-orange-50 p-5 font-bold text-zinc-500">Select a request.</p>}
+          </aside>
+        </section>
       </div>
     </main>
   );
 }
 
-function Card({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-3xl bg-white p-6 shadow border border-green-100">
-      <p className="font-semibold text-gray-500">{label}</p>
-      <h2 className="mt-2 text-3xl font-black text-green-700">{value}</h2>
-    </div>
-  );
+function Stat({ label, value }: { label: string; value: number }) {
+  return <div className="rounded-[24px] bg-white p-5 shadow"><p className="text-sm font-black uppercase text-zinc-500">{label}</p><h2 className="mt-2 text-3xl font-black text-[#b40000]">{value}</h2></div>;
 }
-
-function money(value: any) {
-  const amount = Number(value || 0);
-
-  return amount.toLocaleString("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    maximumFractionDigits: 2,
-  });
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "No date";
-  return new Date(value).toLocaleDateString("en-PH");
+function Info({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-2xl bg-orange-50 p-4"><p className="text-xs font-black uppercase text-zinc-500">{label}</p><p className="mt-1 font-black">{value}</p></div>;
 }
