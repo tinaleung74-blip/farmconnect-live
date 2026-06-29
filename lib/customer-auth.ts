@@ -70,8 +70,15 @@ export function normalizeAnimal(value: AnimalRelation): Animal | null {
 export function isChicken(animal: Animal | null | undefined) {
   const type = String(animal?.type || "").toLowerCase();
   const code = String(animal?.code || "").toUpperCase();
+
   if (["SWINE-002", "COW-001", "COW-002"].includes(code)) return false;
-  return type.includes("chicken") || type.includes("poultry") || type.includes("rooster") || type.includes("tandang");
+
+  return (
+    type.includes("chicken") ||
+    type.includes("poultry") ||
+    type.includes("rooster") ||
+    type.includes("tandang")
+  );
 }
 
 export function money(value: number | string | null | undefined) {
@@ -116,15 +123,31 @@ export function statusText(value?: string | null) {
 
 export function statusPill(status?: string | null) {
   const clean = String(status || "PENDING").toUpperCase();
-  if (["ACTIVE", "APPROVED", "COMPLETED", "PAID", "POSTED", "AVAILABLE"].includes(clean)) {
+
+  if (
+    ["ACTIVE", "APPROVED", "COMPLETED", "PAID", "POSTED", "AVAILABLE"].includes(
+      clean
+    )
+  ) {
     return "bg-emerald-100 text-emerald-800 border-emerald-200";
   }
-  if (["REJECTED", "FAILED", "CANCELLED", "EXPIRED", "OUT_OF_STOCK", "OUT OF STOCK"].includes(clean)) {
+
+  if (
+    ["REJECTED", "FAILED", "CANCELLED", "EXPIRED", "OUT_OF_STOCK", "OUT OF STOCK"].includes(
+      clean
+    )
+  ) {
     return "bg-red-100 text-red-800 border-red-200";
   }
-  if (["PROCESSING", "PENDING", "PENDING_ADMIN_APPROVAL", "PENDING APPROVAL"].includes(clean)) {
+
+  if (
+    ["PROCESSING", "PENDING", "PENDING_ADMIN_APPROVAL", "PENDING APPROVAL"].includes(
+      clean
+    )
+  ) {
     return "bg-amber-100 text-amber-800 border-amber-200";
   }
+
   return "bg-slate-100 text-slate-700 border-slate-200";
 }
 
@@ -142,12 +165,14 @@ export function roosterStage(days: number) {
 
 export function categoryIcon(category?: string | null) {
   const value = String(category || "").toUpperCase();
+
   if (value.includes("FEED")) return "🌾";
   if (value.includes("VITAMIN")) return "💊";
   if (value.includes("VACCINE")) return "💉";
   if (value.includes("SUPPLEMENT")) return "🧪";
   if (value.includes("EQUIPMENT")) return "🧰";
   if (value.includes("CHICK")) return "🐓";
+
   return "📦";
 }
 
