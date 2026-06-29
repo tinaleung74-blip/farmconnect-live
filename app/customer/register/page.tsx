@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+const MEMBERSHIP_FEE = 999;
+const KYC_BUCKET = "farmconnect-customer-kyc";
+const ID_OPTIONS = ["National ID", "Driver License", "Passport", "UMID", "Voter ID"];
+
 export default function CustomerRegisterPage() {
   const router = useRouter();
-
   const idFileRef = useRef<HTMLInputElement>(null);
   const idCameraRef = useRef<HTMLInputElement>(null);
   const selfieCameraRef = useRef<HTMLInputElement>(null);
@@ -15,16 +19,47 @@ export default function CustomerRegisterPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-
   const [idType, setIdType] = useState("");
   const [idNumber, setIdNumber] = useState("");
-  const [idFrontUrl, setIdFrontUrl] = useState("");
-  const [selfieUrl, setSelfieUrl] = useState("");
-
+  const [idFile, setIdFile] = useState<File | null>(null);
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [idFileName, setIdFileName] = useState("");
+  const [selfieFileName, setSelfieFileName] = useState("");
   const [agreeMembership, setAgreeMembership] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  function handleIdFile(file: File | undefined) {
+    if (!file) return;
+    setIdFile(file);
+    setIdFileName(file.name || "valid-id-photo");
+  }
+
+  function handleSelfieFile(file: File | undefined) {
+    if (!file) return;
+    setSelfieFile(file);
+    setSelfieFileName(file.name || "selfie-photo");
+  }
+
+  async function uploadKycFile(file: File, profileId: string, kind: "valid-id" | "selfie") {
+    const rawExt = file.name.split(".").pop() || "jpg";
+    const ext = rawExt.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "jpg";
+    const path = `${profileId}/${kind}-${Date.now()}.${ext}`;
+
+    const { data, error } = await supabase.storage
+      .from(KYC_BUCKET)
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: true,
+        contentType: file.type || "image/jpeg",
+      });
+
+    if (error) {
+      throw new Error(`${kind === "valid-id" ? "Valid ID" : "Selfie"} upload failed: ${error.message}`);
+    }
+
+    return `${KYC_BUCKET}/${data.path}`;
+  }
 
   async function handleRegister() {
     setMessage("");
@@ -36,35 +71,33 @@ export default function CustomerRegisterPage() {
     const cleanIdType = idType.trim();
     const cleanIdNumber = idNumber.trim();
 
-    if (
-      !cleanName ||
-      !cleanEmail ||
-      !cleanPhone ||
-      !cleanPassword ||
-      !cleanIdType ||
-      !cleanIdNumber
-    ) {
-      setMessage("Please complete all required account and ID verification fields.");
-      return;
-    }
-
-    if (!idFrontUrl) {
-      setMessage("Please upload or capture your valid ID.");
-      return;
-    }
-
-    if (!selfieUrl) {
-      setMessage("Please capture your selfie verification.");
-      return;
-    }
-
-    if (!agreeMembership) {
-      setMessage("You must agree to the Annual Investor Membership Program.");
+    if (!cleanName || !cleanEmail || !cleanPhone || !cleanPassword) {
+      setMessage("Please complete your name, email, phone number, and password.");
       return;
     }
 
     if (cleanPassword.length < 6) {
       setMessage("Password must be at least 6 characters.");
+      return;
+    }
+
+    if (!cleanIdType || !cleanIdNumber) {
+      setMessage("Please complete your valid ID type and ID number.");
+      return;
+    }
+
+    if (!idFile) {
+      setMessage("Please upload or capture your valid ID photo.");
+      return;
+    }
+
+    if (!selfieFile) {
+      setMessage("Please capture your selfie verification.");
+      return;
+    }
+
+    if (!agreeMembership) {
+      setMessage("Please agree to the Annual Investor Membership program.");
       return;
     }
 
@@ -78,600 +111,225 @@ export default function CustomerRegisterPage() {
         .maybeSingle();
 
       if (existing) {
-        setMessage("Email or phone number is already registered.");
+        setMessage("Email or phone number is already registered. Please login instead.");
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .insert([
-          {
-            full_name: cleanName,
-            email: cleanEmail,
-            phone: cleanPhone,
-            password: cleanPassword,
-            wallet_balance: 0,
+      const { data: authResult, error: signUpError } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
 
-            id_type: cleanIdType,
-            id_number: cleanIdNumber,
-            id_front_url: idFrontUrl,
-            selfie_url: selfieUrl,
-            verification_status: "PENDING",
-
-            membership_plan: "ANNUAL INVESTOR MEMBERSHIP",
-            membership_fee: 999,
-            membership_status: "UNPAID",
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        setMessage(error.message);
+      if (signUpError) {
+        setMessage(signUpError.message);
         setLoading(false);
         return;
       }
 
-      localStorage.setItem("farmconnect_user", JSON.stringify(data));
-      router.push("/customer/dashboard");
-    } catch {
-      setMessage("Something went wrong. Please try again.");
+      const authId = authResult.user?.id;
+
+      if (!authId) {
+        setMessage("Registration session was not created. Please check Supabase Auth email confirmation settings.");
+        setLoading(false);
+        return;
+      }
+
+      const uploadedIdFrontUrl = await uploadKycFile(idFile, authId, "valid-id");
+      const uploadedSelfieUrl = await uploadKycFile(selfieFile, authId, "selfie");
+
+      const profilePayload: Record<string, string | number | null> = {
+        id: authId,
+        full_name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        wallet_balance: 0,
+        id_type: cleanIdType,
+        id_number: cleanIdNumber,
+        id_front_url: uploadedIdFrontUrl,
+        selfie_url: uploadedSelfieUrl,
+        verification_status: "PENDING",
+        membership_plan: "ANNUAL INVESTOR MEMBERSHIP",
+        membership_fee: MEMBERSHIP_FEE,
+        membership_status: "UNPAID",
+        account_status: "PENDING_MEMBERSHIP",
+      };
+
+      const { error: profileError } = await supabase.from("profiles").upsert(profilePayload);
+
+      if (profileError) {
+        setMessage(profileError.message);
+        setLoading(false);
+        return;
+      }
+
+      router.replace("/customer/membership");
+    } catch (error) {
+      console.error(error);
+      setMessage("Registration failed. Please try again.");
       setLoading(false);
     }
   }
 
   return (
-    <main style={page}>
-      <section style={container}>
-        <div style={header}>
-          <div style={badge}>FARMCONNECT SECURE ONBOARDING</div>
-          <h1 style={title}>Create Customer Account</h1>
-          <p style={subtitle}>
-            Complete your account registration, identity verification, and
-            Annual Investor Membership agreement before joining FarmConnect.
-          </p>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#315b36_0,#10251b_36%,#07150f_100%)] p-5 text-white md:p-8">
+      <div className="mx-auto max-w-7xl py-4 md:py-8">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <Link href="/customer/login" className="rounded-full border border-emerald-200/30 bg-white/10 px-5 py-3 text-sm font-black text-emerald-50 backdrop-blur transition hover:bg-white/15">
+            ← Back to Login
+          </Link>
+          <Link href="/customer" className="rounded-full bg-amber-300 px-5 py-3 text-sm font-black text-emerald-950 transition hover:bg-amber-200">
+            FarmConnect Customer
+          </Link>
         </div>
 
-        <div style={layout}>
-          <div style={leftPanel}>
-            <h2 style={panelTitle}>Verification Process</h2>
+        <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <aside className="rounded-[38px] border border-emerald-300/20 bg-white/10 p-6 shadow-2xl shadow-black/25 backdrop-blur-xl md:p-8">
+            <p className="w-fit rounded-full bg-amber-300 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-emerald-950">
+              Secure Onboarding
+            </p>
+            <h1 className="mt-5 text-4xl font-black leading-tight md:text-6xl">
+              Join FarmConnect Live
+            </h1>
+            <p className="mt-4 max-w-xl text-base font-semibold leading-7 text-emerald-50/90">
+              Create your customer account, submit ID verification, and accept the Annual Investor Membership before accessing the production modules.
+            </p>
 
-            <div style={stepCard}>
-              <div style={stepNumber}>1</div>
-              <div>
-                <h3>Account Details</h3>
-                <p>Name, email, phone number, and password.</p>
-              </div>
+            <div className="mt-8 grid gap-4">
+              <Step number="1" title="Account Details" note="Name, email, phone, and Supabase Auth password." />
+              <Step number="2" title="KYC Verification" note="Valid ID and selfie capture for admin review." />
+              <Step number="3" title="Annual Membership" note="₱999 yearly access, approved by FarmConnect Admin." />
             </div>
 
-            <div style={stepCard}>
-              <div style={stepNumber}>2</div>
-              <div>
-                <h3>ID Verification</h3>
-                <p>Upload your valid ID or capture it using your camera.</p>
-              </div>
-            </div>
-
-            <div style={stepCard}>
-              <div style={stepNumber}>3</div>
-              <div>
-                <h3>Annual Membership</h3>
-                <p>₱999 yearly investor platform access fee.</p>
-              </div>
-            </div>
-
-            <div style={securityBox}>
-              <h3>🛡️ Risk Management Status</h3>
-              <p>
-                Customer accounts are monitored by admin. No direct customer to
-                caretaker communication is allowed.
+            <div className="mt-8 rounded-[30px] border border-amber-300/25 bg-emerald-950/80 p-6 text-white">
+              <h2 className="text-2xl font-black">🛡️ Access Rule</h2>
+              <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50/85">
+                Restricted modules open only after login, approved KYC, active account status, and active membership.
               </p>
-              <span>PENDING VERIFICATION • MEMBERSHIP UNPAID</span>
+              <div className="mt-4 rounded-2xl bg-amber-300 px-4 py-3 text-sm font-black text-emerald-950">
+                PENDING VERIFICATION • MEMBERSHIP UNPAID
+              </div>
             </div>
-          </div>
+          </aside>
 
-          <div style={formCard}>
-            <h2 style={formTitle}>Customer Registration</h2>
-            <p style={formSubtitle}>Step 1 — Account Information</p>
+          <section className="rounded-[38px] bg-white p-5 text-slate-950 shadow-2xl shadow-black/25 md:p-8">
+            <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-5 md:flex-row md:items-start">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-emerald-700">Customer Registration</p>
+                <h2 className="mt-2 text-3xl font-black text-slate-950 md:text-4xl">Account + KYC</h2>
+              </div>
+              <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
+                Supabase Auth
+              </div>
+            </div>
 
-            <label style={label}>Full Name *</label>
-            <input
-              style={input}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Juan Dela Cruz"
-            />
+            {message && <div className="mt-5 rounded-3xl border border-red-100 bg-red-50 p-4 font-bold text-red-700">{message}</div>}
 
-            <label style={label}>Email Address *</label>
-            <input
-              style={input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="test@gmail.com"
-            />
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <Field label="Full Name" value={fullName} onChange={setFullName} placeholder="Enter your full name" />
+              <Field label="Phone Number" value={phone} onChange={setPhone} placeholder="Enter your mobile number" />
+              <Field label="Email Address" value={email} onChange={setEmail} placeholder="Enter your email address" type="email" />
+              <Field label="Password" value={password} onChange={setPassword} placeholder="Create password" type="password" />
+            </div>
 
-            <label style={label}>Phone Number *</label>
-            <input
-              style={input}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="09123456789"
-            />
+            <div className="my-7 h-px bg-slate-100" />
 
-            <label style={label}>Password *</label>
-            <input
-              style={input}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimum 6 characters"
-            />
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-emerald-700">ID Verification</p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label>
+                  <span className="text-sm font-black text-slate-600">Valid ID Type</span>
+                  <select value={idType} onChange={(event) => setIdType(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-4 font-bold outline-none transition focus:border-emerald-500">
+                    <option value="">Select valid ID</option>
+                    {ID_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+                <Field label="ID Number" value={idNumber} onChange={setIdNumber} placeholder="Enter ID number" />
+              </div>
+            </div>
 
-            <div style={divider} />
-
-            <p style={formSubtitle}>Step 2 — ID Verification</p>
-
-            <label style={label}>Valid ID Type *</label>
-            <select
-              style={input}
-              value={idType}
-              onChange={(e) => setIdType(e.target.value)}
-            >
-              <option value="">Select valid ID</option>
-              <option value="National ID">National ID</option>
-              <option value="Driver License">Driver License</option>
-              <option value="Passport">Passport</option>
-              <option value="UMID">UMID</option>
-              <option value="Voter ID">Voter ID</option>
-            </select>
-
-            <label style={label}>ID Number *</label>
-            <input
-              style={input}
-              value={idNumber}
-              onChange={(e) => setIdNumber(e.target.value)}
-              placeholder="Enter ID number"
-            />
-
-            <label style={label}>Upload Valid ID *</label>
-            <div style={uploadBox}>
-              <b>📄 Valid ID Verification</b>
-              <p>
-                Upload a valid government-issued ID or capture it directly using
-                your camera.
-              </p>
-
-              <input
-                ref={idFileRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={() => setIdFrontUrl("ID_PHOTO_SELECTED")}
-              />
-
-              <input
-                ref={idCameraRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                style={{ display: "none" }}
-                onChange={() => setIdFrontUrl("ID_CAMERA_CAPTURED")}
-              />
-
-              <div style={buttonRow}>
-                <button
-                  type="button"
-                  style={uploadButton}
-                  onClick={() => idFileRef.current?.click()}
-                >
-                  📁 Upload Photo
-                </button>
-
-                <button
-                  type="button"
-                  style={cameraButton}
-                  onClick={() => idCameraRef.current?.click()}
-                >
-                  📷 Open Camera
-                </button>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-[30px] border-2 border-dashed border-emerald-200 bg-emerald-50 p-5">
+                <h3 className="text-xl font-black text-emerald-950">📄 Valid ID Photo</h3>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">Upload or capture your government-issued ID for admin review.</p>
+                <input ref={idFileRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleIdFile(event.target.files?.[0])} />
+                <input ref={idCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => handleIdFile(event.target.files?.[0])} />
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <button type="button" onClick={() => idFileRef.current?.click()} className="rounded-2xl bg-emerald-700 px-4 py-3 font-black text-white transition hover:bg-emerald-800">Upload Photo</button>
+                  <button type="button" onClick={() => idCameraRef.current?.click()} className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white transition hover:bg-black">Open Camera</button>
+                </div>
+                {idFile && <p className="mt-4 rounded-2xl bg-white p-3 text-sm font-black text-emerald-700">✓ ID ready for upload {idFileName ? `• ${idFileName}` : ""}</p>}
               </div>
 
-              {idFrontUrl && <p style={successText}>✓ ID Captured</p>}
+              <div className="rounded-[30px] border-2 border-dashed border-amber-200 bg-amber-50 p-5">
+                <h3 className="text-xl font-black text-amber-950">🤳 Selfie Verification</h3>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">Capture a live selfie so admin can match your identity with your ID.</p>
+                <input ref={selfieCameraRef} type="file" accept="image/*" capture="user" className="hidden" onChange={(event) => handleSelfieFile(event.target.files?.[0])} />
+                <button type="button" onClick={() => selfieCameraRef.current?.click()} className="mt-4 w-full rounded-2xl bg-amber-300 px-4 py-3 font-black text-emerald-950 transition hover:bg-amber-200">Open Selfie Camera</button>
+                {selfieFile && <p className="mt-4 rounded-2xl bg-white p-3 text-sm font-black text-emerald-700">✓ Selfie ready for upload {selfieFileName ? `• ${selfieFileName}` : ""}</p>}
+              </div>
             </div>
 
-            <label style={label}>Selfie Verification *</label>
-            <div style={uploadBox}>
-              <b>🤳 Selfie Verification</b>
-              <p>Take a live selfie for identity matching and admin review.</p>
+            <div className="my-7 h-px bg-slate-100" />
 
-              <input
-                ref={selfieCameraRef}
-                type="file"
-                accept="image/*"
-                capture="user"
-                style={{ display: "none" }}
-                onChange={() => setSelfieUrl("SELFIE_CAMERA_CAPTURED")}
-              />
-
-              <button
-                type="button"
-                style={cameraButtonFull}
-                onClick={() => selfieCameraRef.current?.click()}
-              >
-                🤳 Open Camera
-              </button>
-
-              {selfieUrl && <p style={successText}>✓ Selfie Captured</p>}
-            </div>
-
-            <div style={divider} />
-
-            <p style={formSubtitle}>Step 3 — Annual Investor Membership</p>
-
-            <div style={membershipCard}>
-              <div style={membershipTop}>
+            <div className="rounded-[30px] border border-amber-100 bg-gradient-to-br from-amber-50 to-emerald-50 p-5">
+              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
                 <div>
-                  <h3 style={membershipTitle}>🌾 Annual Investor Membership</h3>
-                  <p style={membershipSub}>FarmConnect Investor Access</p>
+                  <h3 className="text-2xl font-black text-emerald-950">🌾 Annual Investor Membership</h3>
+                  <p className="mt-1 font-semibold text-slate-600">Required for full FarmConnect Live access after admin approval.</p>
                 </div>
-
-                <div style={priceBox}>
-                  <b>₱999</b>
-                  <span>/ Year</span>
+                <div className="rounded-3xl bg-slate-950 px-5 py-4 text-center text-white">
+                  <strong className="block text-3xl">₱999</strong>
+                  <span className="text-xs font-bold text-slate-300">per year</span>
                 </div>
               </div>
 
-              <div style={benefitGrid}>
-                <span>✓ Investor Dashboard</span>
-                <span>✓ Livestock Monitoring</span>
-                <span>✓ Harvest & ROI Reports</span>
-                <span>✓ Weight Growth Tracking</span>
-                <span>✓ Farm Photo Updates</span>
-                <span>✓ Wallet Monitoring</span>
-                <span>✓ Risk Reports</span>
-                <span>✓ Priority Support</span>
-                <span>✓ Investor Certificate</span>
-                <span>✓ Future Batch Access</span>
+              <div className="mt-5 grid gap-2 text-sm font-black text-emerald-800 md:grid-cols-2">
+                <span>✓ Customer dashboard</span>
+                <span>✓ Flock monitoring</span>
+                <span>✓ Wallet access</span>
+                <span>✓ Sell rooster requests</span>
+                <span>✓ Caretaker updates</span>
+                <span>✓ Marketplace purchases</span>
               </div>
 
-              <label style={checkRow}>
-                <input
-                  type="checkbox"
-                  checked={agreeMembership}
-                  onChange={(e) => setAgreeMembership(e.target.checked)}
-                />
-                <span>
-                  I agree to the Annual Investor Membership Fee of{" "}
-                  <b>₱999 per year</b>.
-                </span>
+              <label className="mt-5 flex gap-3 rounded-2xl bg-white p-4 text-sm font-bold text-slate-700">
+                <input type="checkbox" checked={agreeMembership} onChange={(event) => setAgreeMembership(event.target.checked)} />
+                <span>I agree to the Annual Investor Membership Fee of <b>₱999 per year</b>.</span>
               </label>
-
-              <div style={membershipStatus}>
-                Membership Status: <b>UNPAID</b>
-              </div>
             </div>
 
-            <div style={pendingBox}>
-              Verification Status: <b>PENDING ADMIN REVIEW</b>
-            </div>
-
-            {message && <p style={errorBox}>{message}</p>}
-
-            <button style={button} onClick={handleRegister} disabled={loading}>
+            <button onClick={handleRegister} disabled={loading} className="mt-6 w-full rounded-2xl bg-emerald-700 p-4 text-lg font-black text-white shadow-lg shadow-emerald-900/20 transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-400">
               {loading ? "Submitting Verification..." : "Submit Registration"}
             </button>
 
-            <button
-              style={secondaryButton}
-              onClick={() => router.push("/customer/login")}
-            >
-              Already verified? Login
+            <button type="button" onClick={() => router.push("/customer/login")} className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 font-black text-slate-800 transition hover:bg-slate-100">
+              Already registered? Login
             </button>
-          </div>
-        </div>
-      </section>
+          </section>
+        </section>
+      </div>
     </main>
   );
 }
 
-const page: React.CSSProperties = {
-  minHeight: "100vh",
-  background:
-    "linear-gradient(135deg, #e0f2fe 0%, #ecfdf5 45%, #fef9c3 100%)",
-  padding: 24,
-  color: "#0f172a",
-};
+function Step({ number, title, note }: { number: string; title: string; note: string }) {
+  return (
+    <div className="flex gap-4 rounded-[28px] border border-white/10 bg-white/10 p-5 backdrop-blur">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-300 text-lg font-black text-emerald-950">{number}</div>
+      <div>
+        <h3 className="text-lg font-black text-white">{title}</h3>
+        <p className="mt-1 text-sm font-semibold leading-6 text-emerald-50/80">{note}</p>
+      </div>
+    </div>
+  );
+}
 
-const container: React.CSSProperties = {
-  maxWidth: 1200,
-  margin: "0 auto",
-  paddingTop: 35,
-};
-
-const header: React.CSSProperties = {
-  marginBottom: 28,
-};
-
-const badge: React.CSSProperties = {
-  display: "inline-block",
-  background: "#dbeafe",
-  color: "#1d4ed8",
-  padding: "10px 16px",
-  borderRadius: 999,
-  fontWeight: 900,
-  fontSize: 12,
-  letterSpacing: 1,
-  marginBottom: 16,
-};
-
-const title: React.CSSProperties = {
-  fontSize: 44,
-  fontWeight: 950,
-  margin: 0,
-};
-
-const subtitle: React.CSSProperties = {
-  maxWidth: 780,
-  color: "#475569",
-  fontSize: 17,
-  lineHeight: 1.7,
-};
-
-const layout: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "0.9fr 1.1fr",
-  gap: 24,
-};
-
-const leftPanel: React.CSSProperties = {
-  background: "rgba(255,255,255,0.78)",
-  borderRadius: 30,
-  padding: 28,
-  border: "1px solid rgba(15,23,42,0.08)",
-  boxShadow: "0 30px 70px rgba(15,23,42,0.1)",
-};
-
-const panelTitle: React.CSSProperties = {
-  fontSize: 28,
-  fontWeight: 950,
-  marginBottom: 20,
-};
-
-const stepCard: React.CSSProperties = {
-  display: "flex",
-  gap: 16,
-  background: "white",
-  padding: 18,
-  borderRadius: 22,
-  border: "1px solid #e2e8f0",
-  marginBottom: 14,
-};
-
-const stepNumber: React.CSSProperties = {
-  width: 42,
-  height: 42,
-  minWidth: 42,
-  borderRadius: 14,
-  background: "linear-gradient(135deg, #2563eb, #16a34a)",
-  color: "white",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: 950,
-};
-
-const securityBox: React.CSSProperties = {
-  marginTop: 24,
-  background: "linear-gradient(135deg, #0f172a, #14532d)",
-  color: "white",
-  borderRadius: 26,
-  padding: 24,
-};
-
-const formCard: React.CSSProperties = {
-  background: "white",
-  borderRadius: 30,
-  padding: 30,
-  boxShadow: "0 35px 90px rgba(15,23,42,0.16)",
-  border: "1px solid #e2e8f0",
-};
-
-const formTitle: React.CSSProperties = {
-  fontSize: 30,
-  fontWeight: 950,
-  margin: 0,
-};
-
-const formSubtitle: React.CSSProperties = {
-  color: "#2563eb",
-  fontWeight: 900,
-  marginTop: 14,
-};
-
-const label: React.CSSProperties = {
-  display: "block",
-  fontSize: 13,
-  fontWeight: 900,
-  marginTop: 14,
-  marginBottom: 8,
-};
-
-const input: React.CSSProperties = {
-  width: "100%",
-  padding: "15px 16px",
-  borderRadius: 16,
-  border: "1px solid #cbd5e1",
-  fontSize: 15,
-  outline: "none",
-};
-
-const divider: React.CSSProperties = {
-  height: 1,
-  background: "#e2e8f0",
-  margin: "24px 0",
-};
-
-const uploadBox: React.CSSProperties = {
-  background: "#f8fafc",
-  border: "2px dashed #93c5fd",
-  borderRadius: 20,
-  padding: 18,
-  color: "#334155",
-};
-
-const buttonRow: React.CSSProperties = {
-  display: "flex",
-  gap: 10,
-  marginTop: 15,
-};
-
-const uploadButton: React.CSSProperties = {
-  flex: 1,
-  padding: 14,
-  borderRadius: 14,
-  border: "none",
-  cursor: "pointer",
-  background: "#2563eb",
-  color: "white",
-  fontWeight: 900,
-};
-
-const cameraButton: React.CSSProperties = {
-  flex: 1,
-  padding: 14,
-  borderRadius: 14,
-  border: "none",
-  cursor: "pointer",
-  background: "#16a34a",
-  color: "white",
-  fontWeight: 900,
-};
-
-const cameraButtonFull: React.CSSProperties = {
-  width: "100%",
-  padding: 14,
-  borderRadius: 14,
-  border: "none",
-  cursor: "pointer",
-  background: "#16a34a",
-  color: "white",
-  fontWeight: 900,
-  marginTop: 15,
-};
-
-const successText: React.CSSProperties = {
-  marginTop: 12,
-  color: "#16a34a",
-  fontWeight: 900,
-};
-
-const membershipCard: React.CSSProperties = {
-  background: "linear-gradient(135deg, #f0fdf4, #eff6ff)",
-  border: "1px solid #bfdbfe",
-  borderRadius: 24,
-  padding: 22,
-};
-
-const membershipTop: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 16,
-  alignItems: "flex-start",
-};
-
-const membershipTitle: React.CSSProperties = {
-  margin: 0,
-  fontSize: 20,
-  fontWeight: 950,
-};
-
-const membershipSub: React.CSSProperties = {
-  marginTop: 6,
-  color: "#475569",
-};
-
-const priceBox: React.CSSProperties = {
-  minWidth: 105,
-  background: "#0f172a",
-  color: "white",
-  padding: 14,
-  borderRadius: 18,
-  textAlign: "center",
-};
-
-const benefitGrid: React.CSSProperties = {
-  marginTop: 18,
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 10,
-  fontSize: 13,
-  fontWeight: 800,
-  color: "#14532d",
-};
-
-const checkRow: React.CSSProperties = {
-  display: "flex",
-  gap: 10,
-  alignItems: "flex-start",
-  marginTop: 20,
-  background: "white",
-  borderRadius: 16,
-  padding: 14,
-  fontSize: 14,
-  cursor: "pointer",
-};
-
-const membershipStatus: React.CSSProperties = {
-  marginTop: 14,
-  background: "#fef3c7",
-  color: "#92400e",
-  padding: 12,
-  borderRadius: 14,
-  fontSize: 13,
-  fontWeight: 800,
-};
-
-const pendingBox: React.CSSProperties = {
-  marginTop: 18,
-  background: "#fef3c7",
-  color: "#92400e",
-  padding: 14,
-  borderRadius: 16,
-  fontSize: 13,
-  fontWeight: 800,
-};
-
-const errorBox: React.CSSProperties = {
-  background: "#fee2e2",
-  color: "#991b1b",
-  padding: 12,
-  borderRadius: 14,
-  marginTop: 16,
-  fontWeight: 800,
-};
-
-const button: React.CSSProperties = {
-  width: "100%",
-  marginTop: 22,
-  padding: 16,
-  borderRadius: 18,
-  border: "none",
-  background: "linear-gradient(135deg, #2563eb, #16a34a)",
-  color: "white",
-  fontWeight: 950,
-  fontSize: 16,
-  cursor: "pointer",
-};
-
-const secondaryButton: React.CSSProperties = {
-  width: "100%",
-  marginTop: 12,
-  padding: 14,
-  borderRadius: 18,
-  border: "1px solid #cbd5e1",
-  background: "#f8fafc",
-  color: "#0f172a",
-  fontWeight: 900,
-  cursor: "pointer",
-};
+function Field({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; type?: string }) {
+  return (
+    <label>
+      <span className="text-sm font-black text-slate-600">{label}</span>
+      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="mt-2 w-full rounded-2xl border border-slate-200 p-4 font-bold outline-none transition focus:border-emerald-500" />
+    </label>
+  );
+}

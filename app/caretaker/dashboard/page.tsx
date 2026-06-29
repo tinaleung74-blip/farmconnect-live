@@ -30,7 +30,24 @@ type CaretakerProfile = {
   level: string | null;
 };
 
+const navLinks = [
+  { href: "/caretaker", label: "Portal" },
+  { href: "/caretaker/tasks", label: "Tasks" },
+  { href: "/caretaker/feeding", label: "Feeding" },
+  { href: "/caretaker/photos", label: "Photos" },
+  { href: "/caretaker/weight", label: "Weight" },
+  { href: "/caretaker/mortality", label: "Mortality" },
+  { href: "/caretaker/notes", label: "Notes" },
+];
+
 const cards = [
+  {
+    title: "Tasks",
+    icon: "🧑‍🌾",
+    desc: "Review active paid chicken jobs",
+    href: "/caretaker/tasks",
+    color: "#86efac",
+  },
   {
     title: "Feeding Update",
     icon: "🌽",
@@ -211,6 +228,19 @@ export default function CaretakerDashboard() {
 
   return (
     <main style={page}>
+      <nav style={topNav}>
+        <Link href="/caretaker" style={brandLink}>
+          🌾 FarmConnect Caretaker
+        </Link>
+        <div style={navPills}>
+          {navLinks.map((item) => (
+            <Link key={item.href} href={item.href} style={navPill}>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </nav>
+
       <section style={hero}>
         <div>
           <p style={small}>FarmConnect Caretaker</p>
@@ -220,6 +250,10 @@ export default function CaretakerDashboard() {
               ? `Welcome back, ${caretaker.full_name}.`
               : "Simple upload lang. Piliin ang gagawin today."}
           </p>
+          <div style={heroActions}>
+            <Link href="/caretaker/tasks" style={heroButton}>View Tasks</Link>
+            <Link href="/caretaker/feeding" style={heroGhostButton}>Submit Feeding</Link>
+          </div>
         </div>
         <div style={sun}>☀️</div>
       </section>
@@ -353,20 +387,65 @@ export default function CaretakerDashboard() {
 const page: React.CSSProperties = {
   minHeight: "100vh",
   background:
-    "linear-gradient(180deg, #ecfccb 0%, #fef9c3 35%, #dbeafe 100%)",
-  padding: 20,
+    "radial-gradient(circle at top left, rgba(250,204,21,0.28), transparent 32%), linear-gradient(180deg, #ecfccb 0%, #fef9c3 35%, #dbeafe 100%)",
+  padding: "18px clamp(14px, 3vw, 28px) 28px",
   fontFamily: "Arial, sans-serif",
 };
 
-const hero: React.CSSProperties = {
-  background: "linear-gradient(135deg, #22c55e, #84cc16)",
-  color: "white",
-  borderRadius: 28,
-  padding: 24,
+const topNav: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto 18px",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  boxShadow: "0 20px 40px rgba(34,197,94,0.25)",
+  gap: 12,
+  flexWrap: "wrap",
+};
+
+const brandLink: React.CSSProperties = {
+  color: "#14532d",
+  fontWeight: 950,
+  textDecoration: "none",
+  background: "rgba(255,255,255,0.76)",
+  border: "1px solid rgba(34,197,94,0.18)",
+  borderRadius: 999,
+  padding: "10px 14px",
+  boxShadow: "0 10px 22px rgba(15,23,42,0.06)",
+};
+
+const navPills: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  overflowX: "auto",
+  maxWidth: "100%",
+  paddingBottom: 4,
+};
+
+const navPill: React.CSSProperties = {
+  whiteSpace: "nowrap",
+  textDecoration: "none",
+  color: "#166534",
+  background: "rgba(255,255,255,0.82)",
+  border: "1px solid rgba(34,197,94,0.18)",
+  borderRadius: 999,
+  padding: "10px 13px",
+  fontSize: 13,
+  fontWeight: 900,
+};
+
+const hero: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto",
+  background: "linear-gradient(135deg, #16a34a, #84cc16)",
+  color: "white",
+  borderRadius: 32,
+  padding: "clamp(22px, 4vw, 34px)",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 18,
+  flexWrap: "wrap",
+  boxShadow: "0 22px 48px rgba(34,197,94,0.28)",
 };
 
 const small: React.CSSProperties = {
@@ -386,13 +465,39 @@ const smallDark: React.CSSProperties = {
 
 const title: React.CSSProperties = {
   margin: "8px 0",
-  fontSize: 34,
-  fontWeight: 900,
+  fontSize: "clamp(30px, 6vw, 46px)",
+  lineHeight: 1.05,
+  fontWeight: 950,
 };
 
 const subtitle: React.CSSProperties = {
   margin: 0,
   fontSize: 16,
+  lineHeight: 1.6,
+};
+
+const heroActions: React.CSSProperties = {
+  marginTop: 18,
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+};
+
+const heroButton: React.CSSProperties = {
+  background: "white",
+  color: "#15803d",
+  borderRadius: 16,
+  padding: "12px 16px",
+  textDecoration: "none",
+  fontWeight: 950,
+  boxShadow: "0 12px 24px rgba(15,23,42,0.12)",
+};
+
+const heroGhostButton: React.CSSProperties = {
+  ...heroButton,
+  background: "rgba(255,255,255,0.18)",
+  color: "white",
+  border: "1px solid rgba(255,255,255,0.32)",
 };
 
 const sun: React.CSSProperties = {
@@ -400,7 +505,8 @@ const sun: React.CSSProperties = {
 };
 
 const statusBox: React.CSSProperties = {
-  marginTop: 18,
+  maxWidth: 1180,
+  margin: "18px auto 0",
   background: "rgba(255,255,255,0.85)",
   borderRadius: 22,
   padding: 18,
@@ -424,7 +530,8 @@ const badge: React.CSSProperties = {
 };
 
 const summaryGrid: React.CSSProperties = {
-  marginTop: 18,
+  maxWidth: 1180,
+  margin: "18px auto 0",
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
   gap: 14,
@@ -485,7 +592,8 @@ const errorBox: React.CSSProperties = {
 };
 
 const assignmentPanel: React.CSSProperties = {
-  marginTop: 20,
+  maxWidth: 1180,
+  margin: "20px auto 0",
   background: "rgba(255,255,255,0.95)",
   borderRadius: 28,
   padding: 22,
@@ -614,7 +722,8 @@ const assignmentNote: React.CSSProperties = {
 };
 
 const grid: React.CSSProperties = {
-  marginTop: 20,
+  maxWidth: 1180,
+  margin: "20px auto 0",
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
   gap: 16,
@@ -622,12 +731,12 @@ const grid: React.CSSProperties = {
 
 const cardBox: React.CSSProperties = {
   background: "rgba(255,255,255,0.95)",
-  borderRadius: 24,
-  padding: 20,
+  borderRadius: 26,
+  padding: 22,
   textDecoration: "none",
   color: "#0f172a",
   border: "1px solid rgba(15,23,42,0.08)",
-  boxShadow: "0 10px 24px rgba(15,23,42,0.08)",
+  boxShadow: "0 12px 28px rgba(15,23,42,0.08)",
 };
 
 const iconBox: React.CSSProperties = {

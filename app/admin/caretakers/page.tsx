@@ -339,6 +339,7 @@ const page: React.CSSProperties = {
 
 const header: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 20,
   alignItems: "center",

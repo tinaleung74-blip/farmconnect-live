@@ -1,80 +1,33 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-
-type Profile = {
-  id: string;
-  email: string | null;
-};
-
-type Flock = {
-  id: string;
-};
-
-type Animal = {
-  id: string;
-  code: string | null;
-  name: string | null;
-  type: string | null;
-  flock_id: string | null;
-};
-
-type AnimalRelation = Animal | Animal[] | null;
+import {
+  dateTimeText,
+  isChicken,
+  money,
+  normalizeAnimal,
+  resolveCustomerProfile,
+  shellClass,
+  statusPill,
+  type Animal,
+  type AnimalRelation,
+} from "@/lib/customer-auth";
 
 type NotificationItem = {
   id: string;
-  type: string;
+  kind: string;
   title: string;
   description: string;
+  amount?: number | string | null;
+  status?: string | null;
   date: string | null;
   href: string;
-  badge: string;
+  icon: string;
 };
 
-type CashRequest = {
-  id: string;
-  profile_id?: string | null;
-  customer_id?: string | null;
-  amount?: number | null;
-  status?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
-
-type WalletTransaction = {
-  id: string;
-  profile_id: string | null;
-  amount: number | null;
-  transaction_type: string | null;
-  description: string | null;
-  status: string | null;
-  created_at: string | null;
-};
-
-type Hire = {
-  id: string;
-  customer_id: string | null;
-  caretaker_id: string | null;
-  status: string | null;
-  payment_status: string | null;
-  created_at: string | null;
-};
-
-type SellChickenRequest = {
-  id: string;
-  profile_id?: string | null;
-  customer_id?: string | null;
-  flock_id?: string | null;
-  status?: string | null;
-  expected_amount?: number | null;
-  amount?: number | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
-
-type AnimalPhoto = {
+type PhotoEvent = {
   id: string;
   animal_id: string | null;
   photo_url: string | null;
@@ -83,16 +36,16 @@ type AnimalPhoto = {
   animals: AnimalRelation;
 };
 
-type AnimalWeight = {
+type WeightEvent = {
   id: string;
   animal_id: string | null;
-  weight_kg: number | null;
+  weight_kg: number | string | null;
   note: string | null;
   recorded_at: string | null;
   animals: AnimalRelation;
 };
 
-type MortalityLog = {
+type MortalityEvent = {
   id: string;
   animal_id: string | null;
   mortality_count: number | null;
@@ -103,16 +56,9 @@ type MortalityLog = {
 };
 
 export default function CustomerNotificationsPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<NotificationItem[]>([]);
   const [message, setMessage] = useState("");
-
-  const latestNotifications = useMemo(() => {
-    return [...notifications].sort((a, b) => {
-      return new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime();
-    });
-  }, [notifications]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadNotifications();
@@ -122,487 +68,352 @@ export default function CustomerNotificationsPage() {
     setLoading(true);
     setMessage("");
 
-    const resolvedProfile = await resolveCustomerProfile();
-
-    if (!resolvedProfile) {
-      setProfile(null);
-      setNotifications([]);
-      setMessage("Please login to view your notifications.");
+    const profile = await resolveCustomerProfile();
+    if (!profile) {
+      setItems([]);
+      setMessage("Login required to view notifications.");
       setLoading(false);
       return;
     }
 
-    setProfile(resolvedProfile);
+    const animalRows = await loadCustomerAnimals(profile.id);
+    const animalIds = animalRows.map((animal) => animal.id);
 
-    const { data: flocks, error: flockError } = await supabase
-      .from("flocks")
-      .select("id")
-      .eq("customer_id", resolvedProfile.id);
+    const [walletRes, cashinRes, cashoutRes, sellRes, hireRes, memberRes] = await Promise.all([
+      supabase
+        .from("wallet_transactions")
+        .select("id,transaction_type,amount,reference_no,remarks,description,status,created_at")
+        .eq("profile_id", profile.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("cashin_requests")
+        .select("id,amount,status,created_at,reference_no,payment_method")
+        .eq("profile_id", profile.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("cashout_requests")
+        .select("id,amount,status,created_at,reference_no,payment_method")
+        .eq("profile_id", profile.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("sell_chicken_requests")
+        .select("id,total_amount,customer_net_amount,status,created_at,batch_no,breed,chicken_stage")
+        .eq("profile_id", profile.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("customer_caretaker_hires")
+        .select("id,caretaker_name,total_fee,status,payment_status,created_at")
+        .eq("profile_id", profile.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("membership_payments")
+        .select("id,amount,status,created_at,reference_no,payment_method")
+        .eq("profile_id", profile.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
 
-    if (flockError) {
-      setNotifications([]);
-      setMessage(`Flock load error: ${flockError.message}`);
-      setLoading(false);
-      return;
+    const farmEvents = animalIds.length > 0 ? await loadFarmEvents(animalIds) : [];
+
+    const walletItems: NotificationItem[] = (walletRes.data || []).map((row) => ({
+      id: `wallet-${row.id}`,
+      kind: "Wallet",
+      title: row.remarks || row.description || row.transaction_type || "Wallet activity",
+      description: `${row.reference_no || "No reference"} • ${row.transaction_type || "Transaction"}`,
+      amount: row.amount,
+      status: row.status,
+      date: row.created_at,
+      href: "/customer/wallet",
+      icon: "💰",
+    }));
+
+    const cashinItems: NotificationItem[] = (cashinRes.data || []).map((row) => ({
+      id: `cashin-${row.id}`,
+      kind: "Cash-In",
+      title: `${row.payment_method || "Cash-In"} request`,
+      description: `Reference ${row.reference_no || "pending"}`,
+      amount: row.amount,
+      status: row.status,
+      date: row.created_at,
+      href: "/customer/wallet",
+      icon: "📥",
+    }));
+
+    const cashoutItems: NotificationItem[] = (cashoutRes.data || []).map((row) => ({
+      id: `cashout-${row.id}`,
+      kind: "Cash-Out",
+      title: `${row.payment_method || "Cash-Out"} request`,
+      description: `Reference ${row.reference_no || "pending"}`,
+      amount: row.amount,
+      status: row.status,
+      date: row.created_at,
+      href: "/customer/wallet",
+      icon: "📤",
+    }));
+
+    const sellItems: NotificationItem[] = (sellRes.data || []).map((row) => ({
+      id: `sell-${row.id}`,
+      kind: "Sell Chicken",
+      title: row.chicken_stage || row.breed || row.batch_no || "Sell request",
+      description: "Per-rooster sell request update",
+      amount: row.customer_net_amount || row.total_amount,
+      status: row.status,
+      date: row.created_at,
+      href: "/customer/sell-chicken",
+      icon: "🏷️",
+    }));
+
+    const hireItems: NotificationItem[] = (hireRes.data || []).map((row) => ({
+      id: `hire-${row.id}`,
+      kind: "Caretaker",
+      title: row.caretaker_name || "Caretaker request",
+      description: `Payment: ${row.payment_status || "PENDING"}`,
+      amount: row.total_fee,
+      status: row.status,
+      date: row.created_at,
+      href: "/customer/caretakers",
+      icon: "👨‍🌾",
+    }));
+
+    const memberItems: NotificationItem[] = (memberRes.data || []).map((row) => ({
+      id: `membership-${row.id}`,
+      kind: "Membership",
+      title: `${row.payment_method || "Membership"} payment`,
+      description: `Reference ${row.reference_no || "pending"}`,
+      amount: row.amount,
+      status: row.status,
+      date: row.created_at,
+      href: "/customer/membership",
+      icon: "🥇",
+    }));
+
+    const combined = [
+      ...walletItems,
+      ...cashinItems,
+      ...cashoutItems,
+      ...sellItems,
+      ...hireItems,
+      ...memberItems,
+      ...farmEvents,
+    ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+
+    if (walletRes.error || cashinRes.error || cashoutRes.error || sellRes.error || hireRes.error || memberRes.error) {
+      setMessage("Some notification sources could not load. Refresh again after database sync.");
     }
 
-    const flockIds = unique((flocks || []).map((flock: Flock) => flock.id).filter(Boolean));
-
-    const animalIds = await loadCustomerChickenIds(flockIds);
-    const items: NotificationItem[] = [];
-
-    items.push(...(await loadCashinNotifications(resolvedProfile.id)));
-    items.push(...(await loadCashoutNotifications(resolvedProfile.id)));
-    items.push(...(await loadWalletNotifications(resolvedProfile.id)));
-    items.push(...(await loadCaretakerHireNotifications(resolvedProfile.id)));
-    items.push(...(await loadSellChickenNotifications(resolvedProfile.id, flockIds)));
-
-    if (animalIds.length > 0) {
-      items.push(...(await loadPhotoNotifications(animalIds)));
-      items.push(...(await loadWeightNotifications(animalIds)));
-      items.push(...(await loadMortalityNotifications(animalIds)));
-    }
-
-    setNotifications(items);
+    setItems(combined);
     setLoading(false);
   }
 
-  async function loadCustomerChickenIds(flockIds: string[]) {
-    if (flockIds.length === 0) return [];
+  const groupedItems = useMemo(() => {
+    const today = new Date().toDateString();
+    const yesterdayDate = new Date(Date.now() - 86400000).toDateString();
 
-    const { data, error } = await supabase
-      .from("animals")
-      .select("id, code, name, type, flock_id")
-      .in("flock_id", flockIds);
-
-    if (error) return [];
-
-    return (data || []).filter(isChicken).map((animal) => animal.id);
-  }
-
-  async function loadCashinNotifications(profileId: string) {
-    const { data } = await supabase
-      .from("cashin_requests")
-      .select("id, profile_id, customer_id, amount, status, created_at, updated_at")
-      .or(`profile_id.eq.${profileId},customer_id.eq.${profileId}`)
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    return (data || []).map((item: CashRequest) => ({
-      id: `cashin-${item.id}`,
-      type: "cashin",
-      title: `💰 Cash In ${item.status || "Request"}`,
-      description: `Cash in request ${formatPeso(item.amount)} is ${formatStatus(item.status)}.`,
-      date: item.updated_at || item.created_at || null,
-      href: "/customer/wallet",
-      badge: item.status || "CASH IN",
-    }));
-  }
-
-  async function loadCashoutNotifications(profileId: string) {
-    const { data } = await supabase
-      .from("cashout_requests")
-      .select("id, profile_id, customer_id, amount, status, created_at, updated_at")
-      .or(`profile_id.eq.${profileId},customer_id.eq.${profileId}`)
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    return (data || []).map((item: CashRequest) => ({
-      id: `cashout-${item.id}`,
-      type: "cashout",
-      title: `💸 Cash Out ${item.status || "Request"}`,
-      description: `Cash out request ${formatPeso(item.amount)} is ${formatStatus(item.status)}.`,
-      date: item.updated_at || item.created_at || null,
-      href: "/customer/wallet",
-      badge: item.status || "CASH OUT",
-    }));
-  }
-
-  async function loadWalletNotifications(profileId: string) {
-    const { data } = await supabase
-      .from("wallet_transactions")
-      .select("id, profile_id, amount, transaction_type, description, status, created_at")
-      .eq("profile_id", profileId)
-      .order("created_at", { ascending: false })
-      .limit(80);
-
-    return (data || []).map((item: WalletTransaction) => ({
-      id: `wallet-${item.id}`,
-      type: "wallet",
-      title: `Wallet ${item.transaction_type || "Activity"}`,
-      description: `${item.description || "Wallet transaction"} — ${formatPeso(item.amount)} (${formatStatus(item.status)}).`,
-      date: item.created_at,
-      href: "/customer/transactions",
-      badge: item.transaction_type || "WALLET",
-    }));
-  }
-
-  async function loadCaretakerHireNotifications(profileId: string) {
-    const { data } = await supabase
-      .from("customer_caretaker_hires")
-      .select("id, customer_id, caretaker_id, status, payment_status, created_at")
-      .eq("customer_id", profileId)
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    return (data || []).map((item: Hire) => ({
-      id: `hire-${item.id}`,
-      type: "hire",
-      title: "👨‍🌾 Caretaker Hire Update",
-      description: `Caretaker hire is ${formatStatus(item.status)} and payment is ${formatStatus(item.payment_status)}.`,
-      date: item.created_at,
-      href: "/customer/caretaker-hiring",
-      badge: item.status || "CARETAKER",
-    }));
-  }
-
-  async function loadSellChickenNotifications(profileId: string, flockIds: string[]) {
-    let query = supabase
-      .from("sell_chicken_requests")
-      .select("id, profile_id, customer_id, flock_id, status, expected_amount, amount, created_at, updated_at")
-      .order("created_at", { ascending: false })
-      .limit(80);
-
-    const customerFilter = `profile_id.eq.${profileId},customer_id.eq.${profileId}`;
-    const flockFilter = flockIds.length > 0 ? `,flock_id.in.(${flockIds.join(",")})` : "";
-    query = query.or(`${customerFilter}${flockFilter}`);
-
-    const { data } = await query;
-
-    return (data || []).map((item: SellChickenRequest) => ({
-      id: `sell-${item.id}`,
-      type: "sell",
-      title: `🛒 Chicken Sale ${item.status || "Request"}`,
-      description: `Chicken sale request is ${formatStatus(item.status)}. Amount: ${formatPeso(item.amount ?? item.expected_amount)}.`,
-      date: item.updated_at || item.created_at || null,
-      href: "/customer/harvest",
-      badge: item.status || "SELL",
-    }));
-  }
-
-  async function loadPhotoNotifications(animalIds: string[]) {
-    const { data } = await supabase
-      .from("animal_photos")
-      .select(`
-        id,
-        animal_id,
-        photo_url,
-        caption,
-        created_at,
-        animals (
-          id,
-          code,
-          name,
-          type,
-          flock_id
-        )
-      `)
-      .in("animal_id", animalIds)
-      .order("created_at", { ascending: false })
-      .limit(80);
-
-    return (data || [])
-      .filter((item: AnimalPhoto) => isChicken(normalizeAnimal(item.animals)))
-      .map((item: AnimalPhoto) => {
-        const animal = normalizeAnimal(item.animals);
-
-        return {
-          id: `photo-${item.id}`,
-          type: "photo",
-          title: "🐔 New Chicken Photo",
-          description: `${animal?.name || "Chicken"} (${animal?.code || "No code"}) has a new monitoring photo. ${item.caption || ""}`.trim(),
-          date: item.created_at,
-          href: "/customer/live-camera",
-          badge: "PHOTO",
-        };
-      });
-  }
-
-  async function loadWeightNotifications(animalIds: string[]) {
-    const { data } = await supabase
-      .from("animal_weights")
-      .select(`
-        id,
-        animal_id,
-        weight_kg,
-        note,
-        recorded_at,
-        animals (
-          id,
-          code,
-          name,
-          type,
-          flock_id
-        )
-      `)
-      .in("animal_id", animalIds)
-      .order("recorded_at", { ascending: false })
-      .limit(80);
-
-    return (data || [])
-      .filter((item: AnimalWeight) => isChicken(normalizeAnimal(item.animals)))
-      .map((item: AnimalWeight) => {
-        const animal = normalizeAnimal(item.animals);
-
-        return {
-          id: `weight-${item.id}`,
-          type: "weight",
-          title: "⚖️ Weight Updated",
-          description: `${animal?.name || "Chicken"} (${animal?.code || "No code"}) weight is ${item.weight_kg ?? "—"} kg. ${item.note || ""}`.trim(),
-          date: item.recorded_at,
-          href: "/customer/weight",
-          badge: "WEIGHT",
-        };
-      });
-  }
-
-  async function loadMortalityNotifications(animalIds: string[]) {
-    const { data } = await supabase
-      .from("mortality_logs")
-      .select(`
-        id,
-        animal_id,
-        mortality_count,
-        reason,
-        notes,
-        created_at,
-        animals (
-          id,
-          code,
-          name,
-          type,
-          flock_id
-        )
-      `)
-      .in("animal_id", animalIds)
-      .order("created_at", { ascending: false })
-      .limit(80);
-
-    return (data || [])
-      .filter((item: MortalityLog) => isChicken(normalizeAnimal(item.animals)))
-      .map((item: MortalityLog) => {
-        const animal = normalizeAnimal(item.animals);
-
-        return {
-          id: `mortality-${item.id}`,
-          type: "mortality",
-          title: "⚠️ Mortality Report",
-          description: `${animal?.name || "Chicken"} (${animal?.code || "No code"}) mortality count: ${item.mortality_count ?? 0}. Reason: ${item.reason || "No reason"}.`,
-          date: item.created_at,
-          href: "/customer/notifications",
-          badge: "MORTALITY",
-        };
-      });
-  }
+    return {
+      Today: items.filter((item) => item.date && new Date(item.date).toDateString() === today),
+      Yesterday: items.filter((item) => item.date && new Date(item.date).toDateString() === yesterdayDate),
+      Earlier: items.filter((item) => {
+        if (!item.date) return true;
+        const itemDate = new Date(item.date).toDateString();
+        return itemDate !== today && itemDate !== yesterdayDate;
+      }),
+    };
+  }, [items]);
 
   return (
-    <main style={page}>
-      <Link href="/customer/dashboard" style={back}>
-        ← Back
-      </Link>
+    <main className={`${shellClass} p-4 pb-28 md:p-8`}>
+      <div className="mx-auto max-w-5xl">
+        <section className="rounded-[36px] border border-emerald-300/20 bg-white/10 p-7 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="w-fit rounded-full bg-amber-300 px-4 py-2 text-sm font-black text-emerald-950">
+                Notifications
+              </p>
+              <h1 className="mt-4 text-5xl font-black leading-tight">
+                Farm activity inbox.
+              </h1>
+              <p className="mt-2 max-w-3xl font-semibold text-emerald-50">
+                Real events from wallet, cash requests, rooster sales, caretaker hires, photos, weights, mortality, and membership.
+              </p>
+            </div>
 
-      <section style={card}>
-        <div style={header}>
-          <div>
-            <h1 style={title}>🔔 Notifications</h1>
-            <p style={subtitle}>
-              Real production events from wallet, caretaker hiring, chicken photos,
-              weights, mortality, and sell chicken requests.
-            </p>
+            <button
+              onClick={loadNotifications}
+              className="rounded-full bg-white px-5 py-3 font-black text-emerald-950"
+            >
+              Refresh
+            </button>
           </div>
+        </section>
 
-          <button onClick={loadNotifications} disabled={loading} style={refreshButton}>
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
-
-        {message && <div style={notice}>{message}</div>}
-
-        {loading ? (
-          <p style={muted}>Loading notifications...</p>
-        ) : latestNotifications.length === 0 ? (
-          <p style={muted}>No production notifications yet.</p>
-        ) : (
-          <div style={list}>
-            {latestNotifications.map((item) => (
-              <Link key={item.id} href={item.href} style={notificationCard}>
-                <div>
-                  <p style={badge}>{item.badge}</p>
-                  <h2 style={notificationTitle}>{item.title}</h2>
-                  <p style={description}>{item.description}</p>
-                  <p style={dateText}>{formatDate(item.date)}</p>
-                </div>
-              </Link>
-            ))}
+        {message && (
+          <div className="mt-5 rounded-2xl border border-emerald-100 bg-white p-4 font-black text-emerald-800 shadow-xl">
+            {message}
           </div>
         )}
-      </section>
+
+        {loading ? (
+          <div className="mt-6 rounded-[32px] bg-white p-8 text-center font-black text-emerald-800 shadow-2xl">
+            Loading notifications...
+          </div>
+        ) : items.length === 0 ? (
+          <div className="mt-6 rounded-[32px] bg-white p-10 text-center shadow-2xl">
+            <div className="text-6xl">🔔</div>
+            <h2 className="mt-4 text-3xl font-black text-emerald-950">
+              No production notifications yet.
+            </h2>
+            <p className="mt-2 font-bold text-slate-500">
+              Wallet, marketplace, caretaker, and farm updates will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 space-y-7">
+            {Object.entries(groupedItems).map(([label, rows]) =>
+              rows.length > 0 ? (
+                <section key={label}>
+                  <h2 className="mb-3 text-xl font-black text-white">{label}</h2>
+                  <div className="space-y-4">
+                    {rows.map((item) => (
+                      <Link
+                        key={item.id}
+                        href={item.href}
+                        className="block rounded-[28px] bg-white p-5 shadow-2xl transition hover:-translate-y-1"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex gap-4">
+                            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-3xl">
+                              {item.icon}
+                            </div>
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                                {item.kind}
+                              </p>
+                              <h3 className="mt-1 text-xl font-black text-emerald-950">
+                                {item.title}
+                              </h3>
+                              <p className="mt-1 text-sm font-bold text-slate-500">
+                                {item.description} • {dateTimeText(item.date)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 text-right">
+                            {item.amount !== undefined && (
+                              <p className="font-black text-emerald-700">{money(item.amount)}</p>
+                            )}
+                            <span className={`mt-2 inline-block rounded-full border px-3 py-1 text-xs font-black ${statusPill(item.status)}`}>
+                              {item.status || "INFO"}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              ) : null
+            )}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
 
-async function resolveCustomerProfile(): Promise<Profile | null> {
-  const { data: authData } = await supabase.auth.getUser();
-  const user = authData.user;
+async function loadCustomerAnimals(profileId: string) {
+  const direct = await supabase
+    .from("animals")
+    .select("id,code,name,type,breed,profile_id,flock_id")
+    .eq("profile_id", profileId);
 
-  if (!user) return null;
+  if (!direct.error) return ((direct.data || []) as Animal[]).filter(isChicken);
 
-  const email = user.email || "";
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, email")
-    .or(`id.eq.${user.id},email.eq.${email}`)
-    .maybeSingle();
+  const flocks = await supabase.from("flocks").select("id").eq("profile_id", profileId);
+  const flockIds = (flocks.data || []).map((flock) => flock.id).filter(Boolean);
+  if (flockIds.length === 0) return [];
 
-  if (error || !data) return null;
-  return data;
+  const byFlock = await supabase
+    .from("animals")
+    .select("id,code,name,type,breed,profile_id,flock_id")
+    .in("flock_id", flockIds);
+
+  return ((byFlock.data || []) as Animal[]).filter(isChicken);
 }
 
-function unique(values: string[]) {
-  return Array.from(new Set(values));
+async function loadFarmEvents(animalIds: string[]) {
+  const [photoRes, weightRes, mortalityRes] = await Promise.all([
+    supabase
+      .from("animal_photos")
+      .select("id,animal_id,photo_url,caption,created_at,animals(id,code,name,type,breed)")
+      .in("animal_id", animalIds)
+      .order("created_at", { ascending: false })
+      .limit(12),
+    supabase
+      .from("animal_weights")
+      .select("id,animal_id,weight_kg,note,recorded_at,animals(id,code,name,type,breed)")
+      .in("animal_id", animalIds)
+      .order("recorded_at", { ascending: false })
+      .limit(12),
+    supabase
+      .from("mortality_logs")
+      .select("id,animal_id,mortality_count,reason,notes,created_at,animals(id,code,name,type,breed)")
+      .in("animal_id", animalIds)
+      .order("created_at", { ascending: false })
+      .limit(12),
+  ]);
+
+  const photoItems: NotificationItem[] = ((photoRes.data || []) as PhotoEvent[])
+    .filter((photo) => isChicken(normalizeAnimal(photo.animals)))
+    .map((photo) => {
+      const animal = normalizeAnimal(photo.animals);
+      return {
+        id: `photo-${photo.id}`,
+        kind: "Photo Update",
+        title: animal?.name || animal?.code || "New rooster photo",
+        description: photo.caption || "Latest caretaker/customer uploaded photo",
+        status: "PHOTO",
+        date: photo.created_at,
+        href: "/customer/photo-updates",
+        icon: "📸",
+      };
+    });
+
+  const weightItems: NotificationItem[] = ((weightRes.data || []) as WeightEvent[])
+    .filter((weight) => isChicken(normalizeAnimal(weight.animals)))
+    .map((weight) => {
+      const animal = normalizeAnimal(weight.animals);
+      return {
+        id: `weight-${weight.id}`,
+        kind: "Weight Update",
+        title: `${animal?.name || animal?.code || "Rooster"} • ${weight.weight_kg || "—"} kg`,
+        description: weight.note || "Latest weight record",
+        status: "WEIGHT",
+        date: weight.recorded_at,
+        href: "/customer/weight-updates",
+        icon: "⚖️",
+      };
+    });
+
+  const mortalityItems: NotificationItem[] = ((mortalityRes.data || []) as MortalityEvent[])
+    .filter((mortality) => isChicken(normalizeAnimal(mortality.animals)))
+    .map((mortality) => {
+      const animal = normalizeAnimal(mortality.animals);
+      return {
+        id: `mortality-${mortality.id}`,
+        kind: "Mortality",
+        title: animal?.name || animal?.code || "Mortality report",
+        description: mortality.reason || mortality.notes || "Mortality log submitted",
+        amount: mortality.mortality_count,
+        status: "ALERT",
+        date: mortality.created_at,
+        href: "/customer/notifications",
+        icon: "⚠️",
+      };
+    });
+
+  return [...photoItems, ...weightItems, ...mortalityItems];
 }
-
-function normalizeAnimal(value: AnimalRelation): Animal | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value ?? null;
-}
-
-function isChicken(animal: Animal | null | undefined) {
-  const type = String(animal?.type || "").toLowerCase();
-  const code = String(animal?.code || "").toUpperCase();
-
-  if (["SWINE-002", "COW-001", "COW-002"].includes(code)) return false;
-
-  return type.includes("chicken") || type.includes("poultry");
-}
-
-function formatStatus(value?: string | null) {
-  return String(value || "PENDING").replaceAll("_", " ");
-}
-
-function formatPeso(value?: number | null) {
-  const amount = Number(value || 0);
-  return amount.toLocaleString("en-PH", {
-    style: "currency",
-    currency: "PHP",
-  });
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "No date";
-  return new Date(value).toLocaleString("en-PH");
-}
-
-const page: React.CSSProperties = {
-  minHeight: "100vh",
-  background: "linear-gradient(180deg, #f0fdf4, #dbeafe)",
-  padding: 20,
-  fontFamily: "Arial, sans-serif",
-};
-
-const back: React.CSSProperties = {
-  display: "inline-block",
-  marginBottom: 16,
-  color: "#15803d",
-  fontWeight: 900,
-  textDecoration: "none",
-};
-
-const card: React.CSSProperties = {
-  maxWidth: 980,
-  margin: "0 auto",
-  background: "white",
-  borderRadius: 28,
-  padding: 24,
-  boxShadow: "0 20px 45px rgba(0,0,0,0.1)",
-};
-
-const header: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 16,
-  alignItems: "flex-start",
-  flexWrap: "wrap",
-};
-
-const title: React.CSSProperties = {
-  fontSize: 32,
-  margin: 0,
-  fontWeight: 900,
-};
-
-const subtitle: React.CSSProperties = {
-  color: "#64748b",
-  maxWidth: 680,
-};
-
-const refreshButton: React.CSSProperties = {
-  padding: "12px 16px",
-  borderRadius: 14,
-  border: "none",
-  background: "#16a34a",
-  color: "white",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const notice: React.CSSProperties = {
-  background: "#dcfce7",
-  color: "#166534",
-  padding: 12,
-  borderRadius: 14,
-  marginBottom: 14,
-  fontWeight: 800,
-};
-
-const muted: React.CSSProperties = {
-  color: "#64748b",
-  fontWeight: 700,
-};
-
-const list: React.CSSProperties = {
-  display: "grid",
-  gap: 12,
-  marginTop: 20,
-};
-
-const notificationCard: React.CSSProperties = {
-  display: "block",
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  borderRadius: 18,
-  padding: 16,
-  textDecoration: "none",
-  color: "inherit",
-};
-
-const badge: React.CSSProperties = {
-  display: "inline-block",
-  margin: 0,
-  marginBottom: 8,
-  background: "#dcfce7",
-  color: "#166534",
-  borderRadius: 999,
-  padding: "5px 10px",
-  fontSize: 12,
-  fontWeight: 900,
-};
-
-const notificationTitle: React.CSSProperties = {
-  margin: 0,
-  color: "#14532d",
-  fontSize: 20,
-  fontWeight: 900,
-};
-
-const description: React.CSSProperties = {
-  margin: "8px 0 0",
-  color: "#334155",
-  fontWeight: 700,
-};
-
-const dateText: React.CSSProperties = {
-  margin: "8px 0 0",
-  color: "#64748b",
-  fontSize: 13,
-};

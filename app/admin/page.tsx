@@ -142,7 +142,7 @@ export default function AdminDashboardPage() {
   const cards = [
     {
       title: "Analytics",
-      value: "V27",
+      value: "V28",
       desc: "Revenue, sales, customers, flocks, and business intelligence",
       href: "/admin/analytics",
       icon: "📊",
@@ -176,10 +176,10 @@ export default function AdminDashboardPage() {
       icon: "✅",
     },
     {
-      title: "Active Flocks",
+      title: "Operations",
       value: stats.flocks,
-      desc: "Chicken batches under monitoring",
-      href: "/admin/reports",
+      desc: "Live flock, caretaker, cash, inventory, and sell activity feed",
+      href: "/admin/operations",
       icon: "🐔",
     },
     {
@@ -188,6 +188,20 @@ export default function AdminDashboardPage() {
       desc: "Approve or reject chicken selling requests",
       href: "/admin/sell-requests",
       icon: "🐓",
+    },
+    {
+      title: "Sell Price",
+      value: "Policy",
+      desc: "Admin live sell price and technical fee policy screen",
+      href: "/admin/sell-price",
+      icon: "🏷️",
+    },
+    {
+      title: "Transactions Center",
+      value: "Live",
+      desc: "Unified cash-in, cash-out, wallet, and sell credit activity",
+      href: "/admin/transactions",
+      icon: "🔁",
     },
     {
       title: "Cash-In Requests",
@@ -211,10 +225,10 @@ export default function AdminDashboardPage() {
       icon: "👛",
     },
     {
-      title: "Poultry Monitoring",
+      title: "Risk Management",
       value: stats.mortalityReports,
-      desc: "Mortality Reports from production caretaker monitoring",
-      href: "/admin/reports",
+      desc: "Mortality, compliance, and farm risk alerts for admin review",
+      href: "/admin/risk-management",
       icon: "⚠️",
     },
     {
@@ -223,6 +237,20 @@ export default function AdminDashboardPage() {
       desc: "Production farm reports from operations and caretaker activity",
       href: "/admin/reports",
       icon: "📋",
+    },
+    {
+      title: "Harvest",
+      value: "Live",
+      desc: "Harvest output, schedules, expenses, and production results",
+      href: "/admin/harvest",
+      icon: "🌾",
+    },
+    {
+      title: "Audit Logs",
+      value: "Audit",
+      desc: "Admin accountability trail and security activity logs",
+      href: "/admin/audit-logs",
+      icon: "🧾",
     },
     {
       title: "Treasury",
@@ -237,7 +265,7 @@ export default function AdminDashboardPage() {
     <main style={page}>
       <section style={hero}>
         <div>
-          <p style={eyebrow}>FarmConnect Live Admin V27</p>
+          <p style={eyebrow}>FarmConnect Live Admin V28</p>
           <h1 style={title}>Executive Admin Dashboard</h1>
           <p style={subtitle}>
             Central command center for analytics, customers, KYC, memberships,
@@ -303,42 +331,23 @@ export default function AdminDashboardPage() {
         </div>
 
         <div style={buttonGrid}>
-          <Link href="/admin/analytics" style={button}>
-            Analytics
-          </Link>
-          <Link href="/admin/customers" style={button}>
-            Customers
-          </Link>
-          <Link href="/admin/memberships" style={button}>
-            Memberships
-          </Link>
-          <Link href="/admin/caretakers" style={button}>
-            Caretakers
-          </Link>
-          <Link href="/admin/caretaker-hires" style={button}>
-            Caretaker Hires
-          </Link>
-          <Link href="/admin/sell-requests" style={button}>
-            Sell Requests
-          </Link>
-          <Link href="/admin/treasury" style={button}>
-            Treasury
-          </Link>
-          <Link href="/admin/transactions/cashin" style={button}>
-            Cash-In
-          </Link>
-          <Link href="/admin/transactions/cashout" style={button}>
-            Cash-Out
-          </Link>
-          <Link href="/admin/wallet" style={button}>
-            Wallet
-          </Link>
-          <Link href="/admin/reports" style={button}>
-            Reports
-          </Link>
-          <Link href="/admin/analytics" style={button}>
-            Analytics
-          </Link>
+          <Link href="/admin/analytics" style={button}>Analytics</Link>
+          <Link href="/admin/customers" style={button}>Customers</Link>
+          <Link href="/admin/memberships" style={button}>Memberships</Link>
+          <Link href="/admin/caretakers" style={button}>Caretakers</Link>
+          <Link href="/admin/caretaker-hires" style={button}>Caretaker Hires</Link>
+          <Link href="/admin/transactions" style={button}>Transactions</Link>
+          <Link href="/admin/transactions/cashin" style={button}>Cash-In</Link>
+          <Link href="/admin/transactions/cashout" style={button}>Cash-Out</Link>
+          <Link href="/admin/wallet" style={button}>Wallet</Link>
+          <Link href="/admin/treasury" style={button}>Treasury</Link>
+          <Link href="/admin/sell-price" style={button}>Sell Price</Link>
+          <Link href="/admin/sell-requests" style={button}>Sell Requests</Link>
+          <Link href="/admin/operations" style={button}>Operations</Link>
+          <Link href="/admin/reports" style={button}>Reports</Link>
+          <Link href="/admin/harvest" style={button}>Harvest</Link>
+          <Link href="/admin/risk-management" style={button}>Risk</Link>
+          <Link href="/admin/audit-logs" style={button}>Audit Logs</Link>
         </div>
       </section>
     </main>
@@ -367,6 +376,7 @@ const page: React.CSSProperties = {
 
 const hero: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 24,
   alignItems: "flex-start",
@@ -400,6 +410,7 @@ const statusBox: React.CSSProperties = {
   borderRadius: 999,
   padding: "12px 18px",
   display: "flex",
+  flexWrap: "wrap",
   alignItems: "center",
   gap: 10,
   fontWeight: 800,
@@ -458,6 +469,7 @@ const cardStyle: React.CSSProperties = {
   borderRadius: 24,
   padding: 22,
   display: "flex",
+  flexWrap: "wrap",
   gap: 18,
   alignItems: "flex-start",
   boxShadow: "0 18px 38px rgba(0,0,0,0.08)",
@@ -471,6 +483,7 @@ const icon: React.CSSProperties = {
   borderRadius: 18,
   background: "#dcfce7",
   display: "flex",
+  flexWrap: "wrap",
   alignItems: "center",
   justifyContent: "center",
 };

@@ -1,142 +1,152 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { shellClass } from "@/lib/customer-auth";
 
-type Message = {
-  role: "customer" | "ai";
-  text: string;
-};
+type SupportCategory = "Wallet" | "Marketplace" | "Flock" | "Sell Chicken" | "Membership" | "Other";
+
+const categories: SupportCategory[] = ["Wallet", "Marketplace", "Flock", "Sell Chicken", "Membership", "Other"];
 
 export default function CustomerServicePage() {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "ai",
-      text: "Hello! I am FarmConnect AI Assistant. How can I help you today?",
-    },
-  ]);
+  const [category, setCategory] = useState<SupportCategory>("Wallet");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState("");
 
-  function sendMessage() {
-    if (!input.trim()) return;
+  const supportSummary = useMemo(() => {
+    return [
+      `Category: ${category}`,
+      `Subject: ${subject || "Not provided"}`,
+      `Message: ${message || "Not provided"}`,
+    ].join("\n");
+  }, [category, subject, message]);
 
-    const question = input.trim();
-    const lower = question.toLowerCase();
-
-    let reply =
-      "I understand. Please provide your batch number, transaction reference, or screenshot if available. I can help guide your request before it goes to FarmConnect Admin Support.";
-
-    if (
-      lower.includes("cash in") ||
-      lower.includes("cash-in") ||
-      lower.includes("gcash") ||
-      lower.includes("maya")
-    ) {
-      reply =
-        "For cash-in, go to Wallet, choose GCash or Maya, send payment to the FarmConnect number shown, enter the amount and reference number, then submit. Admin will verify and credit your wallet.";
+  async function copySupportSummary() {
+    if (!subject.trim() || !message.trim()) {
+      setStatus("Please enter a subject and message before preparing the support note.");
+      return;
     }
 
-    if (
-      lower.includes("cash out") ||
-      lower.includes("cash-out") ||
-      lower.includes("withdraw")
-    ) {
-      reply =
-        "For cash-out, go to Wallet, enter your GCash or Maya payout details and amount. A 2% technical fee applies. Admin will process the payout after verification.";
+    try {
+      await navigator.clipboard.writeText(supportSummary);
+      setStatus("Support note copied. Real admin ticket chat will be connected in the support backend phase.");
+    } catch {
+      setStatus("Support note prepared. Copy is not available in this browser.");
     }
+  }
 
-    if (lower.includes("inventory") || lower.includes("feed")) {
-      reply =
-        "Marketplace supplies should sync to your Inventory after checkout. Please check the selected flock and remaining quantity.";
-    }
-
-    if (
-      lower.includes("sell") ||
-      lower.includes("chicken") ||
-      lower.includes("tandang")
-    ) {
-      reply =
-        "For selling chickens, use the Sell Chicken module. Select a mature flock, enter quantity, and submit a sell request for admin approval.";
-    }
-
-    if (lower.includes("wallet") || lower.includes("payment")) {
-      reply =
-        "Wallet records show cash-ins, cash-outs, marketplace purchases, and approved chicken sale earnings. Pending transactions require admin approval.";
-    }
-
-    if (lower.includes("photo") || lower.includes("weight")) {
-      reply =
-        "Weight and photo updates are shown from farm records once connected to your flock. Check Weight Tracker or Photo Updates.";
-    }
-
-    setMessages((prev) => [
-      ...prev,
-      { role: "customer", text: question },
-      { role: "ai", text: reply },
-    ]);
-
-    setInput("");
+  function clearForm() {
+    setSubject("");
+    setMessage("");
+    setStatus("Support form cleared.");
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-green-50 via-white to-lime-100 p-6">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-black text-green-900">
-              🤖 FarmConnect AI Assistant
-            </h1>
-            <p className="font-semibold text-green-700">
-              Ask help about flock, inventory, wallet, selling, and farm updates.
-            </p>
+    <main className={`${shellClass} p-4 pb-28 md:p-8`}>
+      <div className="mx-auto max-w-6xl">
+        <section className="rounded-[40px] border border-emerald-300/20 bg-white/10 p-7 text-white shadow-2xl">
+          <p className="w-fit rounded-full bg-amber-300 px-4 py-2 text-sm font-black text-emerald-950">
+            Customer Support
+          </p>
+          <h1 className="mt-4 text-5xl font-black leading-tight md:text-6xl">
+            Prepare a support request.
+          </h1>
+          <p className="mt-3 max-w-3xl font-semibold text-emerald-50">
+            This page does not pretend to be live admin chat yet. The real ticket tables and admin reply flow are scheduled for the support backend phase.
+          </p>
+        </section>
+
+        {status && (
+          <div className="mt-5 rounded-2xl bg-white p-4 font-black text-emerald-800 shadow-xl">
+            {status}
           </div>
+        )}
 
-          <Link
-            href="/customer/dashboard"
-            className="rounded-full bg-green-700 px-5 py-3 font-black text-white"
-          >
-            Back
-          </Link>
-        </div>
+        <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
+          <div className="rounded-[36px] bg-white p-6 shadow-2xl">
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-emerald-700">
+              Request Details
+            </p>
+            <h2 className="mt-1 text-3xl font-black text-emerald-950">Tell FarmConnect what happened</h2>
 
-        <section className="rounded-3xl border bg-white p-5 shadow-xl">
-          <div className="mb-5 h-[520px] overflow-y-auto rounded-3xl bg-gray-50 p-4">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`mb-3 flex ${
-                  msg.role === "customer" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-3xl p-4 font-semibold ${
-                    msg.role === "customer"
-                      ? "bg-green-700 text-white"
-                      : "bg-white text-gray-800 shadow"
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {categories.map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setCategory(item)}
+                  className={`rounded-2xl border px-4 py-3 text-left font-black ${
+                    category === item
+                      ? "border-emerald-700 bg-emerald-700 text-white"
+                      : "border-emerald-100 bg-emerald-50 text-emerald-950"
                   }`}
                 >
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-          </div>
+                  {item}
+                </button>
+              ))}
+            </div>
 
-          <div className="flex gap-3">
+            <label className="mt-6 block text-sm font-black text-slate-600">Subject</label>
             <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Ask FarmConnect AI..."
-              className="w-full rounded-2xl border p-4 font-bold"
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              placeholder="Enter support subject"
+              className="mt-2 w-full rounded-2xl border border-emerald-100 p-4 font-bold outline-none focus:border-emerald-600"
             />
 
-            <button
-              onClick={sendMessage}
-              className="rounded-2xl bg-green-700 px-6 font-black text-white"
-            >
-              Send
-            </button>
+            <label className="mt-5 block text-sm font-black text-slate-600">Message</label>
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Write the details, amount, reference number, rooster code, or marketplace item if relevant."
+              className="mt-2 min-h-48 w-full rounded-2xl border border-emerald-100 p-4 font-bold outline-none focus:border-emerald-600"
+            />
+
+            <div className="mt-5 flex flex-col gap-3 md:flex-row">
+              <button
+                onClick={copySupportSummary}
+                className="rounded-2xl bg-emerald-700 px-6 py-4 font-black text-white"
+              >
+                Prepare Support Note
+              </button>
+              <button
+                onClick={clearForm}
+                className="rounded-2xl bg-slate-100 px-6 py-4 font-black text-slate-700"
+              >
+                Clear
+              </button>
+              <Link
+                href="/customer/notifications"
+                className="rounded-2xl bg-amber-300 px-6 py-4 text-center font-black text-emerald-950"
+              >
+                Check Notifications
+              </Link>
+            </div>
           </div>
+
+          <aside className="rounded-[36px] bg-[#0c2318] p-6 text-white shadow-2xl">
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-amber-200">
+              Next Support Phase
+            </p>
+            <h2 className="mt-2 text-3xl font-black">Real ticket chat</h2>
+            <p className="mt-3 text-sm font-semibold text-emerald-50">
+              When support tables are added, this page should be upgraded into real customer-admin ticket chat.
+            </p>
+
+            <div className="mt-6 grid gap-3">
+              {[
+                "Customer creates ticket",
+                "Admin receives ticket",
+                "Customer sends messages",
+                "Admin replies",
+                "Ticket can be closed",
+              ].map((step) => (
+                <div key={step} className="rounded-2xl border border-white/10 bg-white/10 p-4 font-black">
+                  ✓ {step}
+                </div>
+              ))}
+            </div>
+          </aside>
         </section>
       </div>
     </main>

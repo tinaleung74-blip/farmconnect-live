@@ -280,6 +280,7 @@ const page: React.CSSProperties = {
 
 const hero: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 20,
   alignItems: "center",
@@ -404,6 +405,7 @@ const list: React.CSSProperties = {
 
 const itemCard: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 16,
   padding: 16,

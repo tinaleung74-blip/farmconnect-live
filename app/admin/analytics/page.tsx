@@ -840,6 +840,7 @@ const page: React.CSSProperties = {
 
 const hero: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 20,
   alignItems: "center",
@@ -911,6 +912,7 @@ const refreshBtn: React.CSSProperties = {
 
 const commandStrip: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   alignItems: "center",
   gap: 18,
@@ -1049,6 +1051,7 @@ const card: React.CSSProperties = {
 
 const cardHeader: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 14,
   alignItems: "center",
@@ -1078,6 +1081,7 @@ const pill: React.CSSProperties = {
 
 const queueRow: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 14,
   padding: "15px 0",
@@ -1089,6 +1093,7 @@ const queueRow: React.CSSProperties = {
 
 const riskRow: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 14,
   padding: "15px 0",
@@ -1113,6 +1118,7 @@ const salesBox: React.CSSProperties = {
 
 const operationBox: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 14,
   padding: "17px 0",
@@ -1158,6 +1164,7 @@ const feedGrid: React.CSSProperties = {
 
 const feedItem: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 12,
   padding: 16,

@@ -1,162 +1,128 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-
-const RESTRICTED_PATHS = [
-  "/customer/chicks",
-  "/customer/wallet",
-  "/customer/marketplace",
-  "/customer/caretakers",
-  "/customer/sell-chicken",
-  "/customer/inventory",
-  "/customer/weight-updates",
-  "/customer/photo-updates",
-  "/customer/live-camera",
-];
+import { isActiveCustomer, resolveCustomerProfile } from "@/lib/customer-auth";
 
 const PUBLIC_PATHS = [
   "/customer/login",
   "/customer/register",
   "/customer/membership",
   "/customer/customer-service",
-  "/customer/settings",
-  "/customer/notifications",
-  "/customer/dashboard",
 ];
 
-export default function CustomerLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const nav = [
+  ["Dashboard", "/customer/dashboard"],
+  ["My Flock", "/customer/chicks"],
+  ["Marketplace", "/customer/marketplace"],
+  ["Wallet", "/customer/wallet"],
+  ["Sell", "/customer/sell-chicken"],
+  ["Support", "/customer/customer-service"],
+];
+
+export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
+  const isPublic = useMemo(
+    () => PUBLIC_PATHS.some((path) => pathname.startsWith(path)) || pathname === "/customer",
+    [pathname],
+  );
+
   useEffect(() => {
-    checkAccess();
-  }, [pathname]);
+    let mounted = true;
 
-  function getProfileId() {
-    if (typeof window === "undefined") return "";
+    async function checkAccess() {
+      setChecking(true);
 
-    const rawUser = localStorage.getItem("farmconnect_user");
-
-    const directId =
-      localStorage.getItem("farmconnect_profile_id") ||
-      localStorage.getItem("profile_id") ||
-      localStorage.getItem("customer_id") ||
-      "";
-
-    if (directId) return directId;
-
-    if (rawUser) {
-      try {
-        const parsed = JSON.parse(rawUser);
-        return parsed?.id || parsed?.profile_id || parsed?.customer_id || "";
-      } catch {
-        return "";
+      if (isPublic) {
+        if (mounted) {
+          setAllowed(true);
+          setChecking(false);
+        }
+        return;
       }
-    }
 
-    return "";
-  }
+      const profile = await resolveCustomerProfile();
+      if (!mounted) return;
 
-  function isRestrictedPath(path: string) {
-    return RESTRICTED_PATHS.some((restrictedPath) =>
-      path.startsWith(restrictedPath)
-    );
-  }
+      if (!profile) {
+        setAllowed(false);
+        setChecking(false);
+        router.replace("/customer/login");
+        return;
+      }
 
-  function isPublicPath(path: string) {
-    return PUBLIC_PATHS.some((publicPath) => path.startsWith(publicPath));
-  }
+      if (!isActiveCustomer(profile)) {
+        setAllowed(false);
+        setChecking(false);
+        router.replace("/customer/membership");
+        return;
+      }
 
-  async function checkAccess() {
-    setChecking(true);
-
-    if (!isRestrictedPath(pathname)) {
       setAllowed(true);
       setChecking(false);
-      return;
     }
 
-    const profileId = getProfileId();
+    checkAccess();
+    return () => {
+      mounted = false;
+    };
+  }, [isPublic, pathname, router]);
 
-    if (!profileId) {
-      setAllowed(false);
-      setChecking(false);
-      router.replace("/customer/login");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .select(
-        "id,full_name,email,phone,wallet_balance,verification_status,membership_status,membership_expiry,account_status"
-      )
-      .eq("id", profileId)
-      .maybeSingle();
-
-    if (error || !data) {
-      localStorage.removeItem("farmconnect_user");
-      localStorage.removeItem("farmconnect_profile_id");
-      localStorage.removeItem("profile_id");
-      localStorage.removeItem("customer_id");
-
-      setAllowed(false);
-      setChecking(false);
-      router.replace("/customer/login");
-      return;
-    }
-
-    localStorage.setItem("farmconnect_user", JSON.stringify(data));
-    localStorage.setItem("farmconnect_profile_id", data.id);
-    localStorage.setItem("profile_id", data.id);
-    localStorage.setItem("customer_id", data.id);
-
-    const membershipActive =
-      String(data.membership_status || "").toUpperCase() === "ACTIVE";
-
-    const kycApproved =
-      String(data.verification_status || "").toUpperCase() === "APPROVED";
-
-    const accountActive =
-      String(data.account_status || "").toUpperCase() === "ACTIVE";
-
-    if (!membershipActive || !kycApproved || !accountActive) {
-      setAllowed(false);
-      setChecking(false);
-      router.replace("/customer/membership");
-      return;
-    }
-
-    setAllowed(true);
-    setChecking(false);
+  async function signOut() {
+    await supabase.auth.signOut();
+    router.replace("/customer/login");
   }
 
-  if (checking && isRestrictedPath(pathname)) {
+  if (checking && !isPublic) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-green-50 via-white to-yellow-50 p-6">
-        <div className="mx-auto mt-20 max-w-xl rounded-3xl bg-white p-8 text-center shadow-xl">
-          <h1 className="text-2xl font-black text-green-900">
-            Checking FarmConnect access...
-          </h1>
-          <p className="mt-2 font-semibold text-slate-500">
-            Verifying membership, KYC, and account status.
-          </p>
+      <main className="min-h-screen bg-[#07150f] p-6 text-white">
+        <div className="mx-auto mt-24 max-w-lg rounded-[32px] border border-emerald-300/20 bg-white/10 p-8 text-center shadow-2xl">
+          <h1 className="text-2xl font-black">Checking FarmConnect access...</h1>
+          <p className="mt-2 text-emerald-100">Verifying membership, KYC, and account status.</p>
         </div>
       </main>
     );
   }
 
-  if (!allowed && isRestrictedPath(pathname)) {
-    return null;
-  }
+  if (!allowed && !isPublic) return null;
 
-  return <>{children}</>;
+  return (
+    <>
+      {!isPublic && (
+        <header className="sticky top-0 z-40 border-b border-emerald-900/10 bg-[#07150f]/90 px-4 py-3 text-white backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+            <Link href="/customer/dashboard" className="font-black tracking-tight text-emerald-100">
+              🐔 FarmConnect Live
+            </Link>
+            <nav className="hidden items-center gap-2 md:flex">
+              {nav.map(([label, href]) => (
+                <Link key={href} href={href} className="rounded-full px-4 py-2 text-sm font-bold text-emerald-50 hover:bg-white/10">
+                  {label}
+                </Link>
+              ))}
+            </nav>
+            <button onClick={signOut} className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white hover:bg-white/20">
+              Logout
+            </button>
+          </div>
+        </header>
+      )}
+      {children}
+      {!isPublic && (
+        <nav className="fixed bottom-4 left-1/2 z-40 flex w-[calc(100%-24px)] max-w-xl -translate-x-1/2 justify-around rounded-full border border-white/15 bg-[#07150f]/95 p-2 text-xs font-black text-white shadow-2xl backdrop-blur-xl md:hidden">
+          {nav.slice(0, 5).map(([label, href]) => (
+            <Link key={href} href={href} className="rounded-full px-3 py-2 hover:bg-white/10">
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
+    </>
+  );
 }

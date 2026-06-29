@@ -215,6 +215,7 @@ const back: React.CSSProperties = {
 
 const hero: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   alignItems: "center",
   gap: 22,
   background: "rgba(255,255,255,0.88)",

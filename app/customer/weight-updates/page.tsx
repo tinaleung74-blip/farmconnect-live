@@ -1,28 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  dateText,
+  isChicken,
+  normalizeAnimal,
+  resolveCustomerProfile,
+  shellClass,
+  type Animal,
+  type AnimalRelation,
+} from "@/lib/customer-auth";
 
-type Animal = {
+type WeightRow = {
   id: string;
-  code: string | null;
-  name: string | null;
-  type: string | null;
-};
-
-type AnimalRelation = Animal | Animal[] | null;
-
-type AnimalWeight = {
-  id: string;
-  animal_id: string;
-  weight_kg: number | null;
+  animal_id: string | null;
+  weight_kg: number | string | null;
   note: string | null;
   recorded_at: string | null;
   animals: AnimalRelation;
 };
 
 export default function WeightUpdatesPage() {
-  const [weights, setWeights] = useState<AnimalWeight[]>([]);
+  const [weights, setWeights] = useState<WeightRow[]>([]);
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,141 +33,184 @@ export default function WeightUpdatesPage() {
 
   async function loadWeights() {
     setLoading(true);
+    setMessage("");
 
-    const { data, error } = await supabase
-      .from("animal_weights")
-      .select(`
-        id,
-        animal_id,
-        weight_kg,
-        note,
-        recorded_at,
-        animals (
-          id,
-          code,
-          name,
-          type
-        )
-      `)
-      .order("recorded_at", { ascending: false });
+    const profile = await resolveCustomerProfile();
+    if (!profile) {
+      setWeights([]);
+      setMessage("Login required to view weight updates.");
+      setLoading(false);
+      return;
+    }
 
-    if (error) {
-      alert(`Weight load error: ${error.message}`);
+    const animals = await loadCustomerAnimals(profile.id);
+    const animalIds = animals.map((animal) => animal.id);
+
+    if (animalIds.length === 0) {
       setWeights([]);
       setLoading(false);
       return;
     }
 
-    const chickenOnly = (data || []).filter((item: any) => {
-      const animal = normalizeAnimal(item.animals);
-      return String(animal?.type || "").toLowerCase().includes("chicken");
-    });
+    const { data, error } = await supabase
+      .from("animal_weights")
+      .select("id,animal_id,weight_kg,note,recorded_at,animals(id,code,name,type,breed,health_status)")
+      .in("animal_id", animalIds)
+      .order("recorded_at", { ascending: false })
+      .limit(120);
 
-    setWeights(chickenOnly as AnimalWeight[]);
+    if (error) setMessage(error.message);
+
+    const chickenWeights = ((data || []) as WeightRow[]).filter((weight) =>
+      isChicken(normalizeAnimal(weight.animals))
+    );
+
+    setWeights(chickenWeights);
     setLoading(false);
   }
 
-  const latest = weights[0];
+  const summary = useMemo(() => {
+    const latest = weights[0] || null;
+    const average = weights.length
+      ? weights.reduce((sum, row) => sum + Number(row.weight_kg || 0), 0) / weights.length
+      : 0;
+
+    return {
+      latest,
+      average,
+      records: weights.length,
+      animals: new Set(weights.map((row) => row.animal_id).filter(Boolean)).size,
+    };
+  }, [weights]);
 
   return (
-    <main className="min-h-screen bg-green-50 p-6">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold text-green-900 mb-2">
-          Weight Updates
-        </h1>
-
-        <p className="text-green-700 mb-6">
-          View-only chicken weight history uploaded by caretakers.
-        </p>
-
-        {loading ? (
-          <p>Loading weight updates...</p>
-        ) : weights.length === 0 ? (
-          <div className="bg-white rounded-2xl p-6 shadow">
-            No chicken weight updates yet.
-          </div>
-        ) : (
-          <>
-            <div className="bg-white rounded-2xl p-6 shadow mb-6 border border-green-200">
-              <p className="text-sm text-gray-500">Latest Weight</p>
-
-              <h2 className="text-4xl font-bold text-green-800">
-                {latest.weight_kg ?? "—"} kg
-              </h2>
-
-              <div className="mt-4 grid md:grid-cols-3 gap-3 text-sm">
-                <Info label="Animal Name" value={normalizeAnimal(latest.animals)?.name || "Unnamed Chicken"} />
-                <Info label="Animal Code" value={normalizeAnimal(latest.animals)?.code || "No code"} />
-                <Info label="Chicken Type" value={normalizeAnimal(latest.animals)?.type || "Chicken"} />
-              </div>
-
-              <p className="text-gray-700 mt-4">
-                {latest.note || "No caretaker note."}
+    <main className={`${shellClass} p-4 pb-28 md:p-8`}>
+      <div className="mx-auto max-w-6xl">
+        <section className="rounded-[36px] border border-emerald-300/20 bg-white/10 p-7 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="w-fit rounded-full bg-amber-300 px-4 py-2 text-sm font-black text-emerald-950">
+                Weight Updates
               </p>
-
-              <p className="text-sm text-gray-500 mt-2">
-                Recorded: {formatDate(latest.recorded_at)}
+              <h1 className="mt-4 text-5xl font-black leading-tight">
+                Growth monitoring.
+              </h1>
+              <p className="mt-2 max-w-3xl font-semibold text-emerald-50">
+                Latest caretaker/customer weight uploads linked only to your roosters.
               </p>
             </div>
 
-            <div className="grid gap-4">
-              {weights.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-2xl p-5 shadow border border-green-100"
-                >
-                  <div className="flex justify-between items-start gap-4">
+            <button
+              onClick={loadWeights}
+              className="rounded-full bg-white px-5 py-3 font-black text-emerald-950"
+            >
+              Refresh
+            </button>
+          </div>
+        </section>
+
+        {message && (
+          <div className="mt-5 rounded-2xl border border-emerald-100 bg-white p-4 font-black text-emerald-800 shadow-xl">
+            {message}
+          </div>
+        )}
+
+        <section className="mt-6 grid gap-4 md:grid-cols-4">
+          <Summary label="Records" value={summary.records.toLocaleString()} icon="🧾" />
+          <Summary label="Roosters" value={summary.animals.toLocaleString()} icon="🐓" />
+          <Summary label="Latest" value={summary.latest ? `${Number(summary.latest.weight_kg || 0)} kg` : "—"} icon="⚖️" />
+          <Summary label="Average" value={summary.average ? `${summary.average.toFixed(2)} kg` : "—"} icon="📈" />
+        </section>
+
+        {loading ? (
+          <div className="mt-6 rounded-[32px] bg-white p-8 text-center font-black text-emerald-800 shadow-2xl">
+            Loading weight updates...
+          </div>
+        ) : weights.length === 0 ? (
+          <div className="mt-6 rounded-[32px] bg-white p-10 text-center shadow-2xl">
+            <div className="text-6xl">⚖️</div>
+            <h2 className="mt-4 text-3xl font-black text-emerald-950">
+              No weight records yet.
+            </h2>
+            <p className="mt-2 font-bold text-slate-500">
+              Weight uploads will appear after caretaker/customer update records are added.
+            </p>
+            <Link
+              href="/customer/chicks"
+              className="mt-5 inline-block rounded-2xl bg-emerald-700 px-6 py-4 font-black text-white"
+            >
+              Open My Flock
+            </Link>
+          </div>
+        ) : (
+          <section className="mt-6 space-y-4">
+            {weights.map((row) => {
+              const animal = normalizeAnimal(row.animals);
+
+              return (
+                <article key={row.id} className="rounded-[28px] bg-white p-6 shadow-2xl">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-green-700 font-semibold">
-                        {normalizeAnimal(item.animals)?.type || "Chicken"}
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                        {animal?.breed || animal?.type || "Rooster"}
                       </p>
-
-                      <h3 className="text-xl font-bold text-green-900 mt-1">
-                        {normalizeAnimal(item.animals)?.name || "Unnamed Chicken"}
-                      </h3>
-
-                      <p className="text-sm text-gray-500">
-                        Code: {normalizeAnimal(item.animals)?.code || "No code"}
-                      </p>
-
-                      <p className="text-2xl font-bold text-green-800 mt-3">
-                        {item.weight_kg ?? "—"} kg
-                      </p>
-
-                      <p className="text-gray-700 mt-1">
-                        {item.note || "No note from caretaker."}
+                      <h2 className="mt-1 text-2xl font-black text-emerald-950">
+                        {animal?.name || animal?.code || "FarmConnect Rooster"}
+                      </h2>
+                      <p className="mt-1 font-bold text-slate-500">
+                        {row.note || "No note"} • {dateText(row.recorded_at)}
                       </p>
                     </div>
 
-                    <span className="text-sm text-gray-500 whitespace-nowrap">
-                      {formatDate(item.recorded_at)}
-                    </span>
+                    <div className="rounded-3xl bg-emerald-50 px-6 py-4 text-center">
+                      <p className="text-sm font-bold text-slate-500">Weight</p>
+                      <h3 className="text-3xl font-black text-emerald-800">
+                        {Number(row.weight_kg || 0)} kg
+                      </h3>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </>
+                </article>
+              );
+            })}
+          </section>
         )}
       </div>
     </main>
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+async function loadCustomerAnimals(profileId: string) {
+  const direct = await supabase
+    .from("animals")
+    .select("id,code,name,type,breed,health_status,profile_id,flock_id")
+    .eq("profile_id", profileId)
+    .order("created_at", { ascending: false });
+
+  if (!direct.error) return ((direct.data || []) as Animal[]).filter(isChicken);
+
+  const flocks = await supabase.from("flocks").select("id").eq("profile_id", profileId);
+  const flockIds = (flocks.data || []).map((flock) => flock.id).filter(Boolean);
+  if (flockIds.length === 0) return [];
+
+  const byFlock = await supabase
+    .from("animals")
+    .select("id,code,name,type,breed,health_status,profile_id,flock_id")
+    .in("flock_id", flockIds)
+    .order("created_at", { ascending: false });
+
+  return ((byFlock.data || []) as Animal[]).filter(isChicken);
+}
+
+function Summary({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
-    <div className="rounded-xl bg-green-50 border border-green-100 p-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="font-semibold text-green-900">{value}</p>
+    <div className="rounded-[28px] bg-white p-5 shadow-2xl">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="font-bold text-slate-500">{label}</p>
+          <h2 className="mt-1 text-2xl font-black text-emerald-800">{value}</h2>
+        </div>
+        <div className="text-4xl">{icon}</div>
+      </div>
     </div>
   );
-}
-
-function normalizeAnimal(value: AnimalRelation): Animal | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value;
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "No date";
-  return new Date(value).toLocaleString();
 }

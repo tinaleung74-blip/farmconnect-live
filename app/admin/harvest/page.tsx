@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -104,6 +105,7 @@ export default function AdminHarvestPage() {
     <main style={page}>
       <section style={hero}>
         <div>
+          <Link href="/admin" style={back}>← Back Admin</Link>
           <p style={eyebrow}>FarmConnect Production</p>
           <h1 style={title}>Harvest Management</h1>
           <p style={subtitle}>
@@ -388,6 +390,7 @@ const page: React.CSSProperties = {
 
 const hero: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 20,
   alignItems: "center",
@@ -397,6 +400,15 @@ const hero: React.CSSProperties = {
   color: "white",
   boxShadow: "0 20px 45px rgba(15, 23, 42, 0.18)",
   marginBottom: 24,
+};
+
+
+const back: React.CSSProperties = {
+  display: "inline-block",
+  marginBottom: 12,
+  color: "white",
+  fontWeight: 950,
+  textDecoration: "none",
 };
 
 const eyebrow: React.CSSProperties = {
@@ -538,6 +550,7 @@ const card: React.CSSProperties = {
 
 const cardHeader: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 14,
   alignItems: "center",
@@ -580,6 +593,7 @@ const harvestCard: React.CSSProperties = {
 
 const harvestTop: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 10,
   marginBottom: 14,

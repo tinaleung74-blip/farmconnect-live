@@ -3,17 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  dateText,
+  isChicken,
+  normalizeAnimal,
+  resolveCustomerProfile,
+  shellClass,
+  type Animal,
+  type AnimalRelation,
+} from "@/lib/customer-auth";
 
-type Animal = {
-  id: string;
-  code: string | null;
-  name: string | null;
-  type: string | null;
-};
-
-type AnimalRelation = Animal | Animal[] | null;
-
-type AnimalPhoto = {
+type PhotoRow = {
   id: string;
   animal_id: string | null;
   photo_url: string | null;
@@ -23,7 +23,8 @@ type AnimalPhoto = {
 };
 
 export default function CustomerPhotoUpdatesPage() {
-  const [photos, setPhotos] = useState<AnimalPhoto[]>([]);
+  const [photos, setPhotos] = useState<PhotoRow[]>([]);
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,317 +33,166 @@ export default function CustomerPhotoUpdatesPage() {
 
   async function loadPhotos() {
     setLoading(true);
+    setMessage("");
 
-    const { data, error } = await supabase
-      .from("animal_photos")
-      .select(`
-        id,
-        animal_id,
-        photo_url,
-        caption,
-        created_at,
-        animals (
-          id,
-          code,
-          name,
-          type
-        )
-      `)
-      .order("created_at", { ascending: false });
+    const profile = await resolveCustomerProfile();
+    if (!profile) {
+      setPhotos([]);
+      setMessage("Login required to view photo updates.");
+      setLoading(false);
+      return;
+    }
 
-    if (error) {
-      alert(`Photo load error: ${error.message}`);
+    const animals = await loadCustomerAnimals(profile.id);
+    const animalIds = animals.map((animal) => animal.id);
+
+    if (animalIds.length === 0) {
       setPhotos([]);
       setLoading(false);
       return;
     }
 
-    const chickenOnly = (data || []).filter((item: any) => {
-      const animal = normalizeAnimal(item.animals);
-      return String(animal?.type || "").toLowerCase().includes("chicken");
-    });
+    const { data, error } = await supabase
+      .from("animal_photos")
+      .select("id,animal_id,photo_url,caption,created_at,animals(id,code,name,type,breed,health_status,image_url)")
+      .in("animal_id", animalIds)
+      .order("created_at", { ascending: false })
+      .limit(120);
 
-    setPhotos(chickenOnly as AnimalPhoto[]);
+    if (error) setMessage(error.message);
+
+    const chickenPhotos = ((data || []) as PhotoRow[]).filter((photo) =>
+      isChicken(normalizeAnimal(photo.animals))
+    );
+
+    setPhotos(chickenPhotos);
     setLoading(false);
   }
 
   return (
-    <main style={page}>
-      <section style={hero}>
-        <div>
-          <Link href="/customer/dashboard" style={back}>
-            Back to Dashboard
-          </Link>
+    <main className={`${shellClass} p-4 pb-28 md:p-8`}>
+      <div className="mx-auto max-w-7xl">
+        <section className="rounded-[36px] border border-emerald-300/20 bg-white/10 p-7 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="w-fit rounded-full bg-amber-300 px-4 py-2 text-sm font-black text-emerald-950">
+                Photo Updates
+              </p>
+              <h1 className="mt-4 text-5xl font-black leading-tight">
+                Rooster photo timeline.
+              </h1>
+              <p className="mt-2 max-w-3xl font-semibold text-emerald-50">
+                Latest uploaded photo automatically becomes the main visual reference for My Flock and Sell Chicken.
+              </p>
+            </div>
 
-          <p style={eyebrow}>FarmConnect Live Monitoring</p>
-          <h1 style={title}>Photo Updates</h1>
-
-          <p style={subtitle}>
-            View-only chicken photo updates uploaded by caretakers. Customers
-            can monitor updates but cannot upload, edit, or delete records.
-          </p>
-        </div>
-
-        <div style={heroCard}>
-          <span>Latest Chicken Photos</span>
-          <strong>{photos.length}</strong>
-          <small>Caretaker uploads</small>
-        </div>
-      </section>
-
-      <section style={summaryGrid}>
-        <div style={summaryCard}>
-          <span>PHOTO</span>
-          <div>
-            <p>Chicken Photo Updates</p>
-            <strong>{photos.length}</strong>
+            <button
+              onClick={loadPhotos}
+              className="rounded-full bg-white px-5 py-3 font-black text-emerald-950"
+            >
+              Refresh
+            </button>
           </div>
-        </div>
-
-        <div style={summaryCard}>
-          <span>CHICKEN</span>
-          <div>
-            <p>Chicken Records</p>
-            <strong>{new Set(photos.map((p) => p.animal_id)).size}</strong>
-          </div>
-        </div>
-
-        <div style={summaryCard}>
-          <span>SAFE</span>
-          <div>
-            <p>Access Type</p>
-            <strong>View Only</strong>
-          </div>
-        </div>
-      </section>
-
-      {loading ? (
-        <section style={empty}>Loading chicken photo updates...</section>
-      ) : photos.length === 0 ? (
-        <section style={empty}>
-          No chicken photo updates yet. Once the caretaker uploads monitoring
-          photos, they will appear here.
         </section>
-      ) : (
-        <section style={grid}>
-          {photos.map((photo) => (
-            <article key={photo.id} style={card}>
-              <div style={imageWrap}>
-                {photo.photo_url ? (
-                  <img
-                    src={photo.photo_url}
-                    alt={photo.caption || "Chicken photo update"}
-                    style={image}
-                  />
-                ) : (
-                  <div style={placeholder}>No photo preview</div>
-                )}
-              </div>
 
-              <div style={content}>
-                <div style={badge}>Caretaker Photo Update</div>
+        {message && (
+          <div className="mt-5 rounded-2xl border border-emerald-100 bg-white p-4 font-black text-emerald-800 shadow-xl">
+            {message}
+          </div>
+        )}
 
-                <h2 style={cardTitle}>
-                  {normalizeAnimal(photo.animals)?.name || "Unnamed Chicken"}
-                </h2>
+        {loading ? (
+          <div className="mt-6 rounded-[32px] bg-white p-8 text-center font-black text-emerald-800 shadow-2xl">
+            Loading photo updates...
+          </div>
+        ) : photos.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <section className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {photos.map((photo, index) => {
+              const animal = normalizeAnimal(photo.animals);
 
-                <p style={info}>
-                  Chicken Code: {normalizeAnimal(photo.animals)?.code || "No code"}
-                </p>
+              return (
+                <article
+                  key={photo.id}
+                  className={`overflow-hidden rounded-[32px] bg-white shadow-2xl ${
+                    index === 0 ? "md:col-span-2 xl:col-span-2" : ""
+                  }`}
+                >
+                  {photo.photo_url ? (
+                    <img
+                      src={photo.photo_url}
+                      alt={photo.caption || animal?.name || "Rooster photo"}
+                      className={`${index === 0 ? "h-96" : "h-64"} w-full object-cover`}
+                    />
+                  ) : (
+                    <div className={`${index === 0 ? "h-96" : "h-64"} grid place-items-center bg-emerald-50 text-6xl`}>
+                      🐓
+                    </div>
+                  )}
 
-                <p style={info}>
-                  Chicken Type: {normalizeAnimal(photo.animals)?.type || "Chicken"}
-                </p>
-
-                <p style={captionText}>
-                  {photo.caption || "No caption provided."}
-                </p>
-
-                <p style={dateText}>
-                  Uploaded: {formatDate(photo.created_at)}
-                </p>
-              </div>
-            </article>
-          ))}
-        </section>
-      )}
+                  <div className="p-5">
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                      {index === 0 ? "Latest Photo" : "Photo Update"}
+                    </p>
+                    <h2 className="mt-1 text-2xl font-black text-emerald-950">
+                      {animal?.name || animal?.code || "FarmConnect Rooster"}
+                    </h2>
+                    <p className="mt-1 text-sm font-bold text-slate-500">
+                      {animal?.breed || animal?.type || "Rooster"} • {dateText(photo.created_at)}
+                    </p>
+                    <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-slate-700">
+                      {photo.caption || "No caption provided."}
+                    </p>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        )}
+      </div>
     </main>
   );
 }
 
-function normalizeAnimal(value: AnimalRelation): Animal | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value;
+async function loadCustomerAnimals(profileId: string) {
+  const direct = await supabase
+    .from("animals")
+    .select("id,code,name,type,breed,health_status,image_url,profile_id,flock_id")
+    .eq("profile_id", profileId)
+    .order("created_at", { ascending: false });
+
+  if (!direct.error) return ((direct.data || []) as Animal[]).filter(isChicken);
+
+  const flocks = await supabase.from("flocks").select("id").eq("profile_id", profileId);
+  const flockIds = (flocks.data || []).map((flock) => flock.id).filter(Boolean);
+  if (flockIds.length === 0) return [];
+
+  const byFlock = await supabase
+    .from("animals")
+    .select("id,code,name,type,breed,health_status,image_url,profile_id,flock_id")
+    .in("flock_id", flockIds)
+    .order("created_at", { ascending: false });
+
+  return ((byFlock.data || []) as Animal[]).filter(isChicken);
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return "No date";
-  return new Date(value).toLocaleString("en-PH");
+function EmptyState() {
+  return (
+    <div className="mt-6 rounded-[32px] bg-white p-10 text-center shadow-2xl">
+      <div className="text-6xl">📸</div>
+      <h2 className="mt-4 text-3xl font-black text-emerald-950">
+        No rooster photos yet.
+      </h2>
+      <p className="mt-2 font-bold text-slate-500">
+        Marketplace base photos will show first. Latest uploaded photos will override them automatically.
+      </p>
+      <Link
+        href="/customer/marketplace"
+        className="mt-5 inline-block rounded-2xl bg-emerald-700 px-6 py-4 font-black text-white"
+      >
+        Open Marketplace
+      </Link>
+    </div>
+  );
 }
-
-const page: React.CSSProperties = {
-  minHeight: "100vh",
-  padding: 28,
-  background:
-    "radial-gradient(circle at top left, #bbf7d0, transparent 30%), radial-gradient(circle at top right, #bae6fd, transparent 28%), linear-gradient(135deg, #f0fdf4 0%, #eff6ff 55%, #fff7ed 100%)",
-  color: "#0f172a",
-};
-
-const hero: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 22,
-  alignItems: "center",
-  maxWidth: 1180,
-  margin: "0 auto 22px",
-  background: "rgba(255,255,255,0.86)",
-  borderRadius: 32,
-  padding: 30,
-  boxShadow: "0 24px 65px rgba(15,23,42,0.13)",
-};
-
-const back: React.CSSProperties = {
-  display: "inline-block",
-  marginBottom: 14,
-  color: "#166534",
-  fontWeight: 950,
-  textDecoration: "none",
-};
-
-const eyebrow: React.CSSProperties = {
-  margin: 0,
-  color: "#15803d",
-  fontWeight: 950,
-  letterSpacing: 1,
-  textTransform: "uppercase",
-};
-
-const title: React.CSSProperties = {
-  margin: "8px 0",
-  fontSize: 42,
-  lineHeight: 1.05,
-  fontWeight: 950,
-  color: "#14532d",
-};
-
-const subtitle: React.CSSProperties = {
-  margin: 0,
-  color: "#475569",
-  maxWidth: 760,
-  fontSize: 16,
-  lineHeight: 1.5,
-};
-
-const heroCard: React.CSSProperties = {
-  minWidth: 210,
-  padding: 24,
-  borderRadius: 26,
-  background: "linear-gradient(135deg, #16a34a, #22c55e)",
-  color: "white",
-  display: "grid",
-  gap: 8,
-  boxShadow: "0 22px 45px rgba(22,163,74,0.3)",
-};
-
-const summaryGrid: React.CSSProperties = {
-  maxWidth: 1180,
-  margin: "0 auto 22px",
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 16,
-};
-
-const summaryCard: React.CSSProperties = {
-  display: "flex",
-  gap: 14,
-  alignItems: "center",
-  padding: 18,
-  borderRadius: 24,
-  background: "rgba(255,255,255,0.86)",
-  boxShadow: "0 15px 38px rgba(15,23,42,0.09)",
-};
-
-const grid: React.CSSProperties = {
-  maxWidth: 1180,
-  margin: "0 auto",
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))",
-  gap: 20,
-};
-
-const card: React.CSSProperties = {
-  background: "rgba(255,255,255,0.93)",
-  borderRadius: 28,
-  overflow: "hidden",
-  boxShadow: "0 18px 45px rgba(15,23,42,0.12)",
-  border: "1px solid rgba(255,255,255,0.95)",
-};
-
-const imageWrap: React.CSSProperties = {
-  width: "100%",
-  height: 220,
-  background: "#e2e8f0",
-};
-
-const image: React.CSSProperties = {
-  width: "100%",
-  height: "100%",
-  objectFit: "cover",
-};
-
-const placeholder: React.CSSProperties = {
-  width: "100%",
-  height: "100%",
-  display: "grid",
-  placeItems: "center",
-  color: "#64748b",
-  fontWeight: 900,
-};
-
-const content: React.CSSProperties = {
-  padding: 20,
-};
-
-const badge: React.CSSProperties = {
-  display: "inline-block",
-  background: "#dcfce7",
-  color: "#166534",
-  padding: "7px 11px",
-  borderRadius: 999,
-  fontSize: 12,
-  fontWeight: 950,
-  marginBottom: 12,
-};
-
-const cardTitle: React.CSSProperties = {
-  margin: 0,
-  fontSize: 21,
-  color: "#14532d",
-  fontWeight: 950,
-};
-
-const info: React.CSSProperties = {
-  color: "#475569",
-  margin: "8px 0 0",
-  fontWeight: 800,
-};
-
-const captionText: React.CSSProperties = {
-  color: "#334155",
-  marginTop: 12,
-};
-
-const dateText: React.CSSProperties = {
-  color: "#64748b",
-  fontSize: 13,
-  marginTop: 12,
-};
-
-const empty: React.CSSProperties = {
-  maxWidth: 1180,
-  margin: "0 auto",
-  background: "rgba(255,255,255,0.9)",
-  borderRadius: 24,
-  padding: 30,
-  color: "#64748b",
-};

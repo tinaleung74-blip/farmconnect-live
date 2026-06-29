@@ -1,1006 +1,464 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  Animal,
+  dateText,
+  daysOld,
+  farmBgClass,
+  isChicken,
+  money,
+  panelClass,
+  resolveCustomerProfile,
+  roosterStage,
+  statusPill,
+  statusText,
+  type CustomerProfile,
+} from "@/lib/customer-auth";
 
 type Flock = {
   id: string;
-  profile_id?: string;
-  batch_no: string;
-  breed: string;
-  total_chicks: number;
-  alive_count: number;
-  mortality_count?: number;
-  expected_harvest_date: string | null;
-  status: string;
+  batch_no: string | null;
+  breed: string | null;
+  total_chicks: number | null;
+  alive_count: number | null;
+  mortality_count?: number | null;
+  expected_harvest_date?: string | null;
+  status: string | null;
+  health_status?: string | null;
+  caretaker_name?: string | null;
+  created_at: string | null;
+};
+
+type Hire = {
+  id: string;
   caretaker_name: string | null;
-  created_at?: string;
-};
-
-type UsageLog = {
-  id: string;
-  profile_id?: string | null;
-  flock_id?: string | null;
-  inventory_id?: string | null;
-  item_name?: string | null;
-  qty_used?: number | null;
-  unit?: string | null;
-  used_by?: string | null;
-  purpose?: string | null;
-  amount?: number | null;
-  cost?: number | null;
-  total_cost?: number | null;
-  expense_amount?: number | null;
-  created_at?: string | null;
-  used_at?: string | null;
-};
-
-type WeightLog = {
-  id: string;
-  profile_id?: string | null;
-  flock_id?: string | null;
-  weight?: number | null;
-  weight_kg?: number | null;
-  average_weight?: number | null;
-  notes?: string | null;
-  note?: string | null;
-  submitted_by?: string | null;
-  caretaker_name?: string | null;
-  created_at?: string | null;
-  recorded_at?: string | null;
-};
-
-type PhotoLog = {
-  id: string;
-  profile_id?: string | null;
-  flock_id?: string | null;
-  photo_url?: string | null;
-  image_url?: string | null;
-  url?: string | null;
-  caption?: string | null;
-  uploaded_by?: string | null;
-  caretaker_name?: string | null;
-  created_at?: string | null;
-  uploaded_at?: string | null;
-};
-
-type CaretakerHire = {
-  id: string;
-  profile_id: string;
-  caretaker_id: string | null;
-  caretaker_name: string;
+  caretaker_id?: string | null;
   flock_id: string | null;
   status: string | null;
   payment_status: string | null;
+  total_fee?: number | string | null;
+  created_at?: string | null;
 };
 
-type CaretakerOption = {
+type Photo = {
   id: string;
-  full_name: string;
-  hire_id: string;
+  animal_id: string | null;
+  photo_url: string | null;
+  caption: string | null;
+  created_at: string | null;
 };
 
-const CHICK_PRICE = 1000;
-const CYCLE_DAYS = 45;
+type Weight = {
+  id: string;
+  animal_id: string | null;
+  weight_kg: number | string | null;
+  note: string | null;
+  recorded_at: string | null;
+};
 
-function money(n: number) {
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    maximumFractionDigits: 0,
-  }).format(Number(n || 0));
+function survivalRate(flock: Flock) {
+  const total = Number(flock.total_chicks || 0);
+  if (total <= 0) return 0;
+  return Math.round((Number(flock.alive_count || 0) / total) * 100);
 }
 
-function safeDate(date?: string | null) {
-  if (!date) return "No date";
-  return new Date(date).toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function daysBetween(start?: string | null) {
-  if (!start) return 0;
-  const a = new Date(start).getTime();
-  const b = new Date().getTime();
-  return Math.max(0, Math.floor((b - a) / (1000 * 60 * 60 * 24)));
-}
-
-function daysUntil(date?: string | null) {
-  if (!date) return null;
-  const a = new Date(date).getTime();
-  const b = new Date().getTime();
-  return Math.ceil((a - b) / (1000 * 60 * 60 * 24));
-}
-
-function sameFlock(rowFlockId: string | null | undefined, flockId: string) {
-  return String(rowFlockId || "") === String(flockId);
-}
-
-function getGrowthStage(day: number) {
-  if (day <= 7) {
-    return {
-      icon: "🐣",
-      name: "Starter Phase",
-      multiplier: 1,
-      label: "Premium chick starting stage",
-    };
-  }
-
-  if (day <= 15) {
-    return {
-      icon: "🐥",
-      name: "Early Growth",
-      multiplier: 1.15,
-      label: "Feed conversion and early care stage",
-    };
-  }
-
-  if (day <= 25) {
-    return {
-      icon: "🐤",
-      name: "Growing Phase",
-      multiplier: 1.35,
-      label: "Active flock development stage",
-    };
-  }
-
-  if (day <= 35) {
-    return {
-      icon: "🐔",
-      name: "Finishing Phase",
-      multiplier: 1.65,
-      label: "Near harvest preparation stage",
-    };
-  }
-
-  return {
-    icon: "🏆",
-    name: "Harvest Ready",
-    multiplier: 2,
-    label: "Projected prime harvest value stage",
-  };
-}
-
-function expenseValue(log: UsageLog) {
-  return Number(
-    log.total_cost ||
-      log.expense_amount ||
-      log.amount ||
-      log.cost ||
-      0
-  );
-}
-
-function getWeightValue(log: WeightLog) {
-  return Number(log.weight_kg || log.average_weight || log.weight || 0);
-}
-
-function getPhotoUrl(log: PhotoLog) {
-  return log.photo_url || log.image_url || log.url || "";
+function daysUntil(value?: string | null) {
+  if (!value) return null;
+  return Math.ceil((new Date(value).getTime() - Date.now()) / 86400000);
 }
 
 export default function MyFlockPage() {
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [flocks, setFlocks] = useState<Flock[]>([]);
-  const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
-  const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
-  const [photoLogs, setPhotoLogs] = useState<PhotoLog[]>([]);
-  const [caretakers, setCaretakers] = useState<CaretakerOption[]>([]);
-  const [caretakerHires, setCaretakerHires] = useState<CaretakerHire[]>([]);
-
-  const [selectedCaretaker, setSelectedCaretaker] = useState<Record<string, string>>({});
-  const [breed, setBreed] = useState("Premium Broiler");
-  const [totalChicks, setTotalChicks] = useState(100);
-  const [harvestDate, setHarvestDate] = useState("");
-  const [selectedFlock, setSelectedFlock] = useState<Flock | null>(null);
+  const [hires, setHires] = useState<Hire[]>([]);
+  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [weights, setWeights] = useState<Weight[]>([]);
+  const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
-  function getProfile() {
-    const user = localStorage.getItem("farmconnect_user");
-    if (!user) return null;
-    return JSON.parse(user);
-  }
+  useEffect(() => {
+    load();
+  }, []);
 
-  async function loadFlocks() {
-    const profile = getProfile();
-    if (!profile) return;
-
-    const { data, error } = await supabase
-      .from("flocks")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    setFlocks(data || []);
-  }
-
-  async function loadUsageLogs() {
-    const profile = getProfile();
-    if (!profile) return;
-
-    const { data } = await supabase
-      .from("inventory_usage_logs")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .order("created_at", { ascending: false });
-
-    setUsageLogs(data || []);
-  }
-
-  async function loadWeightLogs() {
-    const profile = getProfile();
-    if (!profile) return;
-
-    const { data } = await supabase
-      .from("weight_logs")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .order("created_at", { ascending: false });
-
-    setWeightLogs(data || []);
-  }
-
-  async function loadPhotoLogs() {
-    const profile = getProfile();
-    if (!profile) return;
-
-    const { data } = await supabase
-      .from("photo_logs")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .order("created_at", { ascending: false });
-
-    setPhotoLogs(data || []);
-  }
-
-  async function loadCaretakers() {
-    const profile = getProfile();
-    if (!profile) return;
-
-    const { data, error } = await supabase
-      .from("customer_caretaker_hires")
-      .select("*")
-      .eq("profile_id", profile.id)
-      .eq("status", "ACTIVE")
-      .eq("payment_status", "PAID")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.log(error.message);
-      setCaretakers([]);
-      setCaretakerHires([]);
-      return;
-    }
-
-    const hires = data || [];
-    setCaretakerHires(hires);
-
-    setCaretakers(
-      hires.map((hire: CaretakerHire) => ({
-        id: hire.caretaker_id || hire.id,
-        full_name: hire.caretaker_name,
-        hire_id: hire.id,
-      }))
-    );
-  }
-
-  async function refreshPageData() {
+  async function load() {
     setLoading(true);
-    await loadFlocks();
-    await loadUsageLogs();
-    await loadWeightLogs();
-    await loadPhotoLogs();
-    await loadCaretakers();
+    setMessage("");
+
+    const currentProfile = await resolveCustomerProfile();
+    setProfile(currentProfile);
+
+    if (!currentProfile) {
+      setFlocks([]);
+      setHires([]);
+      setAnimals([]);
+      setPhotos([]);
+      setWeights([]);
+      setLoading(false);
+      return;
+    }
+
+    const [flockRes, hireRes] = await Promise.all([
+      supabase
+        .from("flocks")
+        .select("id,batch_no,breed,total_chicks,alive_count,mortality_count,expected_harvest_date,status,health_status,caretaker_name,created_at")
+        .eq("profile_id", currentProfile.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("customer_caretaker_hires")
+        .select("id,caretaker_name,caretaker_id,flock_id,status,payment_status,total_fee,created_at")
+        .eq("profile_id", currentProfile.id)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (flockRes.error) setMessage(flockRes.error.message);
+
+    const flockRows = (flockRes.data || []) as Flock[];
+    const hireRows = (hireRes.data || []) as Hire[];
+    setFlocks(flockRows);
+    setHires(hireRows);
+
+    if (!selectedFlockId && flockRows[0]) setSelectedFlockId(flockRows[0].id);
+
+    await loadAnimalsAndEvidence(currentProfile.id, flockRows.map((flock) => flock.id));
     setLoading(false);
   }
 
-  async function createFlock() {
-    const profile = getProfile();
-    if (!profile) return alert("Please login first");
+  async function loadAnimalsAndEvidence(profileId: string, flockIds: string[]) {
+    let animalRows: Animal[] = [];
 
-    const batchNo = "FC-" + Math.floor(100000 + Math.random() * 900000);
+    const byProfile = await supabase
+      .from("animals")
+      .select("id,code,name,type,breed,current_weight,health_status,image_url,created_at,flock_id,profile_id")
+      .eq("profile_id", profileId)
+      .order("created_at", { ascending: false });
 
-    const defaultHarvest = new Date();
-    defaultHarvest.setDate(defaultHarvest.getDate() + CYCLE_DAYS);
+    if (!byProfile.error) {
+      animalRows = ((byProfile.data || []) as Animal[]).filter(isChicken);
+    } else if (flockIds.length > 0) {
+      const byFlock = await supabase
+        .from("animals")
+        .select("id,code,name,type,breed,current_weight,health_status,image_url,created_at,flock_id")
+        .in("flock_id", flockIds)
+        .order("created_at", { ascending: false });
 
-    const { error } = await supabase.from("flocks").insert({
-      profile_id: profile.id,
-      batch_no: batchNo,
-      breed,
-      total_chicks: totalChicks,
-      alive_count: totalChicks,
-      mortality_count: 0,
-      expected_harvest_date:
-        harvestDate || defaultHarvest.toISOString().slice(0, 10),
-      status: "ACTIVE",
-      caretaker_name: null,
+      if (!byFlock.error) animalRows = ((byFlock.data || []) as Animal[]).filter(isChicken);
+    }
+
+    setAnimals(animalRows);
+
+    const animalIds = animalRows.map((animal) => animal.id);
+    if (animalIds.length === 0) {
+      setPhotos([]);
+      setWeights([]);
+      return;
+    }
+
+    const [photoRes, weightRes] = await Promise.all([
+      supabase
+        .from("animal_photos")
+        .select("id,animal_id,photo_url,caption,created_at")
+        .in("animal_id", animalIds)
+        .order("created_at", { ascending: false })
+        .limit(200),
+      supabase
+        .from("animal_weights")
+        .select("id,animal_id,weight_kg,note,recorded_at")
+        .in("animal_id", animalIds)
+        .order("recorded_at", { ascending: false })
+        .limit(200),
+    ]);
+
+    setPhotos((photoRes.data || []) as Photo[]);
+    setWeights((weightRes.data || []) as Weight[]);
+  }
+
+  const photoByAnimal = useMemo(() => {
+    const map = new Map<string, Photo>();
+    photos.forEach((photo) => {
+      if (photo.animal_id && !map.has(photo.animal_id)) map.set(photo.animal_id, photo);
     });
+    return map;
+  }, [photos]);
 
-    if (error) return alert(error.message);
+  const weightByAnimal = useMemo(() => {
+    const map = new Map<string, Weight>();
+    weights.forEach((weight) => {
+      if (weight.animal_id && !map.has(weight.animal_id)) map.set(weight.animal_id, weight);
+    });
+    return map;
+  }, [weights]);
 
-    alert("Premium chick batch created successfully");
-    setHarvestDate("");
-    await refreshPageData();
-  }
-
-  async function assignCaretaker(flockId: string) {
-    const caretaker = selectedCaretaker[flockId];
-
-    if (!caretaker) return alert("Please select ACTIVE + PAID caretaker first.");
-
-    const hire = caretakerHires.find((h) => h.caretaker_name === caretaker);
-
-    const { error } = await supabase
-      .from("flocks")
-      .update({ caretaker_name: caretaker })
-      .eq("id", flockId);
-
-    if (error) return alert(error.message);
-
-    if (hire?.caretaker_id) {
-      await supabase
-        .from("caretakers")
-        .update({
-          assigned_flock_id: flockId,
-          assignment_start: new Date().toISOString(),
-          status: "ASSIGNED",
-        })
-        .eq("id", hire.caretaker_id);
-    }
-
-    if (hire?.id) {
-      await supabase
-        .from("customer_caretaker_hires")
-        .update({ flock_id: flockId })
-        .eq("id", hire.id);
-    }
-
-    alert(`${caretaker} assigned successfully!`);
-    await refreshPageData();
-  }
-
-  useEffect(() => {
-    refreshPageData();
-  }, []);
-
-  const summary = useMemo(() => {
-    const alive = flocks.reduce((sum, f) => sum + Number(f.alive_count || 0), 0);
-    const noCaretaker = flocks.filter((f) => !f.caretaker_name).length;
-
-    const nearHarvest = flocks.filter((f) => {
-      const left = daysUntil(f.expected_harvest_date);
+  const stats = useMemo(() => {
+    const alive = flocks.reduce((sum, flock) => sum + Number(flock.alive_count || 0), 0);
+    const activeCaretakers = hires.filter((hire) => String(hire.status || "").toUpperCase() === "ACTIVE").length;
+    const pendingHires = hires.filter((hire) => String(hire.status || "").toUpperCase().includes("PENDING")).length;
+    const nearHarvest = flocks.filter((flock) => {
+      const left = daysUntil(flock.expected_harvest_date);
       return left !== null && left <= 7;
     }).length;
 
-    const usageToday = usageLogs.filter((log) => {
-      const d = log.used_at || log.created_at;
-      if (!d) return false;
-      return new Date(d).toDateString() === new Date().toDateString();
-    }).length;
+    return { alive, activeCaretakers, pendingHires, nearHarvest };
+  }, [flocks, hires]);
 
-    return { alive, noCaretaker, nearHarvest, usageToday };
-  }, [flocks, usageLogs]);
+  const selectedFlock = flocks.find((flock) => flock.id === selectedFlockId) || flocks[0] || null;
+  const selectedAnimals = selectedFlock ? animals.filter((animal) => animal.flock_id === selectedFlock.id) : [];
+  const selectedPhotos = selectedAnimals.flatMap((animal) => {
+    const photo = photoByAnimal.get(animal.id);
+    return photo ? [photo] : [];
+  });
+  const selectedWeights = selectedAnimals.flatMap((animal) => {
+    const weight = weightByAnimal.get(animal.id);
+    return weight ? [weight] : [];
+  });
 
-  const selectedUsageLogs = selectedFlock
-    ? usageLogs.filter((log) => sameFlock(log.flock_id, selectedFlock.id))
-    : [];
+  function getFlockAnimals(flockId: string) {
+    return animals.filter((animal) => animal.flock_id === flockId);
+  }
 
-  const selectedWeightLogs = selectedFlock
-    ? weightLogs.filter((log) => sameFlock(log.flock_id, selectedFlock.id))
-    : [];
+  function getActiveHire(flockId: string) {
+    return hires.find(
+      (hire) =>
+        hire.flock_id === flockId &&
+        String(hire.status || "").toUpperCase() === "ACTIVE" &&
+        String(hire.payment_status || "").toUpperCase() === "PAID"
+    );
+  }
 
-  const selectedPhotoLogs = selectedFlock
-    ? photoLogs.filter((log) => sameFlock(log.flock_id, selectedFlock.id))
-    : [];
+  function getLatestPhotoForFlock(flock: Flock) {
+    const related = getFlockAnimals(flock.id);
 
-  const selectedDay = selectedFlock ? daysBetween(selectedFlock.created_at) : 0;
-  const selectedStage = getGrowthStage(selectedDay);
-  const selectedCurrentValue = selectedFlock
-    ? Number(selectedFlock.alive_count || 0) * CHICK_PRICE * selectedStage.multiplier
-    : 0;
+    // Uploaded caretaker/customer evidence always wins.
+    for (const animal of related) {
+      const photo = photoByAnimal.get(animal.id);
+      if (photo) return photo;
+    }
 
-  const selectedProjectedValue = selectedFlock
-    ? Number(selectedFlock.alive_count || 0) * CHICK_PRICE * 2
-    : 0;
+    // If there is no uploaded photo yet, use the original Marketplace product image
+    // saved on animals.image_url by the V28 marketplace base-photo RPC patch.
+    const baseAnimal = related.find((animal) => animal.image_url);
+    if (baseAnimal?.image_url) {
+      return {
+        id: `base-${baseAnimal.id}`,
+        animal_id: baseAnimal.id,
+        photo_url: baseAnimal.image_url,
+        caption: "Marketplace base photo",
+        created_at: baseAnimal.created_at || flock.created_at,
+      };
+    }
 
-  const selectedTotalExpenses = selectedUsageLogs.reduce(
-    (sum, log) => sum + expenseValue(log),
-    0
-  );
+    return null;
+  }
 
-  const selectedProjectedProfit = selectedCurrentValue - selectedTotalExpenses;
+  function getBaseImageForFlock(flock: Flock) {
+    const latestPhoto = getLatestPhotoForFlock(flock);
+    return latestPhoto?.photo_url || null;
+  }
+
+  function getLatestWeightForFlock(flock: Flock) {
+    const related = getFlockAnimals(flock.id);
+    for (const animal of related) {
+      const weight = weightByAnimal.get(animal.id);
+      if (weight) return weight;
+    }
+    return null;
+  }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-green-50 via-white to-yellow-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-black text-green-900">🐣 My Flock</h1>
-          <p className="text-green-700 mt-2">
-            Monitor your real poultry batches, caretaker assignment, farm usage,
-            weight updates, photos, and harvest value.
-          </p>
-        </div>
-
-        <section className="grid md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-3xl p-5 shadow border">
-            <p className="text-sm font-bold text-gray-500">Active Chicks</p>
-            <h2 className="text-3xl font-black text-green-800">{summary.alive}</h2>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 shadow border">
-            <p className="text-sm font-bold text-gray-500">Need Caretaker</p>
-            <h2 className="text-3xl font-black text-orange-600">
-              {summary.noCaretaker}
-            </h2>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 shadow border">
-            <p className="text-sm font-bold text-gray-500">Near Harvest</p>
-            <h2 className="text-3xl font-black text-blue-700">
-              {summary.nearHarvest}
-            </h2>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 shadow border">
-            <p className="text-sm font-bold text-gray-500">Usage Today</p>
-            <h2 className="text-3xl font-black text-purple-700">
-              {summary.usageToday}
-            </h2>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-3xl p-6 shadow border mb-8">
-          <h2 className="text-2xl font-black text-green-900 mb-4">
-            Create Chick Batch
-          </h2>
-
-          <div className="grid md:grid-cols-4 gap-3">
-            <input
-              className="border p-4 rounded-2xl font-bold"
-              value={breed}
-              onChange={(e) => setBreed(e.target.value)}
-              placeholder="Breed"
-            />
-
-            <input
-              className="border p-4 rounded-2xl font-bold"
-              type="number"
-              value={totalChicks}
-              onChange={(e) => setTotalChicks(Number(e.target.value))}
-              placeholder="Total chicks"
-            />
-
-            <input
-              className="border p-4 rounded-2xl font-bold"
-              type="date"
-              value={harvestDate}
-              onChange={(e) => setHarvestDate(e.target.value)}
-            />
-
-            <button
-              onClick={createFlock}
-              className="bg-green-700 hover:bg-green-800 text-white rounded-2xl font-black p-4"
-            >
-              Create Batch
-            </button>
-          </div>
-        </section>
-
-        {loading ? (
-          <div className="bg-white rounded-3xl p-8 shadow text-center font-bold">
-            Loading flock data...
-          </div>
-        ) : flocks.length === 0 ? (
-          <div className="bg-white rounded-3xl p-8 shadow text-center">
-            <h2 className="text-2xl font-black text-gray-800">
-              No chick batches yet.
-            </h2>
-            <p className="text-gray-500 mt-2">
-              Create your first premium poultry batch to start monitoring.
-            </p>
-          </div>
-        ) : (
-          <section className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
-            {flocks.map((flock) => {
-              const day = daysBetween(flock.created_at);
-              const stage = getGrowthStage(day);
-              const progress = Math.min(100, Math.round((day / CYCLE_DAYS) * 100));
-              const survival =
-                Number(flock.total_chicks || 0) > 0
-                  ? Math.round(
-                      (Number(flock.alive_count || 0) /
-                        Number(flock.total_chicks || 0)) *
-                        100
-                    )
-                  : 0;
-
-              const currentValue =
-                Number(flock.alive_count || 0) * CHICK_PRICE * stage.multiplier;
-
-              const projectedValue =
-                Number(flock.alive_count || 0) * CHICK_PRICE * 2;
-
-              const flockUsageLogs = usageLogs.filter((log) =>
-                sameFlock(log.flock_id, flock.id)
-              );
-
-              const flockWeightLogs = weightLogs.filter((log) =>
-                sameFlock(log.flock_id, flock.id)
-              );
-
-              const flockPhotoLogs = photoLogs.filter((log) =>
-                sameFlock(log.flock_id, flock.id)
-              );
-
-              const riskCount =
-                (survival < 95 ? 1 : 0) +
-                (!flock.caretaker_name ? 1 : 0) +
-                (flockWeightLogs.length === 0 ? 1 : 0);
-
-              return (
-                <div
-                  key={flock.id}
-                  className="bg-white rounded-3xl p-6 shadow border border-green-100 hover:shadow-xl transition"
-                >
-                  <div className="flex justify-between items-start gap-3 mb-4">
-                    <div>
-                      <h2 className="text-2xl font-black text-green-900">
-                        {stage.icon} {flock.batch_no}
-                      </h2>
-                      <p className="text-sm text-gray-500">{flock.breed}</p>
-                    </div>
-
-                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-black">
-                      {flock.status || "ACTIVE"}
-                    </span>
-                  </div>
-
-                  <div className="mb-4">
-                    <p className="text-sm font-bold text-gray-500">
-                      Current Poultry Stage
-                    </p>
-                    <h3 className="text-xl font-black text-gray-900">
-                      {stage.name}
-                    </h3>
-                    <p className="text-xs text-gray-500">{stage.label}</p>
-                  </div>
-
-                  <div className="w-full bg-gray-100 rounded-full h-3 mb-2">
-                    <div
-                      className="bg-green-600 h-3 rounded-full"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-
-                  <p className="text-xs text-gray-500 mb-5">
-                    Day {day} of {CYCLE_DAYS} grow cycle
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-3 mb-5">
-                    <div className="bg-yellow-50 rounded-2xl p-4">
-                      <p className="text-xs font-bold text-gray-500">
-                        Chicks Alive
-                      </p>
-                      <h3 className="text-xl font-black">
-                        {flock.alive_count}/{flock.total_chicks}
-                      </h3>
-                    </div>
-
-                    <div className="bg-blue-50 rounded-2xl p-4">
-                      <p className="text-xs font-bold text-gray-500">
-                        Survival Rate
-                      </p>
-                      <h3 className="text-xl font-black">{survival}%</h3>
-                    </div>
-
-                    <div className="bg-emerald-50 rounded-2xl p-4">
-                      <p className="text-xs font-bold text-gray-500">
-                        Current Value
-                      </p>
-                      <h3 className="text-xl font-black text-green-700">
-                        {money(currentValue)}
-                      </h3>
-                    </div>
-
-                    <div className="bg-purple-50 rounded-2xl p-4">
-                      <p className="text-xs font-bold text-gray-500">
-                        Harvest Countdown
-                      </p>
-                      <h3 className="text-xl font-black">
-                        {daysUntil(flock.expected_harvest_date) === null
-                          ? "Not set"
-                          : `${daysUntil(flock.expected_harvest_date)}d`}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-5">
-                    <p className="font-bold text-gray-700">Assigned Caretaker</p>
-                    <p className="text-green-700 font-black text-xl mt-1">
-                      👨‍🌾 {flock.caretaker_name || "No caretaker assigned yet"}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Only ACTIVE + PAID caretakers can be assigned.
-                    </p>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-3 mb-5">
-                    <select
-                      className="border p-4 rounded-2xl font-bold"
-                      value={selectedCaretaker[flock.id] || ""}
-                      onChange={(e) =>
-                        setSelectedCaretaker({
-                          ...selectedCaretaker,
-                          [flock.id]: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="">Choose ACTIVE + PAID Caretaker</option>
-                      {caretakers.map((c) => (
-                        <option key={c.hire_id} value={c.full_name}>
-                          {c.full_name}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      onClick={() => assignCaretaker(flock.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl font-black"
-                    >
-                      Assign Caretaker
-                    </button>
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-3 mb-5">
-                    <div className="bg-red-50 rounded-2xl p-4">
-                      <p className="text-sm font-bold text-red-700">Risk</p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {riskCount > 0 ? `${riskCount} alert(s)` : "Low risk"}
-                      </p>
-                    </div>
-
-                    <div className="bg-purple-50 rounded-2xl p-4">
-                      <p className="text-sm font-bold text-purple-700">
-                        Usage History
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {flockUsageLogs.length} record(s)
-                      </p>
-                    </div>
-
-                    <div className="bg-blue-50 rounded-2xl p-4">
-                      <p className="text-sm font-bold text-blue-700">
-                        Farm Updates
-                      </p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {flockWeightLogs.length} weight / {flockPhotoLogs.length} photo
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-2xl p-4 mb-5">
-                    <p className="text-sm text-gray-500 font-bold">
-                      Projected Prime Value
-                    </p>
-                    <h3 className="text-2xl font-black text-green-700">
-                      {money(projectedValue)}
-                    </h3>
-                  </div>
-
-                  <button
-                    onClick={() => setSelectedFlock(flock)}
-                    className="w-full bg-gray-900 hover:bg-black text-white p-4 rounded-2xl font-black"
-                  >
-                    Open Flock Command Center
-                  </button>
-                </div>
-              );
-            })}
-          </section>
-        )}
-
-        {selectedFlock && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-6xl w-full max-h-[92vh] overflow-y-auto p-7 shadow-2xl">
-              <div className="flex justify-between gap-4 mb-6 sticky top-0 bg-white pb-4 z-10">
-                <div>
-                  <h2 className="text-3xl font-black text-green-900">
-                    🐔 {selectedFlock.batch_no}
-                  </h2>
-                  <p className="text-gray-500">
-                    Flock Command Center — read-only operational monitoring
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setSelectedFlock(null)}
-                  className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-xl font-black"
-                >
-                  Close
+    <main className={`${farmBgClass} min-h-screen p-4 pb-28 md:p-8`}>
+      <div className="mx-auto max-w-7xl">
+        <section className="overflow-hidden rounded-[42px] border border-white/15 bg-white/10 p-6 text-white shadow-2xl backdrop-blur-xl md:p-8">
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_.8fr] lg:items-end">
+            <div>
+              <p className="w-fit rounded-full bg-amber-300 px-4 py-2 text-sm font-black text-emerald-950">My Flock Command Center</p>
+              <h1 className="mt-5 text-4xl font-black leading-tight md:text-6xl">Your rooster portfolio, care team, and sell-ready status.</h1>
+              <p className="mt-3 max-w-3xl text-emerald-50">
+                Each flock card uses customer-linked rooster evidence only: latest photo, latest weight, active caretaker, and next action.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button onClick={load} className="rounded-2xl bg-white/15 px-5 py-3 font-black text-white hover:bg-white/25">
+                  {loading ? "Refreshing..." : "Refresh Flock"}
                 </button>
-              </div>
-
-              <div className="grid md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-green-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Growth Status</p>
-                  <h3 className="text-2xl font-black">
-                    Day {selectedDay} / {CYCLE_DAYS}
-                  </h3>
-                </div>
-
-                <div className="bg-blue-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Current Stage</p>
-                  <h3 className="text-2xl font-black">
-                    {selectedStage.icon} {selectedStage.name}
-                  </h3>
-                </div>
-
-                <div className="bg-yellow-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Chicks Alive</p>
-                  <h3 className="text-2xl font-black">
-                    {selectedFlock.alive_count} / {selectedFlock.total_chicks}
-                  </h3>
-                </div>
-
-                <div className="bg-purple-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Harvest Countdown</p>
-                  <h3 className="text-2xl font-black">
-                    {daysUntil(selectedFlock.expected_harvest_date) === null
-                      ? "Not set"
-                      : `${daysUntil(selectedFlock.expected_harvest_date)} days left`}
-                  </h3>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-gray-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Starting Value</p>
-                  <h3 className="text-2xl font-black">
-                    {money(Number(selectedFlock.total_chicks || 0) * CHICK_PRICE)}
-                  </h3>
-                </div>
-
-                <div className="bg-emerald-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Current Value</p>
-                  <h3 className="text-2xl font-black text-green-700">
-                    {money(selectedCurrentValue)}
-                  </h3>
-                </div>
-
-                <div className="bg-lime-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Projected Prime Value</p>
-                  <h3 className="text-2xl font-black text-green-700">
-                    {money(selectedProjectedValue)}
-                  </h3>
-                </div>
-
-                <div className="bg-cyan-50 rounded-2xl p-5">
-                  <p className="font-bold text-gray-500">Assigned Caretaker</p>
-                  <h3 className="text-xl font-black">
-                    {selectedFlock.caretaker_name || "Not assigned"}
-                  </h3>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 mb-6">
-                <h3 className="text-2xl font-black text-amber-800">
-                  💰 Flock Expense & Usage History
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Source: inventory_usage_logs. History only. No inventory controls.
-                </p>
-
-                <div className="mt-5 overflow-x-auto">
-                  {selectedUsageLogs.length === 0 ? (
-                    <div className="bg-white rounded-2xl p-5 text-gray-500 font-bold">
-                      No usage history yet.
-                    </div>
-                  ) : (
-                    <table className="w-full text-sm bg-white rounded-2xl overflow-hidden">
-                      <thead className="bg-amber-100 text-amber-900">
-                        <tr>
-                          <th className="text-left p-3">Date</th>
-                          <th className="text-left p-3">Item Used</th>
-                          <th className="text-left p-3">Quantity</th>
-                          <th className="text-left p-3">Used By</th>
-                          <th className="text-left p-3">Purpose</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedUsageLogs.map((log) => (
-                          <tr key={log.id} className="border-t">
-                            <td className="p-3 font-bold">
-                              {safeDate(log.used_at || log.created_at)}
-                            </td>
-                            <td className="p-3">{log.item_name || "Farm supply"}</td>
-                            <td className="p-3">
-                              {Number(log.qty_used || 0)} {log.unit || ""}
-                            </td>
-                            <td className="p-3">
-                              {log.used_by || selectedFlock.caretaker_name || "Caretaker"}
-                            </td>
-                            <td className="p-3">{log.purpose || "Farm operation"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid lg:grid-cols-2 gap-6 mb-6">
-                <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6">
-                  <h3 className="text-2xl font-black text-blue-800">
-                    ⚖️ Weight Monitoring
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Source: weight_logs. Read only caretaker submissions.
-                  </p>
-
-                  <div className="mt-5 space-y-3">
-                    {selectedWeightLogs.length === 0 ? (
-                      <div className="bg-white rounded-2xl p-5 text-gray-500 font-bold">
-                        No caretaker weight logs yet.
-                      </div>
-                    ) : (
-                      selectedWeightLogs.slice(0, 8).map((log) => (
-                        <div key={log.id} className="bg-white rounded-2xl p-4 border">
-                          <div className="flex justify-between gap-3">
-                            <div>
-                              <p className="font-black text-blue-900">
-                                {getWeightValue(log)} kg
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {log.notes || log.note || "No notes"}
-                              </p>
-                            </div>
-                            <p className="text-xs font-bold text-gray-500">
-                              {safeDate(log.recorded_at || log.created_at)}
-                            </p>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Submitted by:{" "}
-                            {log.submitted_by ||
-                              log.caretaker_name ||
-                              selectedFlock.caretaker_name ||
-                              "Caretaker"}
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-pink-50 border border-pink-100 rounded-3xl p-6">
-                  <h3 className="text-2xl font-black text-pink-800">
-                    📸 Flock Photo Updates
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Source: photo_logs. Read only farm photo timeline.
-                  </p>
-
-                  <div className="mt-5 grid md:grid-cols-2 gap-4">
-                    {selectedPhotoLogs.length === 0 ? (
-                      <div className="bg-white rounded-2xl p-5 text-gray-500 font-bold md:col-span-2">
-                        No caretaker photo logs yet.
-                      </div>
-                    ) : (
-                      selectedPhotoLogs.slice(0, 6).map((log) => {
-                        const photo = getPhotoUrl(log);
-
-                        return (
-                          <div key={log.id} className="bg-white rounded-2xl p-3 border">
-                            {photo ? (
-                              <img
-                                src={photo}
-                                alt={log.caption || "Flock photo update"}
-                                className="w-full h-36 object-cover rounded-xl mb-3"
-                              />
-                            ) : (
-                              <div className="w-full h-36 bg-gray-100 rounded-xl mb-3 flex items-center justify-center text-gray-400 font-bold">
-                                No photo URL
-                              </div>
-                            )}
-
-                            <p className="font-black text-gray-800">
-                              {log.caption || "Farm photo update"}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {safeDate(log.uploaded_at || log.created_at)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Uploaded by:{" "}
-                              {log.uploaded_by ||
-                                log.caretaker_name ||
-                                selectedFlock.caretaker_name ||
-                                "Caretaker"}
-                            </p>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-green-50 border border-green-100 rounded-3xl p-6 mb-6">
-                <h3 className="text-2xl font-black text-green-800">
-                  💰 Harvest ROI
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Current Value - Total Expenses = Projected Profit
-                </p>
-
-                <div className="grid md:grid-cols-3 gap-4 mt-5">
-                  <div className="bg-white rounded-2xl p-5">
-                    <p className="font-bold text-gray-500">Current Value</p>
-                    <h3 className="text-3xl font-black text-green-700">
-                      {money(selectedCurrentValue)}
-                    </h3>
-                  </div>
-
-                  <div className="bg-white rounded-2xl p-5">
-                    <p className="font-bold text-gray-500">Total Expenses</p>
-                    <h3 className="text-3xl font-black text-red-600">
-                      {money(selectedTotalExpenses)}
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-1">
-                      From inventory_usage_logs
-                    </p>
-                  </div>
-
-                  <div className="bg-white rounded-2xl p-5">
-                    <p className="font-bold text-gray-500">Projected Profit</p>
-                    <h3 className="text-3xl font-black text-green-800">
-                      {money(selectedProjectedProfit)}
-                    </h3>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-red-50 border border-red-100 rounded-3xl p-6">
-                <h3 className="text-2xl font-black text-red-700">
-                  🛡️ Risk Management
-                </h3>
-                <div className="grid md:grid-cols-3 gap-4 mt-5">
-                  <div className="bg-white rounded-2xl p-4">
-                    <p className="font-black">Caretaker Assignment</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {selectedFlock.caretaker_name
-                        ? "Caretaker assigned."
-                        : "No caretaker assigned yet."}
-                    </p>
-                  </div>
-
-                  <div className="bg-white rounded-2xl p-4">
-                    <p className="font-black">Weight Monitoring</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {selectedWeightLogs.length > 0
-                        ? `${selectedWeightLogs.length} weight record(s).`
-                        : "No weight record yet."}
-                    </p>
-                  </div>
-
-                  <div className="bg-white rounded-2xl p-4">
-                    <p className="font-black">Farm Photo Updates</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {selectedPhotoLogs.length > 0
-                        ? `${selectedPhotoLogs.length} photo update(s).`
-                        : "No photo update yet."}
-                    </p>
-                  </div>
-                </div>
+                <Link href="/customer/marketplace" className="rounded-2xl bg-amber-300 px-5 py-3 font-black text-emerald-950 hover:bg-amber-200">
+                  Marketplace
+                </Link>
+                <Link href="/customer/caretakers" className="rounded-2xl bg-white px-5 py-3 font-black text-emerald-950 hover:bg-emerald-50">
+                  Hire Caretaker
+                </Link>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Stat label="Alive" value={stats.alive.toLocaleString()} />
+              <Stat label="Active Care" value={stats.activeCaretakers.toLocaleString()} />
+              <Stat label="Pending Hire" value={stats.pendingHires.toLocaleString()} />
+              <Stat label="Near Harvest" value={stats.nearHarvest.toLocaleString()} />
+            </div>
           </div>
-        )}
+        </section>
+
+        {message && <div className="mt-5 rounded-2xl bg-white p-4 font-black text-emerald-800 shadow">{message}</div>}
+
+        <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_420px]">
+          <div>
+            <div className="mb-4 flex items-center justify-between text-white">
+              <h2 className="text-2xl font-black">Flock cards</h2>
+              <p className="text-sm font-bold text-emerald-100">{flocks.length} active record(s)</p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              {flocks.map((flock) => {
+                const age = daysOld(flock.created_at);
+                const activeHire = getActiveHire(flock.id);
+                const latestPhoto = getLatestPhotoForFlock(flock);
+                const baseImageUrl = getBaseImageForFlock(flock);
+                const latestWeight = getLatestWeightForFlock(flock);
+                const linkedAnimals = getFlockAnimals(flock.id);
+                const selected = selectedFlock?.id === flock.id;
+                const survival = survivalRate(flock);
+                const harvestLeft = daysUntil(flock.expected_harvest_date);
+
+                return (
+                  <article key={flock.id} className={`overflow-hidden rounded-[36px] bg-white shadow-2xl transition hover:-translate-y-1 ${selected ? "ring-4 ring-amber-300" : "ring-1 ring-white/20"}`}>
+                    <button onClick={() => setSelectedFlockId(flock.id)} className="block w-full text-left">
+                      <div className="relative h-72 bg-emerald-50">
+                        {baseImageUrl ? (
+                          <img src={baseImageUrl} alt={latestPhoto?.caption || flock.batch_no || "Flock photo"} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="grid h-full place-items-center bg-gradient-to-br from-emerald-100 to-amber-50 text-8xl">🐓</div>
+                        )}
+                        <span className="absolute left-4 top-4 rounded-full bg-emerald-950/85 px-4 py-2 text-xs font-black text-white backdrop-blur">{roosterStage(age)}</span>
+                        <span className={`absolute right-4 top-4 rounded-full border px-4 py-2 text-xs font-black ${statusPill(flock.status)}`}>{statusText(flock.status)}</span>
+                      </div>
+
+                      <div className="p-6">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-3xl font-black text-emerald-950">{flock.batch_no || "FarmConnect Flock"}</h3>
+                            <p className="mt-1 font-bold text-slate-500">{flock.breed || "FarmConnect Rooster"} • Day {age}</p>
+                          </div>
+                          <div className="rounded-2xl bg-amber-50 px-4 py-3 text-center">
+                            <p className="text-xs font-black uppercase text-slate-500">Survival</p>
+                            <p className="text-xl font-black text-amber-800">{survival}%</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 grid grid-cols-3 gap-3">
+                          <Mini label="Alive" value={`${Number(flock.alive_count || 0)}`} />
+                          <Mini label="Weight" value={latestWeight ? `${latestWeight.weight_kg}kg` : "—"} />
+                          <Mini label="Harvest" value={harvestLeft === null ? "—" : `${harvestLeft}d`} />
+                        </div>
+
+                        <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                          <p className="text-sm font-black uppercase tracking-wide text-slate-500">Assigned Caretaker</p>
+                          <p className="mt-1 text-lg font-black text-emerald-950">{activeHire?.caretaker_name || flock.caretaker_name || "No active caretaker yet"}</p>
+                          <p className="mt-1 text-xs font-bold text-slate-500">{linkedAnimals.length} linked rooster record(s) • Photo source: {latestPhoto ? `Latest upload ${dateText(latestPhoto.created_at)}` : baseImageUrl ? "Marketplace base photo" : "No photo yet"}</p>
+                        </div>
+                      </div>
+                    </button>
+
+                    <div className="grid grid-cols-3 gap-3 px-6 pb-6">
+                      <Link href="/customer/caretakers" className="rounded-2xl bg-emerald-700 p-4 text-center text-sm font-black text-white hover:bg-emerald-800">
+                        Caretaker
+                      </Link>
+                      <Link href="/customer/live-camera" className="rounded-2xl bg-slate-100 p-4 text-center text-sm font-black text-slate-800 hover:bg-slate-200">
+                        Updates
+                      </Link>
+                      <Link href="/customer/sell-chicken" className="rounded-2xl bg-amber-300 p-4 text-center text-sm font-black text-emerald-950 hover:bg-amber-200">
+                        Sell
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {!loading && flocks.length === 0 && (
+              <div className="rounded-[32px] bg-white p-10 text-center font-black text-slate-500 shadow-2xl">
+                No flock yet. Buy chicken-related products from Marketplace or wait for Admin to create your flock record.
+              </div>
+            )}
+          </div>
+
+          <aside className={`${panelClass} sticky top-24 h-fit p-6`}>
+            <h2 className="text-2xl font-black text-emerald-950">Selected Flock Details</h2>
+
+            {selectedFlock ? (
+              <>
+                <div className="mt-4 rounded-[28px] bg-emerald-50 p-5">
+                  <p className="text-sm font-black uppercase text-slate-500">Batch</p>
+                  <h3 className="text-3xl font-black text-emerald-950">{selectedFlock.batch_no || "FarmConnect Flock"}</h3>
+                  <p className="mt-1 font-bold text-slate-500">{selectedFlock.breed || "FarmConnect Rooster"}</p>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <Mini label="Total" value={`${Number(selectedFlock.total_chicks || 0)}`} />
+                  <Mini label="Alive" value={`${Number(selectedFlock.alive_count || 0)}`} />
+                  <Mini label="Mortality" value={`${Number(selectedFlock.mortality_count || 0)}`} />
+                  <Mini label="Health" value={selectedFlock.health_status || "Healthy"} />
+                </div>
+
+                <div className="mt-5 rounded-[28px] bg-slate-50 p-5">
+                  <h3 className="text-xl font-black text-slate-900">Latest Evidence</h3>
+                  <div className="mt-4 space-y-3">
+                    {selectedPhotos.slice(0, 3).map((photo) => (
+                      <div key={photo.id} className="flex gap-3 rounded-2xl bg-white p-3 shadow-sm">
+                        {photo.photo_url ? <img src={photo.photo_url} alt={photo.caption || "Photo"} className="h-16 w-16 rounded-xl object-cover" /> : <div className="grid h-16 w-16 place-items-center rounded-xl bg-slate-100">🐓</div>}
+                        <div>
+                          <p className="font-black text-slate-900">{photo.caption || "Caretaker photo update"}</p>
+                          <p className="text-sm font-bold text-slate-500">{dateText(photo.created_at)}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {selectedWeights.slice(0, 3).map((weight) => (
+                      <div key={weight.id} className="rounded-2xl bg-white p-4 shadow-sm">
+                        <p className="font-black text-slate-900">{weight.weight_kg} kg</p>
+                        <p className="text-sm font-bold text-slate-500">{weight.note || "Weight update"} • {dateText(weight.recorded_at)}</p>
+                      </div>
+                    ))}
+                    {selectedPhotos.length === 0 && selectedWeights.length === 0 && (
+                      <p className="rounded-2xl bg-white p-4 font-bold text-slate-500">No linked caretaker photo/weight evidence yet.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  <Link href="/customer/sell-chicken" className="rounded-2xl bg-amber-300 p-4 text-center font-black text-emerald-950 hover:bg-amber-200">
+                    Open Sell Chicken
+                  </Link>
+                  <Link href="/customer/caretakers" className="rounded-2xl bg-emerald-700 p-4 text-center font-black text-white hover:bg-emerald-800">
+                    Manage Caretaker
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <p className="mt-4 rounded-2xl bg-slate-50 p-5 font-bold text-slate-500">Select a flock card to view details.</p>
+            )}
+          </aside>
+        </section>
       </div>
     </main>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[24px] bg-white/10 p-5 ring-1 ring-white/10 backdrop-blur">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">{label}</p>
+      <p className="mt-2 text-3xl font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function Mini({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+      <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-black text-emerald-950">{value}</p>
+    </div>
   );
 }

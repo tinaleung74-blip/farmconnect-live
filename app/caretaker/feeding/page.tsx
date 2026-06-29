@@ -31,6 +31,16 @@ type Animal = {
 
 type AnimalRelation = Animal | Animal[] | null;
 
+const navLinks = [
+  { href: "/caretaker/dashboard", label: "Dashboard" },
+  { href: "/caretaker/tasks", label: "Tasks" },
+  { href: "/caretaker/feeding", label: "Feeding" },
+  { href: "/caretaker/photos", label: "Photos" },
+  { href: "/caretaker/weight", label: "Weight" },
+  { href: "/caretaker/mortality", label: "Mortality" },
+  { href: "/caretaker/notes", label: "Notes" },
+];
+
 type InventoryItem = {
   id: string;
   item_name: string | null;
@@ -326,9 +336,18 @@ export default function CaretakerFeedingPage() {
 
   return (
     <main style={page}>
-      <Link href="/caretaker/dashboard" style={back}>
-        ← Back
-      </Link>
+      <nav style={topNav}>
+        <Link href="/caretaker/dashboard" style={back}>
+          ← Dashboard
+        </Link>
+        <div style={navPills}>
+          {navLinks.map((item) => (
+            <Link key={item.href} href={item.href} style={navPill}>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </nav>
 
       <div style={container}>
         <section style={card}>
@@ -525,71 +544,113 @@ function formatDate(value?: string | null) {
 
 const page: React.CSSProperties = {
   minHeight: "100vh",
-  background: "linear-gradient(180deg, #dbeafe, #ecfccb)",
-  padding: 20,
+  background: "radial-gradient(circle at top left, rgba(14,165,233,0.18), transparent 32%), linear-gradient(180deg, #dbeafe, #ecfccb)",
+  padding: "18px clamp(14px, 3vw, 28px) 28px",
   fontFamily: "Arial, sans-serif",
 };
 
-const back: React.CSSProperties = {
-  display: "inline-block",
-  marginBottom: 16,
-  color: "#0369a1",
-  fontWeight: 900,
+const topNav: React.CSSProperties = {
+  maxWidth: 1020,
+  margin: "0 auto 18px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  flexWrap: "wrap",
+};
+
+const navPills: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  overflowX: "auto",
+  maxWidth: "100%",
+  paddingBottom: 4,
+};
+
+const navPill: React.CSSProperties = {
+  whiteSpace: "nowrap",
   textDecoration: "none",
+  color: "#0369a1",
+  background: "rgba(255,255,255,0.88)",
+  border: "1px solid rgba(14,165,233,0.18)",
+  borderRadius: 999,
+  padding: "10px 13px",
+  fontSize: 13,
+  fontWeight: 900,
+};
+
+const back: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  color: "#0369a1",
+  fontWeight: 950,
+  textDecoration: "none",
+  background: "rgba(255,255,255,0.9)",
+  border: "1px solid rgba(14,165,233,0.18)",
+  borderRadius: 999,
+  padding: "10px 14px",
+  boxShadow: "0 10px 22px rgba(15,23,42,0.06)",
 };
 
 const container: React.CSSProperties = {
-  maxWidth: 920,
+  maxWidth: 1020,
   margin: "0 auto",
   display: "grid",
   gap: 20,
 };
 
 const card: React.CSSProperties = {
-  background: "white",
-  borderRadius: 28,
-  padding: 24,
-  boxShadow: "0 20px 45px rgba(0,0,0,0.1)",
+  background: "rgba(255,255,255,0.96)",
+  borderRadius: 30,
+  padding: "clamp(20px, 4vw, 30px)",
+  boxShadow: "0 22px 48px rgba(15,23,42,0.10)",
+  border: "1px solid rgba(255,255,255,0.75)",
 };
 
 const historyCard: React.CSSProperties = { ...card };
 
-const title: React.CSSProperties = { fontSize: 32, margin: 0, fontWeight: 900 };
+const title: React.CSSProperties = { fontSize: "clamp(28px, 5vw, 38px)", margin: 0, fontWeight: 950, color: "#0f172a" };
 
 const sectionTitle: React.CSSProperties = { fontSize: 24, margin: "0 0 16px", fontWeight: 900 };
 
-const subtitle: React.CSSProperties = { color: "#64748b" };
+const subtitle: React.CSSProperties = { color: "#64748b", lineHeight: 1.6, fontWeight: 700 };
 
-const form: React.CSSProperties = { display: "grid", gap: 12 };
+const form: React.CSSProperties = { display: "grid", gap: 13 };
 
 const label: React.CSSProperties = { fontWeight: 900 };
 
 const input: React.CSSProperties = {
-  padding: 14,
-  borderRadius: 14,
+  padding: "15px 16px",
+  borderRadius: 16,
   border: "1px solid #cbd5e1",
+  background: "#f8fafc",
   fontSize: 16,
+  outlineColor: "#0ea5e9",
+  width: "100%",
+  boxSizing: "border-box",
 };
 
 const button: React.CSSProperties = {
   marginTop: 10,
-  padding: 16,
-  borderRadius: 16,
+  padding: 17,
+  borderRadius: 18,
   border: "none",
-  background: "#0ea5e9",
+  background: "linear-gradient(135deg, #0284c7, #0ea5e9)",
   color: "white",
   fontSize: 17,
-  fontWeight: 900,
+  fontWeight: 950,
   cursor: "pointer",
+  boxShadow: "0 16px 30px rgba(14,165,233,0.24)",
 };
 
 const notice: React.CSSProperties = {
   background: "#dbeafe",
   color: "#075985",
-  padding: 12,
-  borderRadius: 14,
-  marginBottom: 14,
-  fontWeight: 800,
+  padding: 14,
+  borderRadius: 16,
+  marginBottom: 16,
+  fontWeight: 850,
+  lineHeight: 1.5,
 };
 
 const muted: React.CSSProperties = { color: "#64748b", fontWeight: 700 };
@@ -598,7 +659,7 @@ const historyList: React.CSSProperties = { display: "grid", gap: 12 };
 
 const historyItem: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "140px 1fr",
+  gridTemplateColumns: "minmax(110px, 140px) minmax(0, 1fr)",
   gap: 14,
   background: "#f8fafc",
   border: "1px solid #e2e8f0",

@@ -1,23 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { QRCodeCanvas } from "qrcode.react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-
-type Profile = {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-  verification_status: string | null;
-  membership_status: string | null;
-  membership_expiry: string | null;
-  account_status: string | null;
-};
+import {
+  dateText,
+  money,
+  resolveCustomerProfile,
+  shellClass,
+  statusPill,
+  type CustomerProfile,
+} from "@/lib/customer-auth";
 
 type PaymentSettings = {
-  id: string;
   gcash_number: string | null;
   maya_number: string | null;
   gcash_name: string | null;
@@ -26,406 +21,295 @@ type PaymentSettings = {
 
 type MembershipPayment = {
   id: string;
-  profile_id: string;
-  amount: number;
+  amount: number | string | null;
   payment_method: string | null;
   reference_no: string | null;
-  status: string;
+  status: string | null;
   admin_notes: string | null;
-  created_at: string;
-  approved_at: string | null;
+  created_at: string | null;
+  approved_at?: string | null;
 };
 
 const MEMBERSHIP_FEE = 999;
 
 export default function CustomerMembershipPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [paymentSettings, setPaymentSettings] =
-    useState<PaymentSettings | null>(null);
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  const [settings, setSettings] = useState<PaymentSettings | null>(null);
   const [payments, setPayments] = useState<MembershipPayment[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("GCASH");
   const [referenceNo, setReferenceNo] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  function getProfileId() {
-    if (typeof window === "undefined") return "";
-
-    const directId =
-      localStorage.getItem("farmconnect_profile_id") ||
-      localStorage.getItem("profile_id") ||
-      localStorage.getItem("customer_id") ||
-      "";
-
-    const rawUser = localStorage.getItem("farmconnect_user");
-
-    if (directId) return directId;
-
-    if (rawUser) {
-      try {
-        const parsed = JSON.parse(rawUser);
-        return parsed?.id || parsed?.profile_id || parsed?.customer_id || "";
-      } catch {
-        return "";
-      }
-    }
-
-    return "";
-  }
-
-  async function loadMembership() {
-    setLoading(true);
-
-    const profileId = getProfileId();
-
-    if (!profileId) {
-      setLoading(false);
-      return;
-    }
-
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select(
-        "id,full_name,email,phone,verification_status,membership_status,membership_expiry,account_status"
-      )
-      .eq("id", profileId)
-      .maybeSingle();
-
-    const { data: settingsData } = await supabase
-      .from("payment_settings")
-      .select("*")
-      .limit(1)
-      .maybeSingle();
-
-    const { data: paymentData } = await supabase
-      .from("membership_payments")
-      .select("*")
-      .eq("profile_id", profileId)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    setProfile((profileData || null) as Profile | null);
-    setPaymentSettings((settingsData || null) as PaymentSettings | null);
-    setPayments((paymentData || []) as MembershipPayment[]);
-
-    setLoading(false);
-  }
 
   useEffect(() => {
     loadMembership();
   }, []);
 
+  async function loadMembership() {
+    setLoading(true);
+    setMessage("");
+
+    const resolvedProfile = await resolveCustomerProfile();
+    setProfile(resolvedProfile);
+
+    const paymentSettingsRequest = supabase
+      .from("payment_settings")
+      .select("gcash_number,maya_number,gcash_name,maya_name")
+      .limit(1)
+      .maybeSingle();
+
+    if (!resolvedProfile) {
+      const { data: paymentSettings } = await paymentSettingsRequest;
+      setSettings((paymentSettings as PaymentSettings) || null);
+      setPayments([]);
+      setLoading(false);
+      return;
+    }
+
+    const [settingsRes, paymentsRes] = await Promise.all([
+      paymentSettingsRequest,
+      supabase
+        .from("membership_payments")
+        .select("id,amount,payment_method,reference_no,status,admin_notes,created_at,approved_at")
+        .eq("profile_id", resolvedProfile.id)
+        .order("created_at", { ascending: false })
+        .limit(30),
+    ]);
+
+    if (settingsRes.error) setMessage(settingsRes.error.message);
+    if (paymentsRes.error) setMessage(paymentsRes.error.message);
+
+    setSettings((settingsRes.data as PaymentSettings) || null);
+    setPayments((paymentsRes.data || []) as MembershipPayment[]);
+    setLoading(false);
+  }
+
   async function submitMembershipPayment() {
     if (!profile) {
-      alert("Please login first.");
+      setMessage("Please login before submitting membership payment.");
       return;
     }
 
     if (!referenceNo.trim()) {
-      alert("Please enter your GCash/Maya reference number.");
-      return;
-    }
-
-    const pendingPayment = payments.find(
-      (payment) => (payment.status || "").toUpperCase() === "PENDING"
-    );
-
-    if (pendingPayment) {
-      alert("You already have a pending membership payment for admin review.");
+      setMessage("Enter your GCash/Maya payment reference number.");
       return;
     }
 
     setSubmitting(true);
+    setMessage("");
 
-    const { error } = await supabase.from("membership_payments").insert({
-      profile_id: profile.id,
-      amount: MEMBERSHIP_FEE,
-      payment_method: paymentMethod,
-      reference_no: referenceNo.trim(),
-      status: "PENDING",
+    const { error } = await supabase.rpc("customer_submit_membership_payment", {
+      p_profile_id: profile.id,
+      p_amount: MEMBERSHIP_FEE,
+      p_payment_method: paymentMethod,
+      p_reference_no: referenceNo.trim(),
     });
 
     if (error) {
-      alert(error.message);
+      setMessage(error.message);
       setSubmitting(false);
       return;
     }
 
-    await supabase.from("wallet_transactions").insert({
-      profile_id: profile.id,
-      transaction_type: "MEMBERSHIP_PAYMENT_SUBMITTED",
-      amount: MEMBERSHIP_FEE,
-      reference_no: referenceNo.trim(),
-      remarks: `Annual Investor Membership payment submitted via ${paymentMethod}. Waiting for admin approval.`,
-      status: "PENDING",
-    });
-
-    alert("Membership payment submitted. Waiting for admin approval.");
+    setMessage("Membership payment submitted. Waiting for admin approval.");
     setReferenceNo("");
     await loadMembership();
     setSubmitting(false);
   }
 
-  function formatPeso(amount: number) {
-    return Number(amount || 0).toLocaleString("en-PH", {
-      style: "currency",
-      currency: "PHP",
-      maximumFractionDigits: 0,
-    });
-  }
+  const activeNumber = useMemo(() => {
+    if (paymentMethod === "MAYA") return settings?.maya_number || "No Maya number set";
+    return settings?.gcash_number || "No GCash number set";
+  }, [paymentMethod, settings]);
 
-  function statusColor(status: string | null | undefined) {
-    const cleanStatus = (status || "PENDING").toUpperCase();
+  const activeName = useMemo(() => {
+    if (paymentMethod === "MAYA") return settings?.maya_name || "FarmConnect";
+    return settings?.gcash_name || "FarmConnect";
+  }, [paymentMethod, settings]);
 
-    if (cleanStatus === "ACTIVE" || cleanStatus === "APPROVED") {
-      return "bg-green-100 text-green-800";
-    }
-
-    if (cleanStatus === "REJECTED" || cleanStatus === "EXPIRED") {
-      return "bg-red-100 text-red-800";
-    }
-
-    return "bg-yellow-100 text-yellow-800";
-  }
-
-  const gcashNumber = paymentSettings?.gcash_number || "09288985979";
-  const mayaNumber = paymentSettings?.maya_number || "09498387452";
-  const gcashName = paymentSettings?.gcash_name || "FarmConnect";
-  const mayaName = paymentSettings?.maya_name || "FarmConnect";
-
-  const selectedNumber = paymentMethod === "GCASH" ? gcashNumber : mayaNumber;
-  const selectedName = paymentMethod === "GCASH" ? gcashName : mayaName;
-
-  const qrValue = `${paymentMethod} PAYMENT\nAccount Name: ${selectedName}\nNumber: ${selectedNumber}\nAmount: ${MEMBERSHIP_FEE}\nPurpose: FarmConnect Annual Investor Membership`;
+  const hasPendingPayment = payments.some(
+    (payment) => String(payment.status || "").toUpperCase() === "PENDING"
+  );
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-green-50 via-white to-yellow-50 p-6">
+    <main className={`${shellClass} p-4 pb-28 md:p-8`}>
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="w-fit rounded-full bg-green-100 px-4 py-2 text-sm font-black text-green-700">
-              🌾 FarmConnect Membership
-            </p>
-            <h1 className="mt-3 text-4xl font-black text-green-950">
-              Annual Investor Membership
-            </h1>
-            <p className="mt-2 max-w-3xl font-semibold text-slate-600">
-              Pay your annual membership fee to unlock full FarmConnect access.
-              Admin will verify your GCash/Maya payment before activation.
-            </p>
-          </div>
+        <section className="rounded-[36px] border border-emerald-300/20 bg-white/10 p-7 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="w-fit rounded-full bg-amber-300 px-4 py-2 text-sm font-black text-emerald-950">
+                FarmConnect Membership
+              </p>
+              <h1 className="mt-4 text-5xl font-black leading-tight">
+                Annual investor access.
+              </h1>
+              <p className="mt-2 max-w-3xl font-semibold text-emerald-50">
+                Submit payment reference through the production RPC. Admin verifies payment before activation.
+              </p>
+            </div>
 
-          <Link
-            href="/customer/dashboard"
-            className="rounded-2xl bg-green-700 px-5 py-3 text-center font-black text-white"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
+            <Link
+              href="/customer/dashboard"
+              className="rounded-full bg-white px-5 py-3 text-center font-black text-emerald-950"
+            >
+              Dashboard
+            </Link>
+          </div>
+        </section>
+
+        {message && (
+          <div className="mt-5 rounded-2xl border border-emerald-100 bg-white p-4 font-black text-emerald-800 shadow-xl">
+            {message}
+          </div>
+        )}
 
         {loading ? (
-          <div className="rounded-3xl bg-white p-8 text-center font-black shadow">
+          <div className="mt-6 rounded-[32px] bg-white p-8 text-center font-black text-emerald-800 shadow-2xl">
             Loading membership center...
           </div>
         ) : (
-          <>
-            <section className="mb-6 grid gap-4 md:grid-cols-4">
-              <div className="rounded-3xl border bg-white p-5 shadow">
-                <p className="font-bold text-slate-500">Customer</p>
-                <h2 className="mt-1 text-xl font-black text-green-950">
-                  {profile?.full_name || "FarmConnect Customer"}
-                </h2>
-              </div>
-
-              <div className="rounded-3xl border bg-white p-5 shadow">
-                <p className="font-bold text-slate-500">Membership Status</p>
-                <span
-                  className={`mt-2 inline-block rounded-full px-4 py-2 text-sm font-black ${statusColor(
-                    profile?.membership_status
-                  )}`}
-                >
-                  {profile?.membership_status || "UNPAID"}
-                </span>
-              </div>
-
-              <div className="rounded-3xl border bg-white p-5 shadow">
-                <p className="font-bold text-slate-500">KYC Status</p>
-                <span
-                  className={`mt-2 inline-block rounded-full px-4 py-2 text-sm font-black ${statusColor(
-                    profile?.verification_status
-                  )}`}
-                >
-                  {profile?.verification_status || "PENDING"}
-                </span>
-              </div>
-
-              <div className="rounded-3xl border bg-white p-5 shadow">
-                <p className="font-bold text-slate-500">Account Status</p>
-                <span
-                  className={`mt-2 inline-block rounded-full px-4 py-2 text-sm font-black ${statusColor(
-                    profile?.account_status
-                  )}`}
-                >
-                  {profile?.account_status || "PENDING_MEMBERSHIP"}
-                </span>
-              </div>
-            </section>
-
-            <section className="grid gap-6 lg:grid-cols-[1fr_420px]">
-              <div className="rounded-3xl border bg-white p-6 shadow-xl">
-                <h2 className="text-2xl font-black text-green-950">
-                  Membership Payment
+          <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_410px]">
+            <div className="space-y-6">
+              <article className="rounded-[32px] bg-white p-6 shadow-2xl">
+                <p className="text-sm font-black uppercase tracking-[0.18em] text-emerald-700">
+                  Current Account
+                </p>
+                <h2 className="mt-1 text-3xl font-black text-emerald-950">
+                  {profile?.full_name || profile?.email || "Customer"}
                 </h2>
 
-                <div className="mt-4 rounded-3xl bg-green-50 p-5">
-                  <p className="font-bold text-slate-500">Annual Fee</p>
-                  <h3 className="text-4xl font-black text-green-800">
-                    {formatPeso(MEMBERSHIP_FEE)}
-                  </h3>
-                  <p className="mt-2 text-sm font-semibold text-slate-600">
-                    Valid for 1 year after admin approval.
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  <Status label="Membership" value={profile?.membership_status || "UNPAID"} />
+                  <Status label="KYC" value={profile?.verification_status || "PENDING"} />
+                  <Status label="Account" value={profile?.account_status || "PENDING"} />
+                </div>
+              </article>
+
+              <article className="rounded-[32px] bg-white p-6 shadow-2xl">
+                <div className="rounded-[28px] bg-gradient-to-br from-emerald-900 to-emerald-700 p-6 text-white">
+                  <p className="font-bold text-emerald-100">Annual Fee</p>
+                  <h2 className="mt-2 text-5xl font-black">{money(MEMBERSHIP_FEE)}</h2>
+                  <p className="mt-2 font-semibold text-emerald-100">
+                    Valid for one year after admin approval.
                   </p>
                 </div>
 
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-3xl bg-slate-50 p-5">
-                    <p className="font-black text-slate-700">GCash</p>
-                    <p className="mt-1 text-2xl font-black text-green-800">
-                      {gcashNumber}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      Account Name: {gcashName}
-                    </p>
-                  </div>
-
-                  <div className="rounded-3xl bg-slate-50 p-5">
-                    <p className="font-black text-slate-700">Maya</p>
-                    <p className="mt-1 text-2xl font-black text-green-800">
-                      {mayaNumber}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      Account Name: {mayaName}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-3xl bg-yellow-50 p-5">
-                  <p className="font-black text-yellow-900">
-                    Payment Instructions
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-slate-700">
-                    Send exactly {formatPeso(MEMBERSHIP_FEE)} using GCash or
-                    Maya. After payment, enter the reference number below.
-                    Admin will verify the receipt manually.
-                  </p>
-                </div>
-
-                <div className="mt-5 grid gap-4">
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="rounded-2xl border p-4 font-bold"
+                  <button
+                    onClick={() => setPaymentMethod("GCASH")}
+                    className={`rounded-3xl border p-5 text-left ${
+                      paymentMethod === "GCASH" ? "border-emerald-700 bg-emerald-50" : "border-slate-200 bg-white"
+                    }`}
                   >
-                    <option value="GCASH">GCash</option>
-                    <option value="MAYA">Maya</option>
-                  </select>
-
-                  <input
-                    value={referenceNo}
-                    onChange={(e) => setReferenceNo(e.target.value)}
-                    placeholder="Enter GCash/Maya reference number"
-                    className="rounded-2xl border p-4 font-bold"
-                  />
+                    <p className="font-black text-emerald-950">GCash</p>
+                    <p className="mt-1 text-2xl font-black text-emerald-700">
+                      {settings?.gcash_number || "Not set"}
+                    </p>
+                    <p className="text-sm font-bold text-slate-500">
+                      {settings?.gcash_name || "FarmConnect"}
+                    </p>
+                  </button>
 
                   <button
-                    onClick={submitMembershipPayment}
-                    disabled={submitting}
-                    className="rounded-2xl bg-green-700 p-4 font-black text-white disabled:bg-slate-400"
+                    onClick={() => setPaymentMethod("MAYA")}
+                    className={`rounded-3xl border p-5 text-left ${
+                      paymentMethod === "MAYA" ? "border-emerald-700 bg-emerald-50" : "border-slate-200 bg-white"
+                    }`}
                   >
-                    {submitting
-                      ? "Submitting..."
-                      : "Submit Membership Payment"}
+                    <p className="font-black text-emerald-950">Maya</p>
+                    <p className="mt-1 text-2xl font-black text-emerald-700">
+                      {settings?.maya_number || "Not set"}
+                    </p>
+                    <p className="text-sm font-bold text-slate-500">
+                      {settings?.maya_name || "FarmConnect"}
+                    </p>
                   </button>
                 </div>
-              </div>
 
-              <aside className="rounded-3xl border bg-white p-6 shadow-xl">
-                <h2 className="text-2xl font-black text-green-950">
-                  Payment QR
-                </h2>
-
-                <div className="mt-5 flex justify-center rounded-3xl bg-slate-50 p-6">
-                  <QRCodeCanvas value={qrValue} size={230} />
+                <div className="mt-5 rounded-3xl bg-amber-50 p-5">
+                  <p className="font-black text-amber-900">Payment Instructions</p>
+                  <p className="mt-2 text-sm font-bold leading-6 text-slate-700">
+                    Send exactly {money(MEMBERSHIP_FEE)} to {activeName} using {paymentMethod} number {activeNumber}.
+                    After payment, enter your reference number below.
+                  </p>
                 </div>
 
-                <div className="mt-5 rounded-3xl bg-green-50 p-5">
-                  <p className="font-bold text-slate-500">Selected Method</p>
-                  <h3 className="mt-1 text-2xl font-black text-green-800">
-                    {paymentMethod}
-                  </h3>
-                  <p className="mt-2 font-bold text-slate-700">
-                    {selectedNumber}
-                  </p>
-                  <p className="text-sm text-slate-500">{selectedName}</p>
+                <input
+                  value={referenceNo}
+                  onChange={(event) => setReferenceNo(event.target.value)}
+                  placeholder={`${paymentMethod} reference number`}
+                  className="mt-5 w-full rounded-2xl border border-slate-200 p-4 font-bold outline-none focus:border-emerald-600"
+                />
+
+                <button
+                  onClick={submitMembershipPayment}
+                  disabled={submitting || !profile || hasPendingPayment}
+                  className="mt-4 w-full rounded-2xl bg-emerald-700 p-4 font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                >
+                  {hasPendingPayment
+                    ? "Pending Payment Exists"
+                    : submitting
+                      ? "Submitting..."
+                      : "Submit Membership Payment"}
+                </button>
+              </article>
+            </div>
+
+            <aside className="rounded-[32px] bg-white p-6 shadow-2xl">
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-emerald-700">
+                Payment History
+              </p>
+              <h2 className="mt-1 text-3xl font-black text-emerald-950">
+                Admin review timeline
+              </h2>
+
+              {payments.length === 0 ? (
+                <div className="mt-6 rounded-3xl bg-slate-50 p-6 text-center font-bold text-slate-500">
+                  No membership payment submitted yet.
                 </div>
-              </aside>
-
-              <div className="rounded-3xl border bg-white p-6 shadow-xl lg:col-span-2">
-                <h2 className="mb-4 text-2xl font-black text-green-950">
-                  Membership Payment History
-                </h2>
-
-                {payments.length === 0 ? (
-                  <p className="text-slate-500">
-                    No membership payment submitted yet.
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-green-50 text-green-900">
-                        <tr>
-                          <th className="p-3 text-left">Date</th>
-                          <th className="p-3 text-left">Method</th>
-                          <th className="p-3 text-left">Reference</th>
-                          <th className="p-3 text-left">Amount</th>
-                          <th className="p-3 text-left">Status</th>
-                          <th className="p-3 text-left">Admin Notes</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {payments.map((payment) => (
-                          <tr key={payment.id} className="border-t">
-                            <td className="p-3 font-bold">
-                              {new Date(payment.created_at).toLocaleString()}
-                            </td>
-                            <td className="p-3">{payment.payment_method}</td>
-                            <td className="p-3">{payment.reference_no}</td>
-                            <td className="p-3">
-                              {formatPeso(Number(payment.amount || 0))}
-                            </td>
-                            <td className="p-3">
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs font-black ${statusColor(
-                                  payment.status
-                                )}`}
-                              >
-                                {payment.status}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              {payment.admin_notes || "—"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </section>
-          </>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  {payments.map((payment) => (
+                    <article key={payment.id} className="rounded-3xl border border-slate-100 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-black text-emerald-950">
+                            {payment.payment_method || "Payment"}
+                          </h3>
+                          <p className="text-sm font-bold text-slate-500">
+                            {payment.reference_no || "No reference"} • {dateText(payment.created_at)}
+                          </p>
+                        </div>
+                        <p className="font-black text-emerald-700">{money(payment.amount)}</p>
+                      </div>
+                      <span className={`mt-3 inline-block rounded-full border px-3 py-1 text-xs font-black ${statusPill(payment.status)}`}>
+                        {payment.status || "PENDING"}
+                      </span>
+                      {payment.admin_notes && (
+                        <p className="mt-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-600">
+                          {payment.admin_notes}
+                        </p>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </aside>
+          </section>
         )}
       </div>
     </main>
+  );
+}
+
+function Status({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-3xl bg-emerald-50 p-4">
+      <p className="text-sm font-bold text-slate-500">{label}</p>
+      <span className={`mt-2 inline-block rounded-full border px-3 py-1 text-xs font-black ${statusPill(value)}`}>
+        {value}
+      </span>
+    </div>
   );
 }

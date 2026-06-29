@@ -304,6 +304,7 @@ const page: React.CSSProperties = {
 
 const hero: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 20,
   alignItems: "center",
@@ -418,6 +419,7 @@ const card: React.CSSProperties = {
 
 const cardHeader: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 14,
   alignItems: "center",
@@ -447,6 +449,7 @@ const pill: React.CSSProperties = {
 
 const row: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 14,
   padding: "15px 0",
@@ -455,6 +458,7 @@ const row: React.CSSProperties = {
 
 const queueRow: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 14,
   padding: "15px 0",
@@ -471,6 +475,7 @@ const totalBox: React.CSSProperties = {
   background: "#dcfce7",
   color: "#14532d",
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   fontWeight: 950,
 };

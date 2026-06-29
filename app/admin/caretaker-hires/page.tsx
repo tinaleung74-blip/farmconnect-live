@@ -4,651 +4,470 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type HireRequest = {
+type Caretaker = {
   id: string;
-  profile_id: string;
-  caretaker_id: string;
-  caretaker_name: string;
-  flock_id: string | null;
-  duration_days: number;
-  rate_per_chick: number;
-  total_chicks: number;
-  total_fee: number;
-  status: string;
-  payment_status: string;
-  start_date: string | null;
-  end_date: string | null;
-  created_at: string;
+  caretaker_profile_id?: string | null;
+  full_name?: string | null;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  status?: string | null;
+  assigned_flock_id?: string | null;
+  created_at?: string | null;
 };
 
-const TECHNICAL_FEE_RATE = 0.02;
+type Hire = {
+  id: string;
+  profile_id?: string | null;
+  caretaker_id?: string | null;
+  caretaker_name?: string | null;
+  flock_id?: string | null;
+  status?: string | null;
+  payment_status?: string | null;
+  created_at?: string | null;
+};
 
-export default function AdminCaretakerHiresPage() {
-  const [requests, setRequests] = useState<HireRequest[]>([]);
+type Profile = {
+  id: string;
+  full_name?: string | null;
+  email?: string | null;
+};
+
+type Flock = {
+  id: string;
+  batch_no?: string | null;
+  batch_name?: string | null;
+  breed?: string | null;
+  status?: string | null;
+};
+
+type CaretakerRow = Caretaker & {
+  latestHire?: Hire | null;
+  assignedCustomer?: Profile | null;
+  assignedFlock?: Flock | null;
+};
+
+export default function AdminCaretakersPage() {
+  const [caretakers, setCaretakers] = useState<CaretakerRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState("");
-  const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    loadRequests();
+    loadCaretakers();
   }, []);
 
-  async function loadRequests() {
+  async function loadCaretakers() {
     setLoading(true);
     setMessage("");
-    setErrorMessage("");
 
-    const { data, error } = await supabase
-      .from("customer_caretaker_hires")
-      .select(
-        "id,profile_id,caretaker_id,caretaker_name,flock_id,duration_days,rate_per_chick,total_chicks,total_fee,status,payment_status,start_date,end_date,created_at"
-      )
+    const { data: caretakerRows, error: caretakerError } = await supabase
+      .from("caretakers")
+      .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      setErrorMessage(`Load request error: ${error.message}`);
-      setRequests([]);
+    if (caretakerError) {
+      setMessage(caretakerError.message);
       setLoading(false);
       return;
     }
 
-    setRequests((data || []) as HireRequest[]);
+    const caretakersData = (caretakerRows || []) as Caretaker[];
+    const caretakerIds = caretakersData.map((c) => c.id).filter(Boolean);
+
+    const { data: hireRows, error: hireError } = await supabase
+      .from("customer_caretaker_hires")
+      .select("*")
+      .in("caretaker_id", caretakerIds)
+      .order("created_at", { ascending: false });
+
+    if (hireError) {
+      setMessage(hireError.message);
+      setLoading(false);
+      return;
+    }
+
+    const hires = (hireRows || []) as Hire[];
+    const profileIds = Array.from(
+      new Set(hires.map((h) => h.profile_id).filter(Boolean) as string[])
+    );
+    const flockIds = Array.from(
+      new Set(hires.map((h) => h.flock_id).filter(Boolean) as string[])
+    );
+
+    const [profileResult, flockResult] = await Promise.all([
+      profileIds.length
+        ? supabase.from("profiles").select("id, full_name, email").in("id", profileIds)
+        : Promise.resolve({ data: [], error: null }),
+
+      flockIds.length
+        ? supabase.from("flocks").select("id, batch_no, batch_name, breed, status").in("id", flockIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (profileResult.error) {
+      setMessage(profileResult.error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (flockResult.error) {
+      setMessage(flockResult.error.message);
+      setLoading(false);
+      return;
+    }
+
+    const profiles = (profileResult.data || []) as Profile[];
+    const flocks = (flockResult.data || []) as Flock[];
+
+    const merged: CaretakerRow[] = caretakersData.map((caretaker) => {
+      const caretakerHires = hires.filter((hire) => hire.caretaker_id === caretaker.id);
+
+      const activeHire =
+        caretakerHires.find(
+          (hire) =>
+            normalizeStatus(hire.status) === "ACTIVE" ||
+            normalizeStatus(hire.status) === "ASSIGNED" ||
+            normalizeStatus(hire.status) === "APPROVED"
+        ) || caretakerHires[0] || null;
+
+      return {
+        ...caretaker,
+        latestHire: activeHire,
+        assignedCustomer:
+          profiles.find((profile) => profile.id === activeHire?.profile_id) || null,
+        assignedFlock:
+          flocks.find(
+            (flock) =>
+              flock.id === activeHire?.flock_id ||
+              flock.id === caretaker.assigned_flock_id
+          ) || null,
+      };
+    });
+
+    setCaretakers(merged);
     setLoading(false);
   }
 
-  const filteredRequests = useMemo(() => {
-    const cleanSearch = search.trim().toLowerCase();
+  const summary = useMemo(() => {
+    const total = caretakers.length;
+    const active = caretakers.filter((c) => normalizeStatus(c.status) === "ACTIVE").length;
+    const assigned = caretakers.filter((c) => getAssignmentStatus(c) === "ASSIGNED").length;
+    const available = caretakers.filter((c) => getAssignmentStatus(c) === "AVAILABLE").length;
 
-    if (!cleanSearch) return requests;
-
-    return requests.filter((request) => {
-      return (
-        request.id.toLowerCase().includes(cleanSearch) ||
-        request.profile_id.toLowerCase().includes(cleanSearch) ||
-        request.caretaker_id.toLowerCase().includes(cleanSearch) ||
-        request.caretaker_name.toLowerCase().includes(cleanSearch) ||
-        request.status.toLowerCase().includes(cleanSearch) ||
-        request.payment_status.toLowerCase().includes(cleanSearch)
-      );
-    });
-  }, [requests, search]);
-
-  const pendingCount = requests.filter((request) =>
-    ["PENDING", "PENDING_ADMIN_APPROVAL"].includes(
-      (request.status || "").toUpperCase()
-    )
-  ).length;
-
-  const activeCount = requests.filter(
-    (request) => (request.status || "").toUpperCase() === "ACTIVE"
-  ).length;
-
-  const paidCount = requests.filter(
-    (request) => (request.payment_status || "").toUpperCase() === "PAID"
-  ).length;
-
-  const readyForAssignmentCount = requests.filter(
-    (request) =>
-      (request.status || "").toUpperCase() === "ACTIVE" &&
-      (request.payment_status || "").toUpperCase() === "PAID"
-  ).length;
-
-  async function assignCaretaker(request: HireRequest) {
-    if (!request.flock_id) return;
-
-    await supabase
-      .from("flocks")
-      .update({
-        caretaker_name: request.caretaker_name,
-      })
-      .eq("id", request.flock_id);
-
-    await supabase
-      .from("caretakers")
-      .update({
-        assigned_flock_id: request.flock_id,
-        assignment_start: new Date().toISOString(),
-        status: "ASSIGNED",
-      })
-      .eq("id", request.caretaker_id);
-
-    await supabase
-      .from("customer_caretaker_hires")
-      .update({
-        flock_id: request.flock_id,
-      })
-      .eq("id", request.id);
-  }
-
-  async function approveRequest(request: HireRequest) {
-    setActionLoading(request.id);
-    setMessage("");
-    setErrorMessage("");
-
-    const status = (request.status || "").toUpperCase();
-    const paymentStatus = (request.payment_status || "").toUpperCase();
-
-    if (status === "ACTIVE") {
-      setActionLoading("");
-      setErrorMessage("This caretaker hire request is already active.");
-      return;
-    }
-
-    if (status === "REJECTED") {
-      setActionLoading("");
-      setErrorMessage("Rejected requests cannot be approved again.");
-      return;
-    }
-
-    if (paymentStatus !== "PAID") {
-      setActionLoading("");
-      setErrorMessage(
-        "This request is not paid. Customer must pay first before admin approval."
-      );
-      return;
-    }
-
-    const totalFee = Number(request.total_fee || 0);
-    const technicalFee = totalFee * TECHNICAL_FEE_RATE;
-    const caretakerServiceFund = totalFee - technicalFee;
-    const referenceNo = `FC-CARE-APP-${Date.now()}`;
-
-    const { error: updateError } = await supabase
-      .from("customer_caretaker_hires")
-      .update({
-        status: "ACTIVE",
-        payment_status: "PAID",
-      })
-      .eq("id", request.id);
-
-    if (updateError) {
-      setErrorMessage(`Approve request error: ${updateError.message}`);
-      setActionLoading("");
-      return;
-    }
-
-    await assignCaretaker(request);
-
-    await supabase.from("wallet_transactions").insert([
-      {
-        profile_id: request.profile_id,
-        transaction_type: "CARETAKER_HIRE_APPROVED",
-        amount: 0,
-        reference_no: referenceNo,
-        remarks: `Admin approved caretaker hire: ${request.caretaker_name}`,
-        status: "COMPLETED",
-      },
-      {
-        profile_id: request.profile_id,
-        transaction_type: "FARMCONNECT_TECHNICAL_FEE",
-        amount: technicalFee,
-        reference_no: `FC-FEE-${Date.now()}`,
-        remarks: `2% technical fee from caretaker hire: ${request.caretaker_name}`,
-        status: "COMPLETED",
-      },
-      {
-        profile_id: request.profile_id,
-        transaction_type: "CARETAKER_SERVICE_FUND",
-        amount: caretakerServiceFund,
-        reference_no: `FC-CARE-FUND-${Date.now()}`,
-        remarks: `98% caretaker service fund approved: ${request.caretaker_name}`,
-        status: "COMPLETED",
-      },
-    ]);
-
-    setMessage(
-      "Caretaker hire approved successfully. Request is now ACTIVE and PAID."
-    );
-
-    await loadRequests();
-    setActionLoading("");
-  }
-
-  async function rejectRequest(request: HireRequest) {
-    setActionLoading(request.id);
-    setMessage("");
-    setErrorMessage("");
-
-    const status = (request.status || "").toUpperCase();
-    const paymentStatus = (request.payment_status || "").toUpperCase();
-
-    if (status === "REJECTED") {
-      setActionLoading("");
-      setErrorMessage("This request is already rejected.");
-      return;
-    }
-
-    if (status === "ACTIVE") {
-      setActionLoading("");
-      setErrorMessage("Active caretaker hire cannot be rejected.");
-      return;
-    }
-
-    if (paymentStatus === "REFUNDED") {
-      setActionLoading("");
-      setErrorMessage("This request has already been refunded.");
-      return;
-    }
-
-    const refundAmount = Number(request.total_fee || 0);
-    const referenceNo = `FC-REFUND-${Date.now()}`;
-
-    const { error: updateError } = await supabase
-      .from("customer_caretaker_hires")
-      .update({
-        status: "REJECTED",
-        payment_status: "REFUNDED",
-      })
-      .eq("id", request.id);
-
-    if (updateError) {
-      setActionLoading("");
-      setErrorMessage(`Reject request error: ${updateError.message}`);
-      return;
-    }
-
-    const { error: txError } = await supabase.from("wallet_transactions").insert({
-      profile_id: request.profile_id,
-      transaction_type: "CARETAKER_HIRE_REFUND",
-      amount: refundAmount,
-      reference_no: referenceNo,
-      remarks: `Refund for rejected caretaker hire: ${request.caretaker_name}`,
-      status: "COMPLETED",
-    });
-
-    if (txError) {
-      setActionLoading("");
-      setErrorMessage(
-        `Refund transaction error: ${txError.message}. No manual wallet balance update was performed.`
-      );
-      await loadRequests();
-      return;
-    }
-
-    setMessage(
-      "Caretaker hire request rejected. Refund was recorded through wallet_transactions only."
-    );
-
-    await loadRequests();
-    setActionLoading("");
-  }
-
-  function formatPeso(amount: number | null | undefined) {
-    const safeAmount = Number(amount || 0);
-
-    return safeAmount.toLocaleString("en-PH", {
-      style: "currency",
-      currency: "PHP",
-      maximumFractionDigits: 0,
-    });
-  }
-
-  function formatDate(date: string | null) {
-    if (!date) return "Pending";
-
-    return new Date(date).toLocaleDateString("en-PH", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  }
-
-  function statusClass(status: string) {
-    const cleanStatus = (status || "").toUpperCase();
-
-    if (cleanStatus === "ACTIVE") {
-      return "bg-green-100 text-green-800 ring-green-200";
-    }
-
-    if (cleanStatus === "REJECTED") {
-      return "bg-red-100 text-red-800 ring-red-200";
-    }
-
-    return "bg-yellow-100 text-yellow-900 ring-yellow-200";
-  }
-
-  function paymentClass(paymentStatus: string) {
-    const cleanStatus = (paymentStatus || "").toUpperCase();
-
-    if (cleanStatus === "PAID") {
-      return "bg-green-100 text-green-800 ring-green-200";
-    }
-
-    if (cleanStatus === "REFUNDED") {
-      return "bg-blue-100 text-blue-800 ring-blue-200";
-    }
-
-    return "bg-orange-100 text-orange-800 ring-orange-200";
-  }
+    return { total, active, assigned, available };
+  }, [caretakers]);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-yellow-50 p-6">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.25em] text-green-700">
-              FarmConnect Admin
-            </p>
-            <h1 className="mt-2 text-4xl font-black text-green-950">
-              Caretaker Hire Approval Center
-            </h1>
-            <p className="mt-2 max-w-3xl text-lg font-semibold text-slate-600">
-              Review paid caretaker hire requests. Approve to activate. Reject
-              to create a production refund wallet transaction.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button
-              onClick={loadRequests}
-              className="rounded-2xl bg-green-700 px-6 py-3 text-sm font-black text-white shadow-md transition hover:bg-green-800"
-            >
-              Refresh
-            </button>
-
-            <Link
-              href="/admin"
-              className="rounded-2xl bg-white px-6 py-3 text-center text-sm font-black text-green-800 shadow-md ring-1 ring-green-100 transition hover:bg-green-50"
-            >
-              ← Admin Dashboard
-            </Link>
-          </div>
+    <main style={page}>
+      <div style={header}>
+        <div>
+          <p style={eyebrow}>FarmConnect Admin</p>
+          <h1 style={title}>Caretakers</h1>
+          <p style={subtitle}>
+            Live caretaker status, customer hires, assigned flocks, and production assignment sync.
+          </p>
         </div>
 
-        <section className="mb-6 grid gap-4 md:grid-cols-4">
-          <div className="rounded-[2rem] bg-white p-5 shadow-md ring-1 ring-green-100">
-            <p className="text-sm font-black text-slate-500">
-              Pending Requests
-            </p>
-            <p className="mt-2 text-4xl font-black text-yellow-700">
-              {pendingCount}
-            </p>
-          </div>
+        <Link href="/admin" style={backButton}>
+          Back to Dashboard
+        </Link>
+      </div>
 
-          <div className="rounded-[2rem] bg-white p-5 shadow-md ring-1 ring-green-100">
-            <p className="text-sm font-black text-slate-500">
-              Active Approved
-            </p>
-            <p className="mt-2 text-4xl font-black text-green-700">
-              {activeCount}
-            </p>
-          </div>
+      {message && <div style={messageBox}>{message}</div>}
 
-          <div className="rounded-[2rem] bg-white p-5 shadow-md ring-1 ring-green-100">
-            <p className="text-sm font-black text-slate-500">Paid Requests</p>
-            <p className="mt-2 text-4xl font-black text-emerald-700">
-              {paidCount}
-            </p>
-          </div>
+      <section style={summaryGrid}>
+        <Stat label="Total Caretakers" value={summary.total} />
+        <Stat label="Active Caretakers" value={summary.active} />
+        <Stat label="Assigned Caretakers" value={summary.assigned} />
+        <Stat label="Available Caretakers" value={summary.available} />
+      </section>
 
-          <div className="rounded-[2rem] bg-white p-5 shadow-md ring-1 ring-green-100">
-            <p className="text-sm font-black text-slate-500">
-              Ready For Assignment
-            </p>
-            <p className="mt-2 text-4xl font-black text-green-950">
-              {readyForAssignmentCount}
-            </p>
-          </div>
-        </section>
-
-        <section className="mb-6 rounded-[2rem] bg-white p-5 shadow-md ring-1 ring-green-100">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-2xl font-black text-green-950">
-                Hire Requests
-              </h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">
-                Only PAID requests can be approved. Rejected paid requests create
-                a CARETAKER_HIRE_REFUND wallet transaction only.
-              </p>
-            </div>
-
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search request, profile, caretaker, status..."
-              className="w-full rounded-2xl border border-green-100 bg-green-50 px-5 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-green-400 md:max-w-md"
-            />
-          </div>
-        </section>
-
-        {message && (
-          <div className="mb-6 rounded-3xl bg-green-100 p-5 text-center text-lg font-black text-green-900 ring-1 ring-green-200">
-            {message}
-          </div>
-        )}
-
-        {errorMessage && (
-          <div className="mb-6 rounded-3xl bg-red-100 p-5 text-center text-lg font-black text-red-800 ring-1 ring-red-200">
-            {errorMessage}
-          </div>
-        )}
+      <section style={card}>
+        <h2 style={sectionTitle}>Caretaker List</h2>
 
         {loading ? (
-          <div className="rounded-[2rem] bg-white p-10 text-center text-xl font-black text-slate-600 shadow-md ring-1 ring-green-100">
-            Loading caretaker hire requests...
-          </div>
-        ) : filteredRequests.length === 0 ? (
-          <div className="rounded-[2rem] bg-white p-10 text-center text-xl font-black text-slate-600 shadow-md ring-1 ring-green-100">
-            No caretaker hire requests found.
-          </div>
+          <p>Loading caretakers...</p>
+        ) : caretakers.length === 0 ? (
+          <p>No caretakers found.</p>
         ) : (
-          <section className="grid gap-5">
-            {filteredRequests.map((request) => {
-              const status = (request.status || "").toUpperCase();
-              const paymentStatus = (request.payment_status || "").toUpperCase();
+          <div style={tableWrap}>
+            <table style={table}>
+              <thead>
+                <tr>
+                  <th style={th}>Name</th>
+                  <th style={th}>Email</th>
+                  <th style={th}>Phone</th>
+                  <th style={th}>Status</th>
+                  <th style={th}>Assigned Customer</th>
+                  <th style={th}>Assigned Flock</th>
+                  <th style={th}>Hire Status</th>
+                  <th style={th}>Payment Status</th>
+                  <th style={th}>Assignment Status</th>
+                  <th style={th}>Actions</th>
+                </tr>
+              </thead>
 
-              const isPending =
-                status === "PENDING" || status === "PENDING_ADMIN_APPROVAL";
-              const isActive = status === "ACTIVE";
-              const isRejected = status === "REJECTED";
-              const isPaid = paymentStatus === "PAID";
-              const isReady = isActive && isPaid;
-              const busy = actionLoading === request.id;
+              <tbody>
+                {caretakers.map((caretaker) => {
+                  const assignmentStatus = getAssignmentStatus(caretaker);
 
-              const totalFee = Number(request.total_fee || 0);
-              const technicalFee = totalFee * TECHNICAL_FEE_RATE;
-              const caretakerServiceFund = totalFee - technicalFee;
-
-              return (
-                <div
-                  key={request.id}
-                  className="rounded-[2rem] bg-white p-6 shadow-md ring-1 ring-green-100"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-sm font-black uppercase tracking-[0.2em] text-green-700">
-                        Customer Caretaker Hire Request
-                      </p>
-
-                      <h3 className="mt-2 text-3xl font-black text-green-950">
-                        {request.caretaker_name}
-                      </h3>
-
-                      <div className="mt-3 grid gap-2 text-sm font-bold text-slate-500">
-                        <p className="break-all">
-                          Request ID:{" "}
-                          <span className="text-slate-800">{request.id}</span>
-                        </p>
-                        <p className="break-all">
-                          Profile ID:{" "}
-                          <span className="text-slate-800">
-                            {request.profile_id}
-                          </span>
-                        </p>
-                        <p className="break-all">
-                          Caretaker ID:{" "}
-                          <span className="text-slate-800">
-                            {request.caretaker_id}
-                          </span>
-                        </p>
-                        <p className="break-all">
-                          Flock ID:{" "}
-                          <span className="text-slate-800">
-                            {request.flock_id || "Pending customer assignment"}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <span
-                        className={`rounded-full px-4 py-2 text-sm font-black ring-1 ${statusClass(
-                          request.status
-                        )}`}
-                      >
-                        {request.status}
-                      </span>
-
-                      <span
-                        className={`rounded-full px-4 py-2 text-sm font-black ring-1 ${paymentClass(
-                          request.payment_status
-                        )}`}
-                      >
-                        Payment: {request.payment_status}
-                      </span>
-
-                      {isReady && (
-                        <span className="rounded-full bg-green-700 px-4 py-2 text-sm font-black text-white">
-                          READY FOR MY FLOCK
+                  return (
+                    <tr key={caretaker.id}>
+                      <td style={td}>{caretaker.full_name || caretaker.name || "Unnamed"}</td>
+                      <td style={td}>{caretaker.email || "-"}</td>
+                      <td style={td}>{caretaker.phone || "-"}</td>
+                      <td style={td}>
+                        <span style={badge(normalizeStatus(caretaker.status || "INACTIVE"))}>
+                          {normalizeStatus(caretaker.status || "INACTIVE")}
                         </span>
-                      )}
-
-                      {isPending && isPaid && (
-                        <span className="rounded-full bg-yellow-500 px-4 py-2 text-sm font-black text-yellow-950">
-                          PAID - NEEDS ADMIN REVIEW
+                      </td>
+                      <td style={td}>
+                        {caretaker.assignedCustomer?.full_name ||
+                          caretaker.assignedCustomer?.email ||
+                          "-"}
+                      </td>
+                      <td style={td}>
+                        {caretaker.assignedFlock?.batch_no ||
+                          caretaker.assignedFlock?.batch_name ||
+                          caretaker.latestHire?.flock_id ||
+                          caretaker.assigned_flock_id ||
+                          "-"}
+                      </td>
+                      <td style={td}>
+                        <span style={badge(normalizeStatus(caretaker.latestHire?.status || "INACTIVE"))}>
+                          {normalizeStatus(caretaker.latestHire?.status || "INACTIVE")}
                         </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-6 grid gap-4 md:grid-cols-4 xl:grid-cols-7">
-                    <div className="rounded-3xl bg-slate-50 p-4">
-                      <p className="text-xs font-black text-slate-500">
-                        Total Chicks
-                      </p>
-                      <p className="mt-1 text-lg font-black text-slate-800">
-                        {request.total_chicks}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl bg-slate-50 p-4">
-                      <p className="text-xs font-black text-slate-500">
-                        Duration
-                      </p>
-                      <p className="mt-1 text-lg font-black text-slate-800">
-                        {request.duration_days} days
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl bg-slate-50 p-4">
-                      <p className="text-xs font-black text-slate-500">
-                        Rate / Chick
-                      </p>
-                      <p className="mt-1 text-lg font-black text-slate-800">
-                        {formatPeso(request.rate_per_chick)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl bg-slate-50 p-4">
-                      <p className="text-xs font-black text-slate-500">
-                        Total Fee
-                      </p>
-                      <p className="mt-1 text-lg font-black text-slate-800">
-                        {formatPeso(request.total_fee)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl bg-slate-50 p-4">
-                      <p className="text-xs font-black text-slate-500">
-                        Start Date
-                      </p>
-                      <p className="mt-1 text-lg font-black text-slate-800">
-                        {formatDate(request.start_date)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl bg-slate-50 p-4">
-                      <p className="text-xs font-black text-slate-500">
-                        End Date
-                      </p>
-                      <p className="mt-1 text-lg font-black text-slate-800">
-                        {formatDate(request.end_date)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl bg-slate-50 p-4">
-                      <p className="text-xs font-black text-slate-500">
-                        Created
-                      </p>
-                      <p className="mt-1 text-lg font-black text-slate-800">
-                        {formatDate(request.created_at)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 grid gap-4 md:grid-cols-3">
-                    <div className="rounded-3xl bg-green-50 p-5">
-                      <p className="text-sm font-black text-slate-500">
-                        Customer Paid
-                      </p>
-                      <p className="mt-1 text-2xl font-black text-green-900">
-                        {formatPeso(totalFee)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl bg-yellow-50 p-5">
-                      <p className="text-sm font-black text-slate-500">
-                        FarmConnect 2% Fee
-                      </p>
-                      <p className="mt-1 text-2xl font-black text-yellow-900">
-                        {formatPeso(technicalFee)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl bg-emerald-50 p-5">
-                      <p className="text-sm font-black text-slate-500">
-                        Caretaker Fund 98%
-                      </p>
-                      <p className="mt-1 text-2xl font-black text-emerald-900">
-                        {formatPeso(caretakerServiceFund)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 rounded-3xl bg-green-50 p-5">
-                    <p className="text-center text-sm font-black text-slate-600">
-                      Approval Rule: only PAID + PENDING_ADMIN_APPROVAL requests
-                      should be approved. Rejection creates one refund wallet
-                      transaction and never updates profiles.wallet_balance.
-                    </p>
-                  </div>
-
-                  <div className="mt-6 grid gap-3 md:grid-cols-2">
-                    <button
-                      onClick={() => approveRequest(request)}
-                      disabled={busy || isActive || isRejected || !isPaid}
-                      className="rounded-2xl bg-green-700 px-5 py-4 text-base font-black text-white shadow-md transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {busy ? "Approving..." : "Approve Paid Request"}
-                    </button>
-
-                    <button
-                      onClick={() => rejectRequest(request)}
-                      disabled={busy || isRejected || isActive}
-                      className="rounded-2xl bg-red-700 px-5 py-4 text-base font-black text-white shadow-md transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {busy ? "Rejecting..." : "Reject & Refund"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </section>
+                      </td>
+                      <td style={td}>
+                        <span style={badge(normalizeStatus(caretaker.latestHire?.payment_status || "UNPAID"))}>
+                          {normalizeStatus(caretaker.latestHire?.payment_status || "UNPAID")}
+                        </span>
+                      </td>
+                      <td style={td}>
+                        <span style={badge(assignmentStatus)}>{assignmentStatus}</span>
+                      </td>
+                      <td style={td}>
+                        <div style={actionLinks}>
+                          <Link href={`/admin/caretakers/${caretaker.id}`} style={viewButton}>
+                            View
+                          </Link>
+                          <Link href="/admin/caretaker-hires" style={historyButton}>
+                            Hire History
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </section>
     </main>
   );
 }
+
+function normalizeStatus(value?: string | null) {
+  return String(value || "INACTIVE").trim().toUpperCase();
+}
+
+function getAssignmentStatus(caretaker: CaretakerRow) {
+  const caretakerStatus = normalizeStatus(caretaker.status);
+  const hireStatus = normalizeStatus(caretaker.latestHire?.status);
+  const paymentStatus = normalizeStatus(caretaker.latestHire?.payment_status);
+  const hasFlock = !!(caretaker.latestHire?.flock_id || caretaker.assigned_flock_id);
+
+  if (caretakerStatus !== "ACTIVE") return "INACTIVE";
+  if (hasFlock && ["ACTIVE", "ASSIGNED", "APPROVED"].includes(hireStatus)) return "ASSIGNED";
+  if (paymentStatus === "PAID" && ["ACTIVE", "ASSIGNED", "APPROVED"].includes(hireStatus)) return "ASSIGNED";
+
+  return "AVAILABLE";
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={statCard}>
+      <p style={statLabel}>{label}</p>
+      <h2 style={statValue}>{value}</h2>
+    </div>
+  );
+}
+
+function badge(value: string): React.CSSProperties {
+  if (["ACTIVE", "ASSIGNED", "PAID", "APPROVED", "AVAILABLE"].includes(value)) {
+    return {
+      background: "#dcfce7",
+      color: "#166534",
+      padding: "6px 10px",
+      borderRadius: 999,
+      fontWeight: 900,
+      fontSize: 12,
+      whiteSpace: "nowrap",
+    };
+  }
+
+  if (["INACTIVE", "REJECTED", "FAILED", "CANCELLED", "UNPAID"].includes(value)) {
+    return {
+      background: "#fee2e2",
+      color: "#991b1b",
+      padding: "6px 10px",
+      borderRadius: 999,
+      fontWeight: 900,
+      fontSize: 12,
+      whiteSpace: "nowrap",
+    };
+  }
+
+  return {
+    background: "#fef3c7",
+    color: "#92400e",
+    padding: "6px 10px",
+    borderRadius: 999,
+    fontWeight: 900,
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  };
+}
+
+const page: React.CSSProperties = {
+  minHeight: "100vh",
+  padding: 32,
+  background: "linear-gradient(135deg, #ecfdf5, #fefce8)",
+  color: "#123524",
+};
+
+const header: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  justifyContent: "space-between",
+  gap: 20,
+  alignItems: "center",
+  marginBottom: 24,
+};
+
+const eyebrow: React.CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#15803d",
+  textTransform: "uppercase",
+  letterSpacing: 1,
+};
+
+const title: React.CSSProperties = {
+  margin: "8px 0",
+  fontSize: 38,
+  fontWeight: 900,
+};
+
+const subtitle: React.CSSProperties = {
+  margin: 0,
+  color: "#52665a",
+};
+
+const backButton: React.CSSProperties = {
+  background: "#123524",
+  color: "white",
+  padding: "12px 18px",
+  borderRadius: 14,
+  textDecoration: "none",
+  fontWeight: 800,
+};
+
+const messageBox: React.CSSProperties = {
+  background: "#fee2e2",
+  color: "#991b1b",
+  padding: 16,
+  borderRadius: 16,
+  fontWeight: 900,
+  marginBottom: 18,
+};
+
+const summaryGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 16,
+  marginBottom: 20,
+};
+
+const statCard: React.CSSProperties = {
+  background: "white",
+  borderRadius: 22,
+  padding: 20,
+  boxShadow: "0 18px 38px rgba(0,0,0,0.08)",
+};
+
+const statLabel: React.CSSProperties = {
+  margin: 0,
+  color: "#52665a",
+  fontWeight: 900,
+  fontSize: 13,
+};
+
+const statValue: React.CSSProperties = {
+  margin: "8px 0 0",
+  fontSize: 34,
+  fontWeight: 950,
+  color: "#166534",
+};
+
+const card: React.CSSProperties = {
+  background: "white",
+  borderRadius: 24,
+  padding: 24,
+  boxShadow: "0 18px 38px rgba(0,0,0,0.08)",
+};
+
+const sectionTitle: React.CSSProperties = {
+  marginTop: 0,
+};
+
+const tableWrap: React.CSSProperties = {
+  overflowX: "auto",
+};
+
+const table: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+};
+
+const th: React.CSSProperties = {
+  textAlign: "left",
+  padding: 14,
+  borderBottom: "1px solid #e5e7eb",
+  color: "#166534",
+  whiteSpace: "nowrap",
+};
+
+const td: React.CSSProperties = {
+  padding: 14,
+  borderBottom: "1px solid #f1f5f9",
+  verticalAlign: "top",
+};
+
+const actionLinks: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const viewButton: React.CSSProperties = {
+  background: "#16a34a",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 10,
+  textDecoration: "none",
+  fontWeight: 800,
+  whiteSpace: "nowrap",
+};
+
+const historyButton: React.CSSProperties = {
+  background: "#0f172a",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: 10,
+  textDecoration: "none",
+  fontWeight: 800,
+  whiteSpace: "nowrap",
+};

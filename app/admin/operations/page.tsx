@@ -506,6 +506,7 @@ const page: React.CSSProperties = {
 
 const hero: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 20,
   alignItems: "center",
@@ -601,6 +602,7 @@ const panel: React.CSSProperties = {
 
 const panelHeader: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   alignItems: "center",
   gap: 14,
@@ -635,6 +637,7 @@ const list: React.CSSProperties = {
 
 const detailItem: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 16,
   padding: 16,
@@ -715,6 +718,7 @@ const feed: React.CSSProperties = {
 
 const feedItem: React.CSSProperties = {
   display: "flex",
+  flexWrap: "wrap",
   justifyContent: "space-between",
   gap: 14,
   padding: 17,

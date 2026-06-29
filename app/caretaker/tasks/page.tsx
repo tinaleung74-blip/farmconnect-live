@@ -35,6 +35,15 @@ type TaskCard = {
   animal: Animal | null;
 };
 
+const navLinks = [
+  { href: "/caretaker/dashboard", label: "Dashboard" },
+  { href: "/caretaker/feeding", label: "Feeding" },
+  { href: "/caretaker/photos", label: "Photos" },
+  { href: "/caretaker/weight", label: "Weight" },
+  { href: "/caretaker/mortality", label: "Mortality" },
+  { href: "/caretaker/notes", label: "Notes" },
+];
+
 export default function CaretakerTasksPage() {
   const [caretaker, setCaretaker] = useState<Caretaker | null>(null);
   const [tasks, setTasks] = useState<TaskCard[]>([]);
@@ -128,17 +137,26 @@ export default function CaretakerTasksPage() {
 
   return (
     <main style={page}>
-      <Link href="/caretaker/dashboard" style={back}>
-        ← Back
-      </Link>
+      <nav style={topNav}>
+        <Link href="/caretaker/dashboard" style={back}>
+          ← Dashboard
+        </Link>
+        <div style={navPills}>
+          {navLinks.map((item) => (
+            <Link key={item.href} href={item.href} style={navPill}>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </nav>
 
       <section style={card}>
         <div style={header}>
           <div>
             <h1 style={title}>🧑‍🌾 Caretaker Tasks</h1>
             <p style={subtitle}>
-              ACTIVE and PAID assigned chicken jobs only. Use these shortcuts for feeding,
-              photos, weight, and mortality updates.
+              ACTIVE and PAID assigned chicken jobs only. This page is read-only;
+              use the shortcuts for feeding, photos, weight, and mortality updates.
             </p>
           </div>
 
@@ -221,26 +239,62 @@ function formatDate(value?: string | null) {
 
 const page: React.CSSProperties = {
   minHeight: "100vh",
-  background: "linear-gradient(180deg, #ecfccb, #dbeafe)",
-  padding: 20,
+  background: "radial-gradient(circle at top left, rgba(34,197,94,0.20), transparent 32%), linear-gradient(180deg, #ecfccb, #dbeafe)",
+  padding: "18px clamp(14px, 3vw, 28px) 28px",
   fontFamily: "Arial, sans-serif",
 };
 
-const back: React.CSSProperties = {
-  display: "inline-block",
-  marginBottom: 16,
-  color: "#15803d",
-  fontWeight: 900,
+const topNav: React.CSSProperties = {
+  maxWidth: 1040,
+  margin: "0 auto 18px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  flexWrap: "wrap",
+};
+
+const navPills: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  overflowX: "auto",
+  maxWidth: "100%",
+  paddingBottom: 4,
+};
+
+const navPill: React.CSSProperties = {
+  whiteSpace: "nowrap",
   textDecoration: "none",
+  color: "#15803d",
+  background: "rgba(255,255,255,0.9)",
+  border: "1px solid rgba(34,197,94,0.18)",
+  borderRadius: 999,
+  padding: "10px 13px",
+  fontSize: 13,
+  fontWeight: 900,
+};
+
+const back: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  color: "#15803d",
+  fontWeight: 950,
+  textDecoration: "none",
+  background: "rgba(255,255,255,0.9)",
+  border: "1px solid rgba(34,197,94,0.18)",
+  borderRadius: 999,
+  padding: "10px 14px",
+  boxShadow: "0 10px 22px rgba(15,23,42,0.06)",
 };
 
 const card: React.CSSProperties = {
-  maxWidth: 980,
+  maxWidth: 1040,
   margin: "0 auto",
-  background: "white",
-  borderRadius: 28,
-  padding: 24,
-  boxShadow: "0 20px 45px rgba(0,0,0,0.1)",
+  background: "rgba(255,255,255,0.96)",
+  borderRadius: 30,
+  padding: "clamp(20px, 4vw, 30px)",
+  boxShadow: "0 22px 48px rgba(15,23,42,0.10)",
+  border: "1px solid rgba(255,255,255,0.76)",
 };
 
 const header: React.CSSProperties = {
@@ -252,24 +306,27 @@ const header: React.CSSProperties = {
 };
 
 const title: React.CSSProperties = {
-  fontSize: 32,
+  fontSize: "clamp(28px, 5vw, 38px)",
   margin: 0,
   fontWeight: 900,
 };
 
 const subtitle: React.CSSProperties = {
   color: "#64748b",
-  maxWidth: 720,
+  maxWidth: 760,
+  lineHeight: 1.6,
+  fontWeight: 700,
 };
 
 const refreshButton: React.CSSProperties = {
   padding: "12px 16px",
-  borderRadius: 14,
+  borderRadius: 16,
   border: "none",
   background: "#16a34a",
   color: "white",
-  fontWeight: 900,
+  fontWeight: 950,
   cursor: "pointer",
+  boxShadow: "0 14px 26px rgba(22,163,74,0.20)",
 };
 
 const notice: React.CSSProperties = {
@@ -294,13 +351,14 @@ const list: React.CSSProperties = {
 
 const taskCard: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1fr auto",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(140px, auto)",
   gap: 16,
   alignItems: "center",
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  borderRadius: 20,
-  padding: 16,
+  background: "linear-gradient(135deg, #f8fafc, #f0fdf4)",
+  border: "1px solid #dcfce7",
+  borderRadius: 22,
+  padding: 18,
+  boxShadow: "0 10px 24px rgba(15,23,42,0.05)",
 };
 
 const badge: React.CSSProperties = {
