@@ -1,120 +1,37 @@
 import Link from "next/link";
 
-const HERO_IMAGE = "/farmconnect-hero-wallpaper.jpg";
-
-const portals = [
-  {
-    title: "Customer Portal",
-    icon: "🐣",
-    description:
-      "Invest in poultry, monitor flock growth, wallet, marketplace, and harvest reports.",
-    href: "/customer/login",
-    button: "Open Customer Portal",
-    color: "from-emerald-500 to-green-700",
-  },
-  {
-    title: "Caretaker Portal",
-    icon: "👨‍🌾",
-    description:
-      "Manage feeding logs, mortality reports, photo updates, weight updates, and farm operations.",
-    href: "/caretaker/login",
-    button: "Open Caretaker Portal",
-    color: "from-amber-500 to-orange-600",
-  },
-  {
-    title: "Admin Portal",
-    icon: "🏢",
-    description:
-      "Manage customers, caretakers, treasury, risk, approvals, reports, and operations.",
-    href: "/admin/login",
-    button: "Open Admin Portal",
-    color: "from-blue-500 to-blue-700",
-  },
+const paths = [
+  { title: "Customer App", href: "/customer/dashboard", text: "Roosters, Farm Buy, requests, wallet, inbox, and Ka-Farm support." },
+  { title: "Caretaker App", href: "/caretaker/dashboard", text: "Active tasks, customer notes, QR proof, completed tasks, and admin chat." },
+  { title: "Admin App", href: "/admin", text: "Customer desk, caretaker desk, money desk, live chat, evidence, and Ka-Farm console." },
 ];
 
 export default function HomePage() {
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-emerald-950 text-white">
-      {/* FULLSCREEN BACKGROUND */}
-      <div
-        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url("${HERO_IMAGE}")`,
-        }}
-      />
-
-      {/* OVERLAYS */}
-      <div className="fixed inset-0 z-[1] bg-black/35" />
-      <div className="fixed inset-0 z-[2] bg-gradient-to-b from-emerald-950/20 via-transparent to-emerald-950/85" />
-
-      {/* CONTENT */}
-      <section className="relative z-10 flex min-h-screen w-full flex-col items-center px-5 py-8">
-        <header className="mb-10 w-full max-w-7xl rounded-[28px] border border-white/25 bg-white/15 px-6 py-4 shadow-2xl backdrop-blur-xl">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Link href="/" className="text-2xl font-black text-white md:text-3xl">
-              🌿 FarmConnect <span className="text-yellow-300">Live</span>
-            </Link>
-
-            <div className="flex items-center gap-3 text-sm font-black">
-              <span className="rounded-full bg-emerald-500 px-4 py-2 text-white shadow-lg">
-                ● System Online
-              </span>
-
-              <Link
-                href="/customer/login"
-                className="rounded-full bg-yellow-400 px-5 py-2 text-slate-950 shadow-lg transition hover:bg-yellow-300"
-              >
-                Login
-              </Link>
+    <main className="min-h-screen bg-[#f6f3e8] text-[#17251d]">
+      <section className="relative min-h-[86vh] overflow-hidden">
+        <img src="/farmconnect/roosters/fc-rooster-hero.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#102017]/90 via-[#102017]/68 to-[#102017]/20" />
+        <div className="relative z-10 mx-auto flex min-h-[86vh] max-w-7xl items-center px-5 py-16">
+          <div className="max-w-3xl text-white">
+            <div className="mb-5 inline-flex items-center rounded-full bg-white/15 px-4 py-2 text-sm font-black backdrop-blur">Ka-Farm guided farm operations</div>
+            <h1 className="text-5xl font-black leading-tight md:text-7xl">FarmConnect</h1>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-white/86">A managed rooster care, wallet, request, and operations app for customers, caretakers, and farm admin.</p>
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {paths.map((item) => (
+                <Link key={item.href} href={item.href} className="rounded-2xl border border-white/20 bg-white/92 p-5 text-[#17251d] shadow-xl transition hover:-translate-y-1 hover:bg-white">
+                  <h2 className="text-xl font-black">{item.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-[#5f6a62]">{item.text}</p>
+                  <span className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-2 text-sm font-black text-white">Open</span>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-8 rounded-2xl border border-white/20 bg-white/12 p-4 backdrop-blur">
+              <b>Ka-Farm says</b>
+              <p className="mt-1 text-sm leading-6 text-white/82">I guide pages, explain what is pending, and help route issues. Admin still approves money, exceptions, disputes, and risky actions.</p>
             </div>
           </div>
-        </header>
-
-        <div className="text-center">
-          <h1 className="text-5xl font-black tracking-tight text-white drop-shadow-2xl md:text-7xl">
-            FarmConnect Live
-          </h1>
-
-          <p className="mt-4 text-xl font-black text-white md:text-2xl">
-            Professional Livestock Investment Platform
-          </p>
-
-          <p className="mt-2 font-semibold text-white/90">
-            Customer • Caretaker • Admin
-          </p>
         </div>
-
-        <div className="mt-12 grid w-full max-w-7xl grid-cols-1 gap-7 md:grid-cols-3">
-          {portals.map((portal) => (
-            <Link
-              key={portal.title}
-              href={portal.href}
-              className="group rounded-[34px] border border-white/25 bg-white/15 p-7 text-center shadow-2xl backdrop-blur-xl transition duration-300 hover:-translate-y-2 hover:bg-white/25"
-            >
-              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white/25 text-5xl shadow-xl transition duration-300 group-hover:scale-110">
-                {portal.icon}
-              </div>
-
-              <h2 className="mt-7 text-2xl font-black text-white">
-                {portal.title}
-              </h2>
-
-              <p className="mx-auto mt-4 min-h-[88px] max-w-sm text-base font-semibold leading-relaxed text-white/90">
-                {portal.description}
-              </p>
-
-              <div
-                className={`mt-7 rounded-2xl bg-gradient-to-r ${portal.color} px-5 py-4 font-black text-white shadow-xl transition group-hover:shadow-2xl`}
-              >
-                {portal.button} →
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        <footer className="mt-10 rounded-full border border-white/25 bg-white/15 px-6 py-4 text-sm font-bold text-white/85 shadow-xl backdrop-blur-xl">
-          © 2026 FarmConnect Live. All systems operational.
-        </footer>
       </section>
     </main>
   );

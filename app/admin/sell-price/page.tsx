@@ -1,5 +1,2 @@
-import { redirect } from "next/navigation";
-
-export default function AdminSellPriceCompatibilityRedirectPage() {
-  redirect("/admin/sell-pricetag");
-}
+import { AdminDesk } from "@/lib/farmconnect-v1";
+export default function Page(){ return <AdminDesk kind="farm" />; }

@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -20,7 +20,21 @@
 }
 
 body {
-  background: var(--background);
+  background-color: #f6f3e8;
+  background-image:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.18), rgba(246, 243, 232, 0.12)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.10)),
+    radial-gradient(circle at top left, rgba(255, 212, 59, 0.30), transparent 34%),
+    radial-gradient(circle at center right, rgba(11, 111, 186, 0.22), transparent 36%),
+    radial-gradient(circle at bottom right, rgba(7, 92, 58, 0.28), transparent 38%),
+    url("/farmconnect/farmconnect-hero-wallpaper.jpg");
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+
+
