@@ -843,12 +843,25 @@ export function SettingsPage() {
   async function submitKyc() {
     if (!kycIdPhoto || !kycIdBackPhoto || !kycSelfiePhoto) { setSettingsNote("KYC needs ID front, ID back, and selfie photo before sending."); return; }
     if (!kycConsent) { setSettingsNote("Please confirm KYC consent before sending. This protects both the customer and FarmConnect records."); return; }
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      setSettingsNote("Please login first before sending KYC. This keeps your ID, selfie, consent, and inbox notice attached to the correct customer account.");
+      return;
+    }
     const submittedAt = new Date().toLocaleString();
     const reviewRecord = { customer: profile.name, email: profile.email, idType: kyc.idType, idNumber: kyc.idLast4, submittedAt, faceStatus: kycFaceMismatch ? "Face mismatch hold" : "Face aligned", status: kycEngineResult.status === "approved" ? "Pre-check passed - admin review required" : kycFaceMismatch ? "Needs admin review" : "Ready for admin review", note: kycEngineResult.note || (kycFaceMismatch ? "QA sample: ID face is intentionally different from selfie." : "QA sample: fields and face are aligned."), faceScore: kycEngineResult.faceScore, engineDetails: kycEngineResult.details, front: kycIdPhoto, back: kycIdBackPhoto, selfie: kycSelfiePhoto, consentAccepted: true, consentAcceptedAt: submittedAt, consentVersion: kycConsentVersion, consentText: kycConsentText };
     const inboxNotice = { tab: "Alerts", title: "KYC Submitted", text: `Your KYC is under review. Submitted ${submittedAt}. We will notify you when admin finishes checking it.`, status: "Pending", action: "read" };
-    if (typeof window !== "undefined") { window.localStorage.setItem("farmconnect_latest_kyc_review", JSON.stringify(reviewRecord)); const rawInbox = window.localStorage.getItem("farmconnect_customer_inbox"); const currentInbox = rawInbox ? JSON.parse(rawInbox) : []; window.localStorage.setItem("farmconnect_customer_inbox", JSON.stringify([inboxNotice, ...currentInbox.filter((item: any)=>item.title !== inboxNotice.title)])); }
-    try { await supabase.rpc("customer_record_kyc_consent", { p_consent_version: kycConsentVersion, p_consent_text: kycConsentText, p_metadata: { source: "customer_settings", id_type: kyc.idType } }); } catch {}
-    try { const { error } = await supabase.rpc("customer_submit_kyc", { p_legal_name: profile.name, p_birthdate: profile.birthdate || null, p_address_line: kyc.address, p_city: kyc.city, p_province: kyc.province, p_postal_code: kyc.postal, p_id_type: kyc.idType, p_id_number_last4: kyc.idLast4, p_payout_name_to_match: kyc.payoutName, p_valid_id_front_url: kycIdPhoto, p_selfie_url: kycSelfiePhoto, p_valid_id_back_url: kycIdBackPhoto, p_address_proof_url: null }); if (error) throw error; setKycReadStatus("System read completed for preview. Admin review queue can now verify the ID, selfie, and duplicate-risk checks."); setSettingsNote("KYC submitted. Your verification is now under review. Check Inbox for the review notice."); } catch { setSettingsNote("KYC submitted. Your verification is now under review. Check Inbox for the review notice."); }
+    try {
+      const { error: consentError } = await supabase.rpc("customer_record_kyc_consent", { p_consent_version: kycConsentVersion, p_consent_text: kycConsentText, p_metadata: { source: "customer_settings", id_type: kyc.idType } });
+      if (consentError) throw consentError;
+      const { error } = await supabase.rpc("customer_submit_kyc", { p_legal_name: profile.name, p_birthdate: profile.birthdate || null, p_address_line: kyc.address, p_city: kyc.city, p_province: kyc.province, p_postal_code: kyc.postal, p_id_type: kyc.idType, p_id_number_last4: kyc.idLast4, p_payout_name_to_match: kyc.payoutName, p_valid_id_front_url: kycIdPhoto, p_selfie_url: kycSelfiePhoto, p_valid_id_back_url: kycIdBackPhoto, p_address_proof_url: null });
+      if (error) throw error;
+      if (typeof window !== "undefined") { window.localStorage.setItem("farmconnect_latest_kyc_review", JSON.stringify(reviewRecord)); const rawInbox = window.localStorage.getItem("farmconnect_customer_inbox"); const currentInbox = rawInbox ? JSON.parse(rawInbox) : []; window.localStorage.setItem("farmconnect_customer_inbox", JSON.stringify([inboxNotice, ...currentInbox.filter((item: any)=>item.title !== inboxNotice.title)])); }
+      setKycReadStatus("System read completed. Admin review queue can now verify the ID, selfie, consent, and duplicate-risk checks.");
+      setSettingsNote("KYC submitted. Your verification is now under review. Check Inbox for the review notice.");
+    } catch {
+      setSettingsNote("KYC was not submitted yet. Please login and try again, or ask admin to check your account setup before sending ID documents.");
+    }
   }
   async function submitPin() {
     if (!/^\d{6}$/.test(walletPin.current)) { setSettingsNote("Enter your current 6-digit wallet PIN first. This protects your FC balance if someone else opens your account."); return; }
