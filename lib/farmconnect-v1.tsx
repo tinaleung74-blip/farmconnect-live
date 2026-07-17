@@ -859,8 +859,9 @@ export function SettingsPage() {
       if (typeof window !== "undefined") { window.localStorage.setItem("farmconnect_latest_kyc_review", JSON.stringify(reviewRecord)); const rawInbox = window.localStorage.getItem("farmconnect_customer_inbox"); const currentInbox = rawInbox ? JSON.parse(rawInbox) : []; window.localStorage.setItem("farmconnect_customer_inbox", JSON.stringify([inboxNotice, ...currentInbox.filter((item: any)=>item.title !== inboxNotice.title)])); }
       setKycReadStatus("System read completed. Admin review queue can now verify the ID, selfie, consent, and duplicate-risk checks.");
       setSettingsNote("KYC submitted. Your verification is now under review. Check Inbox for the review notice.");
-    } catch {
-      setSettingsNote("KYC was not submitted yet. Please login and try again, or ask admin to check your account setup before sending ID documents.");
+    } catch (error) {
+      console.error("FarmConnect KYC submit failed", error);
+      setSettingsNote("KYC was not submitted yet. Please try again in a moment. If this continues, admin needs to check your account setup before sending ID documents.");
     }
   }
   async function submitPin() {
