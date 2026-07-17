@@ -1314,6 +1314,7 @@ export function RoleAuthPage({ role, mode = "login" }: { role: Role; mode?: "log
         full_name: fullName || email.split("@")[0],
         display_name: fullName || email.split("@")[0],
         role: "customer",
+        account_status: "active",
         verification_status: "pending",
         membership_status: "inactive",
       })
