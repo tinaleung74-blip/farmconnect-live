@@ -1,2 +1,2 @@
-﻿import { AdminOperationChecker } from "@/lib/farmconnect-v1";
-export default AdminOperationChecker;
+import { AdminDesk } from "@/lib/farmconnect-v1";
+export default function Page(){ return <AdminDesk kind="farm" />; }
