@@ -1740,6 +1740,28 @@ const adminCustomerProfiles = [
   { id: "cust-3", name: "Lina Cruz", avatar: "LC", kyc: "Needs Review", wallet: "Hold", pin: "Reset requested", payout: "Maya pending", risk: "High", issue: "Possible duplicate account", last: "Yesterday 8:18 PM", email: "lina@example.com", phone: "+63 919 222 1188" },
 ];
 
+const emptyCustomerDeskJob = {
+  id: "empty",
+  name: "No pending request",
+  avatar: "--",
+  kyc: "-",
+  wallet: "-",
+  pin: "-",
+  payout: "-",
+  risk: "Low",
+  issue: "No pending request",
+  last: "Waiting for customer submission",
+  email: "",
+  phone: "",
+  queue: "payment",
+  priority: "Normal",
+  problem: "No pending request",
+  blocker: "Customer queue is empty. New payment, care, task, or withdrawal requests will appear here after submission.",
+  finish: "Wait For Request",
+  next: "Run a fresh customer test or wait for a real customer submission.",
+  route: "/admin/customer-desk",
+};
+
 const customerDeskSections = [
   { id: "payment", title: "Payment Review", icon: "coins" as IconName, tone: "warn" as const, count: 3, text: "Review receipt, reference number, receiver account, and admin notes. Approved creates invoice; rejected returns to customer payment status for resubmit.", href: "/admin/customer-desk/payment" },
   { id: "care", title: "Care Request", icon: "rooster" as IconName, tone: "warn" as const, count: 2, text: "Review customer rooster, service, notes, and payment status. Approved requests move to task assignment.", href: "/admin/customer-desk/care" },
@@ -1747,22 +1769,12 @@ const customerDeskSections = [
   { id: "withdraw", title: "Withdrawal Review", icon: "wallet" as IconName, tone: "warn" as const, count: 2, text: "Review withdrawal method, send payout externally, upload receipt/reference, then wait for customer confirmation.", href: "/admin/customer-desk/withdraw" },
 ];
 
-const customerDeskJobs = [
-  { ...adminCustomerProfiles[1], queue: "payment", priority: "Normal", problem: "Farm Buy receipt", blocker: "Receipt and reference need admin review", finish: "Approve Invoice", next: "If valid, approve once and create invoice; add bought item to customer inventory or rooster ownership.", route: "/admin/transactions/cashin" },
-  { ...adminCustomerProfiles[0], queue: "payment", priority: "Normal", problem: "Care payment proof", blocker: "Needs receiver and reference check", finish: "Approve Care Payment", next: "Approve only after receiver account, amount, and reference are matched. Rejection sends attempt note to customer.", route: "/admin/transactions/cashin" },
-  { ...adminCustomerProfiles[2], queue: "payment", priority: "High", problem: "Duplicate reference risk", blocker: "Same reference may have been submitted before", finish: "Reject Or Hold", next: "Check evidence log before approval. Do not create duplicate invoice.", route: "/admin/evidence" },
-  { ...adminCustomerProfiles[0], queue: "care", priority: "Normal", problem: "Vitamin request", blocker: "Paid care request ready for review", finish: "Ready For Task", next: "Check rooster, requested service, customer note, and payment approval before moving to task management.", route: "/admin/customer-desk/task" },
-  { ...adminCustomerProfiles[1], queue: "care", priority: "Normal", problem: "Premium feed request", blocker: "Needs inventory quantity note", finish: "Ready For Task", next: "Approved care request becomes a task and may include product usage quantity.", route: "/admin/customer-desk/task" },
-  { ...adminCustomerProfiles[0], queue: "task", priority: "High", problem: "Assign caretaker", blocker: "Approved care request has no caretaker yet", finish: "Assign Caretaker", next: "Pick available caretaker. After assignment, task appears in caretaker app.", route: "/admin/caretaker-desk" },
-  { ...adminCustomerProfiles[1], queue: "task", priority: "Normal", problem: "Reassign delayed task", blocker: "Caretaker not yet submitted proof", finish: "Reassign Or Wait", next: "Check caretaker workload, then reassign if needed.", route: "/admin/caretaker-desk" },
-  { ...adminCustomerProfiles[0], queue: "withdraw", priority: "High", problem: "Withdrawal request", blocker: "Needs KYC and payout method check", finish: "Send Payout Proof", next: "Send payout externally, upload receipt/reference, then wait for customer confirmation.", route: "/admin/transactions/cashout" },
-  { ...adminCustomerProfiles[2], queue: "withdraw", priority: "High", problem: "Customer says not received", blocker: "Customer rejected payout confirmation", finish: "Check And Resubmit", next: "Compare withdrawal method, admin receipt, reference number, notes, then upload corrected proof if admin mistake.", route: "/admin/transactions/cashout" },
-];
+const customerDeskJobs: Array<typeof emptyCustomerDeskJob> = [];
 
 function CustomerDeskJobBoard({ sectionId }: { sectionId: string }) {
   const section = customerDeskSections.find(s=>s.id===sectionId) || customerDeskSections[0];
   const jobs = customerDeskJobs.filter(j=>j.queue===section.id);
-  const [selected,setSelected]=useState(jobs[0] || customerDeskJobs[0]);
+  const [selected,setSelected]=useState(jobs[0] || emptyCustomerDeskJob);
   const [evidenceView,setEvidenceView]=useState("summary");
   const [latestKycReview,setLatestKycReview]=useState<any>(null);
   useEffect(()=>{ try { const raw = window.localStorage.getItem("farmconnect_latest_kyc_review"); if (raw) setLatestKycReview(JSON.parse(raw)); } catch {} }, []);
@@ -1863,7 +1875,7 @@ function CustomerCaseBrain({ sectionId, problem, blocker, next }: { sectionId: s
 function AdminCustomerDeskActionPage({ sectionId, mode }: { sectionId: string; mode: "problem" | "evidence" }) {
   const section = customerDeskSections.find(s=>s.id===sectionId) || customerDeskSections[0];
   const jobs = customerDeskJobs.filter(j=>j.queue===section.id);
-  const [selected,setSelected]=useState(jobs[0] || customerDeskJobs[0]);
+  const [selected,setSelected]=useState(jobs[0] || emptyCustomerDeskJob);
   useEffect(()=>{ if (jobs[0]) setSelected(jobs[0]); }, [sectionId]);
   const emailTemplate = `Hello ${selected.name},\n\nWe reviewed your FarmConnect concern: ${selected.problem}.\n\nReason: ${selected.blocker}.\n\nWhat happens next: ${selected.next}\n\nIf we need another document or proof, please submit it in the app so your record stays complete. Thank you for your patience.`;
   const brain = <CustomerCaseBrain sectionId={section.id} problem={selected.problem} blocker={selected.blocker} next={selected.next} />;
@@ -1901,7 +1913,7 @@ export function AdminCustomerDeskAction({ section, mode }: { section: string; mo
 function AdminCustomerDeskFormatPage({ sectionId }: { sectionId: string }) {
   const section = customerDeskSections.find(s=>s.id===sectionId) || customerDeskSections[0];
   const jobs = customerDeskJobs.filter(j=>j.queue===section.id);
-  const [selected,setSelected]=useState(jobs[0] || customerDeskJobs[0]);
+  const [selected,setSelected]=useState(jobs[0] || emptyCustomerDeskJob);
   const [note,setNote]=useState("");
   const [decision,setDecision]=useState<"open" | "approved" | "rejected">("open");
   useEffect(()=>{ if (jobs[0]) { setSelected(jobs[0]); setDecision("open"); setNote(""); } }, [sectionId]);
@@ -1949,7 +1961,7 @@ function AdminCustomerDeskPage() {
   }));
   const sourceJobs = activeSection === "withdraw" && liveWithdrawalJobs.length ? liveWithdrawalJobs : customerDeskJobs;
   const visibleJobs = sourceJobs.filter(job=>job.queue===activeSection && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`));
-  const [selected,setSelected]=useState(visibleJobs[0] || sourceJobs.find(job=>job.queue===activeSection) || customerDeskJobs[0]);
+  const [selected,setSelected]=useState(visibleJobs[0] || sourceJobs.find(job=>job.queue===activeSection) || emptyCustomerDeskJob);
   const [note,setNote]=useState("");
   const [decision,setDecision]=useState<"open" | "approved" | "rejected">("open");
   const [selectedCaretaker,setSelectedCaretaker]=useState("Juan Dela Cruz");
@@ -1987,7 +1999,7 @@ function AdminCustomerDeskPage() {
     return ()=>{ mounted = false; };
   }, []);
   useEffect(()=>{
-    const next = visibleJobs[0] || sourceJobs.find(job=>job.queue===activeSection) || customerDeskJobs[0];
+    const next = visibleJobs[0] || sourceJobs.find(job=>job.queue===activeSection) || emptyCustomerDeskJob;
     setSelected(next);
     setDecision("open");
     setNote("");
