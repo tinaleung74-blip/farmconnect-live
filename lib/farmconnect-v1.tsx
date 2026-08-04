@@ -2111,8 +2111,9 @@ function AdminCaretakerApplicationQueue() {
       setAdminNote("");
       setNote(`Caretaker application ${decision}. Logs updated.`);
       await load();
-    } catch {
-      setNote("Decision failed. Check admin login and SQL 010.");
+    } catch (error: any) {
+      const message = error?.message || error?.details || error?.hint || "Unknown approval error";
+      setNote(`Decision failed: ${message}`);
     }
   }
 

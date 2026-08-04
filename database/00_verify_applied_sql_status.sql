@@ -75,7 +75,10 @@ with expected(migration, kind, object_name) as (
     ('021_kafarm_incident_monitoring.sql','function','admin_kafarm_update_incident_status'),
     ('021_kafarm_incident_monitoring.sql','view','admin_kafarm_incident_queue'),
 
-    ('022_kafarm_database_reader.sql','function','kafarm_database_health_snapshot')
+    ('022_kafarm_database_reader.sql','function','kafarm_database_health_snapshot'),
+
+    ('023_caretaker_application_review_fix.sql','index','caretakers_profile_id_unique'),
+    ('023_caretaker_application_review_fix.sql','function','admin_review_caretaker_application')
 ),
 object_status as (
   select
@@ -100,6 +103,12 @@ object_status as (
         where table_schema = 'public'
           and table_name = split_part(object_name, '.', 1)
           and column_name = split_part(object_name, '.', 2)
+      )
+      when kind = 'index' then exists (
+        select 1
+        from pg_indexes
+        where schemaname = 'public'
+          and indexname = object_name
       )
       else false
     end as exists
