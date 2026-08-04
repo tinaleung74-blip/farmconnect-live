@@ -499,12 +499,25 @@ export async function getCustomerManualPaymentRequests() {
 export async function getAdminManualPaymentRequests() {
   const { data, error } = await supabase
     .from("manual_payment_requests")
-    .select("*, profiles(full_name,email,display_name)")
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(80);
 
   if (error) throw error;
-  return data || [];
+  const rows = data || [];
+  const profileIds = Array.from(new Set(rows.map((row: any) => row.profile_id).filter(Boolean)));
+  if (!profileIds.length) return rows;
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id,full_name,email,display_name")
+    .in("id", profileIds);
+
+  const profileMap = new Map((profiles || []).map((profile: any) => [profile.id, profile]));
+  return rows.map((row: any) => ({
+    ...row,
+    profiles: profileMap.get(row.profile_id) || null,
+  }));
 }
 
 export async function adminReviewManualPayment(paymentRequestId: string, decision: "approved" | "rejected" | "needs_info", note: string) {

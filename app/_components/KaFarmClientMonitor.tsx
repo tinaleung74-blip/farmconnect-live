@@ -448,7 +448,7 @@ export function KaFarmClientMonitor() {
         const label = getElementLabel(clicked);
         if (!label || /close|back|cancel/i.test(label)) return;
         const pageContext = getPageContext();
-        if (pageContext.route.startsWith("/admin/kafarm") && /^(copy|run|problem|solved|approve|reject|clear logs)$/i.test(label.trim())) return;
+        if (pageContext.route.startsWith("/admin/kafarm")) return;
         const disabled =
           clicked.hasAttribute("disabled") ||
           clicked.getAttribute("aria-disabled") === "true" ||

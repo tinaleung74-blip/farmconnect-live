@@ -71,10 +71,14 @@ function isIgnoredKaFarmIncident(incident: {
     (!requestUrl || localRscRequest || /localhost:3000|\/caretaker\/signup|\/admin\/kafarm/i.test(route));
   const oldKaFarmSelfClick =
     title === "Button click produced no visible action" &&
-    /\/admin\/kafarm/i.test(`${route} ${requestUrl}`) &&
-    /clicked "(database|system|customer|caretaker|admin|flow|production error|investigation|findings|copy|run|clear logs|approve|reject|\d+\.\s|network\/api request blocked)/i.test(message);
+    /\/admin\/kafarm/i.test(`${route} ${requestUrl} ${message}`) &&
+    /clicked "(database|system|customer|caretaker|admin|flow|production error|investigation|findings|copy|run|clear logs|approve|reject|\d+\.\s|network\/api request blocked|.*needs check)/i.test(message);
 
-  return expectedLoginFailure || localRscRequest || rscFallback || oldMonitorCompileError || genericDevFetch || oldKaFarmSelfClick;
+  const staleKaFarmToolReport =
+    /\/admin\/kafarm/i.test(`${route} ${requestUrl} ${message}`) &&
+    /clicked .*no route change, modal, or visible page update/i.test(message);
+
+  return expectedLoginFailure || localRscRequest || rscFallback || oldMonitorCompileError || genericDevFetch || oldKaFarmSelfClick || staleKaFarmToolReport;
 }
 
 function filterKaFarmIncidents<T extends { message?: string; requestUrl?: string | null; request_url?: string | null; httpStatus?: number | null; http_status?: number | null }>(items: T[]) {
@@ -535,7 +539,13 @@ export function KafarmCommandCenter() {
       try {
         const raw = window.localStorage.getItem("farmconnect_kafarm_incidents");
         const parsed = raw ? JSON.parse(raw) : [];
-        if (Array.isArray(parsed)) setClientIncidents(filterKaFarmIncidents(parsed).slice(0, 8));
+        if (Array.isArray(parsed)) {
+          const cleaned = filterKaFarmIncidents(parsed).slice(0, 12);
+          if (cleaned.length !== parsed.length) {
+            window.localStorage.setItem("farmconnect_kafarm_incidents", JSON.stringify(cleaned));
+          }
+          setClientIncidents(cleaned.slice(0, 8));
+        }
       } catch {
         setClientIncidents([]);
       }
@@ -547,11 +557,24 @@ export function KafarmCommandCenter() {
 
   useEffect(() => {
     let active = true;
+    const failSafe = window.setTimeout(() => {
+      if (active) {
+        setAdminGate({
+          status: "blocked",
+          message: "Admin profile check timed out. Refresh or login again as admin, then rerun KaFarm.",
+        });
+      }
+    }, 8000);
 
     async function checkAdminGate() {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionUser = sessionData.session?.user;
+      const { data: authData, error: authError } = sessionUser
+        ? { data: { user: sessionUser }, error: null }
+        : await supabase.auth.getUser();
       if (!active) return;
       if (authError || !authData.user) {
+        window.clearTimeout(failSafe);
         setAdminGate({ status: "login_required", message: "No active admin login found. KaFarm admin tools need an admin session first." });
         return;
       }
@@ -563,6 +586,7 @@ export function KafarmCommandCenter() {
         .maybeSingle();
 
       if (!active) return;
+      window.clearTimeout(failSafe);
       if (profileError) {
         setAdminGate({ status: "blocked", message: `Admin profile check blocked: ${profileError.message}` });
         return;
@@ -581,6 +605,7 @@ export function KafarmCommandCenter() {
     checkAdminGate();
     return () => {
       active = false;
+      window.clearTimeout(failSafe);
     };
   }, []);
 
@@ -589,7 +614,9 @@ export function KafarmCommandCenter() {
     window.location.href = "/";
   };
 
-  const selectedStatus = decision === "approved" ? "Approved fix" : decision === "rejected" ? "Rejected fix" : selectedIncident.status;
+  const selectedStatus = !toolFindings.length && problemEngineRan
+    ? "No blocker detected"
+    : decision === "approved" ? "Approved fix" : decision === "rejected" ? "Rejected fix" : selectedIncident.status;
   const runProblemEngine = (toolKey: KaFarmToolKey) => {
     setSelectedTool(toolKey);
     setIssueFilter("problems");
@@ -1602,7 +1629,13 @@ export function KafarmFocusPage({ slug }: { slug: string }) {
       try {
         const raw = window.localStorage.getItem("farmconnect_kafarm_incidents");
         const parsed = raw ? JSON.parse(raw) : [];
-        if (Array.isArray(parsed)) setLocalIncidents(filterKaFarmIncidents(parsed).slice(0, 20));
+        if (Array.isArray(parsed)) {
+          const cleaned = filterKaFarmIncidents(parsed).slice(0, 30);
+          if (cleaned.length !== parsed.length) {
+            window.localStorage.setItem("farmconnect_kafarm_incidents", JSON.stringify(cleaned));
+          }
+          setLocalIncidents(cleaned.slice(0, 20));
+        }
       } catch {
         setLocalIncidents([]);
       }
