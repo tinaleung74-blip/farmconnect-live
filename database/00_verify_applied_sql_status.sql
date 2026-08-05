@@ -78,7 +78,26 @@ with expected(migration, kind, object_name) as (
     ('022_kafarm_database_reader.sql','function','kafarm_database_health_snapshot'),
 
     ('023_caretaker_application_review_fix.sql','index','caretakers_profile_id_unique'),
-    ('023_caretaker_application_review_fix.sql','function','admin_review_caretaker_application')
+    ('023_caretaker_application_review_fix.sql','function','admin_review_caretaker_application'),
+
+    ('025_manual_payment_farm_buy_source_of_truth.sql','function','admin_review_manual_payment'),
+    ('025_manual_payment_farm_buy_source_of_truth.sql','table','manual_payment_requests'),
+    ('025_manual_payment_farm_buy_source_of_truth.sql','table','customer_animals'),
+    ('025_manual_payment_farm_buy_source_of_truth.sql','table','customer_inventory_items'),
+
+    ('026_care_task_assignment_customer_animal_fk_fix.sql','function','admin_assign_care_request'),
+    ('026_care_task_assignment_customer_animal_fk_fix.sql','table','caretaker_tasks'),
+    ('026_care_task_assignment_customer_animal_fk_fix.sql','table','farm_care_requests'),
+
+    ('027_manual_payment_care_request_sync_harden.sql','function','sync_manual_payment_care_request'),
+    ('027_manual_payment_care_request_sync_harden.sql','trigger','trg_sync_manual_payment_care_request'),
+    ('027_manual_payment_care_request_sync_harden.sql','table','manual_payment_requests'),
+    ('027_manual_payment_care_request_sync_harden.sql','table','farm_care_requests'),
+
+    ('028_task_proof_task_id_alias_fix.sql','function','caretaker_submit_task_proof'),
+    ('028_task_proof_task_id_alias_fix.sql','table','task_proofs'),
+    ('028_task_proof_task_id_alias_fix.sql','column','task_proofs.task_id'),
+    ('028_task_proof_task_id_alias_fix.sql','column','task_proofs.caretaker_task_id')
 ),
 object_status as (
   select
@@ -109,6 +128,12 @@ object_status as (
         from pg_indexes
         where schemaname = 'public'
           and indexname = object_name
+      )
+      when kind = 'trigger' then exists (
+        select 1
+        from pg_trigger
+        where tgname = object_name
+          and not tgisinternal
       )
       else false
     end as exists

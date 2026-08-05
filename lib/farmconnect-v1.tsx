@@ -1052,17 +1052,8 @@ export function CustomerPaymentPage() {
       window.setTimeout(()=>router.push("/customer/dashboard"), 900);
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
-      const local = { id: `local-${Date.now()}`, sourceType: context.sourceType, sourceRef: context.sourceRef, amountExpected: context.amountExpected, summary: context.summary, paymentMethod: method.method, receiverAccount: method.account, senderName: sender, referenceNumber: reference, receiptAttached: true, status: "for_review", created_at: new Date().toISOString() };
-      try {
-        const rows = JSON.parse(window.localStorage.getItem("farmconnect_manual_payments") || "[]").slice(0, 10);
-        window.localStorage.setItem("farmconnect_manual_payments", JSON.stringify([local, ...rows]));
-        const inboxRows = JSON.parse(window.localStorage.getItem(localInboxKey) || "[]").slice(0, 20);
-        window.localStorage.setItem(localInboxKey, JSON.stringify([{ tab:"Receipts", title:"Payment For Review", text:`${method.method} ref ${reference} submitted for admin review. Receipt was attached on this device.`, status:"Pending", action:"read", created_at:new Date().toISOString() }, ...inboxRows]));
-      } catch {
-        window.localStorage.removeItem("farmconnect_manual_payments");
-      }
-      setSubmittedId(local.id);
-      setNote(message === "LOGIN_REQUIRED" || message.includes("401") || message.toLowerCase().includes("unauthorized") || message.toLowerCase().includes("jwt") ? "Clicked and saved locally, but you must login as customer before this can appear in admin Money Desk." : "Payment details saved locally without the large receipt image. Supabase submit failed, so please check login/RLS or SQL 009 before final admin review.");
+      setSubmittedId("");
+      setNote(message === "LOGIN_REQUIRED" || message.includes("401") || message.toLowerCase().includes("unauthorized") || message.toLowerCase().includes("jwt") ? "Payment was not submitted. Please login as customer first, then submit again." : "Payment was not submitted to admin. Check the error, then submit again after DB/RLS is fixed.");
     } finally {
       setSubmitting(false);
     }

@@ -292,3 +292,109 @@ After run:
 - Re-run `database/00_app_db_health_check.sql`.
 - Confirm bloodline columns exist.
 - Confirm `breed_chick_products` count is greater than 0.
+
+## 24. KaFarm Temporary SQL Gateway Bootstrap
+
+Status: **SQL ready, run only while building FarmConnect**
+
+File:
+
+- `database/applied/024_kafarm_sql_gateway_bootstrap.sql`
+
+Purpose:
+
+- Create a temporary dev-only Supabase SQL gateway for KaFarm.
+- Allows Buddy/KaFarm to run FarmConnect-only SQL checks and controlled SQL chunks through the app.
+- Adds `public.kafarm_sql_gateway_audit_logs` for every gateway execution.
+- Adds `public.kafarm_dev_exec_sql(...)` RPC.
+
+Safety:
+
+- Intended for FarmConnect only.
+- App API route hard-checks the FarmConnect Supabase URL.
+- Server-side service role only; never expose service role key in browser.
+- API route requires:
+  - `KAFARM_SQL_GATEWAY_ENABLED=true`
+  - active admin session
+  - gateway token
+- RPC execute grant is only for `service_role`.
+- Disable before real production users:
+  - `KAFARM_SQL_GATEWAY_ENABLED=false`
+  - or delete `/admin/kafarm/sql-gateway` and `/api/kafarm/sql-gateway`.
+
+Expected success output:
+
+- `kafarm_sql_gateway_ready = 1`
+
+## 25. Manual Payment Farm Buy Source Of Truth
+
+Status: **Applied**
+
+File:
+
+- `database/applied/025_manual_payment_farm_buy_source_of_truth.sql`
+
+Purpose:
+
+- Make admin-approved Farm Buy payments use the submitted payment summary as the source of truth.
+- Approved breed/chick/rooster products create `customer_animals`.
+- Approved feeds, vitamins, supplements, vaccines, and equipment update `customer_inventory_items`.
+- Rejected or needs-info payments send customer inbox notices without moving items.
+
+Verified:
+
+- Farm Buy chick payment approval created a customer rooster.
+- Farm Buy feeds payment approval created customer inventory.
+- Payment page no longer fakes local success when Supabase submit fails.
+
+## 26. Care Task Assignment Customer Animal FK Fix
+
+Status: **Applied**
+
+File:
+
+- `database/applied/026_care_task_assignment_customer_animal_fk_fix.sql`
+
+Purpose:
+
+- Fix care task assignment when care requests reference `customer_animals`.
+- `caretaker_tasks.animal_id` belongs to the legacy `animals` table, so task assignment now leaves it null and uses care request/rooster fields.
+
+Verified:
+
+- Admin can assign an approved paid care request to an active caretaker.
+
+## 27. Manual Payment Care Request Sync Harden
+
+Status: **Applied**
+
+File:
+
+- `database/applied/027_manual_payment_care_request_sync_harden.sql`
+
+Purpose:
+
+- Make approved care request payments move `farm_care_requests` to `paid_pending_assignment`.
+- Backfill previously approved care payments that did not sync.
+
+Verified:
+
+- After admin payment approval, care request becomes assignable.
+
+## 28. Task Proof Task ID Alias Fix
+
+Status: **Applied**
+
+File:
+
+- `database/applied/028_task_proof_task_id_alias_fix.sql`
+
+Purpose:
+
+- Fix caretaker proof submission by writing both `task_id` and `caretaker_task_id`.
+
+Verified:
+
+- Caretaker can submit proof.
+- Admin can approve proof.
+- Customer receives inbox care update.
