@@ -457,9 +457,9 @@ export function KaFarmClientMonitor() {
 
         const beforeRoute = pageContext.route;
         const beforeMutation = mutationCount;
-        const anchor = clicked instanceof HTMLAnchorElement ? clicked : clicked.closest("a");
-        const href = anchor?.getAttribute("href") || clicked.getAttribute("data-href") || "";
-        const elementPath = getElementPath(clicked);
+          const anchor = clicked instanceof HTMLAnchorElement ? clicked : clicked.closest("a");
+          const href = anchor?.getAttribute("href") || clicked.getAttribute("data-href") || "";
+          const elementPath = getElementPath(clicked);
 
         window.setTimeout(() => {
           const afterRoute = getPageContext().route;
@@ -467,8 +467,9 @@ export function KaFarmClientMonitor() {
           const domChanged = mutationCount !== beforeMutation;
           const openedDialog = Boolean(document.querySelector("dialog[open], [role='dialog'], [data-state='open'], .modal, .popover"));
           const visibleAction = routeChanged || domChanged || openedDialog;
+          const targetsCurrentRoute = href.startsWith("/") && new URL(href, window.location.origin).pathname === beforeRoute;
 
-          if (href && href !== "#" && href.startsWith("/") && !routeChanged && !openedDialog) {
+          if (href && href !== "#" && href.startsWith("/") && !targetsCurrentRoute && !routeChanged && !openedDialog) {
             const key = `${beforeRoute}_${label}_${href}_route`;
             if (!throttleIncident(key)) return;
             saveIncident({
