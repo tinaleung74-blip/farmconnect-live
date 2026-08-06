@@ -366,14 +366,14 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
   }, [role, title]);
   if (!accessReady) return <main className="grid min-h-screen place-items-center bg-[#f6f3e8]"><div className="rounded-2xl bg-white p-6 text-center shadow-sm"><p className="text-sm font-black uppercase text-[#1f6b45]">Checking account access</p><p className="mt-2 text-sm font-bold text-[#667267]">Ka-Farm is verifying your active {role} session.</p></div></main>;
   return (
-    <main className="min-h-screen bg-[#f6f3e8] bg-cover bg-center bg-no-repeat text-[#17251d]" style={{ backgroundImage: "linear-gradient(180deg, rgba(255,253,247,0.20), rgba(246,243,232,0.14)), linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.09)), radial-gradient(circle at top left, rgba(255,191,55,0.12), transparent 34%), radial-gradient(circle at bottom right, rgba(31,107,69,0.12), transparent 38%), url('/farmconnect/farmconnect-hero-wallpaper.jpg')", backgroundAttachment: "fixed" }}>
+    <main className="min-h-screen overflow-x-clip bg-[#f6f3e8] bg-cover bg-center bg-no-repeat text-[#17251d]" style={{ backgroundImage: "linear-gradient(180deg, rgba(255,253,247,0.20), rgba(246,243,232,0.14)), linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.09)), radial-gradient(circle at top left, rgba(255,191,55,0.12), transparent 34%), radial-gradient(circle at bottom right, rgba(31,107,69,0.12), transparent 38%), url('/farmconnect/farmconnect-hero-wallpaper.jpg')" }}>
       <header className="sticky top-0 z-40 border-b-4 border-[#ffd43b] bg-gradient-to-r from-[#075c3a]/95 via-[#0b6fba]/94 to-[#075c3a]/95 text-white shadow-[0_12px_35px_rgba(7,92,58,0.24)] backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
-          <Link href={role === "admin" ? "/admin" : role === "caretaker" ? "/caretaker/dashboard" : "/customer/dashboard"} className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-white shadow-sm"><FarmImageIcon name="rooster" className="h-11 w-11" /></span>
-            <span>
-              <b className="block text-lg">FarmConnect</b>
-              <small className="font-bold text-white/78">{title}</small>
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+          <Link href={role === "admin" ? "/admin" : role === "caretaker" ? "/caretaker/dashboard" : "/customer/dashboard"} className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-white shadow-sm sm:h-12 sm:w-12"><FarmImageIcon name="rooster" className="h-9 w-9 sm:h-11 sm:w-11" /></span>
+            <span className="min-w-0">
+              <b className="block truncate text-sm sm:text-lg">FarmConnect</b>
+              <small className="block max-w-32 truncate text-[10px] font-bold text-white/78 sm:max-w-48 sm:text-xs">{title}</small>
             </span>
           </Link>
           <nav className="hidden items-center gap-2 lg:flex">
@@ -398,17 +398,17 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
           </nav>
           <div className="flex items-center gap-2">
             {role === "customer" && <TopIcon href="/customer/inbox" name="inbox" label="Inbox" imageSrc="/farmconnect/icons/farm-inbox.png" badge={inboxCount} />}
-            {role === "customer" && <TopIcon href="/customer/support" name="support" label="Support" imageSrc="/farmconnect/icons/support.png" />}
-            {role === "customer" && <TopIcon href="/customer/inventory" name="bag" label="Inventory" imageSrc="/farmconnect/icons/farm-bag.png" />}
-            <TopIcon href={role === "customer" ? "/customer/settings" : role === "caretaker" ? "/caretaker/profile" : "/admin/kafarm"} name="settings" label={role === "admin" ? "Ka-Farm" : "Settings"} imageSrc={role === "customer" ? "/farmconnect/icons/farm-settings.png" : undefined} />
+            {role === "customer" && <span className="hidden sm:contents"><TopIcon href="/customer/support" name="support" label="Support" imageSrc="/farmconnect/icons/support.png" /></span>}
+            {role === "customer" && <span className="hidden md:contents"><TopIcon href="/customer/inventory" name="bag" label="Inventory" imageSrc="/farmconnect/icons/farm-bag.png" /></span>}
+            <span className="hidden sm:contents"><TopIcon href={role === "customer" ? "/customer/settings" : role === "caretaker" ? "/caretaker/profile" : "/admin/kafarm"} name="settings" label={role === "admin" ? "Ka-Farm" : "Settings"} imageSrc={role === "customer" ? "/farmconnect/icons/farm-settings.png" : undefined} /></span>
             <TopIcon href="/" name="logout" label="Logout" />
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-7xl px-4 py-6 pb-28 drop-shadow-[0_1px_0_rgba(255,255,255,0.65)]">{children}</div>
-      <nav className="fixed bottom-3 left-1/2 z-40 flex w-[calc(100%-24px)] max-w-xl -translate-x-1/2 justify-between rounded-2xl border border-[#ded8c9] bg-white p-2 shadow-xl lg:hidden">
-        {headerLinks.slice(0, 4).map(([label, href, icon]) => (
-          <Link key={href} href={href} className="grid flex-1 place-items-center rounded-xl px-2 py-2 text-[11px] font-bold">
+      <div className="mx-auto max-w-7xl px-3 py-4 pb-28 drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] sm:px-4 sm:py-6">{children}</div>
+      <nav aria-label={`${role} mobile navigation`} className="fc-scroll-row fixed bottom-2 left-1/2 z-40 flex w-[calc(100%-16px)] max-w-3xl -translate-x-1/2 snap-x gap-1 overflow-x-auto rounded-2xl border border-[#ded8c9] bg-white/96 p-2 shadow-xl backdrop-blur lg:hidden">
+        {headerLinks.map(([label, href, icon]) => (
+          <Link key={href} href={href} className="grid min-w-[76px] flex-1 snap-start place-items-center rounded-xl px-2 py-2 text-center text-[10px] font-bold sm:min-w-[92px] sm:text-[11px]">
             <FarmImageIcon name={icon as IconName} className="mb-1 h-7 w-7 rounded-md" fallbackClassName="mb-1 h-5 w-5" /> {label.split(" ")[0]}
           </Link>
         ))}
@@ -418,32 +418,32 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
 }
 
 function TopIcon({ href, name, label, imageSrc, badge = 0 }: { href: string; name: IconName; label: string; imageSrc?: string; badge?: number }) {
-  return <Link href={href} title={label} className="relative flex h-11 items-center gap-2 rounded-full border border-white/40 bg-white/92 px-3 text-sm font-black text-[#075c3a] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#fff4a3] hover:shadow-md"><FarmImageIcon name={name} imageSrc={imageSrc} className="h-7 w-7 rounded-md" />{badge > 0 && <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white shadow">{badge > 9 ? "9+" : badge}</span>}<span className="hidden xl:inline">{label}</span></Link>;
+  return <Link href={href} title={label} aria-label={label} className="relative flex h-10 items-center gap-2 rounded-full border border-white/40 bg-white/92 px-2.5 text-sm font-black text-[#075c3a] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#fff4a3] hover:shadow-md sm:h-11 sm:px-3"><FarmImageIcon name={name} imageSrc={imageSrc} className="h-6 w-6 rounded-md sm:h-7 sm:w-7" />{badge > 0 && <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white shadow">{badge > 9 ? "9+" : badge}</span>}<span className="hidden xl:inline">{label}</span></Link>;
 }
 
 function KaFarm({ children, tone = "info" }: { children: React.ReactNode; tone?: "info" | "warn" | "good" }) {
   const color = tone === "warn" ? "border-amber-300 bg-amber-50" : tone === "good" ? "border-emerald-300 bg-emerald-50" : "border-[#d7e4d5] bg-white";
   return (
-    <div className={"flex gap-3 rounded-2xl border p-4 shadow-sm " + color}>
-      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#1f6b45] text-white"><Icon name="support" /></div>
+    <div className={"flex gap-3 rounded-2xl border p-3 shadow-sm sm:p-4 " + color}>
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#1f6b45] text-white sm:h-11 sm:w-11"><Icon name="support" /></div>
       <div><b>Ka-Farm says</b><div className="mt-1 text-sm leading-6 text-[#516157]">{children}</div></div>
     </div>
   );
 }
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={"rounded-2xl border border-[#e3ded0] bg-white p-5 shadow-sm " + className}>{children}</section>;
+  return <section className={"min-w-0 rounded-2xl border border-[#e3ded0] bg-white p-4 shadow-sm sm:p-5 " + className}>{children}</section>;
 }
 
 function PageTitle({ title, text, icon }: { title: string; text: string; icon: IconName }) {
   const chrome = titleIconChrome[icon] || titleIconChrome.home!;
   return (
     <div className="mb-5">
-      <div className="inline-flex max-w-4xl items-center gap-5 rounded-[28px] border-2 border-[#ffd43b]/85 bg-gradient-to-r from-white/92 via-[#f7ffe9]/88 to-[#e8f3ff]/88 px-4 py-3 shadow-[0_18px_45px_rgba(7,92,58,0.22)] backdrop-blur-md ring-2 ring-[#0b6fba]/18">
-        <div style={{ background: chrome.bg, boxShadow: chrome.shadow, borderColor: chrome.ring }} className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-[24px] border-2 p-0.5 ring-2 ring-white/80"><FarmImageIcon name={icon} className="h-[4.7rem] w-[4.7rem] scale-125 rounded-[20px] object-cover contrast-125 saturate-150 drop-shadow-[0_6px_10px_rgba(0,0,0,0.22)]" fallbackClassName="h-10 w-10 text-[#1f6b45]" /></div>
+      <div className="flex w-full max-w-4xl items-center gap-3 rounded-2xl border-2 border-[#ffd43b]/85 bg-gradient-to-r from-white/92 via-[#f7ffe9]/88 to-[#e8f3ff]/88 px-3 py-3 shadow-[0_18px_45px_rgba(7,92,58,0.22)] backdrop-blur-md ring-2 ring-[#0b6fba]/18 sm:gap-5 sm:rounded-[28px] sm:px-4">
+        <div style={{ background: chrome.bg, boxShadow: chrome.shadow, borderColor: chrome.ring }} className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl border-2 p-0.5 ring-2 ring-white/80 sm:h-20 sm:w-20 sm:rounded-[24px]"><FarmImageIcon name={icon} className="h-12 w-12 scale-110 rounded-xl object-cover contrast-125 saturate-150 drop-shadow-[0_6px_10px_rgba(0,0,0,0.22)] sm:h-[4.7rem] sm:w-[4.7rem] sm:scale-125 sm:rounded-[20px]" fallbackClassName="h-8 w-8 text-[#1f6b45] sm:h-10 sm:w-10" /></div>
         <div className="min-w-0 pr-2">
-          <h1 className="text-3xl font-black leading-tight text-[#063f2a] md:text-5xl">{title}</h1>
-          <p className="mt-1 max-w-2xl text-sm font-black leading-5 text-[#0b4f78] md:text-base">{text}</p>
+          <h1 className="break-words text-2xl font-black leading-tight text-[#063f2a] sm:text-3xl md:text-5xl">{title}</h1>
+          <p className="mt-1 max-w-2xl text-xs font-black leading-4 text-[#0b4f78] sm:text-sm sm:leading-5 md:text-base">{text}</p>
         </div>
       </div>
     </div>
@@ -2657,7 +2657,7 @@ function AdminCustomerRequestsPage() {
   }
   return <Shell role="admin" title="Customer Requests Management">
     <PageTitle title="Customer Requests Management" text="Review only active customer requests: payments, care requests, task assignment, and withdrawals." icon="clipboard" />
-    <div className="mt-4 grid gap-3 md:grid-cols-4">
+    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
       {customerDeskSections.map(section=><button key={section.id} onClick={()=>setActiveSection(section.id)} className={"rounded-2xl border p-4 text-left shadow-sm transition " + (activeSection===section.id ? "border-[#1f6b45] bg-[#e9fff3] ring-2 ring-[#1f6b45]/20" : "border-[#e3ded0] bg-white/95 hover:border-[#1f6b45]")}><div className="flex items-start justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#f6f3e8]"><Icon name={section.icon} /></span><Badge tone={section.tone}>{customerRequestJobs.filter(job=>job.queue===section.id && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`)).length}</Badge></div><h2 className="mt-3 text-lg font-black">{section.title}</h2><p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-[#667267]">{section.text}</p></button>)}
     </div>
     {activeSection === "payment" && <div className="mt-5"><AdminManualPaymentQueue sourceType="farm_buy" /></div>}
@@ -3405,7 +3405,7 @@ function AdminCaretakerManagementPage({ config }: { config: string[] }) {
   function openViewer(payload:any) { setViewer(payload); }
   return <Shell role="admin" title={config[0]}><PageTitle title="Caretaker Management" text="Registration link, approved caretaker list, task proof review, backjobs, and completed evidence. Account approval is handled in Account Verification." icon="user" />
     <KaFarm>{loadNote}</KaFarm>
-    <div className="mt-4 grid gap-3 md:grid-cols-4">{tabs.map(item=><button key={item.id} onClick={()=>reset(item.id)} className={"rounded-2xl border p-4 text-left shadow-sm transition " + (tab===item.id ? "border-[#1f6b45] bg-[#e9fff3] ring-2 ring-[#1f6b45]/20" : "border-[#e3ded0] bg-white/95 hover:border-[#1f6b45]")}><h2 className="text-lg font-black">{item.label}</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">{item.hint}</p></button>)}</div>
+    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">{tabs.map(item=><button key={item.id} onClick={()=>reset(item.id)} className={"rounded-2xl border p-4 text-left shadow-sm transition " + (tab===item.id ? "border-[#1f6b45] bg-[#e9fff3] ring-2 ring-[#1f6b45]/20" : "border-[#e3ded0] bg-white/95 hover:border-[#1f6b45]")}><h2 className="text-lg font-black">{item.label}</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">{item.hint}</p></button>)}</div>
 
     {tab === "registration" && <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_340px]"><Card><p className="text-xs font-black uppercase text-[#667267]">Permanent Registration Link</p><h2 className="mt-1 text-3xl font-black">Caretaker signup link</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Send this link to applicants. It is permanent; account stays inactive until Account Verification approves selfie, resume, and payment details.</p><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 font-black">{signupLink}</div><button type="button" onClick={copySignupLink} className="mt-4 rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">Copy Link</button><h3 className="mt-6 text-lg font-black">Registered Applications</h3><div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-2">{applicants.length ? applicants.map((application:any)=><div key={application.id} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><b className="block truncate">{application.display_name || application.full_name || application.email}</b><p className="truncate text-xs font-bold text-[#667267]">{application.email}</p></div><Badge tone={application.status==="approved" ? "good" : application.status==="rejected" ? "bad" : "warn"}>{application.status}</Badge></div></div>) : <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No caretaker application found.</p>}</div></Card><Card><p className="text-xs font-black uppercase text-[#667267]">Registered Caretakers</p><h2 className="mt-2 text-5xl font-black text-[#1f6b45]">{applicants.length}</h2><p className="mt-2 text-sm font-bold text-[#667267]">{applicants.filter((row:any)=>row.status==="pending_approval" || row.status==="needs_info").length} waiting / {caretakers.length} approved caretaker records.</p><Link href="/admin/account-verification" className="mt-5 block rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Open Account Verification</Link></Card></div>}
 
@@ -4079,11 +4079,6 @@ export function LegacyAccessPage({ role }: { role: Role }) {
     </main>
   );
 }
-
-
-
-
-
 
 
 

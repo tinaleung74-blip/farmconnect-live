@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -34,7 +34,37 @@ body {
   background-size: cover;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
 
+html {
+  overflow-x: hidden;
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+}
+
+.fc-scroll-row {
+  scrollbar-width: thin;
+  scrollbar-color: #1f6b45 transparent;
+}
+
+.fc-scroll-row::-webkit-scrollbar {
+  height: 5px;
+}
+
+.fc-scroll-row::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #1f6b45;
+}
+
+@media (max-width: 767px) {
+  body {
+    background-attachment: scroll;
+  }
+}
 
 
