@@ -1,2 +1,5 @@
-import { AdminDesk } from "@/lib/farmconnect-v1";
-export default function Page(){ return <AdminDesk kind="verification" />; }
+import { UnifiedAccountVerificationPage } from "@/lib/farmconnect-unified-account-verification";
+
+export default function Page() {
+  return <UnifiedAccountVerificationPage />;
+}

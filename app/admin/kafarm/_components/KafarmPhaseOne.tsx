@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { analyzeKaFarmMessage, kafarmCoverage, kafarmIncidentResponseSteps, runKaFarmCouncil } from "@/lib/kafarm-brain";
+import generatedSnapshot from "@/lib/kafarm-system-snapshot.generated.json";
 import { supabase } from "@/lib/supabase";
 
 type Tone = "approval" | "read" | "safe" | "report";
@@ -52,12 +53,20 @@ function isIgnoredKaFarmIncident(incident: {
   http_status?: number | null;
   affected?: string;
   route?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
+  created_at?: string | null;
 }) {
   const requestUrl = String(incident.requestUrl || incident.request_url || "");
   const title = String(incident.title || "");
   const message = String(incident.message || "");
   const route = String(incident.route || incident.affected || "");
   const status = incident.httpStatus ?? incident.http_status;
+  const lifecycleStatus = String(incident.status || "").toLowerCase();
+  const createdAt = Date.parse(String(incident.createdAt || incident.created_at || ""));
+  const snapshotAt = Date.parse(String((generatedSnapshot as { generatedAt?: string }).generatedAt || ""));
+  const closedIncident = ["resolved", "ignored", "completed"].includes(lifecycleStatus);
+  const olderThanCurrentBuild = Number.isFinite(createdAt) && Number.isFinite(snapshotAt) && createdAt < snapshotAt;
   const expectedLoginFailure = requestUrl.includes("/auth/v1/token") && (status === 400 || /400|grant_type=password|invalid login/i.test(message));
   const combined = `${title} ${message} ${requestUrl} ${route}`.toLowerCase();
   const localRscRequest = requestUrl.includes("localhost:3000") && requestUrl.includes("_rsc=");
@@ -78,7 +87,7 @@ function isIgnoredKaFarmIncident(incident: {
     /\/admin\/kafarm/i.test(`${route} ${requestUrl} ${message}`) &&
     /clicked .*no route change, modal, or visible page update/i.test(message);
 
-  return expectedLoginFailure || localRscRequest || rscFallback || oldMonitorCompileError || genericDevFetch || oldKaFarmSelfClick || staleKaFarmToolReport;
+  return closedIncident || olderThanCurrentBuild || expectedLoginFailure || localRscRequest || rscFallback || oldMonitorCompileError || genericDevFetch || oldKaFarmSelfClick || staleKaFarmToolReport;
 }
 
 function filterKaFarmIncidents<T extends { message?: string; requestUrl?: string | null; request_url?: string | null; httpStatus?: number | null; http_status?: number | null }>(items: T[]) {
@@ -120,7 +129,7 @@ const cards: CardConfig[] = [
 const approvalRows: Row[] = [
   { left: "KYC Review", middle: "ID/selfie mismatch or duplicate account risk", right: "Admin approve/reject only", tone: "approval" },
   { left: "Withdrawal Release", middle: "Payout name/account must match customer KYC", right: "Manual proof needed", tone: "approval" },
-  { left: "Wallet PIN Reset", middle: "Force logout, preserve balance and locked savings", right: "Security desk", tone: "approval" },
+  { left: "Wallet PIN Reset", middle: "Force logout, preserve balance and locked savings", right: "Account Security", tone: "approval" },
   { left: "Fraud Marking", middle: "Duplicate reference, fake identity, or ownership dispute", right: "Hold account", tone: "approval" },
   { left: "QR Exception", middle: "Caretaker scanner/camera failed; admin releases serial mode", right: "Exception only", tone: "approval" },
 ];
@@ -135,7 +144,7 @@ const dailyRows: Row[] = [
 
 const systemRows: Row[] = [
   { left: "Customer App", middle: "dashboard, roosters, farm buy, requests, wallet, support", right: "Passed local QA", tone: "safe" },
-  { left: "Admin App", middle: "customer desk, live chat, KaFarm, evidence routes", right: "Passed local QA", tone: "safe" },
+  { left: "Admin App", middle: "customer requests, live chat, KaFarm, evidence routes", right: "Passed local QA", tone: "safe" },
   { left: "Caretaker App", middle: "dashboard, tasks, chat, completed, profile", right: "Passed local QA", tone: "safe" },
   { left: "Known Watch", middle: "Deep backend wiring still needs real-account live testing", right: "Manual test next", tone: "report" },
 ];
@@ -151,13 +160,13 @@ const qaRows: Row[] = [
   { left: "Customer cash-in to farm buy", middle: "cash-in proof -> wallet -> farm buy -> inventory -> invoice -> inbox", right: "Manual ready", tone: "safe" },
   { left: "Care request to caretaker", middle: "request -> admin/caretaker task -> proof -> care logs -> customer inbox", right: "Manual ready", tone: "safe" },
   { left: "Support escalation", middle: "customer/caretaker -> KaFarm reply -> admin queue -> admin reply -> complete", right: "DB backed", tone: "safe" },
-  { left: "KYC blocker", middle: "settings KYC -> system checks -> admin KYC desk -> inbox notice", right: "Needs live record", tone: "approval" },
+  { left: "KYC blocker", middle: "settings KYC -> system checks -> Account Verification -> inbox notice", right: "Needs live record", tone: "approval" },
 ];
 
 const evidenceRows: Row[] = [
-  { left: "Cash-in Evidence", middle: "receipt screenshot, method, sender, reference, time submitted", right: "Money desk", tone: "read" },
-  { left: "Care Evidence", middle: "rooster, service, customer note, caretaker proof, QR/serial", right: "Care desk", tone: "read" },
-  { left: "KYC Evidence", middle: "ID front/back, selfie, legal name, birthdate, duplicate risk", right: "KYC desk", tone: "read" },
+  { left: "Payment Evidence", middle: "receipt screenshot, method, sender, reference, time submitted", right: "Customer Requests > Payment", tone: "read" },
+  { left: "Care Evidence", middle: "rooster, service, customer note, caretaker proof, QR/serial", right: "Customer Requests > Care", tone: "read" },
+  { left: "KYC Evidence", middle: "ID front/back, selfie, legal name, birthdate, duplicate risk", right: "Account Verification", tone: "read" },
   { left: "Support Evidence", middle: "customer message, KaFarm replies, admin join/reply/end timestamps", right: "Live chat", tone: "read" },
 ];
 
@@ -196,13 +205,13 @@ const pageRows: Record<string, Row[]> = {
 const pageLinks: Record<string, Array<{ label: string; href: string }>> = {
   approvals: [
     { label: "Account Verification", href: "/admin/account-verification" },
-    { label: "Withdrawal Review", href: "/admin/customer-desk/withdraw" },
+    { label: "Withdrawal Review", href: "/admin/customer-requests/withdraw" },
     { label: "Issue Management", href: "/admin/issue-management" },
   ],
   "daily-briefing": [
     { label: "Dashboard", href: "/admin" },
-    { label: "Customer Requests", href: "/admin/customer-desk" },
-    { label: "Caretaker Management", href: "/admin/caretaker-desk" },
+    { label: "Customer Requests", href: "/admin/customer-requests" },
+    { label: "Caretaker Management", href: "/admin/caretaker-management" },
   ],
   "system-health": [
     { label: "Customer App", href: "/customer/dashboard" },
@@ -253,9 +262,9 @@ const askSamples = [
 ];
 
 const operatorPlan = [
-  { title: "1. Money Risk", text: "Cash-in, withdrawal, wallet alerts, duplicate references, missing receipts, failed payouts.", href: "/admin/money-desk" },
-  { title: "2. Identity Risk", text: "KYC, duplicate accounts, payout name mismatch, PIN reset, account locks.", href: "/admin/customer-desk/kyc" },
-  { title: "3. Farm Risk", text: "Wrong rooster, care proof disputes, caretaker exceptions, QR/camera issues, delayed tasks.", href: "/admin/customer-desk/care" },
+  { title: "1. Money Risk", text: "Payment, withdrawal, wallet alerts, duplicate references, missing receipts, failed payouts.", href: "/admin/customer-requests/payment" },
+  { title: "2. Identity Risk", text: "KYC, duplicate accounts, payout name mismatch, PIN reset, account locks.", href: "/admin/customer-requests/kyc" },
+  { title: "3. Farm Risk", text: "Wrong rooster, care proof disputes, caretaker exceptions, QR/camera issues, delayed tasks.", href: "/admin/customer-requests/care" },
   { title: "4. Evidence", text: "Gather invoice, receipt, chat transcript, proof uploads, and admin action logs.", href: "/admin/evidence" },
   { title: "5. Handoff", text: "Create a Buddy report with exact page, steps, records, and likely cause.", href: "/admin/kafarm/buddy-reports" },
 ];
@@ -273,14 +282,14 @@ type SqlAuditModule = {
 
 const sqlAuditModules: SqlAuditModule[] = [
   { module: "Auth / Role Guardian", pages: "login, signup, admin/caretaker/customer route guard", tables: ["profiles", "caretakers"], functions: ["current_profile_id", "is_admin"], views: [], policies: ["profiles self read", "profiles owner safe update"] },
-  { module: "Customer KYC", pages: "/customer/settings, /admin/customer-desk/kyc", tables: ["customer_kyc_profiles"], functions: ["customer_submit_kyc", "run_kyc_system_checks", "admin_review_customer_kyc", "customer_record_kyc_consent"], views: [], policies: ["kyc"] },
-  { module: "Wallet / PIN / Payout", pages: "/customer/wallet, /customer/withdraw, /admin/customer-desk/security", tables: ["profiles.wallet_balance", "wallet_transactions", "withdrawal_requests"], functions: ["change_wallet_pin", "admin_reset_wallet_pin"], views: [], policies: ["wallet"] },
-  { module: "Manual Payments / Invoice", pages: "/customer/payment, /admin/customer-desk/payment", tables: ["manual_payment_requests", "payment_evidence_logs", "inbox_items"], functions: ["customer_submit_manual_payment", "admin_review_manual_payment"], views: [], policies: ["payment evidence read linked"] },
-  { module: "Withdrawal Review", pages: "/customer/withdraw, /admin/customer-desk/withdraw", tables: ["withdrawal_requests", "withdrawal_evidence_logs"], functions: ["customer_submit_withdrawal_request", "admin_review_withdrawal_request"], views: [], policies: ["withdrawal evidence read linked"] },
+  { module: "Customer KYC", pages: "/customer/settings, /admin/customer-requests/kyc", tables: ["customer_kyc_profiles"], functions: ["customer_submit_kyc", "run_kyc_system_checks", "admin_review_customer_kyc", "customer_record_kyc_consent"], views: [], policies: ["kyc"] },
+  { module: "Wallet / PIN / Payout", pages: "/customer/wallet, /customer/withdraw, /admin/customer-requests/security", tables: ["profiles.wallet_balance", "wallet_transactions", "withdrawal_requests"], functions: ["change_wallet_pin", "admin_reset_wallet_pin"], views: [], policies: ["wallet"] },
+  { module: "Manual Payments / Invoice", pages: "/customer/payment, /admin/customer-requests/payment", tables: ["manual_payment_requests", "payment_evidence_logs", "inbox_items"], functions: ["customer_submit_manual_payment", "admin_review_manual_payment"], views: [], policies: ["payment evidence read linked"] },
+  { module: "Withdrawal Review", pages: "/customer/withdraw, /admin/customer-requests/withdraw", tables: ["withdrawal_requests", "withdrawal_evidence_logs"], functions: ["customer_submit_withdrawal_request", "admin_review_withdrawal_request"], views: [], policies: ["withdrawal evidence read linked"] },
   { module: "Farm Buy / Inventory", pages: "/customer/farm-buy, /customer/inventory", tables: ["farm_products", "farm_cart_items", "customer_inventory_items", "customer_animals"], functions: ["customer_buy_cart"], views: [], policies: ["inventory"] },
   { module: "Roosters / Ownership", pages: "/customer/roosters, /customer/care-logs", tables: ["animals", "customer_animals", "animal_photos", "animal_weights", "farm_care_requests", "caretaker_tasks", "task_proofs"], functions: [], views: [], policies: ["customer animals"] },
-  { module: "Care Requests / Task Assignment", pages: "/customer/farm-requests, /admin/customer-desk/task, /caretaker/tasks", tables: ["farm_care_requests", "caretaker_tasks", "task_proofs"], functions: ["customer_create_care_request", "admin_assign_care_request", "caretaker_submit_task_proof", "admin_review_task_proof"], views: [], policies: ["care task"] },
-  { module: "Caretaker Registration", pages: "/caretaker/signup, /admin/caretaker-desk", tables: ["caretaker_applications", "caretakers"], functions: ["submit_caretaker_application", "admin_review_caretaker_application"], views: [], policies: ["caretaker"] },
+  { module: "Care Requests / Task Assignment", pages: "/customer/farm-requests, /admin/customer-requests/task, /caretaker/tasks", tables: ["farm_care_requests", "caretaker_tasks", "task_proofs"], functions: ["customer_create_care_request", "admin_assign_care_request", "caretaker_submit_task_proof", "admin_review_task_proof"], views: [], policies: ["care task"] },
+  { module: "Caretaker Registration", pages: "/caretaker/signup, /admin/caretaker-management", tables: ["caretaker_applications", "caretakers"], functions: ["submit_caretaker_application", "admin_review_caretaker_application"], views: [], policies: ["caretaker"] },
   { module: "Support Chat / Escalation", pages: "/customer/support, /caretaker/chat, /admin/live-chat", tables: ["support_chat_sessions", "support_chat_messages"], functions: ["customer_support_send_message", "caretaker_support_send_message", "kafarm_support_send_message", "admin_support_join_chat", "admin_support_send_message", "admin_support_complete_chat"], views: ["admin_support_escalated_chats"], policies: ["support sessions read own", "support messages read own"] },
   { module: "Evidence Logs", pages: "/admin/evidence, inbox receipts/invoices", tables: ["payment_evidence_logs", "withdrawal_evidence_logs", "support_chat_messages", "task_proofs"], functions: [], views: [], policies: ["evidence"] },
   { module: "KaFarm Monitor", pages: "/admin/kafarm/system-health, /admin/kafarm/database-health", tables: ["kafarm_incidents"], functions: ["kafarm_record_incident", "admin_kafarm_update_incident_status"], views: ["admin_kafarm_incident_queue"], policies: ["kafarm incidents admin read all", "kafarm incidents owner read own"] },
@@ -817,7 +826,10 @@ export function KafarmCommandCenter() {
                 <p className="text-sm font-bold text-[#637064]">Pili muna ng tool para narrowed down agad ang issue.</p>
               </div>
             </div>
-            <Link href="/admin" className="rounded-2xl bg-[#0f3f2c] px-4 py-3 text-xs font-black text-white">Admin Home</Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/admin/kafarm/whole-app-reader" className="rounded-2xl bg-[#163d8f] px-4 py-3 text-xs font-black text-white">Whole-App Reader V2</Link>
+              <Link href="/admin" className="rounded-2xl bg-[#0f3f2c] px-4 py-3 text-xs font-black text-white">Admin Home</Link>
+            </div>
           </div>
         </header>
 
@@ -1563,7 +1575,7 @@ function getKaFarmToolFindings(tool: KaFarmToolKey, incidents: KaFarmIncident[])
     system: /system|runtime|fatal|stop|browser|access denied|permission|http|post code|post error|button|click|route|blank|overlay|blocked|performance|slow|404|500|error|failed|failure|crash|frontend|api|rpc/i,
     customer: /customer|client|wallet|payment|cash|withdraw|kyc|farm buy|inventory|inbox|support/i,
     caretaker: /caretaker|task|proof|qr|upload|resume|selfie|worker|backjob/i,
-    admin: /admin|approve|reject|decision|invoice|evidence|verification|desk/i,
+    admin: /admin|approve|reject|decision|invoice|evidence|verification/i,
     flow: /flow|customer.*admin|admin.*caretaker|caretaker.*customer|request|assignment|linked|bridge/i,
     production: /production|vercel|deploy|live|environment|env|browser|session|access denied|permission|http|post code|post error|webhook|storage|traffic|performance|slow|runtime|fatal|stop|overlay|button|click|route|scheduled|error|failed|failure|404|500/i,
   };
@@ -1657,8 +1669,9 @@ export function KafarmFocusPage({ slug }: { slug: string }) {
           setDbIncidents([]);
           return;
         }
-        setDbIncidents((data || []) as DbIncident[]);
-        setIncidentLoadNote(data?.length ? "DB monitor active. Saved incidents loaded from Supabase." : "DB monitor active. No saved incidents yet.");
+        const currentBuildIncidents = filterKaFarmIncidents((data || []) as DbIncident[]);
+        setDbIncidents(currentBuildIncidents);
+        setIncidentLoadNote(currentBuildIncidents.length ? "DB monitor active. Current-build incidents loaded from Supabase." : "DB monitor active. No current-build incidents yet.");
       });
 
     return () => {
@@ -1939,7 +1952,7 @@ function AskKaFarm({ question, setQuestion, analysis }: { question: string; setQ
 }
 
 function safeSteps(slug: string) {
-  if (slug === "approvals") return ["Open related desk", "Check evidence packet", "Write decision reason", "Complete only after admin approval"];
+  if (slug === "approvals") return ["Open related page", "Check evidence packet", "Write decision reason", "Complete only after admin approval"];
   if (slug === "qa-test-lab") return ["Run scenario manually", "Record blocker exactly", "Check linked role/page", "Create Buddy report if code/SQL issue"];
   if (slug === "database-health") return ["Run read-only SQL", "Compare missing tables/columns/functions", "Check RLS policy count", "Ask admin before fix SQL"];
   if (slug === "escalated-chats") return ["Read KaFarm summary", "Join chat only if needed", "Reply clearly", "End/complete with transcript"];

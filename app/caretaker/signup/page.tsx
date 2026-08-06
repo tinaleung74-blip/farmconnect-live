@@ -1,5 +1,5 @@
-import { CaretakerSignupPage } from "@/lib/farmconnect-v1";
+import { SecureCaretakerSignupPage } from "@/lib/farmconnect-unified-account-verification";
 
 export default function Page() {
-  return <CaretakerSignupPage />;
+  return <SecureCaretakerSignupPage />;
 }

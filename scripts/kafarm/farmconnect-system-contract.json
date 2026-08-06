@@ -1,0 +1,204 @@
+{
+  "contractVersion": "1.0.0",
+  "application": "FarmConnect",
+  "sourceOfTruth": "Supabase",
+  "roles": [
+    "customer",
+    "admin",
+    "caretaker"
+  ],
+  "safetyRules": [
+    "Do not approve KYC automatically",
+    "Do not move wallet money automatically",
+    "Do not release withdrawals automatically",
+    "Do not reveal passwords, PINs, tokens, or secrets",
+    "Do not mark fraud automatically",
+    "Do not change animal ownership automatically",
+    "Do not delete sensitive records automatically"
+  ],
+  "sensitiveTerms": [
+    "approve",
+    "approval",
+    "kyc",
+    "wallet",
+    "withdraw",
+    "payout",
+    "payment",
+    "ownership",
+    "fraud",
+    "pin",
+    "sql-gateway",
+    "service_role"
+  ],
+  "flows": [
+    {
+      "id": "customer_signup",
+      "name": "Customer signup and login",
+      "producerRole": "customer",
+      "receiverRoles": ["customer"],
+      "requiredSignals": [
+        {"id": "auth_signup", "label": "Supabase Auth signup", "any": ["signUp", "signup", "register"]},
+        {"id": "customer_profile", "label": "Customer profile", "any": ["profiles", "customer_profile", "customer profile"]},
+        {"id": "role_guard", "label": "Role and account status guard", "any": ["account_status", "role guardian", "requireRole", "role guard"]}
+      ]
+    },
+    {
+      "id": "farm_buy_manual_payment",
+      "name": "Farm Buy manual payment",
+      "producerRole": "customer",
+      "receiverRoles": ["admin", "customer"],
+      "requiredSignals": [
+        {"id": "cart", "label": "Customer cart", "any": ["cart", "farm buy"]},
+        {"id": "payment_request", "label": "Manual payment request record", "any": ["manual_payment", "payment request", "payment_requests"]},
+        {"id": "receipt_storage", "label": "Receipt evidence storage", "any": ["receipt", "payment proof", "proof_url"]},
+        {"id": "admin_payment_queue", "label": "Admin payment queue", "any": ["customer requests", "payment queue", "pending payment"]},
+        {"id": "invoice", "label": "Invoice or system receipt", "any": ["invoice", "system receipt"]},
+        {"id": "inventory", "label": "Customer inventory materialization", "any": ["inventory", "customer_inventory"]},
+        {"id": "notification", "label": "Customer notification", "any": ["notification", "inbox"]},
+        {"id": "audit", "label": "Decision audit", "any": ["audit", "activity_log", "decision_log"]}
+      ]
+    },
+    {
+      "id": "care_request",
+      "name": "Paid rooster care request",
+      "producerRole": "customer",
+      "receiverRoles": ["admin", "caretaker", "customer"],
+      "requiredSignals": [
+        {"id": "owned_rooster", "label": "Owned rooster selection", "any": ["customer_animals", "owned rooster", "animal_id", "rooster_id"]},
+        {"id": "care_request", "label": "Care request record", "any": ["care_request", "care request"]},
+        {"id": "payment_review", "label": "Payment approval dependency", "any": ["manual_payment", "payment_status", "payment approval"]},
+        {"id": "task_assignment", "label": "Admin task assignment", "any": ["assigned_caretaker", "task assignment", "care_tasks"]},
+        {"id": "proof", "label": "Caretaker proof submission", "any": ["task_proof", "proof_url", "proof submission"]},
+        {"id": "backjob", "label": "Backjob and resubmission", "any": ["backjob", "needs_revision", "resubmit"]},
+        {"id": "care_log", "label": "Customer care log", "any": ["care_log", "care logs"]},
+        {"id": "notification", "label": "Cross-role notification", "any": ["notification", "inbox"]}
+      ]
+    },
+    {
+      "id": "sell_rooster",
+      "name": "Sell rooster with inspection and payout",
+      "producerRole": "customer",
+      "receiverRoles": ["admin", "caretaker", "customer"],
+      "requiredSignals": [
+        {"id": "sell_request", "label": "Sell request", "any": ["sell_request", "sell rooster"]},
+        {"id": "inspection", "label": "Caretaker inspection", "any": ["inspection", "weight", "condition"]},
+        {"id": "selling_price", "label": "Admin selling price", "any": ["selling_price", "sale price"]},
+        {"id": "payout_proof", "label": "External payout proof", "any": ["payout_receipt", "payout proof", "payout_reference"]},
+        {"id": "ownership_transition", "label": "Post-payout ownership transition", "any": ["ownership", "owner_id", "customer_animals"]}
+      ]
+    },
+    {
+      "id": "withdrawal",
+      "name": "Customer withdrawal",
+      "producerRole": "customer",
+      "receiverRoles": ["admin", "customer"],
+      "requiredSignals": [
+        {"id": "payout_method", "label": "Saved payout method", "any": ["payout_method", "payout account"]},
+        {"id": "kyc_gate", "label": "KYC gate", "any": ["kyc_status", "kyc approved"]},
+        {"id": "balance_check", "label": "Available balance check", "any": ["available_balance", "wallet balance"]},
+        {"id": "withdrawal_request", "label": "Withdrawal request", "any": ["withdrawal_request", "withdrawal requests"]},
+        {"id": "real_reference", "label": "Admin-entered transfer reference", "any": ["transfer_reference", "payout_reference", "reference_number"]},
+        {"id": "payout_receipt", "label": "Payout receipt", "any": ["payout_receipt", "transfer proof"]},
+        {"id": "customer_confirmation", "label": "Customer confirmation or dispute", "any": ["confirm payout", "payout_confirmation", "incorrect payout"]}
+      ]
+    },
+    {
+      "id": "kyc",
+      "name": "Customer KYC",
+      "producerRole": "customer",
+      "receiverRoles": ["admin", "customer"],
+      "requiredSignals": [
+        {"id": "kyc_record", "label": "Private KYC record", "any": ["kyc_records", "kyc submission"]},
+        {"id": "id_files", "label": "ID front, back, and selfie", "any": ["id_front", "id_back", "selfie"]},
+        {"id": "consent", "label": "Consent", "any": ["consent"]},
+        {"id": "review", "label": "Admin review", "any": ["review_kyc", "kyc review"]},
+        {"id": "correction", "label": "Correction and resubmission", "any": ["needs_info", "needs_update", "resubmit"]},
+        {"id": "private_evidence", "label": "Private evidence storage", "any": ["signedUrl", "createSignedUrl", "private bucket"]}
+      ]
+    },
+    {
+      "id": "caretaker_registration",
+      "name": "Caretaker registration and account verification",
+      "producerRole": "caretaker",
+      "receiverRoles": ["admin", "caretaker"],
+      "requiredSignals": [
+        {"id": "permanent_link", "label": "Permanent registration link", "any": ["caretaker/signup", "registration link"]},
+        {"id": "application", "label": "Caretaker application", "any": ["caretaker_applications", "caretaker application"]},
+        {"id": "resume_selfie", "label": "Resume and selfie evidence", "any": ["resume", "selfie"]},
+        {"id": "account_review", "label": "Unified account verification", "any": ["account-verification", "account verification"]},
+        {"id": "role_activation", "label": "Caretaker role and active account", "any": ["account_status", "role", "caretakers"]},
+        {"id": "decision_history", "label": "Decision and resubmission history", "any": ["reviewed_by", "admin_note", "resubmit"]}
+      ]
+    },
+    {
+      "id": "caretaker_task_proof",
+      "name": "Caretaker task proof and backjob",
+      "producerRole": "caretaker",
+      "receiverRoles": ["admin", "customer", "caretaker"],
+      "requiredSignals": [
+        {"id": "assigned_task", "label": "Assigned task", "any": ["assigned task", "care_tasks", "assigned_caretaker"]},
+        {"id": "animal_verification", "label": "Rooster QR or serial verification", "any": ["qr", "serial", "animal verification"]},
+        {"id": "proof_attempt", "label": "Versioned proof attempt", "any": ["proof_attempt", "submission_attempt", "task proof"]},
+        {"id": "admin_review", "label": "Admin proof review", "any": ["proof review", "task verification"]},
+        {"id": "backjob", "label": "Backjob with instructions", "any": ["backjob", "needs_revision", "revision_note"]},
+        {"id": "customer_update", "label": "Customer care log and Inbox update", "any": ["care_log", "inbox", "notification"]}
+      ]
+    }
+  ],
+  "featureDependencies": [
+    {
+      "id": "rooster_qr_identity",
+      "name": "Rooster QR identity",
+      "required": true,
+      "producerSignals": ["generate qr", "qr maker", "qr_code", "qr_token"],
+      "storageSignals": ["qr_code", "qr_token", "qr_serial", "animal_serial"],
+      "consumerSignals": ["scan qr", "qr scanner", "BarcodeDetector", "getUserMedia"]
+    },
+    {
+      "id": "cross_role_notifications",
+      "name": "Cross-role notifications",
+      "required": true,
+      "producerSignals": ["insert notification", "notifications).insert", "create_notification", "notify"],
+      "storageSignals": ["notifications", "inbox_items"],
+      "consumerSignals": ["/customer/inbox", "inbox", "notification list"]
+    },
+    {
+      "id": "manual_payment_evidence",
+      "name": "Manual payment evidence",
+      "required": true,
+      "producerSignals": ["upload receipt", "payment proof", "receipt_url"],
+      "storageSignals": ["manual_payment", "receipt_path", "receipt_url"],
+      "consumerSignals": ["payment review", "admin payment", "customer requests"]
+    },
+    {
+      "id": "caretaker_task_proof_review",
+      "name": "Caretaker proof review",
+      "required": true,
+      "producerSignals": ["submit proof", "task_proof", "proof_url"],
+      "storageSignals": ["task_proof", "proof_attempt", "care_task"],
+      "consumerSignals": ["task verification", "proof review", "backjob"]
+    }
+  ],
+  "statusFamilies": [
+    {
+      "id": "caretaker_application",
+      "expected": ["pending_approval", "needs_info", "approved", "rejected"]
+    },
+    {
+      "id": "caretaker_resume_review",
+      "expected": ["pending", "needs_update", "reviewed", "rejected"]
+    },
+    {
+      "id": "task_lifecycle",
+      "expected": ["assigned", "in_progress", "under_review", "completed", "backjob"]
+    },
+    {
+      "id": "manual_payment",
+      "expected": ["pending", "needs_info", "approved", "rejected"]
+    },
+    {
+      "id": "account_status",
+      "expected": ["pending", "active", "blocked", "rejected"]
+    }
+  ]
+}

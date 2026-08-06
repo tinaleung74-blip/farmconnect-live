@@ -24,6 +24,15 @@ function formatResult(value: unknown) {
 }
 
 function gatewayErrorMessage(payload: { error?: string; hint?: string }, status: number) {
+  if (payload.error === "KAFARM_SQL_GATEWAY_LOCAL_ONLY") {
+    return "Blocked: KaFarm SQL Gateway is local-development only. Production uses allowlisted read-only diagnostics.";
+  }
+  if (payload.error === "KAFARM_SQL_GATEWAY_DISABLED") {
+    return "Blocked: KaFarm SQL Gateway is disabled.";
+  }
+  if (payload.error === "MISSING_GATEWAY_TOKEN_CONFIGURATION") {
+    return "Blocked: configure the local KaFarm gateway token before using this development tool.";
+  }
   if (payload.error === "INVALID_GATEWAY_TOKEN") {
     return "Blocked: gateway token mismatch. Paste the active token or restart the deployed environment after env changes.";
   }
@@ -43,7 +52,7 @@ export default function KaFarmSqlGatewayPage() {
   const [confirmDanger, setConfirmDanger] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState("");
-  const [status, setStatus] = useState("Paste SQL, choose mode, then run. Dev-only tool.");
+  const [status, setStatus] = useState("Local development only. Production SQL execution is hard-blocked.");
 
   const looksDangerous = useMemo(
     () => /\b(drop\s+table|truncate|delete\s+from|update\s+auth\.|alter\s+role)\b/i.test(sql),
@@ -97,7 +106,7 @@ export default function KaFarmSqlGatewayPage() {
               <p className="text-xs font-black uppercase text-amber-700">Temporary Dev Tool</p>
               <h1 className="mt-1 text-3xl font-black">KaFarm SQL Gateway</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-[#667267]">
-                FarmConnect-only gateway. Server-side service role only. Disable or delete before real production users.
+                Local-development gateway only. The server hard-blocks this endpoint outside localhost; production KaFarm uses allowlisted diagnostics.
               </p>
             </div>
             <Link href="/admin/kafarm" className="rounded-2xl bg-[#1f6b45] px-4 py-3 text-sm font-black text-white">
@@ -155,7 +164,7 @@ export default function KaFarmSqlGatewayPage() {
                   Confirm dangerous SQL if intentionally needed.
                 </label>
                 <p className="mt-3 text-xs font-bold leading-5 text-[#667267]">
-                  Read mode blocks writes. Destructive SQL is blocked unless confirmed and accepted by the server route.
+                  Production is always blocked. Local read mode blocks writes; dangerous local SQL still requires explicit confirmation.
                 </p>
               </div>
 

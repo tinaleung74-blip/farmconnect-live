@@ -109,7 +109,7 @@ Purpose: simple guide lang para madali mong i-revise.
   - Customer invoice
   - Customer payout
 
-- Money Desk
+- Payment and withdrawal review now live under Customer Requests Management.
   - Manual payment proof
   - Cash-in check
   - Withdrawal check

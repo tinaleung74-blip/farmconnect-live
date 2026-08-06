@@ -1,2 +1,2 @@
-import { AdminDesk } from "@/lib/farmconnect-v1";
-export default function Page(){ return <AdminDesk kind="money" />; }
+import { redirect } from "next/navigation";
+export default function Page(){ redirect("/admin/customer-requests/payment"); }

@@ -85,6 +85,10 @@ with expected(migration, kind, object_name) as (
     ('025_manual_payment_farm_buy_source_of_truth.sql','table','customer_animals'),
     ('025_manual_payment_farm_buy_source_of_truth.sql','table','customer_inventory_items'),
 
+    ('041_inbox_read_state.sql','column','inbox_items.is_read'),
+    ('041_inbox_read_state.sql','column','inbox_items.read_at'),
+    ('041_inbox_read_state.sql','function','customer_mark_inbox_item_read'),
+
     ('026_care_task_assignment_customer_animal_fk_fix.sql','function','admin_assign_care_request'),
     ('026_care_task_assignment_customer_animal_fk_fix.sql','table','caretaker_tasks'),
     ('026_care_task_assignment_customer_animal_fk_fix.sql','table','farm_care_requests'),
@@ -97,7 +101,41 @@ with expected(migration, kind, object_name) as (
     ('028_task_proof_task_id_alias_fix.sql','function','caretaker_submit_task_proof'),
     ('028_task_proof_task_id_alias_fix.sql','table','task_proofs'),
     ('028_task_proof_task_id_alias_fix.sql','column','task_proofs.task_id'),
-    ('028_task_proof_task_id_alias_fix.sql','column','task_proofs.caretaker_task_id')
+    ('028_task_proof_task_id_alias_fix.sql','column','task_proofs.caretaker_task_id'),
+
+    ('029_admin_required_diagnostics.sql','function','is_admin'),
+    ('029_admin_required_diagnostics.sql','function','admin_session_guard_status'),
+
+    ('033_caretaker_task_proof_storage.sql','bucket','caretaker-task-proofs'),
+    ('033_caretaker_task_proof_storage.sql','column','task_proofs.proof_file_urls'),
+    ('033_caretaker_task_proof_storage.sql','function','caretaker_submit_task_proof_v3'),
+
+    ('034_withdrawal_payout_proof_storage.sql','bucket','withdrawal-proofs'),
+
+    ('035_rooster_qr_identity_task_automation.sql','table','animal_qr_identities'),
+    ('035_rooster_qr_identity_task_automation.sql','table','animal_qr_events'),
+    ('035_rooster_qr_identity_task_automation.sql','column','customer_animals.qr_identity_id'),
+    ('035_rooster_qr_identity_task_automation.sql','column','caretaker_tasks.workflow_type'),
+    ('035_rooster_qr_identity_task_automation.sql','function','create_or_get_animal_qr_identity'),
+    ('035_rooster_qr_identity_task_automation.sql','function','create_qr_tagging_task_request'),
+    ('035_rooster_qr_identity_task_automation.sql','trigger','trg_read_approved_rooster_purchase'),
+    ('035_rooster_qr_identity_task_automation.sql','trigger','trg_read_assigned_qr_task_before')
+    ,('036_caretaker_task_submission_identity_fix.sql','function','caretaker_submit_task_proof')
+    ,('037_task_proof_id_compatibility_guard.sql','function','sync_task_proof_task_ids')
+    ,('037_task_proof_id_compatibility_guard.sql','trigger','trg_sync_task_proof_task_ids')
+    ,('039_task_proof_customer_release_fix.sql','function','task_proof_customer_release_version')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','table','rooster_sale_requests')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','table','rooster_sale_events')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','table','customer_payout_methods')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','column','customer_animals.sale_status')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','column','customer_animals.approved_sale_price')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','customer_request_rooster_sale_price')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','customer_confirm_rooster_sale')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','admin_review_rooster_sale')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','caretaker_submit_rooster_sale_task')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','customer_save_payout_method')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','customer_confirm_withdrawal_result')
+    ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','rooster_sale_workflow_version')
 ),
 object_status as (
   select
@@ -115,6 +153,9 @@ object_status as (
         select 1 from information_schema.routines
         where routine_schema = 'public'
           and routine_name = object_name
+        )
+      when kind = 'bucket' then exists (
+        select 1 from storage.buckets where id = object_name
       )
       when kind = 'column' then exists (
         select 1

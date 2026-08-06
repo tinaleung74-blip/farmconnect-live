@@ -146,7 +146,7 @@ const rules: Rule[] = [
     reply: "Withdrawal is sensitive. KYC must be approved, payout account must match, and wallet PIN trail must be checked. Admin ang final reviewer before release.",
     evidence: ["KYC status", "payout account", "wallet balance", "withdrawal request", "admin transfer proof", "receipt/invoice"],
     followUp: ["Magkano withdrawal?", "Anong payout method?", "Approved na ba KYC?", "May saved payout account na ba?"],
-    routes: { customer: "/customer/withdraw", admin: "/admin/customer-desk/withdraw" },
+    routes: { customer: "/customer/withdraw", admin: "/admin/customer-requests/withdraw" },
   },
   {
     intent: "wallet_pin",
@@ -155,7 +155,7 @@ const rules: Rule[] = [
     needsAdmin: true,
     reply: "Wallet PIN is protected. Change PIN needs current PIN. If forgotten, admin reset is required, then customer must log in again and set a new PIN. Money and locked savings should not move.",
     evidence: ["PIN change attempt", "failed attempt count", "admin reset log", "forced logout log"],
-    routes: { customer: "/customer/settings", admin: "/admin/customer-desk/security" },
+    routes: { customer: "/customer/settings", admin: "/admin/customer-requests/security" },
   },
   {
     intent: "locked_savings",
@@ -173,7 +173,7 @@ const rules: Rule[] = [
     reply: "KYC concern ito. Complete ID front/back, selfie, address, birthdate, and payout name. System can flag mismatch, but admin ang final reviewer.",
     evidence: ["KYC consent", "ID front", "ID back", "selfie", "legal name", "birthdate", "address", "duplicate check"],
     followUp: ["Anong ID type?", "Kita ba buong ID number?", "Same ba name at birthday?", "Malinaw ba selfie?"],
-    routes: { customer: "/customer/settings", admin: "/admin/customer-desk/kyc" },
+    routes: { customer: "/customer/settings", admin: "/admin/customer-requests/kyc" },
   },
   {
     intent: "profile_settings",
@@ -198,7 +198,7 @@ const rules: Rule[] = [
     keywords: [/care request|farm request|request care|vitamins|premium feed|health check|vet|photo update|video proof|vaccine|weight check|pacheck|pa check|pakain|painom|pavideo|papicture|paalaga/i],
     reply: "For care request: choose rooster, choose service, add note, then submit/pay. Admin assigns to caretaker, then caretaker uploads proof for review.",
     evidence: ["care request", "payment/invoice", "customer note", "assigned caretaker", "task proof"],
-    routes: { customer: "/customer/farm-requests", admin: "/admin/customer-desk/care" },
+    routes: { customer: "/customer/farm-requests", admin: "/admin/customer-requests/care" },
   },
   {
     intent: "care_logs",
@@ -230,7 +230,7 @@ const rules: Rule[] = [
     needsAdmin: true,
     reply: "Possible wrong rooster/customer is high risk. Stop the task/update first. Admin must compare QR/serial, owner, caretaker proof, and care request.",
     evidence: ["rooster QR/serial", "owner profile", "caretaker proof", "care request", "pen location", "photo/video proof"],
-    routes: { admin: "/admin/customer-desk/care" },
+    routes: { admin: "/admin/customer-requests/care" },
   },
   {
     intent: "caretaker_quality",
@@ -239,7 +239,7 @@ const rules: Rule[] = [
     needsAdmin: true,
     reply: "Caretaker concern ito. Admin needs original request, assigned caretaker, proof uploads, time submitted, and customer note before deciding.",
     evidence: ["assigned caretaker", "task record", "proof uploads", "customer note", "care logs", "admin review"],
-    routes: { admin: "/admin/caretaker-desk" },
+    routes: { admin: "/admin/caretaker-management" },
   },
   {
     intent: "qr_camera",
@@ -274,7 +274,7 @@ const rules: Rule[] = [
     needsAdmin: true,
     reply: "Payroll is admin-side. Check caretaker attendance, present/absent days, daily rate, payout mode, and payroll receipt before sending salary.",
     evidence: ["attendance", "daily rate", "payroll period", "payout method", "receipt"],
-    routes: { admin: "/admin/caretaker-desk" },
+    routes: { admin: "/admin/caretaker-management" },
   },
   {
     intent: "admin_operator",
@@ -341,7 +341,7 @@ const rules: Rule[] = [
     reply: "Password safety mode. Hindi pwedeng kunin o makita ang password ng customer. Safe process lang: send password reset flow, verify account ownership, log admin action, and never expose password. Kung wallet PIN ang issue, separate reset flow with forced logout and no money movement.",
     evidence: ["account identity", "reset request", "admin action log", "forced logout if wallet PIN", "support transcript"],
     followUp: ["Login password ba or wallet PIN?", "Verified ba owner ng account?", "Need ba reset link or admin PIN reset flow?"],
-    routes: { admin: "/admin/customer-desk/security" },
+    routes: { admin: "/admin/customer-requests/security" },
     adminSummary: "Password or PIN request. Never reveal stored credentials. Use reset flow and audit log only.",
     incidentSteps: [
       "Identify whether this is login password or wallet PIN.",
@@ -358,7 +358,7 @@ const rules: Rule[] = [
     reply: "Customer scope mode. Kailangan malaman kung isolated account issue or system-wide issue. Check: customer name/email/id, role, last action, device/browser if available, same issue from other users, and related DB records.",
     evidence: ["customer profile", "support chat", "last action", "affected route", "related transaction/task/KYC", "other reports with same issue"],
     followUp: ["May customer name/email ba?", "Isa lang ba or may ibang report?", "Anong feature ang affected?"],
-    routes: { admin: "/admin/customer-desk" },
+    routes: { admin: "/admin/customer-requests" },
     incidentSteps: incidentTriageSteps,
   },
   {
@@ -383,7 +383,7 @@ const rules: Rule[] = [
     needsAdmin: true,
     reply: "Possible fraud/security case ito. Do not approve, release money, or change ownership yet. Admin must review identity, duplicate records, wallet trail, and evidence.",
     evidence: ["KYC duplicate check", "wallet/reference trail", "account login/profile", "support chat", "admin decision log"],
-    routes: { admin: "/admin/customer-desk/security" },
+    routes: { admin: "/admin/customer-requests/security" },
   },
   {
     intent: "angry_legal",

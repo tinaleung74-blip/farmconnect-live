@@ -16,7 +16,10 @@ const destructivePatterns = [
 ];
 
 function json(status: number, body: Record<string, unknown>) {
-  return NextResponse.json(body, { status });
+  const response = NextResponse.json(body, { status });
+  response.headers.set("cache-control", "no-store, max-age=0");
+  response.headers.set("pragma", "no-cache");
+  return response;
 }
 
 function sqlPreview(sql: string) {
@@ -38,23 +41,31 @@ export async function POST(request: NextRequest) {
     return json(403, { ok: false, error: "KAFARM_SQL_GATEWAY_DISABLED" });
   }
 
+  // This arbitrary SQL runner is a local development tool only. KaFarm production
+  // diagnostics must use the allowlisted read-only RPCs instead.
+  if (!isLocalhost) {
+    return json(403, { ok: false, error: "KAFARM_SQL_GATEWAY_LOCAL_ONLY" });
+  }
+
+  if (!expectedToken) {
+    return json(503, { ok: false, error: "MISSING_GATEWAY_TOKEN_CONFIGURATION" });
+  }
+
   if (configuredUrl !== FARMCONNECT_PROJECT_URL) {
-    return json(403, { ok: false, error: "PROJECT_URL_NOT_FARMCONNECT", configuredUrl });
+    return json(403, { ok: false, error: "PROJECT_URL_NOT_FARMCONNECT" });
   }
 
   if (!serviceRoleKey) {
     return json(500, { ok: false, error: "MISSING_SUPABASE_SERVICE_ROLE_KEY" });
   }
 
-  if (expectedToken && !isLocalhost) {
-    const sentToken = (request.headers.get("x-kafarm-gateway-token") || "").trim();
-    if (sentToken !== expectedToken) {
-      return json(401, {
-        ok: false,
-        error: "INVALID_GATEWAY_TOKEN",
-        hint: "Paste the KAFARM_SQL_GATEWAY_TOKEN from the active deployment environment.",
-      });
-    }
+  const sentToken = (request.headers.get("x-kafarm-gateway-token") || "").trim();
+  if (sentToken !== expectedToken) {
+    return json(401, {
+      ok: false,
+      error: "INVALID_GATEWAY_TOKEN",
+      hint: "Use the local FarmConnect KaFarm gateway token.",
+    });
   }
 
   const authHeader = request.headers.get("authorization") || "";
@@ -82,12 +93,12 @@ export async function POST(request: NextRequest) {
     return json(500, { ok: false, error: "ADMIN_PROFILE_CHECK_FAILED", detail: profileError.message });
   }
 
-  if (!profile || profile.role !== "admin" || String(profile.account_status || "").toLowerCase() !== "active") {
-    return json(403, {
-      ok: false,
-      error: "ADMIN_ACTIVE_PROFILE_REQUIRED",
-      profile: profile ? { email: profile.email, role: profile.role, account_status: profile.account_status } : null,
-    });
+  if (
+    !profile ||
+    String(profile.role || "").toLowerCase() !== "admin" ||
+    String(profile.account_status || "").toLowerCase() !== "active"
+  ) {
+    return json(403, { ok: false, error: "ADMIN_ACTIVE_PROFILE_REQUIRED" });
   }
 
   let body: { sql?: string; mode?: GatewayMode; confirmDanger?: boolean };
@@ -98,7 +109,13 @@ export async function POST(request: NextRequest) {
   }
 
   const sql = String(body.sql || "").trim();
-  const mode = body.mode || "read";
+  const requestedMode = String(body.mode || "read").toLowerCase();
+
+  if (!["read", "write", "migration"].includes(requestedMode)) {
+    return json(400, { ok: false, error: "INVALID_GATEWAY_MODE" });
+  }
+
+  const mode = requestedMode as GatewayMode;
 
   if (!sql) {
     return json(400, { ok: false, error: "EMPTY_SQL" });
@@ -149,8 +166,6 @@ export async function POST(request: NextRequest) {
 
   return json(200, {
     ok: true,
-    projectUrl: FARMCONNECT_PROJECT_URL,
-    admin: { email: profile.email, id: profile.id },
     mode,
     durationMs,
     preview: sqlPreview(sql),

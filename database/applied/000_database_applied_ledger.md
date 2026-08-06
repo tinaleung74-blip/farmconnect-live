@@ -398,3 +398,199 @@ Verified:
 - Caretaker can submit proof.
 - Admin can approve proof.
 - Customer receives inbox care update.
+
+## 29. Admin Required Diagnostics
+
+Status: **Applied**
+
+File:
+
+- `database/applied/029_admin_required_diagnostics.sql`
+
+Purpose:
+
+- Keep admin authorization strict through `profiles.auth_user_id = auth.uid()`.
+- Recreate `is_admin()` with the strict active-admin profile check.
+- Add `admin_session_guard_status()` so `ADMIN_REQUIRED` can be diagnosed without guessing.
+
+Expected success output:
+
+- `admin_required_diagnostics_ready = 2`
+
+Notes:
+
+- This does not broaden admin access by email fallback.
+- If admin review still says `ADMIN_REQUIRED`, run:
+  - `select public.admin_session_guard_status();`
+  - It will show whether the current auth session has no profile, wrong role, inactive status, or active admin session.
+
+## 33. Caretaker Task Proof Storage
+
+Status: **Applied**
+
+File:
+
+- `database/applied/033_caretaker_task_proof_storage.sql`
+
+Purpose:
+
+- Store caretaker task photos in a private Supabase bucket.
+- Save all linked proof paths on `task_proofs`.
+- Allow caretaker upload, admin review, and approved customer read only.
+- Add the QR-gated `caretaker_submit_task_proof_v3` RPC.
+
+Expected success output:
+
+- `caretaker_task_proof_storage_ready = 1`
+- `caretaker_task_proof_v3_ready = 1`
+
+Verified by owner:
+
+- `caretaker_task_proof_storage_ready = 1`
+- `caretaker_task_proof_v3_ready = 1`
+
+## 34. Withdrawal Payout Proof Storage
+
+Status: **Applied**
+
+File:
+
+- `database/applied/034_withdrawal_payout_proof_storage.sql`
+
+Purpose:
+
+- Store the admin's real external payout receipt in a private Supabase bucket.
+- Allow admin upload/review and linked customer read only.
+- Keep the receipt path attached to `withdrawal_requests.admin_receipt_url`.
+
+Expected success output:
+
+- `withdrawal_payout_proof_storage_ready = 1`
+
+## 35. Rooster QR Identity and Task Automation
+
+Status: **Pending run**
+
+File:
+
+- `database/applied/035_rooster_qr_identity_task_automation.sql`
+
+Purpose:
+
+- Read approved Farm Buy rooster ownership records.
+- Create one stable QR identity and one system-generated QR Tagging request per rooster.
+- Mark assigned QR Tagging tasks as documentation/photo-only with no QR scan step.
+- Activate the rooster QR only after admin approves caretaker proof.
+- Keep QR lifecycle events and prevent duplicate identities, requests, and fulfillment.
+
+Expected success output:
+
+- `approved_purchase_reader_ready = 1`
+- `assigned_qr_task_reader_ready = 1`
+- `qr_identity_engine_ready = 1`
+- `qr_task_engine_ready = 1`
+- `qr_identity_table_ready = 1`
+
+## 36. Caretaker Task Submission Identity Fix
+
+Status: **Pending run**
+
+File:
+
+- `database/applied/036_caretaker_task_submission_identity_fix.sql`
+
+Purpose:
+
+- Use the caretaker assigned on the task as the submission source of truth.
+- Support accounts that still have multiple legacy caretaker rows.
+- Preserve QR-tagging documentation/photo submission and admin verification.
+
+Expected success output:
+
+- `caretaker_task_submission_identity_fix_ready >= 1`
+
+## 37. Task Proof ID Compatibility Guard
+
+Status: **Pending run**
+
+File:
+
+- `database/applied/037_task_proof_id_compatibility_guard.sql`
+
+Purpose:
+
+- Synchronize legacy `task_id` and canonical `caretaker_task_id` automatically.
+- Prevent proof submission failures when old and new task-proof code paths coexist.
+- Repair existing records that have only one of the two task identifiers.
+
+Expected success output:
+
+- `task_proof_id_compatibility_guard_ready = 1`
+
+Verified output:
+
+- `approved_purchase_reader_ready = 1`
+- `assigned_qr_task_reader_ready = 1`
+- `qr_identity_engine_ready = 1`
+- `qr_task_engine_ready = 1`
+- `qr_identity_table_ready = 1`
+## 038_admin_rls_helper_execute_grant.sql
+
+Status: Applied
+
+Purpose:
+
+- Restore authenticated execute permission for `is_admin()` and `current_profile_id()` used by RLS policies.
+- Allow a real active admin session to read caretaker proof submissions without broadening admin authority.
+
+Expected success output:
+
+- `admin_rls_helper_execute_ready = 1`
+
+## 039_task_proof_customer_release_fix.sql
+
+Status: Pending run
+
+Purpose:
+
+- Use the assigned caretaker task as the authoritative customer link during proof review.
+- Release approved caretaker proof to the correct customer Inbox and Care Logs.
+- Backfill already-approved proof records whose customer update was missing.
+
+Expected success output:
+
+- `task_proof_customer_release_ready = 1`
+
+## 040_rooster_sale_and_withdrawal_confirmation.sql
+
+Status: **APPLIED** (owner-confirmed; all five verification checks returned `count = 1`)
+
+Purpose:
+
+- Turn the My Roosters Sell button into a two-stage caretaker and admin workflow.
+- Save the approved sale price before the customer confirms a final sale.
+- Remove the sold rooster and credit the customer wallet exactly once only after final caretaker proof approval.
+- Save customer payout methods, hold withdrawal funds at request time, attach admin payout receipt/reference, and require customer confirmation.
+- Keep sale, wallet, withdrawal, inbox, and evidence records connected.
+
+Expected success output:
+
+- `rooster_sale_workflow_ready = 1`
+- `rooster_sale_requests_ready = 1`
+- `withdrawal_customer_confirmation_ready = 1`
+- `customer_payout_methods_ready = 1`
+- `customer_save_payout_method_ready = 1`
+
+## 041_inbox_read_state.sql
+
+Status: **Applied**
+
+Purpose:
+
+- Persist customer Inbox read/unread state across refreshes and devices.
+- Clear the Inbox notification badge when the customer opens or marks an owned item as read.
+- Prevent one customer from marking another customer's Inbox record.
+
+Expected success output:
+
+- `inbox_read_state_ready = 1`
