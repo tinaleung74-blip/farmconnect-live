@@ -1,23 +1,35 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { getAdminEscalatedChats, getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, runAdminSupportAction, saveKaFarmSupportMessage, sendSupportMessage } from "@/lib/backend/support-chat";
 import { getEscalationNotice, getKaFarmReply, shouldEscalateToAdmin } from "@/lib/kafarm-brain";
-import { adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewTaskProof, checkoutFarmCart, createCareRequest, getAdminCareRequests, getAdminManualPaymentRequests, getAdminTaskProofs, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCurrentProfile, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getFarmProducts, getInboxItems, getWalletTransactions, saveCartItem, submitCaretakerApplication, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, type CareLogRecord } from "@/lib/farmconnect-data";
+import { adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewRoosterSale, adminReviewTaskProof, checkoutFarmCart, confirmRoosterSale, confirmWithdrawalResult, createCareRequest, createPrivateEvidenceUrl, getActiveCaretakersForAssignment, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCurrentProfile, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord } from "@/lib/farmconnect-data";
 import { supabase } from "@/lib/supabase";
 
 type Role = "customer" | "caretaker" | "admin";
 type IconName =
   | "home" | "rooster" | "bag" | "clipboard" | "wallet" | "inbox" | "support"
-  | "settings" | "logout" | "check" | "camera" | "qr" | "upload" | "user"
+  | "settings" | "logout" | "check" | "camera" | "qr" | "upload" | "download" | "user"
   | "users" | "coins" | "shield" | "search" | "chat" | "file" | "alert" | "eye" | "eyeOff" | "trash";
 
 const peso = (value: number) =>
   value.toLocaleString("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 0 });
 const fcCoin = (value: number) => value.toLocaleString("en-PH", { maximumFractionDigits: 0 });
+
+function readableAppError(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const value = error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown };
+    return [value.message, value.details, value.hint, value.code]
+      .filter(item => typeof item === "string" && item.trim())
+      .join(" | ");
+  }
+  return typeof error === "string" ? error : "";
+}
 
 const iconPath: Record<IconName, string> = {
   home: "M3 11l9-8 9 8v10h-6v-6H9v6H3z",
@@ -33,6 +45,7 @@ const iconPath: Record<IconName, string> = {
   camera: "M4 7h4l2-2h4l2 2h4v13H4z M12 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
   qr: "M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 14h2v6h-4v-2h2z M14 18h2v2h-2z",
   upload: "M12 16V4 M7 9l5-5 5 5 M5 20h14",
+  download: "M12 4v12 M7 11l5 5 5-5 M5 20h14",
   user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0",
   users: "M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M2 21a7 7 0 0 1 14 0 M17 11a3 3 0 1 0 0-6 M16 18a6 6 0 0 1 6 3",
   coins: "M12 6c4 0 7-1 7-3s-3-3-7-3-7 1-7 3 3 3 7 3z M5 6v4c0 2 3 3 7 3s7-1 7-3V6 M5 13v4c0 2 3 3 7 3s7-1 7-3v-4",
@@ -99,8 +112,8 @@ const nav = {
   ],
   admin: [
     ["Dashboard", "/admin", "home"],
-    ["Customer Requests", "/admin/customer-desk", "clipboard"],
-    ["Caretaker Management", "/admin/caretaker-desk", "user"],
+    ["Customer Requests", "/admin/customer-requests", "clipboard"],
+    ["Caretaker Management", "/admin/caretaker-management", "user"],
     ["Farm Operations", "/admin/farm-operations", "rooster"],
     ["Issue Management", "/admin/issue-management", "alert"],
     ["Account Verification", "/admin/account-verification", "shield"],
@@ -167,7 +180,11 @@ function isRealOwnedAnimal(row: any) {
   return Boolean(row?.id && (source === "farm_buy" || source.includes("admin") || hasEvidence));
 }
 
-type RoosterCard = typeof roosters[number];
+type RoosterCard = typeof roosters[number] & {
+  saleStatus?: string;
+  approvedSalePrice?: number | null;
+  ownershipMetadata?: Record<string, unknown>;
+};
 
 const services = [
   { name: "Photo Update", category: "Update", price: 0, proof: "Clear photo proof", eta: "Today" },
@@ -194,16 +211,49 @@ const inboxItems = [
   { tab: "Alerts", title: "Withdrawal Review", text: "Your withdrawal is being reviewed for safety.", status: "Pending", action: "read" },
 ];
 
-const initialTasks = [
-  { id: "t1", requester: "Aydana", rooster: "Thunder King", tag: "FC-128", task: "Photo Update", due: "Today 4 PM", priority: "urgent", note: "Please take close-up photo of wings and feet.", pen: "Pen A-04", proof: "Photo proof", status: "Active" },
-  { id: "t2", requester: "Marco", rooster: "Red Ace", tag: "FC-212", task: "Give Vitamins", due: "Today 5 PM", priority: "normal", note: "Check appetite after vitamins.", pen: "Brooder B-02", proof: "Product photo + prepared dose", status: "Active" },
-  { id: "t3", requester: "Admin", rooster: "Bantay", tag: "FC-301", task: "Weight Check", due: "Tomorrow", priority: "normal", note: "Prepare sell readiness record.", pen: "Pen C-01", proof: "Scale photo", status: "Active" },
-];
+type CaretakerTaskView = {
+  id: string;
+  requester: string;
+  rooster: string;
+  tag: string;
+  task: string;
+  due: string;
+  priority: string;
+  note: string;
+  pen: string;
+  proof: string;
+  status: string;
+  ownerReference: string;
+  workflowType: string;
+  qrScanRequired: boolean;
+  qrPayload: string;
+  taskMetadata: Record<string, unknown>;
+  db: true;
+};
 
-const completedTasks = [
-  { rooster: "Thunder King", task: "Morning Feeding", time: "Today 7:30 AM", status: "Verified", image: "/farmconnect/marketplace/fc-product-feeds.jpg" },
-  { rooster: "Red Ace", task: "Photo Update", time: "Yesterday 5:20 PM", status: "Waiting Review", image: "/farmconnect/roosters/fc-stage-1-chick-base.jpg" },
-];
+function mapCaretakerTaskRow(row: any): CaretakerTaskView {
+  return {
+    id: row.id,
+    requester: row.requester_name || row.owner_name || row.customer_name || "Customer",
+    rooster: row.rooster_name || "Rooster",
+    tag: row.rooster_tag || "No tag",
+    task: row.task_type || "Care Task",
+    due: row.due_at ? new Date(row.due_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "No deadline",
+    priority: row.priority || "normal",
+    note: row.customer_note || row.admin_note || "No instruction was attached.",
+    pen: row.pen || "Pen not specified",
+    proof: row.required_proof || "Photo and work note",
+    status: row.status || "active",
+    ownerReference: row.profile_id ? `Account ${String(row.profile_id).slice(0, 8).toUpperCase()}` : "Customer account",
+    workflowType: row.workflow_type || "standard_care",
+    qrScanRequired: row.qr_scan_required !== false,
+    qrPayload: row.qr_payload || "",
+    taskMetadata: row.task_metadata || {},
+    db: true,
+  };
+}
+
+const completedTasks: Array<{ rooster: string; task: string; time: string; status: string; image: string }> = [];
 type SubmittedTaskProof = {
   id: string;
   requester: string;
@@ -224,7 +274,7 @@ function getSubmittedTaskProofs(): SubmittedTaskProof[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(window.localStorage.getItem(submittedProofKey) || "[]"); } catch { return []; }
 }
-function saveSubmittedTaskProof(task: typeof initialTasks[number]) {
+function saveSubmittedTaskProof(task: CaretakerTaskView) {
   const submittedAt = new Date().toLocaleString();
   const record: SubmittedTaskProof = {
     id: `proof-${task.id}-${Date.now()}`,
@@ -278,18 +328,43 @@ const customerNavCardStyle: Record<string, { bg: string; border: string; chip: s
   "Wallet": { bg: "linear-gradient(135deg, #dff0ff 0%, #e7ffe0 52%, #fff17a 100%)", border: "#0d4fb3", chip: "#dceaff", text: "#102b4a" },
 };
 function Shell({ role, title, children }: { role: Role; title: string; children: React.ReactNode }) {
+  const router = useRouter();
   const links = nav[role];
   const headerLinks = role === "admin" ? links.filter(([label]) => ["Dashboard", "Customer Requests", "Caretaker Management", "Farm Operations", "Issue Management", "Account Verification"].includes(label)) : links;
   const [inboxCount,setInboxCount]=useState(0);
+  const [accessReady,setAccessReady]=useState(false);
+  useEffect(()=>{
+    let mounted = true;
+    getCurrentProfile()
+      .then(profile=>{
+        if (!mounted) return;
+        const allowed = String(profile?.role || "").toLowerCase() === role && String(profile?.account_status || "").toLowerCase() === "active";
+        if (allowed) setAccessReady(true);
+        else router.replace("/");
+      })
+      .catch(()=>{ if (mounted) router.replace("/"); });
+    return ()=>{ mounted=false; };
+  },[role,router]);
   useEffect(()=>{
     if (role !== "customer") return;
     let mounted = true;
-    getCurrentProfile()
+    const refreshInboxCount = () => getCurrentProfile()
       .then(profile=>profile ? getInboxItems(profile.id) : [])
-      .then(rows=>{ if(mounted) setInboxCount((rows || []).length); })
+      .then(rows=>{ if(mounted) setInboxCount((rows || []).filter((row:any)=>!row.is_read).length); })
       .catch(()=>{ if(mounted) setInboxCount(0); });
-    return ()=>{ mounted = false; };
+    void refreshInboxCount();
+    const interval = window.setInterval(refreshInboxCount, 10000);
+    const refreshOnFocus = () => void refreshInboxCount();
+    window.addEventListener("focus", refreshOnFocus);
+    window.addEventListener("farmconnect:inbox-changed", refreshOnFocus);
+    return ()=>{
+      mounted = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshOnFocus);
+      window.removeEventListener("farmconnect:inbox-changed", refreshOnFocus);
+    };
   }, [role, title]);
+  if (!accessReady) return <main className="grid min-h-screen place-items-center bg-[#f6f3e8]"><div className="rounded-2xl bg-white p-6 text-center shadow-sm"><p className="text-sm font-black uppercase text-[#1f6b45]">Checking account access</p><p className="mt-2 text-sm font-bold text-[#667267]">Ka-Farm is verifying your active {role} session.</p></div></main>;
   return (
     <main className="min-h-screen bg-[#f6f3e8] bg-cover bg-center bg-no-repeat text-[#17251d]" style={{ backgroundImage: "linear-gradient(180deg, rgba(255,253,247,0.20), rgba(246,243,232,0.14)), linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.09)), radial-gradient(circle at top left, rgba(255,191,55,0.12), transparent 34%), radial-gradient(circle at bottom right, rgba(31,107,69,0.12), transparent 38%), url('/farmconnect/farmconnect-hero-wallpaper.jpg')", backgroundAttachment: "fixed" }}>
       <header className="sticky top-0 z-40 border-b-4 border-[#ffd43b] bg-gradient-to-r from-[#075c3a]/95 via-[#0b6fba]/94 to-[#075c3a]/95 text-white shadow-[0_12px_35px_rgba(7,92,58,0.24)] backdrop-blur-md">
@@ -418,6 +493,9 @@ export function CustomerRoosters() {
             image: "/farmconnect/roosters/fc-stage-1-chick-base.jpg",
             pen: "Pending assignment",
             caretaker: "Pending assignment",
+            saleStatus: row.sale_status || "not_listed",
+            approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price),
+            ownershipMetadata: row.ownership_metadata || {},
           };
         });
         setOwnedRoosters(mapped);
@@ -435,7 +513,88 @@ export function CustomerRoosters() {
     return () => { mounted = false; };
   }, []);
 
-  return <Shell role="customer" title="My Roosters"><PageTitle title="My Roosters" text="Tap a rooster to view ownership details, care status, value, and next actions." icon="rooster" /><div className="grid gap-5 lg:grid-cols-[380px_1fr]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Rooster List</h2><Badge>{ownedRoosters.length}</Badge></div><div className="mt-4 max-h-[620px] space-y-3 overflow-y-auto pr-2">{isLoading && <div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 text-sm font-bold text-[#667267]">Loading your rooster records...</div>}{!isLoading && ownedRoosters.length === 0 && <div className="rounded-2xl border border-dashed border-[#d8d0bd] bg-[#fffdf7] p-5 text-center"><h3 className="text-lg font-black">No roosters yet</h3><p className="mt-2 text-sm font-bold text-[#667267]">Approved Farm Buy purchases or admin-assigned roosters will appear here.</p><Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Go to Farm Buy</Link></div>}{ownedRoosters.map(r=><button key={r.id} onClick={()=>setSelected(r)} className={"flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition " + (selected?.id===r.id?"border-[#1f6b45] bg-emerald-50 shadow-sm":"border-[#ece6d8] bg-[#fffdf7] hover:border-[#cfc7b7]")}><RoosterPhoto src={r.image} alt={r.name} size="thumb" /><div className="min-w-0 flex-1"><b className="block truncate">{r.name}</b><p className="truncate text-sm font-black text-[#1f6b45]">{r.breed}</p><p className="truncate text-sm font-bold text-[#667267]">{r.tag} - {r.stage}</p><p className="mt-1 truncate text-xs text-[#667267]">{r.pen}</p></div><Badge tone={r.health==="Excellent"?"good":"neutral"}>{r.health}</Badge></button>)}</div></Card><Card>{selected ? <div className="grid gap-5 xl:grid-cols-[minmax(300px,0.95fr)_1fr]"><RoosterPhoto src={selected.image} alt={selected.name} size="hero" /><div className="flex min-w-0 flex-col"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-black uppercase text-[#667267]">Owned Rooster</p><h2 className="mt-1 text-4xl font-black leading-tight">{selected.name}</h2><p className="mt-1 text-lg font-black text-[#1f6b45]">{selected.breed}</p><p className="mt-2 font-bold text-[#667267]">{selected.tag} - {selected.stage}</p></div><Badge tone={selected.status==="For Sale"?"warn":"good"}>{selected.status}</Badge></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="Bloodline / Breed" value={selected.breed} /><Info label="Estimated Value" value={selected.value} /><Info label="Health" value={selected.health} /><Info label="Pen" value={selected.pen} /><Info label="Caretaker" value={selected.caretaker} /></div><div className="mt-5 rounded-2xl border border-[#e3ded0] bg-[#fffdf7] p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Latest Care Status</p><h3 className="mt-1 text-xl font-black">{selected.health === "New" ? "New purchase" : "Verified today"}</h3></div><Badge tone="good">{selected.health === "New" ? "Needs farm assignment" : "Good condition"}</Badge></div><div className="mt-3 grid gap-2 text-sm font-bold text-[#667267] sm:grid-cols-3"><span>Source: Farm Buy</span><span>Proof: Receipt in Inbox</span><span>Next: Admin assignment</span></div></div><div className="mt-auto flex flex-wrap gap-3 pt-5"><Link href="/customer/farm-requests" className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Request Care</Link><Link href="/customer/care-logs" className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Care Logs</Link><Link href="/customer/farm-requests" className="rounded-xl bg-amber-300 px-4 py-3 font-black">Sell</Link></div></div></div> : <div className="grid min-h-[420px] place-items-center rounded-3xl border border-dashed border-[#d8d0bd] bg-[#fffdf7] p-8 text-center"><div><RoosterPhoto src="/farmconnect/icons/my-rooster.png" alt="" size="thumb" /><h2 className="mt-4 text-3xl font-black">Your rooster record is empty</h2><p className="mx-auto mt-3 max-w-md font-bold text-[#667267]">Once admin approves a Farm Buy payment or assigns a rooster to your account, the rooster card, breed, care status, and value will show here.</p><Link href="/customer/farm-buy" className="mt-5 inline-flex rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">Buy First Rooster</Link></div></div>}</Card></div></Shell>;
+  return <Shell role="customer" title="My Roosters"><PageTitle title="My Roosters" text="Tap a rooster to view ownership details, care status, value, and next actions." icon="rooster" /><div className="grid gap-5 lg:grid-cols-[380px_1fr]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Rooster List</h2><Badge>{ownedRoosters.length}</Badge></div><div className="mt-4 max-h-[620px] space-y-3 overflow-y-auto pr-2">{isLoading && <div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 text-sm font-bold text-[#667267]">Loading your rooster records...</div>}{!isLoading && ownedRoosters.length === 0 && <div className="rounded-2xl border border-dashed border-[#d8d0bd] bg-[#fffdf7] p-5 text-center"><h3 className="text-lg font-black">No roosters yet</h3><p className="mt-2 text-sm font-bold text-[#667267]">Approved Farm Buy purchases or admin-assigned roosters will appear here.</p><Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Go to Farm Buy</Link></div>}{ownedRoosters.map(r=><button key={r.id} onClick={()=>setSelected(r)} className={"flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition " + (selected?.id===r.id?"border-[#1f6b45] bg-emerald-50 shadow-sm":"border-[#ece6d8] bg-[#fffdf7] hover:border-[#cfc7b7]")}><RoosterPhoto src={r.image} alt={r.name} size="thumb" /><div className="min-w-0 flex-1"><b className="block truncate">{r.name}</b><p className="truncate text-sm font-black text-[#1f6b45]">{r.breed}</p><p className="truncate text-sm font-bold text-[#667267]">{r.tag} - {r.stage}</p><p className="mt-1 truncate text-xs text-[#667267]">{r.pen}</p></div><Badge tone={r.health==="Excellent"?"good":"neutral"}>{r.health}</Badge></button>)}</div></Card><Card>{selected ? <div className="grid gap-5 xl:grid-cols-[minmax(300px,0.95fr)_1fr]"><RoosterPhoto src={selected.image} alt={selected.name} size="hero" /><div className="flex min-w-0 flex-col"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-black uppercase text-[#667267]">Owned Rooster</p><h2 className="mt-1 text-4xl font-black leading-tight">{selected.name}</h2><p className="mt-1 text-lg font-black text-[#1f6b45]">{selected.breed}</p><p className="mt-2 font-bold text-[#667267]">{selected.tag} - {selected.stage}</p></div><Badge tone={selected.status==="For Sale"?"warn":"good"}>{selected.status}</Badge></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="Bloodline / Breed" value={selected.breed} /><Info label="Estimated Value" value={selected.value} /><Info label="Health" value={selected.health} /><Info label="Pen" value={selected.pen} /><Info label="Caretaker" value={selected.caretaker} /></div><div className="mt-5 rounded-2xl border border-[#e3ded0] bg-[#fffdf7] p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Latest Care Status</p><h3 className="mt-1 text-xl font-black">{selected.health === "New" ? "New purchase" : "Verified today"}</h3></div><Badge tone="good">{selected.health === "New" ? "Needs farm assignment" : "Good condition"}</Badge></div><div className="mt-3 grid gap-2 text-sm font-bold text-[#667267] sm:grid-cols-3"><span>Source: Farm Buy</span><span>Proof: Receipt in Inbox</span><span>Next: Admin assignment</span></div></div><div className="mt-auto flex flex-wrap gap-3 pt-5"><Link href="/customer/farm-requests" className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Request Care</Link><Link href="/customer/care-logs" className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Care Logs</Link><Link href={`/customer/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-4 py-3 font-black">Sell</Link></div></div></div> : <div className="grid min-h-[420px] place-items-center rounded-3xl border border-dashed border-[#d8d0bd] bg-[#fffdf7] p-8 text-center"><div><RoosterPhoto src="/farmconnect/icons/my-rooster.png" alt="" size="thumb" /><h2 className="mt-4 text-3xl font-black">Your rooster record is empty</h2><p className="mx-auto mt-3 max-w-md font-bold text-[#667267]">Once admin approves a Farm Buy payment or assigns a rooster to your account, the rooster card, breed, care status, and value will show here.</p><Link href="/customer/farm-buy" className="mt-5 inline-flex rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">Buy First Rooster</Link></div></div>}</Card></div></Shell>;
+}
+
+export function CustomerSellRooster() {
+  const search = useSearchParams();
+  const router = useRouter();
+  const [animal, setAnimal] = useState<any>(null);
+  const [sale, setSale] = useState<any>(null);
+  const [note, setNote] = useState("");
+  const [statusNote, setStatusNote] = useState("Loading rooster sale record...");
+  const [busy, setBusy] = useState(false);
+  const animalId = search.get("id") || "";
+
+  async function load() {
+    try {
+      const rows = await getCustomerOwnedRoosters();
+      const selectedAnimal = rows.find((row: any) => row.id === animalId) || rows[0] || null;
+      setAnimal(selectedAnimal);
+      if (!selectedAnimal) {
+        setSale(null);
+        setStatusNote("No owned rooster was found for this sale request.");
+        return;
+      }
+      const activeSale = await getCustomerRoosterSaleRequest(selectedAnimal.id);
+      setSale(activeSale);
+      setStatusNote(activeSale
+        ? "The price inspection and sale release are tracked step by step."
+        : "Request a caretaker price inspection first. The final Sell button unlocks only after admin approval.");
+    } catch (error) {
+      setStatusNote(`Sale record could not load: ${readableAppError(error) || "Check login and SQL 040."}`);
+    }
+  }
+
+  useEffect(() => { void load(); }, [animalId]);
+
+  async function requestPrice() {
+    if (!animal || busy) return;
+    setBusy(true);
+    try {
+      await requestRoosterSalePrice(animal.id, note);
+      setStatusNote("Price inspection requested. Admin must assign the special task to a caretaker.");
+      await load();
+    } catch (error) {
+      setStatusNote(`Price request failed: ${readableAppError(error) || "Check SQL 040 and customer ownership."}`);
+    } finally { setBusy(false); }
+  }
+
+  async function confirmSaleRequest() {
+    if (!sale || busy) return;
+    setBusy(true);
+    try {
+      await confirmRoosterSale(sale.id, note);
+      setStatusNote("Sale request sent to admin. The approved price is locked while admin reviews the release.");
+      await load();
+    } catch (error) {
+      setStatusNote(`Sell request failed: ${readableAppError(error) || "Check SQL 040 and approved price."}`);
+    } finally { setBusy(false); }
+  }
+
+  const meta = animal?.ownership_metadata || {};
+  const breed = animal?.breed_snapshot || animal?.bloodline_snapshot || "Recorded breed";
+  const acquired = animal?.acquired_at ? new Date(animal.acquired_at) : null;
+  const age = acquired && !Number.isNaN(acquired.getTime())
+    ? `${Math.max(0, Math.floor((Date.now() - acquired.getTime()) / 86400000))} days in your account`
+    : String(meta.age || "Not recorded");
+  const weight = String(meta.weight || meta.latest_weight || "Pending caretaker inspection");
+  const approvedPrice = Number(sale?.approved_sale_price || animal?.approved_sale_price || 0);
+  const currentStatus = String(sale?.status || "not_requested");
+  const canConfirm = ["price_ready", "sale_rejected"].includes(currentStatus) && approvedPrice > 0;
+  const waiting = sale && !canConfirm;
+  const buttonLabel = !sale ? "Request Price Inspection"
+    : canConfirm ? `Sell for ${peso(approvedPrice)}`
+    : currentStatus === "completed" ? "Sale Completed"
+    : "Waiting for Farm Review";
+
+  return <Shell role="customer" title="Sell Rooster">
+    <div className="flex items-center justify-between gap-3"><button type="button" onClick={()=>router.push("/customer/roosters")} className="rounded-xl bg-white px-4 py-3 font-black shadow-sm">Back</button><Badge tone={canConfirm ? "good" : waiting ? "warn" : "neutral"}>{currentStatus.replaceAll("_"," ")}</Badge></div>
+    <div className="mx-auto mt-5 grid max-w-5xl gap-5 lg:grid-cols-[minmax(320px,0.9fr)_1.1fr]">
+      <Card className="overflow-hidden p-0"><div className="bg-[#eef2ea] p-5"><img src="/farmconnect/roosters/fc-stage-4-adult-rooster-base.jpg" alt={animal?.animal_name || "Owned rooster"} className="aspect-square w-full rounded-2xl bg-white object-cover" /></div><div className="border-t border-[#ded8c9] p-5"><p className="text-xs font-black uppercase text-[#667267]">Owned Rooster</p><h1 className="mt-1 text-3xl font-black">{animal?.animal_name || "Select a rooster"}</h1><p className="mt-1 font-black text-[#1f6b45]">{animal?.animal_code || "No serial"}</p></div></Card>
+      <Card><h2 className="text-2xl font-black">Sale Details</h2><p className="mt-1 text-sm font-bold text-[#667267]">The approved price comes from caretaker inspection and admin verification.</p><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="Name" value={animal?.animal_name || "Not recorded"}/><Info label="Breed" value={breed}/><Info label="Weight" value={weight}/><Info label="Age" value={age}/><Info label="Serial ID" value={animal?.animal_code || "Not tagged"}/><Info label="Approved Price" value={approvedPrice > 0 ? peso(approvedPrice) : "Waiting for inspection"}/></div><textarea value={note} onChange={event=>setNote(event.target.value)} placeholder="Optional note for caretaker/admin..." className="mt-5 h-28 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-4 text-sm font-bold"/><div className="mt-4 rounded-2xl bg-[#f4efe4] p-4 text-sm font-bold leading-6 text-[#667267]">{statusNote}</div><button type="button" disabled={!animal||busy||Boolean(sale&&!canConfirm)} onClick={()=>canConfirm?void confirmSaleRequest():void requestPrice()} className="mt-5 w-full rounded-2xl bg-amber-300 px-5 py-4 text-lg font-black disabled:cursor-not-allowed disabled:bg-[#c9c3b6]">{busy ? "Saving..." : buttonLabel}</button>{canConfirm&&<p className="mt-3 text-center text-xs font-bold text-[#667267]">After confirmation, admin creates the final caretaker release task. Wallet credit happens only after final proof approval.</p>}</Card>
+    </div>
+  </Shell>;
 }
 export function CareLogsPage() {
   const [selected, setSelected] = useState<RoosterCard | null>(null);
@@ -753,7 +912,7 @@ function SavingsModal({ lockedSavings, balance, onClose, onLock, onUnlock }: { l
     { name: "Savings 03", label: "Rooster upgrade", amount: 0, days: "Open slot", icon: "bag", tone: "border-[#7d6a4c] text-[#7d6a4c]" },
     { name: "Savings 04", label: "Withdrawal hold", amount: 0, days: "Open slot", icon: "coins", tone: "border-[#8aa08b] text-[#4d6f50]" },
   ];
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><section className="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><h2 className="text-3xl font-black">Go Save</h2><p className="mt-1 text-sm font-bold text-[#667267]">4% per annum savings interest rate</p></div><button onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full bg-[#f6f3e8] font-black">x</button></div><div className="mt-5 rounded-3xl bg-[#f6f3e8] p-5 text-center"><p className="text-xs font-black uppercase text-[#667267]">Total Savings</p><p className="mt-1 text-4xl font-black">{peso(lockedSavings)}</p><p className="mt-1 text-sm font-bold text-[#667267]">Available to lock: {peso(Math.max(0, balance - lockedSavings))}</p></div><div className="mt-5 grid gap-4 sm:grid-cols-2">{pockets.map(p=><button key={p.name} onClick={onLock} className="rounded-3xl border border-[#ece6d8] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-center gap-4"><div className={"grid h-20 w-20 shrink-0 place-items-center rounded-full border-2 bg-white " + p.tone}><Icon name={p.icon} className="h-8 w-8" /></div><div><b className="text-lg">{p.name}</b><p className="text-sm font-bold text-[#667267]">{p.label}</p><p className="mt-2 text-xl font-black">{peso(p.amount)}</p><p className="text-xs font-bold text-[#667267]">{p.days}</p></div></div></button>)}</div><div className="mt-5 grid gap-3 sm:grid-cols-3"><button onClick={onLock} className="rounded-2xl bg-[#1f6b45] px-4 py-3 font-black text-white">Lock â‚±500</button><button onClick={onUnlock} className="rounded-2xl bg-[#eee8d9] px-4 py-3 font-black">Unlock Savings</button><button onClick={onClose} className="rounded-2xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">Done</button></div></section></div>;
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><section className="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><h2 className="text-3xl font-black">Go Save</h2><p className="mt-1 text-sm font-bold text-[#667267]">4% per annum savings interest rate</p></div><button onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full bg-[#f6f3e8] font-black">x</button></div><div className="mt-5 rounded-3xl bg-[#f6f3e8] p-5 text-center"><p className="text-xs font-black uppercase text-[#667267]">Total Savings</p><p className="mt-1 text-4xl font-black">{peso(lockedSavings)}</p><p className="mt-1 text-sm font-bold text-[#667267]">Available to lock: {peso(Math.max(0, balance - lockedSavings))}</p></div><div className="mt-5 grid gap-4 sm:grid-cols-2">{pockets.map(p=><button key={p.name} onClick={onLock} className="rounded-3xl border border-[#ece6d8] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-center gap-4"><div className={"grid h-20 w-20 shrink-0 place-items-center rounded-full border-2 bg-white " + p.tone}><Icon name={p.icon} className="h-8 w-8" /></div><div><b className="text-lg">{p.name}</b><p className="text-sm font-bold text-[#667267]">{p.label}</p><p className="mt-2 text-xl font-black">{peso(p.amount)}</p><p className="text-xs font-bold text-[#667267]">{p.days}</p></div></div></button>)}</div><div className="mt-5 grid gap-3 sm:grid-cols-3"><button onClick={onLock} className="rounded-2xl bg-[#1f6b45] px-4 py-3 font-black text-white">Lock Ã¢â€šÂ±500</button><button onClick={onUnlock} className="rounded-2xl bg-[#eee8d9] px-4 py-3 font-black">Unlock Savings</button><button onClick={onClose} className="rounded-2xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">Done</button></div></section></div>;
 }
 
 function PinGate({ title, onClose, onConfirm }: { title: string; onClose: () => void; onConfirm: () => void }) {
@@ -851,7 +1010,7 @@ export function WalletPage() {
   }, []);
   return <Shell role="customer" title="Wallet"><PageTitle title="Wallet" text="Withdraw FarmConnect Coin and review transaction records." icon="wallet" />{pinGate && <PinGate title="Enter Wallet PIN" onClose={()=>setPinGate(null)} onConfirm={()=>{setShowLockedSavings(true); setWalletNote("Locked savings are visible after PIN confirmation."); setPinGate(null);}} />}{showSavings && <SavingsModalFc lockedSavings={lockedSavings} balance={balance} onClose={()=>setShowSavings(false)} onLock={(amount)=>{const next=Math.min(balance, lockedSavings + amount); setLockedSavings(next); setShowLockedSavings(true); setWalletNote(`FC ${fcCoin(amount)} locked in Save. Total locked: FC ${fcCoin(next)}.`);}} onUnlock={(amount)=>{const next=Math.max(0, lockedSavings - amount); setLockedSavings(next); setShowLockedSavings(true); setWalletNote(`FC ${fcCoin(amount)} unlocked. Remaining locked: FC ${fcCoin(next)}.`);}} />}<div className="rounded-[28px] bg-[#070716] p-4 text-white shadow-2xl md:p-6"><section className="grid gap-4 lg:grid-cols-2"><div className="relative overflow-hidden rounded-[24px] bg-[radial-gradient(circle_at_82%_0%,rgba(255,81,246,0.9),transparent_32%),linear-gradient(135deg,#2810b8_0%,#7719df_48%,#d915c7_100%)] p-5 shadow-[0_18px_45px_rgba(102,22,221,0.45)]"><div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-fuchsia-300/25 blur-2xl" /><div className="relative flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><p className="text-sm font-bold text-white/75">Available Balance</p></div><div className="mt-5 flex items-center gap-3"><span className="text-3xl font-black">FC</span><p className="text-4xl font-black md:text-5xl">{showAmounts?fcCoin(availableBalance):"******"}</p><button onClick={()=>setShowAmounts(!showAmounts)} className="grid h-9 w-9 place-items-center rounded-full text-white/90"><Icon name={showAmounts?"eyeOff":"eye"} /></button></div></div><span className="mt-12 h-10 w-10" aria-hidden="true" /></div></div><div className="relative overflow-hidden rounded-[24px] bg-[radial-gradient(circle_at_82%_0%,rgba(255,81,246,0.75),transparent_32%),linear-gradient(135deg,#21124f_0%,#5a1ab7_48%,#a814b7_100%)] p-5 text-left shadow-[0_18px_45px_rgba(102,22,221,0.35)]"><div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-fuchsia-300/20 blur-2xl" /><div className="relative flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><p className="text-sm font-bold text-white/75">Locked Savings</p><button onClick={()=>showLockedSavings?setShowLockedSavings(false):setPinGate("save")} className="text-white/70"><Icon name={showLockedSavings?"eyeOff":"eye"} className="h-4 w-4" /></button></div><div className="mt-5 flex items-center gap-3"><span className="text-3xl font-black">FC</span><p className="text-4xl font-black md:text-5xl">{showLockedSavings?fcCoin(lockedSavings):"******"}</p></div><p className="mt-2 text-sm font-bold text-white/65">PIN required</p></div><span className="mt-12 h-10 w-10" aria-hidden="true" /></div></div></section><div className="mt-5 grid gap-3"><Link href="/customer/withdraw" className="rounded-2xl bg-white/10 p-4 text-left font-black text-white shadow-sm ring-1 ring-white/10"><Icon name="wallet" className="mb-3 h-7 w-7" />Withdraw Funds</Link></div><div className="mt-5 rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10"><h2 className="text-xl font-black">Transaction History</h2><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{walletRows.length === 0 && <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-4 text-sm font-bold text-white/65">No transactions yet. Approved payments and withdrawals will appear here.</div>}{walletRows.map(t=><div key={t.receipt} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/10"><div><b>{t.type}</b><p className="text-sm text-white/65">{t.date} - {t.status}</p></div><div className="text-right"><b>{showAmounts?fcCoin(t.amount):"******"}</b><Link href="/customer/inbox" className="ml-3 rounded-lg bg-white/10 px-3 py-2 text-sm font-black">Open Receipt</Link></div></div>)}</div></div></div></Shell>;
   return <Shell role="customer" title="Wallet"><PageTitle title="Wallet" text="FarmConnect Coin balance, cash-in, withdrawal, and locked savings." icon="wallet" />{pinGate && <PinGate title="Enter Wallet PIN" onClose={()=>setPinGate(null)} onConfirm={()=>{setShowLockedSavings(true); setWalletNote("Locked savings are visible after PIN confirmation."); setPinGate(null);}} />}{showSavings && <SavingsModalFc lockedSavings={lockedSavings} balance={balance} onClose={()=>setShowSavings(false)} onLock={()=>{const next=Math.min(balance, lockedSavings + 500); setLockedSavings(next); setWalletNote(`${fcCoin(next)} is locked in Go Save.`);}} onUnlock={()=>{setLockedSavings(0); setWalletNote("Locked savings released back to available FarmConnect Coin.");}} />}<div className="grid gap-5"><section className="rounded-3xl border border-[#e3ded0] bg-white p-4 shadow-sm"><div className="rounded-3xl bg-[#f6f3e8] p-5"><div className="flex flex-wrap items-center justify-between gap-4"><div className="flex items-center gap-4"><FCCoin className="h-16 w-16 text-lg" /><div><p className="text-sm font-black uppercase text-[#667267]">FarmConnect Coin Balance</p><p className="mt-1 text-5xl font-black">{showAmounts?fcCoin(balance):"FC ****"}</p></div></div><button onClick={()=>setShowAmounts(!showAmounts)} className="rounded-2xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">{showAmounts?"Hide":"Show"}</button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Available</p><p className="mt-1 text-2xl font-black">{showAmounts?fcCoin(availableBalance):"FC ****"}</p></div><button onClick={()=>setPinGate("save")} className="rounded-2xl bg-white p-4 text-left shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Locked Savings</p><p className="mt-1 text-2xl font-black">{showAmounts?fcCoin(lockedSavings):"FC ****"}</p><p className="mt-1 text-xs font-bold text-[#667267]">PIN required to open</p></button></div></div></section><div className="grid gap-3 sm:grid-cols-3"><Link href="/customer/cashin" className="rounded-2xl bg-[#1f6b45] p-4 text-left font-black text-white shadow-sm"><Icon name="coins" className="mb-3 h-7 w-7" />Add Cash</Link><Link href="/customer/withdraw" className="rounded-2xl bg-amber-300 p-4 text-left font-black shadow-sm"><Icon name="wallet" className="mb-3 h-7 w-7" />Withdraw Funds</Link><button onClick={()=>setPinGate("save")} className="rounded-2xl bg-white p-4 text-left font-black text-[#1f6b45] shadow-sm"><Icon name="shield" className="mb-3 h-7 w-7" />Save / Lock</button></div><Card><h2 className="text-xl font-black">Transaction History</h2><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{walletRows.map(t=><div key={t.receipt} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ece6d8] p-3"><div><b>{t.type}</b><p className="text-sm text-[#667267]">{t.date} - {t.status}</p></div><div className="text-right"><b>{showAmounts?fcCoin(t.amount):"FC ****"}</b><Link href="/customer/inbox" className="ml-3 rounded-lg bg-[#f6f3e8] px-3 py-2 text-sm font-black">Open Receipt</Link></div></div>)}</div></Card></div></Shell>;
-  return <Shell role="customer" title="Wallet"><PageTitle title="Wallet" text="Add cash, withdraw funds, and lock savings before spending." icon="wallet" />{pinGate && <PinGate title={pinGate==="save"?"Unlock Go Save":"Show Wallet Balance"} onClose={()=>setPinGate(null)} onConfirm={()=>{if(pinGate==="balance"){setShowAmounts(true); setWalletNote("Wallet balance is now visible for this session.");} else {setShowSavings(true); setWalletNote("Go Save opened. Choose a savings pocket before locking funds.");} setPinGate(null);}} />}{showSavings && <SavingsModal lockedSavings={lockedSavings} balance={balance} onClose={()=>setShowSavings(false)} onLock={()=>{const next=Math.min(balance, lockedSavings + 500); setLockedSavings(next); setWalletNote(`${peso(next)} is locked in savings. Locked savings cannot be used for buying until unlocked.`);}} onUnlock={()=>{setLockedSavings(0); setWalletNote("Locked savings released back to available balance.");}} />}<div className="grid gap-5 xl:grid-cols-[1fr_380px]"><div className="grid gap-5"><section className="rounded-2xl border border-[#e3ded0] bg-white p-4 shadow-sm"><div className="rounded-2xl bg-[#f6f3e8] p-5"><div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-black uppercase text-[#667267]">Total Balance</p><p className="mt-2 text-5xl font-black">{showAmounts?peso(balance):"â€¢â€¢â€¢â€¢â€¢â€¢"}</p></div><button onClick={()=>showAmounts?setShowAmounts(false):setPinGate("balance")} className="rounded-2xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">{showAmounts?"Hide":"Show"}</button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Available Balance</p><p className="mt-1 text-2xl font-black">{showAmounts?peso(availableBalance):"â€¢â€¢â€¢â€¢"}</p></div><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Locked Savings</p><p className="mt-1 text-2xl font-black">{showAmounts?peso(lockedSavings):"â€¢â€¢â€¢â€¢"}</p></div></div></div></section><div className="grid gap-3 sm:grid-cols-3"><Link href="/customer/cashin" className="rounded-2xl bg-[#1f6b45] p-4 text-left font-black text-white shadow-sm"><Icon name="coins" className="mb-3 h-7 w-7" />Add Cash</Link><Link href="/customer/withdraw" className="rounded-2xl bg-amber-300 p-4 text-left font-black shadow-sm"><Icon name="wallet" className="mb-3 h-7 w-7" />Withdraw Funds</Link><button onClick={()=>setPinGate("save")} className="rounded-2xl bg-white p-4 text-left font-black text-[#1f6b45] shadow-sm"><Icon name="shield" className="mb-3 h-7 w-7" />Save / Lock</button></div><Card><h2 className="text-xl font-black">Transaction History</h2><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{walletRows.map(t=><div key={t.receipt} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ece6d8] p-3"><div><b>{t.type}</b><p className="text-sm text-[#667267]">{t.date} - {t.status}</p></div><div className="text-right"><b>{showAmounts?peso(t.amount):"â€¢â€¢â€¢â€¢"}</b><Link href="/customer/inbox" className="ml-3 rounded-lg bg-[#f6f3e8] px-3 py-2 text-sm font-black">Open Receipt</Link></div></div>)}</div></Card></div><div className="grid h-fit gap-5"><KaFarm>{walletNote}</KaFarm><Card><h2 className="text-xl font-black">Savings Lock</h2><p className="mt-2 text-sm font-bold text-[#667267]">PIN is required before viewing or moving wallet savings.</p><div className="mt-4 grid gap-3"><button onClick={()=>setPinGate("save")} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Open Go Save</button><button onClick={()=>setWalletNote("Payout Account opened: PIN is required before adding or changing GCash, Maya, or bank details.")} className="rounded-xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">Payout Account</button></div></Card></div></div></Shell>;
+  return <Shell role="customer" title="Wallet"><PageTitle title="Wallet" text="Add cash, withdraw funds, and lock savings before spending." icon="wallet" />{pinGate && <PinGate title={pinGate==="save"?"Unlock Go Save":"Show Wallet Balance"} onClose={()=>setPinGate(null)} onConfirm={()=>{if(pinGate==="balance"){setShowAmounts(true); setWalletNote("Wallet balance is now visible for this session.");} else {setShowSavings(true); setWalletNote("Go Save opened. Choose a savings pocket before locking funds.");} setPinGate(null);}} />}{showSavings && <SavingsModal lockedSavings={lockedSavings} balance={balance} onClose={()=>setShowSavings(false)} onLock={()=>{const next=Math.min(balance, lockedSavings + 500); setLockedSavings(next); setWalletNote(`${peso(next)} is locked in savings. Locked savings cannot be used for buying until unlocked.`);}} onUnlock={()=>{setLockedSavings(0); setWalletNote("Locked savings released back to available balance.");}} />}<div className="grid gap-5 xl:grid-cols-[1fr_380px]"><div className="grid gap-5"><section className="rounded-2xl border border-[#e3ded0] bg-white p-4 shadow-sm"><div className="rounded-2xl bg-[#f6f3e8] p-5"><div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-black uppercase text-[#667267]">Total Balance</p><p className="mt-2 text-5xl font-black">{showAmounts?peso(balance):"Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"}</p></div><button onClick={()=>showAmounts?setShowAmounts(false):setPinGate("balance")} className="rounded-2xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">{showAmounts?"Hide":"Show"}</button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Available Balance</p><p className="mt-1 text-2xl font-black">{showAmounts?peso(availableBalance):"Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"}</p></div><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Locked Savings</p><p className="mt-1 text-2xl font-black">{showAmounts?peso(lockedSavings):"Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"}</p></div></div></div></section><div className="grid gap-3 sm:grid-cols-3"><Link href="/customer/cashin" className="rounded-2xl bg-[#1f6b45] p-4 text-left font-black text-white shadow-sm"><Icon name="coins" className="mb-3 h-7 w-7" />Add Cash</Link><Link href="/customer/withdraw" className="rounded-2xl bg-amber-300 p-4 text-left font-black shadow-sm"><Icon name="wallet" className="mb-3 h-7 w-7" />Withdraw Funds</Link><button onClick={()=>setPinGate("save")} className="rounded-2xl bg-white p-4 text-left font-black text-[#1f6b45] shadow-sm"><Icon name="shield" className="mb-3 h-7 w-7" />Save / Lock</button></div><Card><h2 className="text-xl font-black">Transaction History</h2><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{walletRows.map(t=><div key={t.receipt} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ece6d8] p-3"><div><b>{t.type}</b><p className="text-sm text-[#667267]">{t.date} - {t.status}</p></div><div className="text-right"><b>{showAmounts?peso(t.amount):"Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"}</b><Link href="/customer/inbox" className="ml-3 rounded-lg bg-[#f6f3e8] px-3 py-2 text-sm font-black">Open Receipt</Link></div></div>)}</div></Card></div><div className="grid h-fit gap-5"><KaFarm>{walletNote}</KaFarm><Card><h2 className="text-xl font-black">Savings Lock</h2><p className="mt-2 text-sm font-bold text-[#667267]">PIN is required before viewing or moving wallet savings.</p><div className="mt-4 grid gap-3"><button onClick={()=>setPinGate("save")} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Open Go Save</button><button onClick={()=>setWalletNote("Payout Account opened: PIN is required before adding or changing GCash, Maya, or bank details.")} className="rounded-xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">Payout Account</button></div></Card></div></div></Shell>;
 }
 
 export function CashInPage() {
@@ -926,7 +1085,167 @@ export function AddPayoutPage() {
   };
   return <Shell role="customer" title="Add Payout"><PageTitle title="Add Payout Account" text="Save where withdrawals will be sent. PIN is required before saving." icon="wallet" />{pinOpen && <PinGate title="Save Payout Account" onClose={()=>setPinOpen(false)} onConfirm={()=>{setPinOpen(false); setMessage(`${provider.name} payout account saved for ${holder}. This action is recorded for withdrawal safety.`);}} />}<div className="grid gap-5 xl:grid-cols-[360px_1fr_360px]"><Card><h2 className="text-xl font-black">1. Choose Method</h2><p className="mt-1 text-sm font-bold text-[#667267]">E-wallets and common banks.</p><div className="mt-4 max-h-[640px] space-y-3 overflow-y-auto pr-2">{payoutProviders.map(p=><button key={p.name} onClick={()=>{setProvider(p); setMessage(`${p.name} selected. Enter the exact details shown on that account.`);}} className={("w-full rounded-2xl bg-gradient-to-br p-4 text-left shadow-sm ring-1 transition " + p.colors + " " + p.text + " " + (provider.name===p.name ? "ring-4 ring-sky-200" : "ring-white/30"))}><p className="text-xs font-black uppercase opacity-75">{p.type}</p><div className="mt-2 flex items-center justify-between gap-3"><b className="text-xl">{p.name}</b><span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black">Select</span></div></button>)}</div></Card><Card><h2 className="text-xl font-black">2. Account Details</h2><div className={("mt-4 rounded-3xl bg-gradient-to-br p-5 shadow-sm " + provider.colors + " " + provider.text)}><p className="text-xs font-black uppercase opacity-75">Selected</p><h3 className="mt-1 text-3xl font-black">{provider.name}</h3><p className="mt-2 text-sm font-bold opacity-80">{provider.hint}</p></div><div className="mt-5 grid gap-3"><label className="text-sm font-black">Account Holder Name</label><input value={holder} onChange={e=>setHolder(e.target.value)} placeholder="Name on payout account" className="rounded-2xl border border-[#ded8c9] px-4 py-3 font-bold" /><label className="text-sm font-black">Account Number / Mobile Number</label><input value={account} onChange={e=>setAccount(e.target.value)} inputMode="numeric" placeholder={provider.hint} className="rounded-2xl border border-[#ded8c9] px-4 py-3 font-bold" /></div></Card><Card><h2 className="text-xl font-black">3. Review & Add</h2><div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-[#7a4b00]">Warning: Make sure the name, number, and selected bank/e-wallet are correct. FarmConnect is not liable if funds are sent to details saved incorrectly by the customer.</div><div className="mt-4 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]"><p><b>Record:</b> Saving this creates a customer action log with provider, holder name, masked account number, date, and PIN confirmation.</p></div><p className="mt-4 text-sm font-bold text-[#667267]">{message}</p><button onClick={save} className="mt-4 w-full rounded-2xl bg-[#0f6fb8] px-4 py-4 font-black text-white">Add with Wallet PIN</button><Link href="/customer/withdraw" className="mt-3 block rounded-2xl bg-[#eee8d9] px-4 py-3 text-center font-black">Back to Withdraw</Link></Card></div></Shell>;
 }
+
+type LivePayoutAccount = {
+  id: string;
+  provider: string;
+  account_holder: string;
+  account_number: string;
+  status: string;
+  is_default: boolean;
+};
+
+export function WithdrawPageV2() {
+  const [accounts,setAccounts]=useState<LivePayoutAccount[]>([]);
+  const [requests,setRequests]=useState<any[]>([]);
+  const [selectedId,setSelectedId]=useState("");
+  const [amount,setAmount]=useState("");
+  const [pinOpen,setPinOpen]=useState(false);
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [note,setNote]=useState("Loading your payout methods and withdrawal history...");
+  const [problemId,setProblemId]=useState("");
+  const [problemNote,setProblemNote]=useState("");
+  const selected=accounts.find(row=>row.id===selectedId)||accounts[0]||null;
+  const amountValue=Number(amount||0);
+
+  async function loadWithdrawalData(){
+    try{
+      setLoading(true);
+      const [methodRows,requestRows]=await Promise.all([getCustomerPayoutMethods(),getCustomerWithdrawalRequests()]);
+      setAccounts(methodRows as LivePayoutAccount[]);
+      setRequests(requestRows);
+      setSelectedId(current=>(methodRows as LivePayoutAccount[]).some(row=>row.id===current)?current:(methodRows as LivePayoutAccount[])[0]?.id||"");
+      setNote(methodRows.length?"Choose a payout method and amount. Submitted funds are held until the payout is confirmed.":"Add a payout method before requesting a withdrawal.");
+    }catch(error){
+      setNote(`Withdrawal records could not load: ${error instanceof Error?error.message:"Check login and SQL 040."}`);
+    }finally{setLoading(false);}
+  }
+
+  useEffect(()=>{void loadWithdrawalData();},[]);
+
+  async function sendWithdrawal(){
+    if(!selected){setNote("Add or select a payout method first.");return;}
+    if(amountValue<100){setNote("Minimum withdrawal is FC 100.");return;}
+    try{
+      setSaving(true);
+      await submitWithdrawalRequest({
+        amount:amountValue,
+        payoutMethod:selected.provider,
+        payoutHolder:selected.account_holder,
+        payoutAccount:selected.account_number,
+        customerNote:"Customer submitted withdrawal from wallet page.",
+      });
+      setAmount("");
+      setNote(`Withdrawal sent for admin review. FC ${fcCoin(amountValue)} is now held, not available for another request.`);
+      await loadWithdrawalData();
+    }catch(error){
+      setNote(`Withdrawal failed: ${error instanceof Error?error.message:"Check wallet balance, KYC, and SQL 040."}`);
+    }finally{setSaving(false);setPinOpen(false);}
+  }
+
+  async function openPayoutProof(row:any){
+    try{
+      const url=await createPrivateEvidenceUrl("withdrawal-proofs",row.admin_receipt_url);
+      window.open(url,"_blank","noopener,noreferrer");
+    }catch(error){
+      setNote(`Payout proof could not open: ${error instanceof Error?error.message:"File is missing."}`);
+    }
+  }
+
+  async function answerConfirmation(row:any,received:boolean){
+    if(!received&&problemNote.trim().length<5){setNote("Write what is wrong with the payout before reporting it.");return;}
+    try{
+      setSaving(true);
+      await confirmWithdrawalResult(row.id,received,received?"Customer confirmed payout received.":problemNote.trim());
+      setProblemId("");setProblemNote("");
+      setNote(received?"Payout confirmed. The withdrawal is complete and remains in your wallet logs.":"Problem sent back to admin. The request returned to the review queue.");
+      await loadWithdrawalData();
+    }catch(error){
+      setNote(`Confirmation failed: ${error instanceof Error?error.message:"Check SQL 040 and login."}`);
+    }finally{setSaving(false);}
+  }
+
+  return <Shell role="customer" title="Withdraw">
+    <PageTitle title="Withdraw Funds" text="Choose payout details, request an amount, then confirm the admin payout proof." icon="wallet" />
+    {pinOpen&&selected&&<PinGate title="Confirm Withdrawal Request" onClose={()=>setPinOpen(false)} onConfirm={()=>void sendWithdrawal()} />}
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-5">
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-xl font-black">Payout Method</h2><p className="mt-1 text-sm font-bold text-[#667267]">The selected method is copied into the admin request and permanent evidence log.</p></div>
+            <Link href="/customer/withdraw/add-payout" className="rounded-xl bg-[#0f6fb8] px-4 py-3 font-black text-white">Add Method</Link>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {accounts.map(row=><button key={row.id} type="button" onClick={()=>setSelectedId(row.id)} className={"rounded-2xl border p-4 text-left transition "+(selected?.id===row.id?"border-[#1f6b45] bg-emerald-50 ring-2 ring-emerald-100":"border-[#e3ded0] bg-[#fffdf7]")}>
+              <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">{row.provider}</p><h3 className="mt-1 text-lg font-black">{row.account_holder}</h3><p className="mt-2 text-sm font-bold text-[#667267]">{row.account_number}</p></div>{row.is_default&&<Badge tone="good">Default</Badge>}</div>
+            </button>)}
+            {!loading&&!accounts.length&&<div className="rounded-2xl border-2 border-dashed border-[#d8cfbd] bg-[#f9f6ec] p-5 text-sm font-bold text-[#667267]">No payout method yet. Add GCash, Maya, or bank details first.</div>}
+          </div>
+        </Card>
+        <Card>
+          <h2 className="text-xl font-black">Withdrawal Amount</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
+            <input value={amount} onChange={event=>setAmount(event.target.value.replace(/\D/g,""))} inputMode="numeric" placeholder="Minimum FC 100" className="rounded-2xl border border-[#ded8c9] px-4 py-4 text-2xl font-black" />
+            <button type="button" disabled={!selected||amountValue<100||saving} onClick={()=>setPinOpen(true)} className="rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">Request Withdrawal</button>
+          </div>
+          <p className="mt-3 text-sm font-bold text-[#667267]">The amount is deducted from available balance and placed on hold immediately. A rejected request is refunded automatically.</p>
+        </Card>
+      </div>
+      <Card className="h-fit">
+        <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Withdrawal History</h2><Badge tone="neutral">{requests.length}</Badge></div>
+        <p className="mt-2 rounded-xl bg-[#f4efe4] p-3 text-sm font-bold leading-6 text-[#667267]">{note}</p>
+        <p className="mt-2 text-xs font-bold text-[#667267]">After admin sends proof: confirm payout or report incorrect payout.</p>
+        <div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto pr-2">
+          {requests.map(row=><article key={row.id} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4">
+            <div className="flex items-start justify-between gap-3"><div><b className="text-lg">{peso(Number(row.amount||0))}</b><p className="mt-1 text-sm font-bold text-[#667267]">{row.payout_method} / {row.payout_account}</p></div><Badge tone={row.status==="completed"?"good":row.status==="rejected"?"bad":"warn"}>{String(row.status||"pending").replaceAll("_"," ")}</Badge></div>
+            {row.admin_reference_number&&<div className="mt-3 grid gap-2 rounded-xl bg-[#f4efe4] p-3 text-sm font-bold"><span>Reference: {row.admin_reference_number}</span><span>Receipt: {row.admin_receipt_file_name||"Attached by admin"}</span><button type="button" onClick={()=>void openPayoutProof(row)} className="rounded-lg bg-white px-3 py-2 text-left font-black text-[#1f6b45]">View Uploaded Receipt</button></div>}
+            {row.admin_note&&<p className="mt-3 text-sm font-bold leading-6 text-[#667267]">Admin note: {row.admin_note}</p>}
+            {row.status==="sent_for_customer_confirmation"&&<div className="mt-3 grid gap-2">
+              <button type="button" disabled={saving} onClick={()=>void answerConfirmation(row,true)} className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">I Received the Payout</button>
+              {problemId===row.id?<><textarea value={problemNote} onChange={event=>setProblemNote(event.target.value)} placeholder="Explain the wrong amount, method, account, reference, or missing payout." className="h-24 resize-none rounded-xl border border-[#ded8c9] p-3 text-sm font-bold"/><div className="grid grid-cols-2 gap-2"><button type="button" onClick={()=>{setProblemId("");setProblemNote("");}} className="rounded-xl bg-[#eee8d9] px-3 py-2 font-black">Cancel</button><button type="button" disabled={saving} onClick={()=>void answerConfirmation(row,false)} className="rounded-xl bg-red-600 px-3 py-2 font-black text-white">Send Problem</button></div></>:<button type="button" onClick={()=>setProblemId(row.id)} className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-black text-red-700">Report a Problem</button>}
+            </div>}
+          </article>)}
+          {!loading&&!requests.length&&<div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold text-[#667267]">No withdrawal records yet.</div>}
+        </div>
+      </Card>
+    </div>
+  </Shell>;
+}
+
+export function AddPayoutPageV2() {
+  const [provider,setProvider]=useState<PayoutProvider>(payoutProviders[0]);
+  const [holder,setHolder]=useState("");
+  const [account,setAccount]=useState("");
+  const [pinOpen,setPinOpen]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState("Choose a method and enter the exact account details.");
+  const ready=holder.trim().length>2&&account.trim().length>=6;
+
+  async function save(){
+    try{
+      setSaving(true);
+      await saveCustomerPayoutMethod({provider:provider.name,accountHolder:holder.trim(),accountNumber:account.trim(),isDefault:true});
+      setPinOpen(false);
+      setMessage(`${provider.name} saved. Return to Withdraw and select this account.`);
+    }catch(error){
+      setPinOpen(false);
+      setMessage(`Payout method could not be saved: ${error instanceof Error?error.message:"Check SQL 040 and login."}`);
+    }finally{setSaving(false);}
+  }
+
+  return <Shell role="customer" title="Add Payout">
+    <PageTitle title="Add Payout Method" text="Save the exact e-wallet or bank details used for withdrawal." icon="wallet" />
+    {pinOpen&&<PinGate title="Save Payout Method" onClose={()=>setPinOpen(false)} onConfirm={()=>void save()} />}
+    <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
+      <Card><h2 className="text-xl font-black">Method</h2><div className="mt-4 max-h-[560px] space-y-2 overflow-y-auto pr-2">{payoutProviders.map(row=><button key={row.name} type="button" onClick={()=>setProvider(row)} className={"w-full rounded-xl border p-3 text-left font-black "+(provider.name===row.name?"border-[#1f6b45] bg-emerald-50":"border-[#e3ded0] bg-white")}>{row.name}<span className="block text-xs text-[#667267]">{row.type}</span></button>)}</div></Card>
+      <Card><h2 className="text-xl font-black">Account Details</h2><div className="mt-4 grid gap-3"><Info label="Selected Method" value={provider.name}/><label className="text-sm font-black">Account Holder<input value={holder} onChange={event=>setHolder(event.target.value)} placeholder="Exact name on account" className="mt-2 w-full rounded-xl border border-[#ded8c9] p-3 font-bold"/></label><label className="text-sm font-black">Account / Mobile Number<input value={account} onChange={event=>setAccount(event.target.value)} inputMode="numeric" placeholder={provider.hint} className="mt-2 w-full rounded-xl border border-[#ded8c9] p-3 font-bold"/></label></div></Card>
+      <Card className="h-fit"><h2 className="text-xl font-black">Review</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Admin will send money only to these exact details. Saving or changing a method is recorded.</p><p className="mt-4 rounded-xl bg-[#f4efe4] p-3 text-sm font-bold">{message}</p><button type="button" disabled={!ready||saving} onClick={()=>setPinOpen(true)} className="mt-4 w-full rounded-xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">{saving?"Saving...":"Save Method"}</button><Link href="/customer/withdraw" className="mt-3 block rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">Back to Withdraw</Link></Card>
+    </div>
+  </Shell>;
+}
 export function InboxPage() {
+  const router = useRouter();
   const categories = [
     { name: "All", label: "All Inbox", note: "Everything pending or recorded", icon: "inbox" as IconName },
     { name: "Receipts", label: "Receipts", note: "Farm Buy invoices and wallet receipts", icon: "file" as IconName },
@@ -944,35 +1263,99 @@ export function InboxPage() {
 
   useEffect(()=>{
     let mounted = true;
-    getCurrentProfile()
+    const refreshInbox = () => getCurrentProfile()
       .then(profile => profile ? getInboxItems(profile.id) : [])
       .then(rows => {
         if (!mounted) return;
         const mapped = (rows || []).map((row: any) => {
           const rawCategory = String(row.category || "message").toLowerCase();
-          const tab = rawCategory === "receipt" || rawCategory === "invoice" ? "Receipts" : rawCategory === "farm_update" || rawCategory === "care" ? "Caretaker Updates" : rawCategory === "wallet" || rawCategory === "cashin" || rawCategory === "withdraw" || rawCategory === "alert" ? "Alerts" : "Messages";
           const title = row.title || "Inbox item";
           const text = row.body || row.message || row.description || "Open this record for details.";
-          const href = tab === "Receipts" ? (text.toLowerCase().includes("cash") ? "/customer/inbox/invoice/cashin" : "/customer/inbox/invoice/farm-buy") : tab === "Caretaker Updates" ? "/customer/care-logs" : undefined;
-          return { title, text, status: row.status || "Completed", tab, action: href?.includes("invoice") ? "invoice" : href ? "carelogs" : "read", href, created_at: row.created_at };
+          const searchable = `${title} ${text}`.toLowerCase();
+          const isPaymentRecord = rawCategory === "receipt" || rawCategory === "invoice" || /payment|receipt|invoice|amount:|reference:/.test(searchable);
+          const isCarePayment = isPaymentRecord && searchable.includes("care request");
+          const isCashPayment = isPaymentRecord && /cash[ -]?in/.test(searchable);
+          const tab = isPaymentRecord ? "Receipts" : rawCategory === "farm_update" || rawCategory === "care" ? "Caretaker Updates" : rawCategory === "wallet" || rawCategory === "cashin" || rawCategory === "withdraw" || rawCategory === "alert" ? "Alerts" : "Messages";
+          const href = tab === "Receipts" ? (isCarePayment ? "/customer/inbox/invoice/care-request" : isCashPayment ? "/customer/inbox/invoice/cashin" : "/customer/inbox/invoice/farm-buy") : tab === "Caretaker Updates" ? "/customer/care-logs" : undefined;
+          const status = searchable.includes("for admin review") || searchable.includes("waiting for admin") ? "Pending" : searchable.includes("rejected") ? "Rejected" : searchable.includes("needs more info") || searchable.includes("needs correction") ? "Needs Info" : searchable.includes("approved") ? "Approved" : searchable.includes("submitted") || searchable.includes("recorded") ? "Recorded" : String(row.status || "Recorded").replaceAll("_", " ");
+          return { id: row.id, title, text, status, tab, action: href?.includes("invoice") ? "invoice" : href ? "carelogs" : "read", href, created_at: row.created_at, is_read: Boolean(row.is_read) };
         });
         setLiveInbox(mapped);
+        setRead(mapped.filter((row:any)=>row.is_read).map((row:any)=>String(row.id)));
         setNote(mapped.length ? "Live Supabase inbox loaded." : "No live inbox records yet. Receipts will appear here after Farm Buy checkout.");
       })
       .catch(() => {
         setLiveInbox([]);
         setNote("Inbox records could not be loaded. Please refresh or login again.");
       });
-    return () => { mounted = false; };
+    void refreshInbox();
+    const interval = window.setInterval(refreshInbox, 10000);
+    const refreshOnFocus = () => void refreshInbox();
+    window.addEventListener("focus", refreshOnFocus);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshOnFocus);
+    };
   }, []);
 
-  const list = liveInbox.map((item, index) => ({ ...item, inboxKey: `${item.created_at || "live"}-${item.title}-${item.text}-${index}` })).filter(i=>!removed.includes(i.inboxKey));
+  const list = liveInbox.map((item, index) => ({ ...item, inboxKey: String(item.id || `${item.created_at || "live"}-${item.title}-${index}`) })).filter(i=>!removed.includes(i.inboxKey));
   const filtered = list
     .filter(i => category === "All" || i.tab === category)
     .filter(i => (i.title + " " + i.text + " " + i.status).toLowerCase().includes(query.toLowerCase()))
-    .sort((a,b)=>sort === "Oldest first" ? String(a.created_at || a.title).localeCompare(String(b.created_at || b.title)) : String(b.created_at || b.title).localeCompare(String(a.created_at || a.title)));
+    .sort((a,b)=>sort === "Unread first" ? Number(read.includes(a.inboxKey))-Number(read.includes(b.inboxKey)) : sort === "Oldest first" ? String(a.created_at || a.title).localeCompare(String(b.created_at || b.title)) : String(b.created_at || b.title).localeCompare(String(a.created_at || a.title)));
   const actionLabel = (item: any) => item.action === "invoice" ? "Open Receipt" : item.action === "carelogs" ? "Open Care Logs" : "Mark Read";
-  return <Shell role="customer" title="Inbox"><PageTitle title="Inbox" text="Notifications only: receipts, caretaker updates, wallet alerts, and support messages." icon="inbox" /><KaFarm>{note}</KaFarm><div className="grid gap-5 lg:grid-cols-[300px_1fr]"><aside className="rounded-3xl bg-white p-3 shadow-sm"><div className="mb-3 px-3 py-2"><h2 className="text-lg font-black">Inbox Categories</h2><p className="text-xs font-bold text-[#667267]">Separated by function</p></div><div className="grid gap-2">{categories.map(c=>{ const count = c.name === "All" ? list.length : list.filter(i=>i.tab===c.name).length; return <button key={c.name} onClick={()=>setCategory(c.name)} className={("flex items-center gap-3 rounded-2xl px-3 py-3 text-left transition " + (category===c.name?"bg-[#1f6b45] text-white shadow-sm":"bg-[#fffdf7] hover:bg-[#f6f3e8]"))}><span className={("grid h-11 w-11 shrink-0 place-items-center rounded-2xl " + (category===c.name?"bg-white/15":"bg-[#f1eadb] text-[#1f6b45]"))}><Icon name={c.icon} className="h-5 w-5" /></span><span className="min-w-0 flex-1"><span className="block truncate font-black">{c.label}</span><span className={("block truncate text-xs font-bold " + (category===c.name?"text-white/75":"text-[#667267]"))}>{c.note}</span></span><span className={("rounded-full px-2 py-1 text-xs font-black " + (category===c.name?"bg-white/20":"bg-[#f6f3e8] text-[#667267]"))}>{count}</span></button>})}</div></aside><section className="rounded-3xl bg-white p-4 shadow-sm"><div className="flex flex-col gap-3 md:flex-row md:items-center"><div className="relative flex-1"><Icon name="search" className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#667267]" /><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search inbox" className="w-full rounded-2xl border border-[#ded8c9] bg-[#fffdf7] py-3 pl-12 pr-4 font-bold" /></div><select value={sort} onChange={e=>setSort(e.target.value)} className="rounded-2xl border border-[#ded8c9] bg-white px-4 py-3 font-black"><option>Newest first</option><option>Oldest first</option><option>Unread first</option></select></div><div className="mt-4 max-h-[680px] space-y-3 overflow-y-auto pr-2">{filtered.map(i=>{ const isRead = read.includes(i.inboxKey); return <article key={i.inboxKey} className={("rounded-2xl border p-4 transition " + (isRead?"border-[#ece6d8] bg-white":"border-[#d6ead9] bg-[#fffdf7]"))}><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-black uppercase tracking-wide text-[#667267]">{i.tab}</p><h3 className="mt-1 truncate text-lg font-black">{i.title}</h3></div><div className="flex items-center gap-2"><Badge tone={i.status==="Pending"?"warn":"good"}>{i.status}</Badge>{!isRead && <span className="h-2.5 w-2.5 rounded-full bg-[#1f6b45]" />}</div></div><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{i.text}</p><div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#ece6d8] pt-3">{"href" in i && i.href ? <Link href={i.href} className="rounded-xl bg-[#1f6b45] px-3 py-2 text-sm font-black text-white">{actionLabel(i)}</Link> : <button onClick={()=>setRead([...read,i.inboxKey])} className="rounded-xl bg-[#eee8d9] px-3 py-2 text-sm font-black">Mark Read</button>}<button onClick={()=>setRemoved([...removed,i.inboxKey])} title="Move to recycle bin" aria-label="Move to recycle bin" className="grid h-9 w-9 place-items-center rounded-xl bg-white text-red-700 shadow-sm ring-1 ring-[#f0d8d8]"><Icon name="trash" className="h-4 w-4" /></button></div></article>})}{filtered.length===0 && <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No notifications found.</p>}</div></section></div></Shell>;
+  async function markItemRead(item:any) {
+    if (!read.includes(item.inboxKey)) {
+      try {
+        await markInboxItemRead(item.id);
+        setRead(current=>current.includes(item.inboxKey)?current:[...current,item.inboxKey]);
+        window.dispatchEvent(new Event("farmconnect:inbox-changed"));
+      } catch (error) {
+        setNote(`Could not mark notification as read: ${readableAppError(error) || "Please refresh and try again."}`);
+        return false;
+      }
+    }
+    return true;
+  }
+  async function openOrMarkRead(item:any) {
+    const marked = await markItemRead(item);
+    if (!marked) return;
+    if (item.href) router.push(item.href);
+  }
+  async function markAllRead() {
+    const unread = list.filter(item=>!read.includes(item.inboxKey));
+    if (!unread.length) {
+      setNote("All Inbox notifications are already read.");
+      return;
+    }
+    setNote(`Marking ${unread.length} notification${unread.length===1?"":"s"} as read...`);
+    const results = await Promise.all(unread.map(item=>markItemRead(item)));
+    setNote(results.every(Boolean) ? "All Inbox notifications are now read." : "Some notifications could not be marked as read. Please retry.");
+  }
+  return <Shell role="customer" title="Inbox">
+    <PageTitle title="Inbox" text="Notifications only: receipts, caretaker updates, wallet alerts, and support messages." icon="inbox" />
+    <KaFarm>{note}</KaFarm>
+    <section className="min-w-0 overflow-hidden rounded-3xl bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div><h2 className="text-lg font-black">Inbox Categories</h2><p className="text-xs font-bold text-[#667267]">Swipe or scroll sideways to view every category.</p></div>
+        <button type="button" onClick={()=>void markAllRead()} disabled={!list.some(item=>!read.includes(item.inboxKey))} className="shrink-0 rounded-xl bg-[#1f6b45] px-4 py-2.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-[#b9b3a4]">Mark All as Read</button>
+      </div>
+      <div className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-2">
+        {categories.map(c=>{ const count = c.name === "All" ? list.filter(i=>!read.includes(i.inboxKey)).length : list.filter(i=>i.tab===c.name&&!read.includes(i.inboxKey)).length; return <button key={c.name} onClick={()=>setCategory(c.name)} className={("flex min-w-[190px] shrink-0 items-center gap-3 rounded-2xl px-3 py-3 text-left transition sm:min-w-[215px] " + (category===c.name?"bg-[#1f6b45] text-white shadow-sm":"bg-[#fffdf7] ring-1 ring-[#ece6d8] hover:bg-[#f6f3e8]"))}><span className={("grid h-11 w-11 shrink-0 place-items-center rounded-2xl " + (category===c.name?"bg-white/15":"bg-[#f1eadb] text-[#1f6b45]"))}><Icon name={c.icon} className="h-5 w-5" /></span><span className="min-w-0 flex-1"><span className="block truncate font-black">{c.label}</span><span className={("block truncate text-xs font-bold " + (category===c.name?"text-white/75":"text-[#667267]"))}>{c.note}</span></span>{count>0&&<span className={("shrink-0 rounded-full px-2 py-1 text-xs font-black " + (category===c.name?"bg-white/20":"bg-[#f6f3e8] text-[#667267]"))}>{count}</span>}</button>})}
+      </div>
+    </section>
+    <section className="mt-5 min-w-0 rounded-3xl bg-white p-4 shadow-sm">
+      <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+        <div className="relative min-w-0"><Icon name="search" className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#667267]" /><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search inbox" className="w-full min-w-0 rounded-2xl border border-[#ded8c9] bg-[#fffdf7] py-3 pl-12 pr-4 font-bold" /></div>
+        <select value={sort} onChange={e=>setSort(e.target.value)} className="w-full rounded-2xl border border-[#ded8c9] bg-white px-4 py-3 font-black"><option>Newest first</option><option>Oldest first</option><option>Unread first</option></select>
+      </div>
+      <div className="mt-4 max-h-[680px] space-y-3 overflow-y-auto pr-1 sm:pr-2">
+        {filtered.map(i=>{ const isRead = read.includes(i.inboxKey); return <article key={i.inboxKey} className={("rounded-2xl border p-4 transition " + (isRead?"border-[#ece6d8] bg-white":"border-[#d6ead9] bg-[#fffdf7]"))}><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-black uppercase tracking-wide text-[#667267]">{i.tab}</p><h3 className="mt-1 break-words text-lg font-black">{i.title}</h3></div><div className="flex shrink-0 items-center gap-2"><Badge tone={i.status==="Pending"||i.status==="Needs Info"?"warn":i.status==="Rejected"?"bad":"good"}>{i.status}</Badge>{!isRead&&<span className="h-2.5 w-2.5 rounded-full bg-[#1f6b45]" />}</div></div><p className="mt-2 break-words text-sm font-bold leading-6 text-[#667267]">{i.text}</p><div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#ece6d8] pt-3">{i.href&&<button type="button" onClick={()=>void openOrMarkRead(i)} className="rounded-xl bg-[#1f6b45] px-3 py-2 text-sm font-black text-white">{actionLabel(i)}</button>}{!isRead&&<button type="button" onClick={()=>void markItemRead(i)} className="rounded-xl bg-[#eee8d9] px-3 py-2 text-sm font-black">Mark as Read</button>}{isRead&&<span className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-800">Read</span>}<button onClick={()=>setRemoved([...removed,i.inboxKey])} title="Move to recycle bin" aria-label="Move to recycle bin" className="grid h-9 w-9 place-items-center rounded-xl bg-white text-red-700 shadow-sm ring-1 ring-[#f0d8d8]"><Icon name="trash" className="h-4 w-4" /></button></div></article>})}
+        {filtered.length===0&&<p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No notifications found.</p>}
+      </div>
+    </section>
+  </Shell>;
 }
 
 type PaymentContext = {
@@ -1064,36 +1447,62 @@ export function CustomerPaymentPage() {
   return <Shell role="customer" title="Payment">{qrOpen && <div className="fixed inset-0 z-[70] grid place-items-center bg-black/50 p-4"><section className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Scan to pay</p><h2 className="text-2xl font-black">{qrOpen.account}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{qrOpen.detail}</p></div><button onClick={()=>setQrOpen(null)} className="grid h-10 w-10 place-items-center rounded-full bg-[#f6f3e8] font-black">x</button></div><div className="mt-5 rounded-3xl border-4 border-[#1f6b45] bg-white p-4"><img src={qrOpen.qr} alt={`${qrOpen.method} QR`} className="mx-auto aspect-square w-full object-contain" /></div><p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm font-bold text-[#7a4b00]">After sending payment, return here and upload the receipt with reference number.</p></section></div>}<PageTitle title={title} text="Send payment externally, then upload reference number and receipt for admin approval." icon="coins" /><KaFarm>{note}</KaFarm><div className="mt-5 grid gap-5 xl:grid-cols-[1fr_380px]"><div className="grid gap-5"><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Amount To Pay</p><h2 className="mt-1 text-4xl font-black">{peso(context.amountExpected)}</h2><p className="mt-2 text-sm font-bold text-[#667267]">{context.summary?.source || title} - admin review required</p></div><Badge tone={submittedId ? "good" : "warn"}>{submittedId ? "Submitted" : "Not paid yet"}</Badge></div>{lines.length>0 && <div className="mt-5 max-h-[280px] space-y-2 overflow-y-auto pr-2">{lines.map((line:any,i:number)=><div key={i} className="flex justify-between gap-3 rounded-xl bg-[#f6f3e8] p-3 text-sm font-bold"><span>{line.name} x {line.quantity}</span><span>{peso(Number(line.total || 0))}</span></div>)}</div>}{context.sourceType === "care_request" && <div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="Rooster" value={context.summary?.rooster?.name || "Selected rooster"} /><Info label="Service" value={context.summary?.service?.name || "Care service"} /><Info label="Customer Note" value={context.summary?.customer_note || "No note"} /><Info label="Status" value="Payment for review" /></div>}</Card><Card><h2 className="text-xl font-black">1. Choose Where You Paid</h2><div className="mt-4 grid gap-3 md:grid-cols-3">{paymentReceivers.map(row=><div key={row.method} className={"overflow-hidden rounded-3xl bg-gradient-to-br p-4 shadow-sm transition " + row.color + " " + row.text + (method.method===row.method ? " ring-4 ring-white" : "")}><button onClick={()=>setMethod(row)} className="w-full text-left"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase opacity-75">Payment channel</p><b className="mt-1 block text-xl">{row.method}</b></div><span className={"rounded-full px-3 py-1 text-xs font-black " + row.badge}>{method.method===row.method ? "Selected" : "Select"}</span></div><p className="mt-5 text-sm font-black">{row.account}</p><p className="text-xs font-bold opacity-80">{row.detail}</p></button><button onClick={()=>{setMethod(row); setQrOpen(row);}} className="mt-4 w-full rounded-2xl bg-white/90 px-4 py-3 text-sm font-black text-[#123229] shadow-sm">View QR</button></div>)}</div></Card><Card><h2 className="text-xl font-black">2. Payment Proof</h2><div className="mt-4 rounded-2xl border border-[#ded8c9] bg-[#f6f3e8] p-4"><p className="text-xs font-black uppercase text-[#667267]">Sent To / Admin Check</p><p className="mt-1 text-xl font-black">{method.account}</p><p className="text-sm font-bold text-[#667267]">{method.method} - {method.detail}</p></div><div className="mt-4 grid gap-3 md:grid-cols-2"><input value={sender} onChange={e=>setSender(e.target.value)} placeholder="Sender name shown on receipt" className="rounded-2xl border border-[#ded8c9] px-4 py-3 font-bold" /><input value={reference} onChange={e=>setReference(e.target.value)} placeholder="Reference number" className="rounded-2xl border border-[#ded8c9] px-4 py-3 font-bold" /><label className="md:col-span-2 cursor-pointer rounded-3xl border-2 border-dashed border-[#ded8c9] bg-[#fffdf7] p-4 text-center font-black hover:border-[#1f6b45]"><input type="file" accept="image/*" className="hidden" onChange={e=>chooseReceipt(e.target.files?.[0])} />{receipt ? "Receipt attached" : "Upload receipt screenshot"}</label>{receipt && <img src={receipt} alt="Receipt preview" className="md:col-span-2 max-h-72 w-full rounded-2xl object-contain bg-white p-2" />}</div><button type="button" onClick={submitPayment} className={"mt-4 w-full rounded-2xl px-4 py-4 font-black text-white " + (submitting ? "bg-[#7f9b8d]" : "bg-[#1f6b45]")}>{submitting ? "Submitting..." : "Submit For Admin Review"}</button></Card></div><Card className="h-fit"><h2 className="text-xl font-black">What Happens Next</h2><div className="mt-4 grid gap-3 text-sm font-bold text-[#667267]"><p className="rounded-xl bg-[#f6f3e8] p-3">1. Your reference number and receipt become evidence.</p><p className="rounded-xl bg-[#f6f3e8] p-3">2. Admin reviews the exact channel you selected.</p><p className="rounded-xl bg-[#f6f3e8] p-3">3. If approved, Farm Buy items go to My Roosters/Inventory or Care Request moves forward.</p><p className="rounded-xl bg-[#f6f3e8] p-3">4. You receive inbox notice for approved, rejected, or needs more info.</p></div>{submittedId && <div className="mt-5 grid gap-2"><Link href="/customer/inbox" className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Open Inbox</Link><Link href={context.sourceType === "farm_buy" ? "/customer/farm-buy" : "/customer/farm-requests"} className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">Back</Link></div>}</Card></div></Shell>;
 }
 
-export function CustomerInvoicePage({ type = "farm-buy" }: { type?: "farm-buy" | "cashin" }) {
+export function CustomerInvoicePage({ type = "farm-buy" }: { type?: "farm-buy" | "cashin" | "care-request" }) {
   const isFarmBuy = type === "farm-buy";
-  const [invoiceNote,setInvoiceNote]=useState("Loading latest receipt...");
+  const isCareRequest = type === "care-request";
+  const [invoiceNote,setInvoiceNote]=useState("Loading latest payment record...");
   const [receipt,setReceipt]=useState<any | null>(null);
+  const [payment,setPayment]=useState<any | null>(null);
+  const [viewerOpen,setViewerOpen]=useState(false);
+
   useEffect(()=>{
     let mounted = true;
     getCurrentProfile()
-      .then(profile => profile ? getInboxItems(profile.id) : [])
-      .then(rows => {
-        if (!mounted) return;
-        const match = (rows || []).find((row: any) => {
-          const text = `${row.title || ""} ${row.body || ""}`.toLowerCase();
-          return isFarmBuy ? text.includes("farm buy") : text.includes("cash");
-        });
-        if (match) {
-          setReceipt(match);
-          setInvoiceNote("Live receipt loaded from Inbox records.");
-        } else {
-          setInvoiceNote("No live receipt found yet. Complete a checkout first, then come back here.");
-        }
+      .then(async profile => {
+        if (!profile) return { inbox: [], payments: [] };
+        const [inbox, payments] = await Promise.all([getInboxItems(profile.id),getCustomerManualPaymentRequests()]);
+        return { inbox, payments };
       })
-      .catch(() => setInvoiceNote("Could not load live receipt. Check login or inbox RLS."));
-    return () => { mounted = false; };
-  }, [isFarmBuy]);
-  const rows = isFarmBuy
-    ? [{ item: receipt?.title || "Farm Buy checkout", qty: receipt?.body || "Receipt details from Inbox", amount: Number(String(receipt?.body || "").match(/Total:\s*(\d+(?:\.\d+)?)/i)?.[1] || 0) }]
-    : [{ item: receipt?.title || "Cash-in credit", qty: receipt?.body || "Cash-in receipt details from Inbox", amount: Number(String(receipt?.body || "").match(/Total:\s*(\d+(?:\.\d+)?)/i)?.[1] || 0) }];
-  const total = rows.reduce((sum,r)=>sum+r.amount,0);
-  const receiptId = String(receipt?.body || "").match(/Receipt ID:\s*([a-f0-9-]+)/i)?.[1] || (isFarmBuy ? "INV-FB-PENDING" : "INV-CI-PENDING");
-  return <Shell role="customer" title="Invoice"><PageTitle title={isFarmBuy ? "Farm Buy Receipt" : "Cash-In Receipt"} text="Official receipt record connected from your inbox." icon="file" /><KaFarm>{invoiceNote}</KaFarm><Card><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm font-black uppercase text-[#667267]">Receipt</p><h2 className="mt-1 text-3xl font-black">{receiptId}</h2><p className="mt-2 text-sm font-bold text-[#667267]">{receipt?.created_at ? new Date(receipt.created_at).toLocaleString("en-PH") : "Issued after checkout"}</p></div><Badge tone={receipt ? "good" : "warn"}>{receipt ? "Official" : "Pending"}</Badge></div><div className="mt-6 overflow-hidden rounded-2xl border border-[#ece6d8]"><table className="w-full text-left text-sm"><thead className="bg-[#f6f3e8]"><tr><th className="p-3">Item</th><th className="p-3">Details</th><th className="p-3 text-right">Amount</th></tr></thead><tbody>{rows.map(r=><tr key={r.item} className="border-t border-[#ece6d8]"><td className="p-3 font-black">{r.item}</td><td className="p-3 text-[#667267]">{r.qty}</td><td className="p-3 text-right font-black">{r.amount ? `FC ${fcCoin(r.amount)}` : "Recorded"}</td></tr>)}</tbody></table></div><div className="mt-5 flex justify-end"><div className="rounded-2xl bg-[#f6f3e8] p-4 text-right"><p className="text-xs font-black uppercase text-[#667267]">Total</p><p className="text-3xl font-black">{total ? `FC ${fcCoin(total)}` : "Recorded"}</p></div></div><div className="mt-5 flex flex-wrap gap-3"><Link href="/customer/inbox" className="rounded-2xl bg-[#eee8d9] px-4 py-3 font-black">Back to Inbox</Link><Link href="/customer/farm-buy" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">Farm Buy</Link><Link href="/customer/inventory" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">Inventory</Link><Link href="/customer/roosters" className="rounded-2xl bg-[#1f6b45] px-4 py-3 font-black text-white">My Roosters</Link></div></Card></Shell>;
+      .then(({ inbox, payments }) => {
+        if (!mounted) return;
+        const sourceType = isCareRequest ? "care_request" : isFarmBuy ? "farm_buy" : "cashin";
+        const latestPayment = (payments || []).find((row:any)=>String(row.source_type || "").toLowerCase()===sourceType) || null;
+        const latestReceipt = (inbox || []).find((row:any) => {
+          const text = `${row.title || ""} ${row.body || ""}`.toLowerCase();
+          return isCareRequest ? text.includes("care request") : isFarmBuy ? text.includes("farm buy") : text.includes("cash");
+        }) || null;
+        setPayment(latestPayment);
+        setReceipt(latestReceipt);
+        setInvoiceNote(latestPayment ? "Live payment details and receipt proof loaded." : "No submitted payment record found yet.");
+      })
+      .catch(error=>setInvoiceNote(`Could not load receipt: ${readableAppError(error) || "Check login or Inbox RLS."}`));
+    return ()=>{ mounted=false; };
+  },[isFarmBuy]);
+
+  const amount = Number(payment?.amount_expected || String(receipt?.body || "").match(/(?:Total|Amount):\\s*(\\d+(?:\\.\\d+)?)/i)?.[1] || 0);
+  const reference = payment?.reference_number || String(receipt?.body || "").match(/Reference:\\s*([^\\.]+)/i)?.[1] || "Not recorded";
+  const receiptId = String(receipt?.body || "").match(/Receipt ID:\\s*([a-f0-9-]+)/i)?.[1] || (payment?.id ? `PAY-${String(payment.id).slice(0,8).toUpperCase()}` : isFarmBuy ? "INV-FB-PENDING" : "INV-CI-PENDING");
+  const status = String(payment?.status || (receipt ? "recorded" : "pending")).replaceAll("_"," ");
+  const method = payment?.payment_method || "Not recorded";
+  const receiver = payment?.receiver_account || "Not recorded";
+  const sender = payment?.sender_name || "Not recorded";
+  const receiptUrl = payment?.receipt_image_url || "";
+
+  const receiptTitle = isCareRequest ? "Care Request Receipt" : isFarmBuy ? "Farm Buy Receipt" : "Cash-In Receipt";
+  return <Shell role="customer" title="Invoice">
+    {viewerOpen&&<div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4"><section className="w-full max-w-3xl rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Uploaded Payment Proof</p><h2 className="mt-1 text-2xl font-black">{reference}</h2></div><button type="button" onClick={()=>setViewerOpen(false)} className="rounded-xl bg-[#eee8d9] px-4 py-2 font-black">Close</button></div><div className="mt-4 grid min-h-80 place-items-center overflow-hidden rounded-2xl bg-[#111] p-4">{receiptUrl?<img src={receiptUrl} alt="Uploaded payment receipt" className="max-h-[65vh] w-full object-contain"/>:<p className="font-black text-white">No receipt photo attached</p>}</div></section></div>}
+    <PageTitle title={receiptTitle} text="Payment details, reference, and uploaded proof connected to your request." icon="file"/>
+    <KaFarm>{invoiceNote}</KaFarm>
+    <Card>
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm font-black uppercase text-[#667267]">Payment Record</p><h2 className="mt-1 text-3xl font-black">{receiptId}</h2><p className="mt-2 text-sm font-bold text-[#667267]">{payment?.created_at?new Date(payment.created_at).toLocaleString("en-PH"):receipt?.created_at?new Date(receipt.created_at).toLocaleString("en-PH"):"Waiting for submission"}</p></div><Badge tone={status==="approved"?"good":status==="rejected"?"bad":"warn"}>{status}</Badge></div>
+      <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <section className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-5"><p className="text-xs font-black uppercase text-[#667267]">Payment Submitted</p><h3 className="mt-2 text-2xl font-black">Reference: {reference}</h3><p className="mt-3 text-sm font-bold leading-6 text-[#667267]">{receipt?.body || "The payment proof is waiting for admin review."}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><Info label="Method Used" value={method}/><Info label="Receiver / Account" value={receiver}/><Info label="Sender Name" value={sender}/><Info label="Request Status" value={status}/></div></section>
+        <section className="rounded-2xl border border-[#ece6d8] bg-white p-5"><p className="text-xs font-black uppercase text-[#667267]">Receipt / Upload</p><div className="mt-3 grid min-h-44 place-items-center overflow-hidden rounded-2xl bg-[#f6f3e8]">{receiptUrl?<img src={receiptUrl} alt="Receipt preview" className="max-h-56 w-full object-contain"/>:<p className="px-4 text-center text-sm font-bold text-[#667267]">No uploaded photo available.</p>}</div><button type="button" disabled={!receiptUrl} onClick={()=>setViewerOpen(true)} className="mt-3 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white disabled:cursor-not-allowed disabled:bg-[#b9b3a4]">View Uploaded Receipt</button></section>
+      </div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[#1f6b45] p-5 text-white"><div><p className="text-xs font-black uppercase text-white/75">Amount Paid</p><p className="mt-1 text-sm font-bold">Recorded from submitted payment request</p></div><p className="text-4xl font-black">{peso(amount)}</p></div>
+      <div className="mt-5 flex flex-wrap gap-3"><Link href="/customer/inbox" className="rounded-2xl bg-[#eee8d9] px-4 py-3 font-black">Back to Inbox</Link><Link href="/customer/farm-buy" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">Farm Buy</Link><Link href="/customer/inventory" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">Inventory</Link><Link href="/customer/roosters" className="rounded-2xl bg-[#1f6b45] px-4 py-3 font-black text-white">My Roosters</Link></div>
+    </Card>
+  </Shell>;
 }
 export function SupportPage() {
   type ChatMsg = { from: "customer" | "caretaker" | "kafarm" | "admin"; text: string; at: string };
@@ -1297,7 +1706,7 @@ export function SettingsPage() {
   }
   async function submitContact() {
     if (!contact.name.trim() || !contact.phone.trim()) { setSettingsNote("Contact name and phone are required."); return; }
-    try { const { data } = await supabase.auth.getUser(); const authUserId = data.user?.id; if (!authUserId) throw new Error("login required"); const { error } = await supabase.from("profiles").update({ full_name: contact.name, display_name: contact.nickname, email: contact.email, phone: contact.phone }).eq("auth_user_id", authUserId); if (error) throw error; setSettingsNote("Contact details updated and ready for admin/customer desk records."); } catch { setSettingsNote("Contact form is ready. Once profile columns are matched in the database, this will save directly."); }
+    try { const { data } = await supabase.auth.getUser(); const authUserId = data.user?.id; if (!authUserId) throw new Error("login required"); const { error } = await supabase.from("profiles").update({ full_name: contact.name, display_name: contact.nickname, email: contact.email, phone: contact.phone }).eq("auth_user_id", authUserId); if (error) throw error; setSettingsNote("Contact details updated and ready for Customer Requests records."); } catch { setSettingsNote("Contact form is ready. Once profile columns are matched in the database, this will save directly."); }
   }
   function openPanel(panel: SettingsPanel, title: string) { setActivePanel(panel); setSettingsNote(`${title} opened. Complete the panel on the right to continue.`); }
   function idRule(type: string) {
@@ -1335,68 +1744,433 @@ export function CaretakerHome() {
 }
 
 export function CaretakerTasks() {
-  const [tasks,setTasks]=useState(initialTasks);
-  const [selected,setSelected]=useState(initialTasks[0]);
+  const [tasks, setTasks] = useState<CaretakerTaskView[]>([]);
+  const [selected, setSelected] = useState<CaretakerTaskView | null>(null);
+  const [taskNote, setTaskNote] = useState("Loading active tasks from database...");
+  const [documentation, setDocumentation] = useState("");
+  const [proofFiles, setProofFiles] = useState<File[]>([]);
+  const [qrValue, setQrValue] = useState("");
+  const [qrSkipped, setQrSkipped] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraOpening, setCameraOpening] = useState(false);
+  const [cameraMessage, setCameraMessage] = useState("Camera is ready to open. You can also enter the QR manually or skip verification.");
+  const [phase, setPhase] = useState<"work" | "scan" | "confirm" | "sending">("work");
+  const [feedUsed, setFeedUsed] = useState("0.25");
+  const [saleAmount, setSaleAmount] = useState("");
+  const proofInputRef = useRef<HTMLInputElement>(null);
+  const qrTagRef = useRef<HTMLDivElement>(null);
+  const qrVideoRef = useRef<HTMLVideoElement>(null);
+  const qrStreamRef = useRef<MediaStream | null>(null);
+  const qrTimerRef = useRef<number | null>(null);
+  const qrControlsRef = useRef<{ stop: () => void } | null>(null);
+  const previews = useMemo(() => proofFiles.map(file => ({ file, url: URL.createObjectURL(file) })), [proofFiles]);
+  const needsFeedQty = selected ? /feed/i.test(selected.task + " " + selected.proof) : false;
+  const isSalePriceTask = selected?.workflowType === "sale_price_inspection";
+  const isSaleReleaseTask = selected?.workflowType === "sale_release_confirmation";
+
+  useEffect(() => () => previews.forEach(item => URL.revokeObjectURL(item.url)), [previews]);
+  useEffect(() => () => {
+    if (qrTimerRef.current) window.clearInterval(qrTimerRef.current);
+    qrStreamRef.current?.getTracks().forEach(track => track.stop());
+  }, []);
+  useEffect(() => {
+    let mounted = true;
+    getCaretakerActiveTasks()
+      .then(rows => {
+        if (!mounted) return;
+        const mapped = (rows || []).map(mapCaretakerTaskRow);
+        setTasks(mapped);
+        setSelected(mapped[0] || null);
+        setTaskNote(mapped.length
+          ? "Choose a task, write the documentation, and attach clear photos. QR verification opens only after Submit Work."
+          : "No assigned task yet. New approved requests appear here after admin assignment.");
+      })
+      .catch(() => setTaskNote("Active tasks could not be loaded. Check caretaker login and task database access."));
+    return () => { mounted = false; };
+  }, []);
+
+  function resetDraft(task: CaretakerTaskView) {
+    setSelected(task);
+    setDocumentation("");
+    setProofFiles([]);
+    setQrValue("");
+    setQrSkipped(false);
+    setSaleAmount("");
+    setCameraOpening(false);
+    setCameraMessage("Camera is ready to open. You can also enter the QR manually or skip verification.");
+    setPhase("work");
+    setTaskNote(task.workflowType === "sale_release_confirmation"
+      ? `Opened ${task.task}. Read the sale instruction and submit your acknowledgement. No photo or QR is required.`
+      : `Opened ${task.task}. Complete the documentation and photos before QR verification.`);
+  }
+
+  function addProofFiles(files?: FileList | null) {
+    const accepted = Array.from(files || []).filter(file => ["image/jpeg", "image/png", "image/webp"].includes(file.type) && file.size <= 10 * 1024 * 1024);
+    setProofFiles(current => [...current, ...accepted].slice(0, 5));
+    setTaskNote(accepted.length ? `${accepted.length} photo(s) attached. Finish the documentation, then submit for QR verification.` : "Use JPG, PNG, or WebP photos up to 10 MB each.");
+  }
+
+  function getQrSvgMarkup() {
+    const svg = qrTagRef.current?.querySelector("svg");
+    if (!svg) return null;
+    const clone = svg.cloneNode(true) as SVGElement;
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    clone.setAttribute("width", "1200");
+    clone.setAttribute("height", "1200");
+    return new XMLSerializer().serializeToString(clone);
+  }
+
+  function downloadQrTag() {
+    if (!selected?.qrPayload) {
+      setTaskNote("QR identity is missing. Ask admin before printing a tag.");
+      return;
+    }
+    const markup = getQrSvgMarkup();
+    if (!markup) {
+      setTaskNote("QR image is not ready yet. Wait a moment, then try Download QR again.");
+      return;
+    }
+    const svgUrl = URL.createObjectURL(new Blob([markup], { type: "image/svg+xml;charset=utf-8" }));
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1400;
+      canvas.height = 1400;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        URL.revokeObjectURL(svgUrl);
+        setTaskNote("This device could not prepare the QR download. Use Print Tag instead.");
+        return;
+      }
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 100, 100, 1200, 1200);
+      canvas.toBlob(blob => {
+        URL.revokeObjectURL(svgUrl);
+        if (!blob) {
+          setTaskNote("QR download could not be created. Use Print Tag instead.");
+          return;
+        }
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const safeName = selected.rooster.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "rooster";
+        link.href = downloadUrl;
+        link.download = `farmconnect-${safeName}-qr.png`;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        setTaskNote("QR downloaded. Open it on any device or print it at 30 x 30 mm minimum.");
+      }, "image/png");
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(svgUrl);
+      setTaskNote("QR download could not be prepared. Use Print Tag instead.");
+    };
+    image.src = svgUrl;
+  }
+
+  function printQrTag() {
+    if (!selected?.qrPayload) {
+      setTaskNote("QR identity is missing. Ask admin before printing a tag.");
+      return;
+    }
+    const markup = getQrSvgMarkup();
+    if (!markup) {
+      setTaskNote("QR image is not ready yet. Wait a moment, then try Print Tag again.");
+      return;
+    }
+    const printWindow = window.open("", "_blank", "width=720,height=760");
+    if (!printWindow) {
+      setTaskNote("Print window was blocked. Allow pop-ups for FarmConnect, then try again.");
+      return;
+    }
+    const safeRooster = selected.rooster.replace(/[<>&"']/g, "");
+    const safeTag = selected.tag.replace(/[<>&"']/g, "");
+    printWindow.document.write(`<!doctype html><html><head><title>FarmConnect QR Tag</title><style>@page{size:45mm 45mm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif}.tag{width:45mm;height:45mm;padding:2.5mm;display:flex;flex-direction:column;align-items:center;justify-content:center;border:0.4mm solid #111;text-align:center;overflow:hidden}.qr svg{display:block;width:30mm;height:30mm}.name{margin-top:1mm;font-size:9pt;font-weight:800;line-height:1}.serial{margin-top:1mm;max-width:39mm;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:6pt;font-weight:700}.hint{display:none}@media screen{body{min-height:100vh;display:grid;place-items:center;background:#eef3ed}.tag{background:white;box-shadow:0 8px 30px #0002}.hint{display:block;position:fixed;bottom:20px;font-size:12px;color:#345}}</style></head><body><div class="tag"><div class="qr">${markup}</div><div class="name">${safeRooster}</div><div class="serial">${safeTag}</div></div><p class="hint">Print at Actual Size / 100%. Tag size: 45 x 45 mm.</p><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));<\/script></body></html>`);
+    printWindow.document.close();
+    setTaskNote("Print tag opened. Choose Actual Size or 100%; do not use Fit to Page.");
+  }
+
+  function openQrVerification() {
+    if (!selected) return;
+    if (documentation.trim().length < 5) {
+      setTaskNote("Write a clear work documentation before submitting.");
+      return;
+    }
+    if (isSalePriceTask && Number(saleAmount) <= 0) {
+      setTaskNote("Enter the inspected rooster price before submitting.");
+      return;
+    }
+    if (!proofFiles.length && !isSaleReleaseTask) {
+      setTaskNote("Attach at least one clear work photo before submitting.");
+      return;
+    }
+    if (needsFeedQty && Number(feedUsed) <= 0) {
+      setTaskNote("Enter the actual feed quantity used before submitting.");
+      return;
+    }
+    if (isSaleReleaseTask || selected.workflowType === "qr_tagging" || !selected.qrScanRequired) {
+      setQrSkipped(false);
+      setTaskNote("QR tagging proof is ready. Sending documentation and photos to Admin Task Verification...");
+      void sendToAdmin(true);
+      return;
+    }
+    setQrValue("");
+    setPhase("scan");
+    setTaskNote("Work proof is ready. Scan the rooster QR to verify the correct rooster.");
+  }
+
+  function stopQrCamera() {
+    qrControlsRef.current?.stop();
+    qrControlsRef.current = null;
+    if (qrTimerRef.current) window.clearInterval(qrTimerRef.current);
+    qrTimerRef.current = null;
+    qrStreamRef.current?.getTracks().forEach(track => track.stop());
+    qrStreamRef.current = null;
+    if (qrVideoRef.current) qrVideoRef.current.srcObject = null;
+    setCameraActive(false);
+  }
+
+  function verifyQrValue(value: string) {
+    if (!selected) return;
+    const scanned = value.trim().replace(/\s+/g, "").toLowerCase();
+    const expected = (selected.qrPayload || selected.tag).trim().replace(/\s+/g, "").toLowerCase();
+    if (!expected || expected === "notag") {
+      setTaskNote("This task has no rooster tag. Ask admin to correct the assignment before sending proof.");
+      return;
+    }
+    if (scanned !== expected) {
+      setTaskNote("QR does not match this task. Check the rooster and scan again.");
+      return;
+    }
+    stopQrCamera();
+    setQrSkipped(false);
+    setPhase("confirm");
+    setTaskNote("QR matched. Review the rooster, owner, and requested task before sending.");
+  }
+
+  async function startQrCamera() {
+    type DetectorResult = { rawValue?: string };
+    type Detector = { detect(source: CanvasImageSource): Promise<DetectorResult[]> };
+    type DetectorConstructor = new (options: { formats: string[] }) => Detector;
+    setCameraOpening(true);
+    setCameraMessage("Opening camera. Allow camera access when the browser asks.");
+    const DetectorClass = (window as unknown as { BarcodeDetector?: DetectorConstructor }).BarcodeDetector;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraOpening(false);
+      setCameraMessage("Camera access is unavailable in this browser. Enter the QR below or use Skip QR.");
+      setTaskNote("Camera access is unavailable. Use the QR input below or Skip QR so admin can review the exception.");
+      return;
+    }
+    try {
+      stopQrCamera();
+      if (!DetectorClass) {
+        const { BrowserQRCodeReader } = await import("@zxing/browser");
+        const reader = new BrowserQRCodeReader();
+        if (!qrVideoRef.current) throw new Error("QR_VIDEO_NOT_READY");
+        const controls = await reader.decodeFromConstraints(
+          { video: { facingMode: { ideal: "environment" } }, audio: false },
+          qrVideoRef.current,
+          result => {
+            const value = result?.getText();
+            if (value) {
+              setQrValue(value);
+              verifyQrValue(value);
+            }
+          },
+        );
+        qrControlsRef.current = controls;
+        setCameraOpening(false);
+        setCameraActive(true);
+        setTaskNote("Camera scanner is active using the compatible QR reader.");
+        setCameraMessage("Camera is active. Point it steadily at the rooster QR.");
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      qrStreamRef.current = stream;
+      if (qrVideoRef.current) {
+        qrVideoRef.current.srcObject = stream;
+        await qrVideoRef.current.play();
+      }
+      const detector = new DetectorClass({ formats: ["qr_code"] });
+      setCameraOpening(false);
+      setCameraActive(true);
+      qrTimerRef.current = window.setInterval(async () => {
+        if (!qrVideoRef.current || qrVideoRef.current.readyState < 2) return;
+        try {
+          const result = await detector.detect(qrVideoRef.current);
+          const value = result[0]?.rawValue;
+          if (value) {
+            setQrValue(value);
+            verifyQrValue(value);
+          }
+        } catch {}
+      }, 500);
+      setTaskNote("Camera scanner is active. Point it at the rooster QR.");
+      setCameraMessage("Camera is active. Point it steadily at the rooster QR.");
+    } catch (error) {
+      stopQrCamera();
+      setCameraOpening(false);
+      const denied = error instanceof DOMException && error.name === "NotAllowedError";
+      const message = denied
+        ? "Camera permission was denied. Allow camera access in browser settings, enter the QR below, or use Skip QR."
+        : "Camera could not open on this device. Enter the QR below or use Skip QR.";
+      setCameraMessage(message);
+      setTaskNote(message);
+    }
+  }
+
+  async function sendToAdmin(allowFromWork = false) {
+    if (!selected || (phase !== "confirm" && !allowFromWork)) return;
+    setPhase("sending");
+    setTaskNote("Uploading proof and sending it to Admin Task Verification...");
+    try {
+      const proofUrls: string[] = [];
+      for (let index = 0; index < proofFiles.length; index += 1) {
+        proofUrls.push(await uploadPrivateEvidenceFile({
+          bucket: "caretaker-task-proofs",
+          folder: `tasks/${selected.id}`,
+          kind: `proof-${index + 1}-${Date.now()}`,
+          file: proofFiles[index],
+          maxBytes: 10 * 1024 * 1024,
+          allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+          upsert: false,
+        }));
+      }
+      if (isSalePriceTask || isSaleReleaseTask) {
+        await submitCaretakerRoosterSaleTask({
+          taskId: selected.id,
+          declaredAmount: isSalePriceTask ? Number(saleAmount) : null,
+          proofUrls,
+          freeNote: documentation.trim(),
+          qrVerified: isSaleReleaseTask ? false : !qrSkipped,
+          serialException: isSaleReleaseTask ? false : qrSkipped,
+        });
+      } else {
+        await submitCaretakerTaskProof({
+          taskId: selected.id,
+          proofUrl: proofUrls[0],
+          proofUrls,
+          presetNote: `${selected.task} completed${needsFeedQty ? ` - ${feedUsed} kg used` : ""}`,
+          freeNote: documentation.trim(),
+          qrVerified: !qrSkipped,
+          serialException: qrSkipped,
+          feedQuantityUsed: needsFeedQty ? Number(feedUsed) : null,
+          feedUnit: needsFeedQty ? "kg" : null,
+        });
+      }
+      const nextTasks = tasks.filter(task => task.id !== selected.id);
+      setTasks(nextTasks);
+      setSelected(nextTasks[0] || null);
+      setDocumentation("");
+      setProofFiles([]);
+      setQrValue("");
+      setQrSkipped(false);
+      setSaleAmount("");
+      setPhase("work");
+      setTaskNote(`${selected.task} was sent to Admin Task Verification. It will return here as a backjob if admin rejects it for correction.`);
+    } catch (error) {
+      setPhase("confirm");
+      const message = readableAppError(error);
+      setTaskNote(/bucket not found/i.test(message)
+        ? "Send blocked: caretaker task-proof storage is not installed. Apply database SQL 033, then send again. Your draft is still here."
+        : /null value in column ["']task_id["']|TASK_PROOF_TASK_ID/i.test(message)
+          ? "Send blocked: task proof IDs are not synchronized. Apply SQL 037, reload the task, then send again. Your draft is still here."
+        : /TASK_NOT_ASSIGNED_TO_(CARETAKER|CURRENT_CARETAKER)/i.test(message)
+          ? "Send blocked: this task is linked to a different legacy caretaker record. Apply SQL 036, reload the task, then send again. Your draft is still here."
+          : `Send failed: ${message || "Check task-proof storage, caretaker assignment, and SQL 033."}`);
+    }
+  }
+
+  return <Shell role="caretaker" title="Active Tasks">
+    <PageTitle title="Active Tasks" text="Document the work, attach photos, then verify the rooster QR before sending." icon="clipboard" />
+    <KaFarm>{taskNote}</KaFarm>
+    <div className="mt-5 grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <Card>
+        <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Task Queue</h2><Badge tone={tasks.length ? "warn" : "neutral"}>{tasks.length} active</Badge></div>
+        <div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto pr-2">
+          {tasks.map(task => <button key={task.id} onClick={() => resetDraft(task)} className={"w-full rounded-xl border p-3 text-left " + (selected?.id === task.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}>
+            <b className="block text-base">{task.task}</b>
+            <p className="mt-1 truncate text-sm font-bold text-[#667267]">{task.rooster} / {task.tag}</p>
+            <div className="mt-2 flex items-center justify-between gap-2"><span className="text-xs font-bold text-[#667267]">{task.due}</span><Badge tone={task.status === "backjob" ? "bad" : task.priority === "urgent" ? "warn" : "neutral"}>{task.status === "backjob" ? "Backjob" : task.priority}</Badge></div>
+          </button>)}
+          {!tasks.length && <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-6 text-center"><b>No active task</b><p className="mt-2 text-sm font-bold text-[#667267]">Assigned and returned backjob tasks appear here.</p></div>}
+        </div>
+      </Card>
+      <Card>
+        {!selected ? <div className="grid min-h-[520px] place-items-center text-center"><div><h2 className="text-2xl font-black">Waiting for assignment</h2><p className="mt-2 text-sm font-bold text-[#667267]">Admin-assigned customer requests will appear in the task queue.</p></div></div> : <>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><p className="text-xs font-black uppercase text-[#667267]">Task Details</p><h2 className="mt-1 text-3xl font-black">{selected.task}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{selected.rooster} / {selected.tag} / {selected.pen}</p></div>
+            <Badge tone={phase === "confirm" ? "good" : phase === "scan" ? "warn" : "neutral"}>{phase === "work" ? "Documentation" : phase === "scan" ? "QR Verification" : phase === "sending" ? "Sending" : "Ready to Send"}</Badge>
+          </div>
+
+          {phase === "work" && <div className="mt-5 space-y-4">
+            <div className="grid gap-3 md:grid-cols-2"><div className="rounded-2xl bg-amber-50 p-4"><b>Customer Instruction</b><p className="mt-1 text-sm font-bold leading-6 text-[#667267]">{selected.note}</p></div><div className="rounded-2xl bg-[#f6f3e8] p-4"><b>Required Proof</b><p className="mt-1 text-sm font-bold text-[#667267]">{selected.proof}</p></div></div>
+            {selected.workflowType === "qr_tagging" && <div className="grid gap-4 rounded-3xl border-2 border-[#0f6fb8] bg-sky-50 p-5 md:grid-cols-[180px_1fr]"><div ref={qrTagRef} className="grid place-items-center rounded-2xl bg-white p-4">{selected.qrPayload ? <QRCodeSVG value={selected.qrPayload} size={148} level="H" marginSize={2} title={`QR for ${selected.rooster}`} /> : <span className="text-center text-sm font-black text-red-700">QR identity missing</span>}</div><div><p className="text-xs font-black uppercase text-[#0f6fb8]">System-Generated QR Tagging Task</p><h3 className="mt-1 text-2xl font-black">Attach this QR to {selected.rooster}</h3><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Download the QR to a phone/laptop or print the prepared 45 x 45 mm tag. Use waterproof material and attach it to a safe leg band or holder, never directly to skin or feathers.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={downloadQrTag} disabled={!selected.qrPayload} className="rounded-xl bg-[#0f6fb8] px-4 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"><Icon name="download" className="mr-2 inline h-5 w-5"/>Download QR</button><button type="button" onClick={printQrTag} disabled={!selected.qrPayload} className="rounded-xl bg-amber-300 px-4 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-50">Print Tag</button></div><p className="mt-3 text-xs font-bold leading-5 text-[#667267]">Print at Actual Size / 100%. QR itself is 30 x 30 mm for reliable phone scanning.</p><p className="mt-3 break-all rounded-xl bg-white p-3 text-xs font-black">{selected.qrPayload || "Missing QR payload - ask admin before work."}</p></div></div>}
+            {isSalePriceTask && <label className="block max-w-sm rounded-2xl border border-amber-200 bg-amber-50 p-4"><span className="text-sm font-black">Inspected Rooster Price</span><div className="mt-2 flex items-center gap-2"><span className="text-xl font-black">PHP</span><input value={saleAmount} onChange={event=>setSaleAmount(event.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal" placeholder="0" className="min-w-0 flex-1 rounded-xl border border-amber-300 bg-white p-3 text-lg font-black"/></div><p className="mt-2 text-xs font-bold text-[#667267]">Enter the actual inspected amount. Admin will verify this before the customer can sell.</p></label>}
+            {isSaleReleaseTask && <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm font-bold leading-6 text-sky-900"><b>Final sale acknowledgement:</b> Confirm in your documentation that you read the approved sale instruction and the rooster is ready for release. No photo or QR scan is required.</div>}
+            <label className="block"><span className="text-sm font-black">Work Documentation</span><textarea value={documentation} onChange={event => setDocumentation(event.target.value)} className="mt-2 min-h-32 w-full rounded-2xl border border-[#ded8c9] p-4 text-sm font-bold" placeholder={isSaleReleaseTask ? "Write your acknowledgement and final sale release note..." : "Write what was done, what was observed, and any quantity used..."} /></label>
+            {needsFeedQty && <label className="block max-w-48"><span className="text-sm font-black">Feed Used</span><div className="mt-2 flex items-center gap-2"><input value={feedUsed} onChange={event => setFeedUsed(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" className="w-28 rounded-xl border p-3 font-black"/><span className="font-bold">kg</span></div></label>}
+            {!isSaleReleaseTask && <div><div className="flex flex-wrap items-center justify-between gap-3"><div><b>Work Photos</b><p className="text-sm font-bold text-[#667267]">Attach 1-5 clear photos. QR opens after Submit Work.</p></div><button type="button" onClick={() => proofInputRef.current?.click()} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black"><Icon name="upload" className="mr-2 inline h-5 w-5"/>Add Photos</button></div><input ref={proofInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={event => addProofFiles(event.target.files)} />
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{previews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="relative overflow-hidden rounded-xl border bg-white"><img src={url} alt={`Proof ${index + 1}`} className="aspect-square w-full object-cover"/><button type="button" onClick={() => setProofFiles(files => files.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-red-600 text-xs font-black text-white" aria-label={`Remove ${file.name}`}>x</button></div>)}</div>
+            </div>}
+            <div className="flex flex-wrap gap-3"><button type="button" onClick={openQrVerification} className="rounded-xl bg-[#1f6b45] px-6 py-3 font-black text-white">{isSaleReleaseTask || selected.workflowType === "qr_tagging" ? "Submit to Admin" : "Submit Work"}</button><Link href="/caretaker/chat" className="rounded-xl bg-amber-300 px-6 py-3 font-black">Ask Admin</Link></div>
+          </div>}
+
+          {phase === "scan" && <div className="mt-5 rounded-3xl border-2 border-[#1f6b45] bg-emerald-50 p-5"><div className="flex items-center gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-[#1f6b45]"><Icon name="qr" /></span><div><h3 className="text-xl font-black">Verify Rooster QR</h3><p className="text-sm font-bold text-[#667267]">Scan the QR attached to the rooster. Details appear only after a match.</p></div></div><video ref={qrVideoRef} muted playsInline className={"mt-5 aspect-video w-full rounded-2xl bg-[#17251d] object-cover " + (cameraActive ? "block" : "hidden")} /><div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" disabled={cameraOpening} onClick={() => { if (cameraActive) { stopQrCamera(); setCameraMessage("Camera stopped. You can open it again, enter the QR, or skip verification."); } else { void startQrCamera(); } }} className="rounded-xl bg-[#0f6fb8] px-5 py-3 font-black text-white disabled:cursor-wait disabled:opacity-60"><Icon name="camera" className="mr-2 inline h-5 w-5"/>{cameraOpening ? "Opening Camera..." : cameraActive ? "Stop Camera" : "Open QR Camera"}</button><span role="status" aria-live="polite" className="max-w-xl text-sm font-bold text-[#355f4a]">{cameraMessage}</span></div><div className="my-4 flex items-center gap-3 text-xs font-black uppercase text-[#667267]"><span className="h-px flex-1 bg-emerald-200"/><span>Manual QR fallback</span><span className="h-px flex-1 bg-emerald-200"/></div><input value={qrValue} onChange={event => setQrValue(event.target.value)} onKeyDown={event => { if (event.key === "Enter") verifyQrValue(qrValue); }} className="w-full rounded-2xl border border-emerald-300 bg-white p-4 font-black" placeholder="Scan or enter rooster QR"/><div className="mt-4 flex flex-wrap gap-3"><button type="button" onClick={() => verifyQrValue(qrValue)} className="rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">Verify QR</button><button type="button" onClick={() => { stopQrCamera(); setQrSkipped(true); setQrValue(""); setPhase("confirm"); setTaskNote("QR was skipped. Admin will see this submission as not QR verified."); }} className="rounded-xl bg-amber-300 px-5 py-3 font-black">Skip QR</button><button type="button" onClick={() => { stopQrCamera(); setQrSkipped(false); setPhase("work"); setQrValue(""); setTaskNote("QR verification cancelled. Your documentation and photos are still here."); }} className="rounded-xl bg-white px-5 py-3 font-black">Cancel</button></div></div>}
+
+          {(phase === "confirm" || phase === "sending") && <div className="mt-5"><div className={"rounded-3xl border-2 p-5 " + (qrSkipped ? "border-amber-300 bg-amber-50" : "border-emerald-300 bg-emerald-50")}><div className="flex items-center gap-3"><span className={"grid h-12 w-12 place-items-center rounded-2xl text-white " + (qrSkipped ? "bg-amber-500" : "bg-[#1f6b45]")}><Icon name={qrSkipped ? "alert" : "check"} /></span><div><h3 className="text-xl font-black">{qrSkipped ? "QR Verification Skipped" : "QR Matched"}</h3><p className="text-sm font-bold text-[#667267]">{qrSkipped ? "Confirm the task details. Admin will review this as an exception." : "Confirm these details before sending."}</p></div></div><div className="mt-5 grid gap-3 md:grid-cols-3"><div className="rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Rooster Name</p><b className="mt-1 block text-lg">{selected.rooster}</b><span className="text-sm font-bold text-[#667267]">{selected.tag}</span></div><div className="rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Owner Account</p><b className="mt-1 block text-lg">{selected.requester}</b><span className="text-sm font-bold text-[#667267]">{selected.ownerReference}</span></div><div className="rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Task Requested</p><b className="mt-1 block text-lg">{selected.task}</b><span className="text-sm font-bold text-[#667267]">{documentation}</span></div></div></div><div className="mt-4 flex gap-3"><button type="button" disabled={phase === "sending"} onClick={() => void sendToAdmin()} className="rounded-xl bg-[#1f6b45] px-6 py-3 font-black text-white disabled:opacity-60">{phase === "sending" ? "Sending..." : "Send to Admin"}</button><button type="button" disabled={phase === "sending"} onClick={() => { setQrSkipped(false); setPhase("work"); setQrValue(""); setTaskNote("Send cancelled. The task remains active and your draft is unchanged."); }} className="rounded-xl bg-[#eee8d9] px-6 py-3 font-black disabled:opacity-60">Cancel</button></div></div>}
+        </>}
+      </Card>
+    </div>
+  </Shell>;
+}
+
+function CaretakerTasksLegacy() {
+  const [tasks,setTasks]=useState<CaretakerTaskView[]>([]);
+  const [selected,setSelected]=useState<CaretakerTaskView | null>(null);
   const [taskNote,setTaskNote]=useState("Loading active tasks from database...");
   const [qrVerified,setQrVerified]=useState(false);
   const [proofReady,setProofReady]=useState(false);
   const [feedUsed,setFeedUsed]=useState("0.25");
   const [exceptionRequested,setExceptionRequested]=useState(false);
-  const needsVideo = /vitamin|supplement|vet/i.test(selected.task + " " + selected.proof + " " + selected.note);
-  const needsFeedQty = /feed/i.test(selected.task + " " + selected.proof);
-  function mapDbTask(row: any) {
-    return {
-      id: row.id,
-      requester: row.requester_name || "Customer",
-      rooster: row.rooster_name || "Rooster",
-      tag: row.rooster_tag || "No tag",
-      task: row.task_type || "Care Task",
-      due: row.due_at ? new Date(row.due_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Due soon",
-      priority: row.priority || "normal",
-      note: row.customer_note || row.admin_note || "No customer note.",
-      pen: row.pen || "Assigned pen",
-      proof: row.required_proof || "Photo proof",
-      status: row.status || "Active",
-      db: true,
-    };
-  }
+  const needsVideo = selected ? /vitamin|supplement|vet/i.test(selected.task + " " + selected.proof + " " + selected.note) : false;
+  const needsFeedQty = selected ? /feed/i.test(selected.task + " " + selected.proof) : false;
   useEffect(()=>{
     let mounted = true;
     getCaretakerActiveTasks()
       .then(rows=>{
         if (!mounted) return;
-        const mapped = (rows || []).map(mapDbTask);
+        const mapped = (rows || []).map(mapCaretakerTaskRow);
+        setTasks(mapped);
+        setSelected(mapped[0] || null);
         if (mapped.length) {
-          setTasks(mapped as typeof initialTasks);
-          setSelected(mapped[0] as typeof initialTasks[number]);
           setTaskNote("Live caretaker tasks loaded from database. Scan QR, capture proof, then submit.");
         } else {
-          setTaskNote("No live DB tasks yet. Demo tasks are shown until admin assigns a paid/approved request.");
+          setTaskNote("No assigned task yet. New approved requests will appear here after admin assignment.");
         }
       })
       .catch(()=>setTaskNote("Task database is not ready yet. Run SQL 011 before live testing caretaker workflow."));
     return () => { mounted = false; };
   }, []);
   async function submit(){
+    if(!selected){ setTaskNote("No task selected."); return; }
     if(!qrVerified){ setTaskNote("Scan QR first. If QR/camera fails, ask admin for serial exception mode."); return; }
     if(!proofReady){ setTaskNote("Open camera or upload proof first. The proof checker needs a fresh photo/video before submit."); return; }
     const proof = saveSubmittedTaskProof(selected);
-    if ((selected as any).db) {
-      try {
-        await submitCaretakerTaskProof({
-          taskId: selected.id,
-          proofUrl: proof.image,
-          presetNote: `${selected.task} proof submitted${needsFeedQty ? ` - ${feedUsed} kg used` : ""}`,
-          freeNote: selected.note,
-          qrVerified,
-          serialException: exceptionRequested,
-          feedQuantityUsed: needsFeedQty ? Number(feedUsed || 0) : null,
-          feedUnit: needsFeedQty ? "kg" : null,
-        });
-      } catch {
-        setTaskNote("Proof was captured locally, but DB submit failed. Check caretaker login, assigned task, or SQL 011.");
-        return;
-      }
+    try {
+      await submitCaretakerTaskProof({
+        taskId: selected.id,
+        proofUrl: proof.image,
+        presetNote: `${selected.task} proof submitted${needsFeedQty ? ` - ${feedUsed} kg used` : ""}`,
+        freeNote: selected.note,
+        qrVerified,
+        serialException: exceptionRequested,
+        feedQuantityUsed: needsFeedQty ? Number(feedUsed || 0) : null,
+        feedUnit: needsFeedQty ? "kg" : null,
+      });
+    } catch {
+      setTaskNote("Proof submit failed. Check caretaker login, assignment, and task permission before retrying.");
+      return;
     }
     const nextTasks = tasks.filter(t=>t.id!==selected.id);
     setTasks(nextTasks);
@@ -1406,7 +2180,7 @@ export function CaretakerTasks() {
     setExceptionRequested(false);
     setTaskNote(`${selected.task} submitted for ${selected.rooster}. Inventory use, admin proof review, customer inbox notice, and care log record were created.`);
   }
-  return <Shell role="caretaker" title="Active Tasks"><PageTitle title="Active Tasks" text="Work one request at a time: scan QR, follow customer note, capture proof, then submit." icon="clipboard" /><KaFarm>{taskNote}</KaFarm><div className="mt-5 grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Request List</h2><Badge tone="warn">{tasks.length} open</Badge></div><p className="mt-1 text-sm font-bold text-[#667267]">Requester name only. Customer cannot chat directly with caretaker.</p><div className="mt-4 max-h-[560px] space-y-3 overflow-y-auto pr-2">{tasks.map(t=><button key={t.id} onClick={()=>{setSelected(t); setQrVerified(false); setProofReady(false); setExceptionRequested(false); setTaskNote(`Opened ${t.task}. Read the note, scan QR, then capture proof.`);}} className={"w-full rounded-xl border p-3 text-left " + (selected.id===t.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8]")}><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-full bg-[#e7eadf] font-black">{t.requester[0]}</div><div className="min-w-0 flex-1"><b className="block truncate">{t.requester}</b><p className="truncate text-sm text-[#667267]">{t.rooster} - {t.task}</p></div><Badge tone={t.priority==="urgent"?"warn":"neutral"}>{t.priority}</Badge></div><p className="mt-2 text-xs font-bold text-[#667267]">{t.due} - note included</p></button>)}</div></Card><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-black">Task Details</h2><p className="mt-1 text-sm font-bold text-[#667267]">QR opens the camera/upload controls. Exception mode needs admin release.</p></div><div className="flex gap-2"><Badge tone={qrVerified?"good":"warn"}>{qrVerified?"QR verified":"QR needed"}</Badge>{needsVideo && <Badge tone="warn">Video requested</Badge>}</div></div><div className="mt-4 grid gap-4 lg:grid-cols-[190px_minmax(0,1fr)]"><img src="/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg" className="h-48 w-full rounded-xl object-cover" alt="" /><div className="space-y-3"><div><h3 className="text-2xl font-black">{selected.task}</h3><p className="text-sm font-bold text-[#667267]">{selected.rooster} / {selected.tag} - {selected.pen}</p></div><div className="rounded-xl bg-amber-50 p-3"><b>Customer Note</b><p className="mt-1 text-sm font-bold leading-6 text-[#667267]">{selected.note}</p></div><div className="grid gap-2 text-sm font-bold sm:grid-cols-2"><div className="rounded-xl bg-[#f6f3e8] p-3"><b>Required Proof</b><p className="mt-1 text-[#667267]">{selected.proof}{needsVideo ? " + short video" : ""}</p></div><div className="rounded-xl bg-[#f6f3e8] p-3"><b>System Checker</b><p className="mt-1 text-[#667267]">Fresh capture, clear image, date/time, QR/serial match.</p></div></div>{needsFeedQty && <div className="rounded-xl border border-sky-200 bg-sky-50 p-3"><b>Feed Used</b><div className="mt-2 flex items-center gap-2"><input value={feedUsed} onChange={e=>setFeedUsed(e.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal" className="w-28 rounded-xl border p-3 font-black" /><span className="font-bold text-[#667267]">kg deducted from customer inventory</span></div></div>}</div></div><div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><button onClick={()=>{setQrVerified(true); setTaskNote("QR verified. Camera and upload are now allowed for this rooster.");}} className="rounded-xl bg-[#eee8d9] px-3 py-3 font-black"><Icon name="qr" className="mx-auto mb-1 h-5 w-5" />Scan QR</button><button onClick={()=>{ if(!qrVerified){ setTaskNote("Scan QR first before camera. If scanner/camera is broken, tap Ask Admin for serial exception mode."); return; } setProofReady(true); setTaskNote("Camera proof captured. System checker will review blur, timing, source, and rooster match.");}} className={"rounded-xl px-3 py-3 font-black " + (qrVerified?"bg-[#eee8d9]":"bg-[#f6f3e8] text-[#8a5a00]")}><Icon name="camera" className="mx-auto mb-1 h-5 w-5" />Camera</button><button onClick={()=>{ if(!qrVerified){ setTaskNote("Scan QR first before upload. If QR is unreadable, ask admin to release exception mode."); return; } setProofReady(true); setTaskNote("Proof uploaded. For customer safety, old/blurred/wrong-source files stay in admin proof review.");}} className={"rounded-xl px-3 py-3 font-black " + (qrVerified?"bg-[#eee8d9]":"bg-[#f6f3e8] text-[#8a5a00]")}><Icon name="upload" className="mx-auto mb-1 h-5 w-5" />Upload</button><button onClick={()=>{setExceptionRequested(true); setTaskNote("Ask Admin sent: scanner/camera issue. Admin can release serial exception mode if evidence is enough.");}} className="rounded-xl bg-amber-300 px-3 py-3 font-black">Ask Admin</button><button onClick={submit} className="rounded-xl bg-[#1f6b45] px-3 py-3 font-black text-white">Submit</button></div>{exceptionRequested && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-[#7a4b00]"><b>Exception requested:</b> waiting for admin release. If approved, caretaker can enter serial code instead of QR; the evidence log will mark it as exception mode.</div>}</Card></div></Shell>;
+  return <Shell role="caretaker" title="Active Tasks"><PageTitle title="Active Tasks" text="Open one assigned request, complete its proof, then send it for admin review." icon="clipboard" /><KaFarm>{taskNote}</KaFarm><div className="mt-5 grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Assigned Tasks</h2><Badge tone={tasks.length ? "warn" : "neutral"}>{tasks.length} open</Badge></div><div className="mt-4 max-h-[560px] space-y-3 overflow-y-auto pr-2">{tasks.map(t=><button key={t.id} onClick={()=>{setSelected(t);setQrVerified(false);setProofReady(false);setExceptionRequested(false);setTaskNote(`Opened ${t.task}. Read the instruction before starting.`);}} className={"w-full rounded-xl border p-3 text-left " + (selected?.id===t.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]")}><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-full bg-[#e7eadf] font-black">{t.requester[0]}</div><div className="min-w-0 flex-1"><b className="block truncate">{t.requester}</b><p className="truncate text-sm text-[#667267]">{t.rooster} - {t.task}</p></div><Badge tone={t.priority==="urgent"?"warn":"neutral"}>{t.priority}</Badge></div><p className="mt-2 text-xs font-bold text-[#667267]">{t.due}</p></button>)}{tasks.length===0 && <div className="grid min-h-60 place-items-center rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-6 text-center"><div><Icon name="clipboard" className="mx-auto h-8 w-8 text-[#1f6b45]"/><b className="mt-3 block">No assigned task</b><p className="mt-1 text-sm font-bold text-[#667267]">Approved care requests appear here after admin assigns them to you.</p></div></div>}</div></Card><Card>{selected ? <><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Selected Task</p><h2 className="mt-1 text-2xl font-black">{selected.task}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{selected.rooster} / {selected.tag} - {selected.pen}</p></div><div className="flex gap-2"><Badge tone={qrVerified?"good":"warn"}>{qrVerified?"QR verified":"QR needed"}</Badge>{needsVideo&&<Badge tone="warn">Video needed</Badge>}</div></div><div className="mt-4 grid gap-3 md:grid-cols-2"><div className="rounded-2xl bg-amber-50 p-4"><b>Instruction</b><p className="mt-1 text-sm font-bold leading-6 text-[#667267]">{selected.note}</p></div><div className="rounded-2xl bg-[#f6f3e8] p-4"><b>Required Proof</b><p className="mt-1 text-sm font-bold text-[#667267]">{selected.proof}{needsVideo?" + short video":""}</p></div></div>{needsFeedQty&&<div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 p-4"><b>Feed Used</b><div className="mt-2 flex items-center gap-2"><input value={feedUsed} onChange={e=>setFeedUsed(e.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal" className="w-28 rounded-xl border p-3 font-black"/><span className="font-bold text-[#667267]">kg</span></div></div>}<div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><button onClick={()=>{setQrVerified(true);setTaskNote("QR verified. Camera and upload are now available.");}} className="rounded-xl bg-[#eee8d9] px-3 py-3 font-black"><Icon name="qr" className="mx-auto mb-1 h-5 w-5"/>Scan QR</button><button onClick={()=>{if(!qrVerified){setTaskNote("Scan QR first before camera.");return;}setProofReady(true);setTaskNote("Camera proof is ready for review.");}} className="rounded-xl bg-[#eee8d9] px-3 py-3 font-black"><Icon name="camera" className="mx-auto mb-1 h-5 w-5"/>Camera</button><button onClick={()=>{if(!qrVerified){setTaskNote("Scan QR first before upload.");return;}setProofReady(true);setTaskNote("Uploaded proof is ready for review.");}} className="rounded-xl bg-[#eee8d9] px-3 py-3 font-black"><Icon name="upload" className="mx-auto mb-1 h-5 w-5"/>Upload</button><Link href="/caretaker/chat" className="rounded-xl bg-amber-300 px-3 py-3 text-center font-black">Ask Admin</Link><button onClick={submit} className="rounded-xl bg-[#1f6b45] px-3 py-3 font-black text-white">Submit</button></div></> : <div className="grid min-h-[420px] place-items-center rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-8 text-center"><div><h2 className="text-2xl font-black">Waiting for assignment</h2><p className="mt-2 max-w-md text-sm font-bold leading-6 text-[#667267]">There is nothing to work on yet. You will see the customer, rooster, instruction, and required proof here after admin assigns a task.</p><Link href="/caretaker/chat" className="mt-5 inline-block rounded-xl bg-amber-300 px-5 py-3 font-black">Chat Admin</Link></div></div>}</Card></div></Shell>;
 }
 
 export function CompletedTasks() { const [local,setLocal]=useState<SubmittedTaskProof[]>([]); useEffect(()=>setLocal(getSubmittedTaskProofs()), []); const rows = [...local.map(p=>({ rooster:p.rooster, task:p.task, time:p.submittedAt, status:p.status, image:p.image })), ...completedTasks]; return <Shell role="caretaker" title="Completed Tasks"><PageTitle title="Completed Tasks" text="Submitted tasks appear here for recall. Proof thumbnails are view-only." icon="check" /><div className="grid max-h-[620px] gap-4 overflow-y-auto pr-2 md:grid-cols-2">{rows.map(t=><Card key={t.task+t.time}><div className="flex gap-4"><img src={t.image} className="h-20 w-20 rounded-xl object-cover" alt="" /><div><h2 className="font-black">{t.task}</h2><p className="text-sm text-[#667267]">{t.rooster} - {t.time}</p><Badge tone={t.status==="Verified"?"good":"warn"}>{t.status}</Badge></div></div></Card>)}</div></Shell>; }
@@ -1510,11 +2284,11 @@ export function AdminOperationChecker() {
   const [submittedProofs,setSubmittedProofs]=useState<SubmittedTaskProof[]>([]);
   useEffect(()=>setSubmittedProofs(getSubmittedTaskProofs()), []);
   const queues = [
-    { id: "kyc", title: "KYC Review", count: 4, status: "Needs admin", tone: "warn" as const, icon: "shield" as IconName, owner: "Customer Desk", next: "Check consent, ID front/back, selfie, duplicate flags, then approve/hold." },
+    { id: "kyc", title: "KYC Review", count: 4, status: "Needs admin", tone: "warn" as const, icon: "shield" as IconName, owner: "Account Verification", next: "Check consent, ID front/back, selfie, duplicate flags, then approve/hold." },
     { id: "care", title: "Care Requests", count: 5, status: "Assign caretaker", tone: "warn" as const, icon: "clipboard" as IconName, owner: "Farm Operations", next: "Assign by rooster, service, customer note, and caretaker load." },
-    { id: "proof", title: "Proof Review", count: Math.max(3, submittedProofs.length), status: submittedProofs.length ? "New proof submitted" : "Check quality", tone: "bad" as const, icon: "camera" as IconName, owner: "Caretaker Desk", next: "Review QR/serial, photo clarity, uploaded time, and rooster tag before customer release." },
-    { id: "cashin", title: "Cash-In Checks", count: 2, status: "Duplicate scan", tone: "warn" as const, icon: "wallet" as IconName, owner: "Money Desk", next: "Match amount, sender, payment channel, reference, and duplicate risk." },
-    { id: "withdraw", title: "Withdrawals", count: 3, status: "Manual payout", tone: "warn" as const, icon: "coins" as IconName, owner: "Money Desk", next: "Require KYC approved, payout name match, wallet PIN trail, proof upload, then receipt." },
+    { id: "proof", title: "Proof Review", count: Math.max(3, submittedProofs.length), status: submittedProofs.length ? "New proof submitted" : "Check quality", tone: "bad" as const, icon: "camera" as IconName, owner: "Caretaker Management", next: "Review QR/serial, photo clarity, uploaded time, and rooster tag before customer release." },
+    { id: "cashin", title: "Cash-In Checks", count: 2, status: "Duplicate scan", tone: "warn" as const, icon: "wallet" as IconName, owner: "Customer Requests", next: "Match amount, sender, payment channel, reference, and duplicate risk." },
+    { id: "withdraw", title: "Withdrawals", count: 3, status: "Manual payout", tone: "warn" as const, icon: "coins" as IconName, owner: "Customer Requests", next: "Require KYC approved, payout name match, wallet PIN trail, proof upload, then receipt." },
     { id: "support", title: "Escalated Chat", count: 2, status: "Admin reply", tone: "neutral" as const, icon: "chat" as IconName, owner: "Live Chat", next: "Read Ka-Farm summary, open evidence, answer customer, and log decision." },
   ];
   const active = queues.find(q=>q.id===selected) || queues[0];
@@ -1524,7 +2298,7 @@ export function AdminOperationChecker() {
     { label: "Caretaker", value: "Verify rooster, perform task, upload proof" },
     { label: "Back to Customer", value: "Inbox notice, care logs, invoice, wallet status" },
   ];
-  return <Shell role="admin" title="Operations Checker"><PageTitle title="Operations Checker" text="Admin control room for customer, caretaker, money, KYC, proof, and support checks." icon="clipboard" /><KaFarm>Start with the highest risk queue. Admin is the final reviewer for KYC, money, proof, and dispute decisions.</KaFarm><div className="mt-5 grid gap-5 xl:grid-cols-[380px_1fr_340px]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Admin Check Queue</h2><Badge tone="warn">{queues.reduce((sum,q)=>sum+q.count,0)} open</Badge></div><div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto pr-2">{queues.map(q=><button key={q.id} onClick={()=>setSelected(q.id)} className={("w-full rounded-2xl border p-4 text-left transition " + (selected===q.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]"))}><div className="flex items-center gap-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-[#1f6b45] shadow-sm"><Icon name={q.icon} /></span><span className="min-w-0 flex-1"><b className="block truncate">{q.title}</b><span className="mt-1 block text-sm font-bold text-[#667267]">{q.owner}</span></span><Badge tone={q.tone}>{q.count}</Badge></div><p className="mt-3 text-sm font-bold leading-6 text-[#667267]">{q.status}</p></button>)}</div></Card><div className="grid gap-5"><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Selected Operation</p><h2 className="mt-1 text-3xl font-black">{active.title}</h2><p className="mt-1 text-sm font-bold text-[#667267]">Owner: {active.owner}</p></div><Badge tone={active.tone}>{active.status}</Badge></div><div className="mt-5 rounded-2xl bg-[#f6f3e8] p-4"><b>Next admin action</b><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{active.next}</p></div>{selected==="proof" && submittedProofs.length>0 && <div className="mt-4 max-h-[260px] space-y-3 overflow-y-auto pr-2">{submittedProofs.map(p=><div key={p.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-3"><div className="flex items-center gap-3"><img src={p.image} alt="" className="h-14 w-14 rounded-xl object-cover" /><div className="min-w-0 flex-1"><b className="block truncate">{p.rooster} - {p.task}</b><p className="text-xs font-bold text-[#667267]">{p.caretaker} - {p.submittedAt}</p></div><Badge tone="warn">Review</Badge></div><p className="mt-2 text-sm font-bold text-[#667267]">{p.proof} / {p.note}</p></div>)}</div>}<div className="mt-5 grid gap-3 sm:grid-cols-3"><Link href="/admin/customer-desk" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Customer</Link><Link href="/admin/caretaker-desk" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Caretaker</Link><Link href="/admin/evidence" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Evidence</Link></div></Card><Card><h2 className="text-xl font-black">Handoff Flow</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{handoff.map((h,i)=><div key={h.label} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-[#1f6b45] text-sm font-black text-white">{i+1}</span><b>{h.label}</b></div><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{h.value}</p></div>)}</div></Card></div><Card><h2 className="text-xl font-black">Release Rules</h2><div className="mt-4 space-y-3 text-sm font-bold leading-6 text-[#667267]"><p className="rounded-2xl bg-amber-50 p-3 text-amber-900">KYC and withdrawals stay locked until admin final approval.</p><p className="rounded-2xl bg-red-50 p-3 text-red-800">Wrong rooster, duplicate receipt, or face risk never auto-releases to customer.</p><p className="rounded-2xl bg-emerald-50 p-3 text-emerald-900">Clean caretaker proof can publish to customer care logs after review.</p><p className="rounded-2xl bg-[#f6f3e8] p-3">Every action must leave evidence: who, what, when, and why.</p></div></Card></div></Shell>;
+  return <Shell role="admin" title="Operations Checker"><PageTitle title="Operations Checker" text="Admin control room for customer, caretaker, money, KYC, proof, and support checks." icon="clipboard" /><KaFarm>Start with the highest risk queue. Admin is the final reviewer for KYC, money, proof, and dispute decisions.</KaFarm><div className="mt-5 grid gap-5 xl:grid-cols-[380px_1fr_340px]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Admin Check Queue</h2><Badge tone="warn">{queues.reduce((sum,q)=>sum+q.count,0)} open</Badge></div><div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto pr-2">{queues.map(q=><button key={q.id} onClick={()=>setSelected(q.id)} className={("w-full rounded-2xl border p-4 text-left transition " + (selected===q.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]"))}><div className="flex items-center gap-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-[#1f6b45] shadow-sm"><Icon name={q.icon} /></span><span className="min-w-0 flex-1"><b className="block truncate">{q.title}</b><span className="mt-1 block text-sm font-bold text-[#667267]">{q.owner}</span></span><Badge tone={q.tone}>{q.count}</Badge></div><p className="mt-3 text-sm font-bold leading-6 text-[#667267]">{q.status}</p></button>)}</div></Card><div className="grid gap-5"><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Selected Operation</p><h2 className="mt-1 text-3xl font-black">{active.title}</h2><p className="mt-1 text-sm font-bold text-[#667267]">Owner: {active.owner}</p></div><Badge tone={active.tone}>{active.status}</Badge></div><div className="mt-5 rounded-2xl bg-[#f6f3e8] p-4"><b>Next admin action</b><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{active.next}</p></div>{selected==="proof" && submittedProofs.length>0 && <div className="mt-4 max-h-[260px] space-y-3 overflow-y-auto pr-2">{submittedProofs.map(p=><div key={p.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-3"><div className="flex items-center gap-3"><img src={p.image} alt="" className="h-14 w-14 rounded-xl object-cover" /><div className="min-w-0 flex-1"><b className="block truncate">{p.rooster} - {p.task}</b><p className="text-xs font-bold text-[#667267]">{p.caretaker} - {p.submittedAt}</p></div><Badge tone="warn">Review</Badge></div><p className="mt-2 text-sm font-bold text-[#667267]">{p.proof} / {p.note}</p></div>)}</div>}<div className="mt-5 grid gap-3 sm:grid-cols-3"><Link href="/admin/customer-requests" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Customer</Link><Link href="/admin/caretaker-management" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Caretaker</Link><Link href="/admin/evidence" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Evidence</Link></div></Card><Card><h2 className="text-xl font-black">Handoff Flow</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{handoff.map((h,i)=><div key={h.label} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-[#1f6b45] text-sm font-black text-white">{i+1}</span><b>{h.label}</b></div><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{h.value}</p></div>)}</div></Card></div><Card><h2 className="text-xl font-black">Release Rules</h2><div className="mt-4 space-y-3 text-sm font-bold leading-6 text-[#667267]"><p className="rounded-2xl bg-amber-50 p-3 text-amber-900">KYC and withdrawals stay locked until admin final approval.</p><p className="rounded-2xl bg-red-50 p-3 text-red-800">Wrong rooster, duplicate receipt, or face risk never auto-releases to customer.</p><p className="rounded-2xl bg-emerald-50 p-3 text-emerald-900">Clean caretaker proof can publish to customer care logs after review.</p><p className="rounded-2xl bg-[#f6f3e8] p-3">Every action must leave evidence: who, what, when, and why.</p></div></Card></div></Shell>;
 }
 
 function KaFarmCaretakerErrorLab() {
@@ -1567,19 +2341,32 @@ function KaFarmCaretakerErrorLab() {
 }
 
 export function CaretakerOperationChecker() {
-  const [selected,setSelected]=useState(initialTasks[0]);
+  const [tasks,setTasks]=useState<CaretakerTaskView[]>([]);
+  const [selected,setSelected]=useState<CaretakerTaskView | null>(null);
+  const [loadState,setLoadState]=useState<"loading"|"ready"|"error">("loading");
   const checklist = ["Read customer note", "Verify rooster QR", "Use serial only if admin releases exception", "Capture clear proof", "Choose prepared note", "Submit for admin/customer review"];
+  useEffect(()=>{
+    let mounted = true;
+    getCaretakerActiveTasks().then(rows=>{
+      if(!mounted) return;
+      const mapped=(rows||[]).map(mapCaretakerTaskRow);
+      setTasks(mapped);
+      setSelected(mapped[0]||null);
+      setLoadState("ready");
+    }).catch(()=>{if(mounted)setLoadState("error");});
+    return()=>{mounted=false;};
+  },[]);
   const stats = [
-    { label: "Active", value: `${initialTasks.length}`, icon: "clipboard" as IconName, tone: "warn" as const },
-    { label: "Urgent", value: `${initialTasks.filter(t=>t.priority==="urgent").length}`, icon: "alert" as IconName, tone: "bad" as const },
-    { label: "Completed", value: `${completedTasks.length}`, icon: "check" as IconName, tone: "good" as const },
+    { label: "Active", value: loadState==="loading"?"...":`${tasks.length}`, icon: "clipboard" as IconName },
+    { label: "Urgent", value: loadState==="loading"?"...":`${tasks.filter(t=>t.priority==="urgent").length}`, icon: "alert" as IconName },
+    { label: "Completed", value: "View", icon: "check" as IconName },
     { label: "Admin Chat", value: "Open", icon: "chat" as IconName, tone: "neutral" as const },
   ];
-  return <Shell role="caretaker" title="Caretaker Checker"><PageTitle title="Caretaker Checker" text="Simple operations screen for active requests, proof steps, admin exception, and completed work." icon="clipboard" /><KaFarm>Open one task, follow the checklist, and ask admin if QR, camera, rooster, or instruction is unclear.</KaFarm><KaFarmCaretakerErrorLab /><div className="mt-5 grid gap-3 md:grid-cols-4">{stats.map(s=><Card key={s.label} className="p-4"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#f6f3e8] text-[#1f6b45]"><Icon name={s.icon} /></span><span><p className="text-xs font-black uppercase text-[#667267]">{s.label}</p><p className="text-2xl font-black">{s.value}</p></span></div></Card>)}</div><div className="mt-5 grid gap-5 xl:grid-cols-[360px_1fr_320px]"><Card><h2 className="text-xl font-black">Request List</h2><div className="mt-4 max-h-[620px] space-y-3 overflow-y-auto pr-2">{initialTasks.map(t=><button key={t.id} onClick={()=>setSelected(t)} className={("w-full rounded-2xl border p-3 text-left transition " + (selected.id===t.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]"))}><div className="flex items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#e7eadf] font-black">{t.requester[0]}</span><span className="min-w-0 flex-1"><b className="block truncate">{t.requester}</b><span className="block truncate text-sm font-bold text-[#667267]">{t.rooster} - {t.task}</span></span><Badge tone={t.priority==="urgent"?"warn":"neutral"}>{t.priority}</Badge></div><p className="mt-2 text-xs font-black text-[#1f6b45]">{t.due}</p></button>)}</div></Card><Card><div className="grid gap-4 md:grid-cols-[180px_1fr]"><img src="/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg" className="h-44 w-full rounded-2xl object-cover" alt="" /><div><p className="text-xs font-black uppercase text-[#667267]">Selected Task</p><h2 className="mt-1 text-3xl font-black">{selected.task}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{selected.rooster} / {selected.tag} - {selected.pen}</p><div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900"><b>Customer note</b><p>{selected.note}</p></div></div></div><div className="mt-5 grid gap-3 sm:grid-cols-3"><Link href="/caretaker/tasks" className="rounded-xl bg-[#1f6b45] px-3 py-3 text-center font-black text-white"><Icon name="clipboard" className="mx-auto mb-1 h-5 w-5" />Open Active Task</Link><Link href="/caretaker/chat" className="rounded-xl bg-amber-300 px-3 py-3 text-center font-black">Ask Admin</Link><Link href="/caretaker/completed" className="rounded-xl bg-[#eee8d9] px-3 py-3 text-center font-black"><Icon name="check" className="mx-auto mb-1 h-5 w-5" />Completed</Link></div><div className="mt-5 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><b>Required proof</b><p className="mt-1 text-sm font-bold text-[#667267]">{selected.proof}. QR, camera, upload, feed quantity, and submit controls are inside Active Tasks so the real task record is updated.</p></div></Card><Card><h2 className="text-xl font-black">Work Checklist</h2><div className="mt-4 space-y-3">{checklist.map((item,i)=><div key={item} className="flex items-start gap-3 rounded-2xl bg-[#f6f3e8] p-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-sm font-black">{i+1}</span><p className="text-sm font-bold leading-6 text-[#667267]">{item}</p></div>)}</div><Link href="/caretaker/tasks" className="mt-4 block rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Start Work</Link></Card></div></Shell>;
+  return <Shell role="caretaker" title="Caretaker Dashboard"><PageTitle title="Caretaker Dashboard" text="Assigned work, proof requirements, and admin support in one screen." icon="clipboard" /><KaFarm>{loadState==="loading"?"Checking your assigned tasks...":loadState==="error"?"I could not load your task queue. Check your login or ask admin before retrying.":tasks.length?"Select a task, read the instruction, then open it to start proof work.":"No task is assigned to you right now."}</KaFarm><div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{stats.map(s=><Card key={s.label} className="p-4"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[#f6f3e8] text-[#1f6b45]"><Icon name={s.icon}/></span><span><p className="text-xs font-black uppercase text-[#667267]">{s.label}</p><p className="text-xl font-black">{s.value}</p></span></div></Card>)}</div><div className="mt-5 grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)_300px]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Task Queue</h2><Badge tone={tasks.length?"warn":"neutral"}>{tasks.length}</Badge></div><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{tasks.map(t=><button key={t.id} onClick={()=>setSelected(t)} className={"w-full rounded-xl border p-3 text-left transition "+(selected?.id===t.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]")}><div className="flex items-center justify-between gap-2"><div className="min-w-0"><b className="block truncate">{t.requester}</b><p className="truncate text-sm font-bold text-[#667267]">{t.rooster} - {t.task}</p></div><Badge tone={t.priority==="urgent"?"warn":"neutral"}>{t.priority}</Badge></div><p className="mt-2 text-xs font-black text-[#1f6b45]">{t.due}</p></button>)}{loadState==="ready"&&tasks.length===0&&<div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-6 text-center"><b>No assigned task</b><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Admin-assigned requests will appear here automatically.</p></div>}{loadState==="error"&&<div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">Task queue unavailable. Open Admin Chat for help.</div>}</div></Card><Card>{selected?<><p className="text-xs font-black uppercase text-[#667267]">Selected Task</p><div className="mt-3 grid gap-4 md:grid-cols-[160px_1fr]"><img src="/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg" className="h-40 w-full rounded-xl object-cover" alt="Selected rooster"/><div><h2 className="text-2xl font-black">{selected.task}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{selected.rooster} / {selected.tag} - {selected.pen}</p><div className="mt-4 rounded-xl bg-amber-50 p-4"><b>Instruction</b><p className="mt-1 text-sm font-bold leading-6 text-[#667267]">{selected.note}</p></div></div></div><div className="mt-4 rounded-xl bg-[#f6f3e8] p-4"><b>Required proof</b><p className="mt-1 text-sm font-bold text-[#667267]">{selected.proof}</p></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><Link href="/caretaker/tasks" className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Open Task</Link><Link href="/caretaker/chat" className="rounded-xl bg-amber-300 px-4 py-3 text-center font-black">Ask Admin</Link></div></>:<div className="grid min-h-[390px] place-items-center rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-8 text-center"><div><Icon name="clipboard" className="mx-auto h-9 w-9 text-[#1f6b45]"/><h2 className="mt-3 text-2xl font-black">Waiting for work</h2><p className="mt-2 max-w-sm text-sm font-bold leading-6 text-[#667267]">Once admin assigns an approved customer request, its exact instruction and proof requirement will appear here.</p></div></div>}</Card><Card><h2 className="text-xl font-black">Work Steps</h2><div className="mt-4 space-y-2">{checklist.map((item,i)=><div key={item} className="flex items-start gap-3 rounded-xl bg-[#f6f3e8] p-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-black">{i+1}</span><p className="text-sm font-bold leading-5 text-[#667267]">{item}</p></div>)}</div><Link href={selected?"/caretaker/tasks":"/caretaker/chat"} className="mt-4 block rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">{selected?"Start Selected Task":"Contact Admin"}</Link></Card></div></Shell>;
 }
 const adminQueues = [
-  { title: "Pending Withdrawals", count: 3, text: "Manual payout and proof upload needed.", href: "/admin/money-desk", icon: "wallet" },
-  { title: "Flagged Proof", count: 4, text: "Blurred or missing QR verification.", href: "/admin/caretaker-desk", icon: "alert" },
+  { title: "Pending Withdrawals", count: 3, text: "Manual payout and proof upload needed.", href: "/admin/customer-requests/withdraw", icon: "wallet" },
+  { title: "Flagged Proof", count: 4, text: "Blurred or missing QR verification.", href: "/admin/caretaker-management", icon: "alert" },
   { title: "Live Chat Queue", count: 2, text: "Escalated Ka-Farm support chats.", href: "/admin/live-chat", icon: "chat" },
   { title: "Unassigned Requests", count: 5, text: "Paid requests waiting for caretaker.", href: "/admin/farm-operations", icon: "clipboard" },
 ];
@@ -1588,9 +2375,9 @@ const adminDeskCards: Record<string, Array<{ title: string; text: string; icon: 
   customer: [
     { title: "Customers", text: "Customer list, rooster count, owner nickname, duplicates, and account status.", icon: "users", href: "/admin/customers" },
     { title: "Payments", text: "Customer payments, farm buy receipts, service fees, and invoice history.", icon: "coins", href: "/admin/transactions" },
-    { title: "Wallet / Withdrawals", text: "Cash-in proofs, withdrawal requests, payout account checks, and pending holds.", icon: "wallet", href: "/admin/money-desk" },
+    { title: "Wallet / Withdrawals", text: "Payment proofs, withdrawal requests, payout account checks, and pending holds.", icon: "wallet", href: "/admin/customer-requests/withdraw" },
     { title: "KYC / Risk", text: "Identity checks, duplicate accounts, suspicious links, and account review.", icon: "shield", href: "/admin/risk-management" },
-    { title: "Care Concerns", text: "Customer reports about care quality, wrong rooster, health worries, or proof issues.", icon: "alert", href: "/admin/customer-desk" },
+    { title: "Care Concerns", text: "Customer reports about care quality, wrong rooster, health worries, or proof issues.", icon: "alert", href: "/admin/customer-requests" },
     { title: "Sell Requests", text: "Customer requests to sell rooster, pricing estimate, sale invoice, and payout trail.", icon: "rooster", href: "/admin/sell-requests" },
     { title: "Support Tickets", text: "Escalated Ka-Farm chats and live admin conversations.", icon: "chat", href: "/admin/live-chat" },
     { title: "Logbook", text: "Everything customer did: buys, requests, messages, receipts, proofs, and admin actions.", icon: "file", href: "/admin/evidence" },
@@ -1598,11 +2385,11 @@ const adminDeskCards: Record<string, Array<{ title: string; text: string; icon: 
   caretaker: [
     { title: "Registration Control", text: "Admin-only caretaker signup link, pending approvals, and printable approved/rejected records.", icon: "clipboard", href: "/admin/caretaker-registration" },
     { title: "Caretaker List", text: "Two-column review: caretaker list on the left, resume/photo/profile on the right.", icon: "users", href: "/admin/caretakers" },
-    { title: "Payroll", text: "15th/30th payroll, time in/out, absent count, per-day rate, payout mode, receipt.", icon: "coins", href: "/admin/caretaker-desk" },
+    { title: "Payroll", text: "15th/30th payroll, time in/out, absent count, per-day rate, payout mode, receipt.", icon: "coins", href: "/admin/caretaker-management" },
     { title: "Proof Review", text: "Caretaker submissions flagged by system: blurred, old photo, wrong rooster, missing video.", icon: "camera", href: "/admin/evidence" },
     { title: "Caretaker Logs", text: "All, rejects, completed, and performance history per caretaker.", icon: "file", href: "/admin/evidence" },
     { title: "Caretaker Chat", text: "Messenger-style admin chat for QR, scanner, camera, and unclear task issues.", icon: "chat", href: "/admin/live-chat" },
-    { title: "Attendance", text: "Daily attendance, absent/present count, and payroll computation source.", icon: "clipboard", href: "/admin/caretaker-desk" },
+    { title: "Attendance", text: "Daily attendance, absent/present count, and payroll computation source.", icon: "clipboard", href: "/admin/caretaker-management" },
   ],
   farm: [
     { title: "Rooster Inventory", text: "Farm rooster inventory: available, taken, customer owner, caretaker, pen, QR/serial.", icon: "rooster", href: "/admin/farm-operations" },
@@ -1613,7 +2400,7 @@ const adminDeskCards: Record<string, Array<{ title: string; text: string; icon: 
   ],
   money: [
     { title: "Cash-In Checks", text: "Incoming money, screenshot proof, sender, channel, reference, duplicate and amount check.", icon: "wallet", href: "/admin/transactions/cashin" },
-    { title: "Withdrawals", text: "Manual payout flow redirected to Customer Desk withdrawal review.", icon: "coins", href: "/admin/customer-desk/withdraw" },
+    { title: "Withdrawals", text: "Manual payout flow opens Customer Requests withdrawal review.", icon: "coins", href: "/admin/customer-requests/withdraw" },
     { title: "Treasury Guide", text: "Simple business view: available cash, locked funds, pending payouts, income, and holds.", icon: "shield", href: "/admin/treasury" },
     { title: "Receipts / Invoices", text: "Cash-in, withdrawal, farm buy, care request, and sale records.", icon: "file", href: "/admin/evidence" },
   ],
@@ -1625,16 +2412,16 @@ const adminDeskCards: Record<string, Array<{ title: string; text: string; icon: 
   evidence: [
     { title: "System Evidence Logs", text: "Main logs: receipts, proofs, overrides, admin actions, and system checker results.", icon: "search", href: "/admin/evidence" },
     { title: "Proof Review Logs", text: "Task photos/videos, QR status, upload metadata, and admin decisions.", icon: "camera", href: "/admin/evidence" },
-    { title: "Resolved Cases", text: "Closed issues with decision, evidence, receipt, message, and delete/archive.", icon: "check", href: "/admin/customer-desk/resolved" },
+    { title: "Resolved Cases", text: "Closed issues with decision, evidence, receipt, message, and delete/archive.", icon: "check", href: "/admin/customer-requests/resolved" },
     { title: "Audit Logs", text: "Who changed what, when, and why, so the farm has documentation.", icon: "file", href: "/admin/audit-logs" },
   ],
 };
 const adminDashboardIndicators = [
   { title: "Issues", value: "5", sub: "2 high priority reports", detail: "Customer/caretaker problems needing investigation.", href: "/admin/issue-management", icon: "alert" as IconName, tone: "bad" as const },
-  { title: "Requests", value: "12", sub: "Payments, care, withdrawals", detail: "Customer submitted requests waiting for admin movement.", href: "/admin/customer-desk", icon: "clipboard" as IconName, tone: "warn" as const },
-  { title: "Task Reviews", value: "4", sub: "Caretaker proof checks", detail: "Submitted work needing approval or rejection.", href: "/admin/caretaker-desk", icon: "camera" as IconName, tone: "warn" as const },
-  { title: "Money In", value: peso(18400), sub: "Approved today estimate", detail: "Payment proofs and sales income summary.", href: "/admin/customer-desk", icon: "coins" as IconName, tone: "good" as const },
-  { title: "Money Out", value: peso(6200), sub: "Pending release", detail: "Withdrawal payout checks and receipts.", href: "/admin/customer-desk", icon: "wallet" as IconName, tone: "warn" as const },
+  { title: "Requests", value: "12", sub: "Payments, care, withdrawals", detail: "Customer submitted requests waiting for admin movement.", href: "/admin/customer-requests", icon: "clipboard" as IconName, tone: "warn" as const },
+  { title: "Task Reviews", value: "4", sub: "Caretaker proof checks", detail: "Submitted work needing approval or rejection.", href: "/admin/caretaker-management", icon: "camera" as IconName, tone: "warn" as const },
+  { title: "Money In", value: peso(18400), sub: "Approved today estimate", detail: "Payment proofs and sales income summary.", href: "/admin/customer-requests", icon: "coins" as IconName, tone: "good" as const },
+  { title: "Money Out", value: peso(6200), sub: "Pending release", detail: "Withdrawal payout checks and receipts.", href: "/admin/customer-requests", icon: "wallet" as IconName, tone: "warn" as const },
   { title: "Priority", value: "P1", sub: "Withdrawal/KYC risk", detail: "Highest queue to open first.", href: "/admin/account-verification", icon: "shield" as IconName, tone: "bad" as const },
   { title: "Earnings", value: peso(12200), sub: "Net estimate today", detail: "Farm buy, care services, and rooster sales.", href: "/admin/farm-operations", icon: "rooster" as IconName, tone: "good" as const },
   { title: "System Alerts", value: "3", sub: "Needs evidence check", detail: "Missing proof, stuck status, or failed linkage.", href: "/admin/kafarm", icon: "support" as IconName, tone: "neutral" as const },
@@ -1743,7 +2530,7 @@ const adminCustomerProfiles = [
   { id: "cust-3", name: "Lina Cruz", avatar: "LC", kyc: "Needs Review", wallet: "Hold", pin: "Reset requested", payout: "Maya pending", risk: "High", issue: "Possible duplicate account", last: "Yesterday 8:18 PM", email: "lina@example.com", phone: "+63 919 222 1188" },
 ];
 
-const emptyCustomerDeskJob = {
+const emptyCustomerRequestJob = {
   id: "empty",
   name: "No pending request",
   avatar: "--",
@@ -1762,185 +2549,20 @@ const emptyCustomerDeskJob = {
   blocker: "Customer queue is empty. New payment, care, task, or withdrawal requests will appear here after submission.",
   finish: "Wait For Request",
   next: "Run a fresh customer test or wait for a real customer submission.",
-  route: "/admin/customer-desk",
+  route: "/admin/customer-requests",
 };
 
 const customerDeskSections = [
-  { id: "payment", title: "Payment Review", icon: "coins" as IconName, tone: "warn" as const, count: 3, text: "Review receipt, reference number, receiver account, and admin notes. Approved creates invoice; rejected returns to customer payment status for resubmit.", href: "/admin/customer-desk/payment" },
-  { id: "care", title: "Care Request", icon: "rooster" as IconName, tone: "warn" as const, count: 2, text: "Review customer rooster, service, notes, and payment status. Approved requests move to task assignment.", href: "/admin/customer-desk/care" },
-  { id: "task", title: "Task Management", icon: "clipboard" as IconName, tone: "bad" as const, count: 4, text: "Only job: assign caretaker to approved care requests, then it appears in caretaker app.", href: "/admin/customer-desk/task" },
-  { id: "withdraw", title: "Withdrawal Review", icon: "wallet" as IconName, tone: "warn" as const, count: 2, text: "Review withdrawal method, send payout externally, upload receipt/reference, then wait for customer confirmation.", href: "/admin/customer-desk/withdraw" },
+  { id: "payment", title: "Payment Review", icon: "coins" as IconName, tone: "warn" as const, count: 3, text: "Review receipt, reference number, receiver account, and admin notes. Approved creates invoice; rejected returns to customer payment status for resubmit.", href: "/admin/customer-requests/payment" },
+  { id: "care", title: "Care Request", icon: "rooster" as IconName, tone: "warn" as const, count: 2, text: "Review customer rooster, service, notes, and payment status. Approved requests move to task assignment.", href: "/admin/customer-requests/care" },
+  { id: "sell", title: "Sell Request", icon: "coins" as IconName, tone: "warn" as const, count: 0, text: "Review the customer-confirmed rooster price, then approve final caretaker release or reject with a clear note.", href: "/admin/customer-requests/sell" },
+  { id: "task", title: "Task Management", icon: "clipboard" as IconName, tone: "bad" as const, count: 4, text: "Only job: assign caretaker to approved care requests, then it appears in caretaker app.", href: "/admin/customer-requests/task" },
+  { id: "withdraw", title: "Withdrawal Review", icon: "wallet" as IconName, tone: "warn" as const, count: 2, text: "Review withdrawal method, send payout externally, upload receipt/reference, then wait for customer confirmation.", href: "/admin/customer-requests/withdraw" },
 ];
 
-const customerDeskJobs: Array<typeof emptyCustomerDeskJob> = [];
+const customerRequestJobs: Array<typeof emptyCustomerRequestJob> = [];
 
-function CustomerDeskJobBoard({ sectionId }: { sectionId: string }) {
-  const section = customerDeskSections.find(s=>s.id===sectionId) || customerDeskSections[0];
-  const jobs = customerDeskJobs.filter(j=>j.queue===section.id);
-  const [selected,setSelected]=useState(jobs[0] || emptyCustomerDeskJob);
-  const [evidenceView,setEvidenceView]=useState("summary");
-  const [latestKycReview,setLatestKycReview]=useState<any>(null);
-  useEffect(()=>{ try { const raw = window.localStorage.getItem("farmconnect_latest_kyc_review"); if (raw) setLatestKycReview(JSON.parse(raw)); } catch {} }, []);
-  useEffect(()=>{ if (jobs[0]) setSelected(jobs[0]); setEvidenceView("summary"); }, [sectionId]);
-  const evidenceTabs = [
-    { id: "summary", label: "Main Problem" },
-    { id: "id", label: "ID / Selfie" },
-    { id: "checks", label: "Check Evidence" },
-    { id: "duplicate", label: "Duplicate Accounts" },
-    { id: "timeline", label: "Timeline" },
-  ];
-  const duplicateAccounts = [
-    { name: selected.name, label: "Submitted Account", image: "/farmconnect/kyc-test/01_selfie_same_face.png", detail: selected.email, status: "Current KYC" },
-    { name: "Aydana B.", label: "Possible Duplicate", image: "/farmconnect/kyc-test/06_national_id_correct_fields_different_face.png", detail: "aydana.old@example.com", status: "Same birthday risk" },
-  ];
-  const records = [
-    latestKycReview ? `Latest KYC: ${latestKycReview.status} - ${latestKycReview.faceStatus}` : "No fresh customer evidence opened yet",
-    `${selected.name}: ${selected.problem}`,
-    `Blocker: ${selected.blocker}`,
-    `Finish: ${selected.next}`,
-  ];
-  const evidencePacks: Record<string, string[]> = {
-    kyc: ["KYC form submitted", "ID front/back uploaded", "Selfie captured", "Consent accepted", "Face/duplicate check generated"],
-    wallet: ["Cash-in screenshot uploaded", "Reference number extracted", "Receiver account checked", "Ledger transaction matched", "Duplicate reference scan"],
-    withdraw: ["Withdrawal request created", "Saved payout account loaded", "KYC status checked", "Wallet balance checked", "Payout proof pending"],
-    care: ["Original care request", "Paid service invoice", "Rooster QR/serial", "Caretaker proof upload", "Customer note and requested proof"],
-    support: ["Ka-Farm chat transcript", "Customer support message", "AI handoff reason", "Related wallet/KYC/care records", "Admin live chat status"],
-    security: ["PIN reset request", "Identity/KYC proof", "Recent login/contact changes", "Wallet balance untouched", "Force logout evidence"],
-    evidence: ["All matching evidence records", "Receipts and invoices", "Proof photos/videos", "Admin decisions", "Audit timestamps"],
-    resolved: ["Final decision", "Customer notification", "Evidence link", "Admin note", "Completion timestamp"],
-  };
-  const evidencePack = evidencePacks[section.id] || records;
-  const showDuplicateColumn = evidenceView === "duplicate";
-  return <Shell role="admin" title={section.title}><PageTitle title={section.title} text={section.text} icon={section.icon} /><div className={("mt-4 grid gap-5 " + (showDuplicateColumn?"xl:grid-cols-[300px_1fr_360px]":"lg:grid-cols-[340px_1fr]"))}><Card><div className="flex items-center justify-between gap-3"><Link href="/admin/customer-desk" className="rounded-xl bg-[#f6f3e8] px-4 py-2 text-sm font-black">Back</Link><Badge tone={section.tone}>{jobs.length} open</Badge></div><h2 className="mt-4 text-xl font-black">Customer List</h2><div className="mt-4 max-h-[520px] space-y-2 overflow-y-auto pr-2">{jobs.map(job=><button key={job.id + job.problem} onClick={()=>{setSelected(job); setEvidenceView("summary");}} className={("flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition " + (selected.id===job.id && selected.problem===job.problem?"border-[#1f6b45] bg-emerald-50 shadow-sm":"border-[#ece6d8] bg-[#fffdf7] hover:border-[#cfc7b7]"))}><div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#1f6b45] text-sm font-black text-white">{job.avatar}</div><div className="min-w-0 flex-1"><b className="block truncate">{job.name}</b><p className="truncate text-xs font-bold text-[#667267]">{job.problem}</p></div><Badge tone={job.priority==="High"?"bad":"neutral"}>{job.priority}</Badge></button>)}</div></Card><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-black uppercase text-[#667267]">Investigation</p><h2 className="mt-1 text-3xl font-black leading-tight">{selected.problem}</h2><p className="mt-2 font-bold text-[#667267]">{selected.blocker}</p></div><Badge tone={selected.priority==="High"?"bad":"neutral"}>{selected.priority}</Badge></div><div className="mt-4 rounded-2xl bg-[#f6f3e8] p-4"><p className="text-xs font-black uppercase text-[#667267]">Main Problem</p><h3 className="mt-1 text-xl font-black">{selected.finish}</h3><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Customer did: {selected.problem}. Admin must: {selected.next}</p></div><div className="mt-4 flex flex-wrap gap-2">{evidenceTabs.map(tab=><button key={tab.id} onClick={()=>setEvidenceView(tab.id)} className={("rounded-xl px-4 py-2 text-sm font-black transition " + (evidenceView===tab.id?"bg-[#1f6b45] text-white":"bg-white text-[#263228] shadow-sm ring-1 ring-[#ece6d8]"))}>{tab.label}</button>)}</div>{evidenceView!=="duplicate" ? <div className="mt-4 grid gap-3 xl:grid-cols-2"><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">What To Check</p><ul className="mt-3 space-y-2 text-sm font-bold leading-6 text-[#667267]"><li>ID/selfie visibility and face match</li><li>Name, birthday, address, and ID number</li><li>Consent record and submission time</li><li>Any linked wallet or payout risk</li></ul></div><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Evidence Trail</p><div className="mt-3 max-h-[230px] space-y-2 overflow-y-auto pr-2">{evidencePack.map((r,i)=><div key={r} className="rounded-xl bg-[#f6f3e8] p-3"><div className="flex items-start gap-2"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-black">{i+1}</span><p className="text-sm font-bold leading-5 text-[#667267]">{r}</p></div></div>)}</div></div></div> : <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-black uppercase text-[#92400e]">Duplicate account viewer opened</p><p className="mt-1 text-sm font-bold leading-6 text-[#667267]">Check Column 3. It appears only for duplicate account comparison so the page stays clean for other evidence.</p></div>}<div className="mt-5 flex flex-wrap gap-3"><Link href={`/admin/customer-desk/${section.id}/problem`} className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Check Problem</Link><Link href={`/admin/customer-desk/${section.id}/evidence`} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Check Evidence</Link><Link href="/admin/customer-desk/resolved" className="rounded-xl bg-amber-300 px-4 py-3 font-black">Complete</Link></div></Card>{showDuplicateColumn && <Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Duplicate Accounts</h2><Badge tone="bad">Review</Badge></div><p className="mt-1 text-sm font-bold text-[#667267]">Compare submitted account against possible duplicate.</p><div className="mt-4 grid gap-4">{duplicateAccounts.map(acc=><div key={acc.label} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-3"><p className="text-xs font-black uppercase text-[#667267]">{acc.label}</p><div className="mt-3 overflow-hidden rounded-2xl bg-[#f6f3e8]"><img src={acc.image} alt={acc.name} className="h-40 w-full object-cover" /></div><h3 className="mt-3 text-lg font-black">{acc.name}</h3><p className="truncate text-sm font-bold text-[#667267]">{acc.detail}</p><Badge tone={acc.label==="Possible Duplicate"?"bad":"warn"}>{acc.status}</Badge></div>)}</div><div className="mt-4 grid gap-2"><button className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Mark Same Person</button><button className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Mark Not Duplicate</button><button className="rounded-xl bg-amber-300 px-4 py-3 font-black">Need More Info</button></div></Card>}</div></Shell>;
-}
-function CustomerCaseBrain({ sectionId, problem, blocker, next }: { sectionId: string; problem: string; blocker: string; next: string }) {
-  const brainMap: Record<string, { finding: string; cause: string; risk: string; recommendation: string; action: string }> = {
-    kyc: {
-      finding: problem.includes("duplicate") ? "Possible duplicate identity was detected." : "KYC is blocking customer money movement.",
-      cause: blocker,
-      risk: "Approving a bad identity can expose the farm to fraud, payout disputes, and locked-wallet complaints.",
-      recommendation: problem.includes("duplicate") ? "Compare submitted account and possible duplicate before approval." : "Check ID, selfie, consent, face result, and mismatch flags before release.",
-      action: next,
-    },
-    wallet: {
-      finding: "Wallet/cash-in issue needs ledger proof, not chat guessing.",
-      cause: blocker,
-      risk: "Wrong crediting can lose farm money or make the customer think the app is unsafe.",
-      recommendation: "Match amount, receiver, reference number, screenshot time, and wallet ledger before crediting.",
-      action: "If farm fault, send exact cash. If customer fault, send formal explanation.",
-    },
-    withdraw: {
-      finding: "Withdrawal is a sensitive payout action.",
-      cause: blocker,
-      risk: "Sending to the wrong account is irreversible and damages trust.",
-      recommendation: "Check saved payout name, number, KYC, amount, and balance before proof upload.",
-      action: "Only send after account details pass. Generate receipt and send to inbox.",
-    },
-    care: {
-      finding: "Customer care concern needs proof against the original request.",
-      cause: blocker,
-      risk: "Wrong rooster or weak proof can make the farm look dishonest.",
-      recommendation: "Compare paid request, rooster QR/serial, customer note, caretaker proof, and time submitted.",
-      action: "Email customer or create corrective caretaker task with red warning.",
-    },
-    support: {
-      finding: "Ka-Farm handed this to admin because it needs human judgement.",
-      cause: blocker,
-      risk: "Slow or unclear replies increase support load and customer distrust.",
-      recommendation: "Use linked evidence before replying, then close with a polite summary.",
-      action: "Join chat, answer, end chat, and complete case.",
-    },
-    security: {
-      finding: "Security request touches wallet access.",
-      cause: blocker,
-      risk: "Resetting without identity proof can expose funds.",
-      recommendation: "Verify identity/KYC, then reset wallet PIN. Balance and locked savings must not move.",
-      action: "Reset triggers customer logout and new PIN setup.",
-    },
-    evidence: {
-      finding: "This is an evidence lookup, not a decision by itself.",
-      cause: blocker,
-      risk: "Unlinked evidence makes disputes harder to defend.",
-      recommendation: "Open only records connected to the selected customer case.",
-      action: next,
-    },
-    resolved: {
-      finding: "This case is already completed.",
-      cause: blocker,
-      risk: "Deleting too early can remove dispute protection.",
-      recommendation: "Archive unless the record is clearly duplicate or test data.",
-      action: "Review outcome, evidence link, admin note, then archive/delete.",
-    },
-  };
-  const brain = brainMap[sectionId] || brainMap.evidence;
-  return <Card className="border-[#b7d7c3] bg-emerald-50/70"><div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#1f6b45] text-white"><Icon name="support" /></span><div className="min-w-0"><p className="text-xs font-black uppercase text-[#1f6b45]">Ka-Farm Case Brain</p><h2 className="mt-1 text-xl font-black">{brain.finding}</h2><div className="mt-3 grid gap-3 text-sm font-bold leading-6 text-[#667267] md:grid-cols-2 xl:grid-cols-4"><div><b className="block text-[#17251d]">Cause</b>{brain.cause}</div><div><b className="block text-[#17251d]">Risk</b>{brain.risk}</div><div><b className="block text-[#17251d]">Recommend</b>{brain.recommendation}</div><div><b className="block text-[#17251d]">Next</b>{brain.action}</div></div></div></div></Card>;
-}
-function AdminCustomerDeskActionPage({ sectionId, mode }: { sectionId: string; mode: "problem" | "evidence" }) {
-  const section = customerDeskSections.find(s=>s.id===sectionId) || customerDeskSections[0];
-  const jobs = customerDeskJobs.filter(j=>j.queue===section.id);
-  const [selected,setSelected]=useState(jobs[0] || emptyCustomerDeskJob);
-  useEffect(()=>{ if (jobs[0]) setSelected(jobs[0]); }, [sectionId]);
-  const emailTemplate = `Hello ${selected.name},\n\nWe reviewed your FarmConnect concern: ${selected.problem}.\n\nReason: ${selected.blocker}.\n\nWhat happens next: ${selected.next}\n\nIf we need another document or proof, please submit it in the app so your record stays complete. Thank you for your patience.`;
-  const brain = <CustomerCaseBrain sectionId={section.id} problem={selected.problem} blocker={selected.blocker} next={selected.next} />;
-  const customerList = <Card><div className="flex items-center justify-between gap-3"><Link href={`/admin/customer-desk/${section.id}`} className="rounded-xl bg-[#f6f3e8] px-4 py-2 text-sm font-black">Back</Link><Badge tone={section.tone}>{jobs.length} open</Badge></div><h2 className="mt-4 text-xl font-black">Customer List</h2><div className="mt-4 max-h-[520px] space-y-2 overflow-y-auto pr-2">{jobs.map(job=><button key={job.id + job.problem} onClick={()=>setSelected(job)} className={("flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition " + (selected.id===job.id && selected.problem===job.problem?"border-[#1f6b45] bg-emerald-50 shadow-sm":"border-[#ece6d8] bg-[#fffdf7] hover:border-[#cfc7b7]"))}><div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#1f6b45] text-sm font-black text-white">{job.avatar}</div><div className="min-w-0 flex-1"><b className="block truncate">{job.name}</b><p className="truncate text-xs font-bold text-[#667267]">{job.problem}</p></div><Badge tone={job.priority==="High"?"bad":"neutral"}>{job.priority}</Badge></button>)}</div></Card>;
-  if (mode === "problem") {
-    return <Shell role="admin" title={`${section.title} Problem`}><PageTitle title={`${section.title}: Check Problem`} text="Problem source and troubleshooting guide before opening evidence." icon={section.icon} /><div className="mt-4 grid gap-5 lg:grid-cols-[340px_1fr]"><>{customerList}</><Card>{brain}<div className="mt-4 grid gap-4 xl:grid-cols-2"><div className="rounded-2xl bg-[#f6f3e8] p-5"><p className="text-xs font-black uppercase text-[#667267]">Problem / Source</p><h2 className="mt-2 text-3xl font-black">{selected.problem}</h2><p className="mt-3 text-sm font-bold leading-6 text-[#667267]">Source: {selected.name} under {section.title}. Customer action triggered this admin queue. Blocker: {selected.blocker}.</p></div><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-5"><p className="text-xs font-black uppercase text-[#667267]">Instruction / Troubleshooting</p><h3 className="mt-2 text-2xl font-black">What admin checks</h3><p className="mt-3 text-sm font-bold leading-6 text-[#667267]">{selected.next}</p><div className="mt-4 grid gap-2"><Link href={`/admin/customer-desk/${section.id}/evidence`} className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Check Evidence</Link><Link href="/admin/customer-desk/resolved" className="rounded-xl bg-amber-300 px-4 py-3 text-center font-black">Complete</Link></div></div></div></Card></div></Shell>;
-  }
-  if (section.id === "kyc") {
-    const submitted = { name: selected.name, img: "/farmconnect/kyc-test/01_selfie_same_face.png", detail: "Submitted account: ID front/back, selfie, consent, legal name, birthday." };
-    const duplicate = { name: "Aydana B.", img: "/farmconnect/kyc-test/06_national_id_correct_fields_different_face.png", detail: "Possible duplicate: similar face, same birthday risk, older email record." };
-    return <Shell role="admin" title="KYC Evidence"><PageTitle title="KYC: Check Evidence" text="Duplicate/facial evidence comparison with admin decision and email template." icon="shield" /><div className="mt-4">{brain}</div><div className="mt-4 grid gap-5 xl:grid-cols-[280px_minmax(260px,1fr)_minmax(260px,1fr)_340px]"><div className="min-h-[640px]">{customerList}</div><Card className="min-h-[640px]"><div className="mb-3 rounded-xl bg-[#1f6b45] px-3 py-2 text-center text-xs font-black uppercase text-white">Column 1</div><p className="text-xs font-black uppercase text-[#667267]">Submitted Account</p><div className="mt-3 overflow-hidden rounded-2xl bg-[#f6f3e8]"><img src={submitted.img} alt={submitted.name} className="h-56 w-full object-cover" /></div><h2 className="mt-3 text-2xl font-black">{submitted.name}</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{submitted.detail}</p></Card><Card className="min-h-[640px]"><div className="mb-3 rounded-xl bg-[#9a3412] px-3 py-2 text-center text-xs font-black uppercase text-white">Column 2</div><p className="text-xs font-black uppercase text-[#667267]">Possible Duplicate</p><div className="mt-3 overflow-hidden rounded-2xl bg-[#f6f3e8]"><img src={duplicate.img} alt={duplicate.name} className="h-56 w-full object-cover" /></div><h2 className="mt-3 text-2xl font-black">{duplicate.name}</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{duplicate.detail}</p></Card><Card className="min-h-[640px]"><div className="mb-3 rounded-xl bg-amber-300 px-3 py-2 text-center text-xs font-black uppercase text-[#17251d]">Column 3</div><h2 className="text-xl font-black">Analysis & Decision</h2><div className="mt-4 space-y-2 text-sm font-bold text-[#667267]"><p>Check if face, birthday, contact, and payout details are same person.</p><p>Do not approve if duplicate/fraud remains unresolved.</p></div><textarea defaultValue={emailTemplate} className="mt-4 h-48 w-full rounded-xl border border-[#ded8c9] p-3 text-sm font-bold" /><div className="mt-4 grid gap-2"><button className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Mark Same Person</button><button className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Clear Duplicate</button><button className="rounded-xl bg-amber-300 px-4 py-3 font-black">Write Email</button><Link href="/admin/customer-desk/resolved" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Complete</Link></div></Card></div></Shell>;
-  }
-  if (section.id === "wallet") {
-    return <Shell role="admin" title="Wallet Evidence"><PageTitle title="Wallet: Check Evidence" text="Cash-in trail: where customer sent money, reference, amount, and ledger result." icon="wallet" /><div className="mt-4">{brain}</div><div className="mt-4 grid gap-5 lg:grid-cols-[340px_1fr_1fr]"><>{customerList}</><Card><h2 className="text-xl font-black">Customer Cash-In Details</h2><div className="mt-4 grid gap-3"><Info label="Amount" value="P1,200" /><Info label="Method" value="GCash" /><Info label="Reference" value="GC-8821-441" /><Info label="Submitted" value="Today 10:42 AM" /><Info label="Sent To" value="FarmConnect GCash" /></div></Card><Card><h2 className="text-xl font-black">Evidence Decision</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">If receiver/reference/amount match and farm fault caused delay, send exact wallet credit. If customer sent to wrong account or duplicate ref, write formal inbox/email notice.</p><textarea defaultValue={emailTemplate} className="mt-4 h-40 w-full rounded-xl border border-[#ded8c9] p-3 text-sm font-bold" /><div className="mt-4 grid gap-2"><button className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Send Cash P1,200</button><button className="rounded-xl bg-amber-300 px-4 py-3 font-black">Write Email</button><Link href="/admin/customer-desk/resolved" className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">Complete</Link></div></Card></div></Shell>;
-  }
-  if (section.id === "withdraw") {
-    return <Shell role="admin" title="Withdraw Evidence"><PageTitle title="Withdraw: Check / Send" text="Sensitive payout review with saved payout details, proof upload, receipt generation." icon="coins" /><div className="mt-4">{brain}</div><div className="mt-4 grid gap-5 xl:grid-cols-[300px_1fr_360px]"><>{customerList}</><Card><h2 className="text-xl font-black">Withdrawal Details</h2><div className="mt-4 grid gap-3 sm:grid-cols-2"><Info label="Amount" value="P3,500" /><Info label="Mode" value="Maya" /><Info label="Account Name" value={selected.name} /><Info label="Account Number" value="09•• ••• ••18" /><Info label="KYC" value={selected.kyc} /><Info label="Balance Check" value="Passed" /></div></Card><Card><h2 className="text-xl font-black">Upload / Receipt</h2><div className="mt-4 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">Upload transfer proof after checking account name and number. System creates invoice/receipt and sends it to customer inbox.</div><div className="mt-4 grid gap-2"><button className="rounded-xl bg-white px-4 py-3 font-black shadow-sm">Upload Proof</button><button className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Check / Send</button><Link href="/admin/customer-desk/resolved" className="rounded-xl bg-amber-300 px-4 py-3 text-center font-black">Complete</Link></div></Card></div></Shell>;
-  }
-  if (section.id === "care") {
-    return <Shell role="admin" title="Care Evidence"><PageTitle title="Care: Check Evidence" text="Original request versus caretaker proof, then email customer or create corrective task." icon="rooster" /><div className="mt-4">{brain}</div><div className="mt-4 grid gap-5 xl:grid-cols-[300px_1fr_1fr_340px]"><>{customerList}</><Card><h2 className="text-xl font-black">Customer Request</h2><div className="mt-4 grid gap-3"><Info label="Rooster" value="Thunder King / FC-128" /><Info label="Service" value="Photo Update" /><Info label="Paid" value="Yes" /><Info label="Note" value="Close-up wings and feet" /></div></Card><Card><h2 className="text-xl font-black">Caretaker Proof</h2><div className="mt-3 overflow-hidden rounded-2xl bg-[#f6f3e8]"><img src="/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg" alt="proof" className="h-52 w-full object-cover" /></div><p className="mt-3 text-sm font-bold text-[#667267]">Submitted by Juan D., today 4:40 PM. QR/serial pending admin check.</p></Card><Card><h2 className="text-xl font-black">Action</h2><textarea defaultValue={emailTemplate} className="mt-4 h-36 w-full rounded-xl border border-[#ded8c9] p-3 text-sm font-bold" /><div className="mt-4 grid gap-2"><button className="rounded-xl bg-amber-300 px-4 py-3 font-black">Email Customer</button><button className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Create Task</button><Link href="/admin/customer-desk/resolved" className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">Complete</Link></div></Card></div></Shell>;
-  }
-  if (section.id === "support") {
-    return <Shell role="admin" title="Support Chat"><PageTitle title="Support: Live Chat" text="Admin replies only from the database-backed live chat queue." icon="chat" /><div className="mt-4">{brain}</div><div className="mt-4 grid gap-5 xl:grid-cols-[320px_1fr_300px]"><>{customerList}</><Card><div className="flex items-start gap-4"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#1f6b45] text-white"><Icon name="chat" /></span><div><p className="text-xs font-black uppercase text-[#667267]">Real Chat Surface</p><h2 className="mt-1 text-2xl font-black">Open Admin Live Chat</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">This desk only explains why support is escalated. Actual messages, admin join, replies, end chat, and persisted transcript live in the real chat queue.</p></div></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><Link href="/admin/live-chat" className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Open Live Chat Queue</Link><Link href="/admin/evidence" className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">Open Evidence</Link></div><div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">No fake local chat is shown here. This prevents admin from replying in a screen that does not save to Supabase.</div></Card><Card><h2 className="text-xl font-black">Admin Rule</h2><div className="mt-4 space-y-3 text-sm font-bold leading-6 text-[#667267]"><p className="rounded-2xl bg-[#f6f3e8] p-3">Customer/caretaker talks to KaFarm first.</p><p className="rounded-2xl bg-[#f6f3e8] p-3">Sensitive, money, KYC, fraud, angry, unclear, or legal concerns escalate.</p><p className="rounded-2xl bg-[#f6f3e8] p-3">Admin joins in /admin/live-chat only, so the transcript stays evidence-ready.</p></div><Link href="/admin/customer-desk/resolved" className="mt-4 block rounded-xl bg-amber-300 px-4 py-3 text-center font-black">Resolved Cases</Link></Card></div></Shell>;
-  }
-  if (section.id === "security") {
-    return <Shell role="admin" title="Security"><PageTitle title="Security: Reset / Complete" text="Wallet PIN reset is automatic logout plus new PIN setup. Money is never moved." icon="qr" /><div className="mt-4">{brain}</div><div className="mt-4 grid gap-5 xl:grid-cols-[320px_1fr_320px]"><>{customerList}</><Card><h2 className="text-xl font-black">Problem And Check</h2><div className="mt-4 grid gap-3"><Info label="Request" value={selected.problem} /><Info label="Identity" value="Needs KYC proof" /><Info label="Wallet" value="Balance unchanged" /><Info label="Safety" value="Force logout after reset" /></div></Card><Card><h2 className="text-xl font-black">Reset</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Reset Wallet PIN creates evidence, logs out customer, and requires new PIN on next access. Locked savings and balance stay untouched.</p><div className="mt-4 grid gap-2"><button className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Reset Wallet PIN</button><Link href="/admin/customer-desk/resolved" className="rounded-xl bg-amber-300 px-4 py-3 text-center font-black">Complete</Link></div></Card></div></Shell>;
-  }
-  return <Shell role="admin" title={section.title}><PageTitle title={section.title} text="Task logs and evidence archive." icon={section.icon} /><div className="mt-4">{brain}</div><div className="mt-4 grid gap-5 lg:grid-cols-[340px_1fr]"><>{customerList}</><Card><h2 className="text-xl font-black">{section.title}</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Resolved cases collect completed problems. Admin can review, delete, or archive records here.</p><div className="mt-4 grid gap-2"><button className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Delete</button><button className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Archive</button></div></Card></div></Shell>;
-}
-
-export function AdminCustomerDeskAction({ section, mode }: { section: string; mode: "problem" | "evidence" }) {
-  return <AdminCustomerDeskActionPage sectionId={section} mode={mode} />;
-}
-
-function AdminCustomerDeskFormatPage({ sectionId }: { sectionId: string }) {
-  const section = customerDeskSections.find(s=>s.id===sectionId) || customerDeskSections[0];
-  const jobs = customerDeskJobs.filter(j=>j.queue===section.id);
-  const [selected,setSelected]=useState(jobs[0] || emptyCustomerDeskJob);
-  const [note,setNote]=useState("");
-  const [decision,setDecision]=useState<"open" | "approved" | "rejected">("open");
-  useEffect(()=>{ if (jobs[0]) { setSelected(jobs[0]); setDecision("open"); setNote(""); } }, [sectionId]);
-  const infoCards = [
-    { label: "Customer", value: selected.name },
-    { label: "Problem", value: selected.problem },
-    { label: "Blocker", value: selected.blocker },
-    { label: "Next", value: selected.next },
-  ];
-  const inquiry = [
-    `Queue: ${section.title}`,
-    `What happened: ${selected.problem}`,
-    `Why admin is needed: ${selected.blocker}`,
-    `Customer status: KYC ${selected.kyc}, wallet ${selected.wallet}, payout ${selected.payout}`,
-    `Suggested finish: ${selected.finish}`,
-  ];
-  function mark(next: "approved" | "rejected") {
-    setDecision(next);
-    setNote(current=>current || (next === "approved" ? "Approved after admin review. Link evidence before closing." : "Rejected/held. Send customer a clear reason and next step."));
-  }
-  return <Shell role="admin" title={section.title}><PageTitle title={section.title} text={section.text} icon={section.icon as IconName} /><div className="mt-4 grid gap-4 xl:grid-cols-[280px_minmax(460px,1fr)_320px]"><Card className="min-h-[650px]"><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-black">Request List</h2><Badge tone="warn">{jobs.length}</Badge></div><div className="mt-4 max-h-[560px] space-y-3 overflow-y-auto pr-2">{jobs.map(job=><button key={job.id + job.queue} onClick={()=>{setSelected(job); setDecision("open"); setNote("");}} className={"w-full rounded-2xl border p-3 text-left transition " + (selected.id===job.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7] hover:border-[#1f6b45]") }><div className="flex items-start justify-between gap-2"><div className="min-w-0"><b className="block truncate">{job.name}</b><p className="mt-1 line-clamp-2 text-xs font-bold text-[#667267]">{job.problem}</p></div><Badge tone={job.priority === "High" ? "bad" : "warn"}>{job.priority}</Badge></div></button>)}</div></Card><div className="grid content-start gap-4"><Card><p className="text-xs font-black uppercase text-[#667267]">Request Details</p><h2 className="mt-1 text-3xl font-black">{selected.problem}</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{selected.blocker}</p><div className="mt-4 grid gap-3 md:grid-cols-2">{infoCards.map(card=><div key={card.label} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">{card.label}</p><p className="mt-2 text-sm font-black leading-6">{card.value}</p></div>)}</div></Card><Card><p className="text-xs font-black uppercase text-[#667267]">What Admin Should Check</p><div className="mt-3 space-y-2">{inquiry.map(item=><p key={item} className="rounded-xl bg-[#f4efe4] p-3 text-sm font-bold leading-6">{item}</p>)}</div></Card></div><Card className="min-h-[650px]"><h2 className="text-lg font-black">Decision Guide</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Approve only after evidence is checked. Reject should include clear notes for the customer.</p><label className="mt-5 block text-sm font-black">Notes</label><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Reason, evidence checked, next step..." className="mt-2 h-40 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold leading-6" /><div className="mt-5 grid grid-cols-2 gap-3"><button onClick={()=>mark("approved")} className="min-h-20 rounded-2xl bg-[#1f6b45] px-4 py-3 text-sm font-black text-white">Approve</button><button onClick={()=>mark("rejected")} className="min-h-20 rounded-2xl bg-red-600 px-4 py-3 text-sm font-black text-white">Reject</button></div><p className="mt-4 rounded-2xl bg-[#f4efe4] p-4 text-sm font-black">{decision === "open" ? "Waiting for review" : decision === "approved" ? "Approved in UI review" : "Rejected / needs resubmission"}</p><div className="mt-4 grid gap-2"><Link href={`/admin/customer-desk/${section.id}/evidence`} className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">Check Evidence</Link><Link href="/admin/customer-desk/resolved" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Resolved Logs</Link></div></Card></div></Shell>;
-}
-
-function AdminCustomerDeskPage() {
+function AdminCustomerRequestsPage() {
   const [activeSection,setActiveSection]=useState("payment");
   const [hiddenIds,setHiddenIds]=useState<string[]>([]);
   const [liveWithdrawals,setLiveWithdrawals]=useState<any[]>([]);
@@ -1962,9 +2584,9 @@ function AdminCustomerDeskPage() {
     payout: row.status || "for_review",
     liveWithdrawal: row,
   }));
-  const sourceJobs = activeSection === "withdraw" && liveWithdrawalJobs.length ? liveWithdrawalJobs : customerDeskJobs;
+  const sourceJobs = activeSection === "withdraw" && liveWithdrawalJobs.length ? liveWithdrawalJobs : customerRequestJobs;
   const visibleJobs = sourceJobs.filter(job=>job.queue===activeSection && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`));
-  const [selected,setSelected]=useState(visibleJobs[0] || sourceJobs.find(job=>job.queue===activeSection) || emptyCustomerDeskJob);
+  const [selected,setSelected]=useState(visibleJobs[0] || sourceJobs.find(job=>job.queue===activeSection) || emptyCustomerRequestJob);
   const [note,setNote]=useState("");
   const [decision,setDecision]=useState<"open" | "approved" | "rejected">("open");
   const [selectedCaretaker,setSelectedCaretaker]=useState("Juan Dela Cruz");
@@ -2002,7 +2624,7 @@ function AdminCustomerDeskPage() {
     return ()=>{ mounted = false; };
   }, []);
   useEffect(()=>{
-    const next = visibleJobs[0] || sourceJobs.find(job=>job.queue===activeSection) || emptyCustomerDeskJob;
+    const next = visibleJobs[0] || sourceJobs.find(job=>job.queue===activeSection) || emptyCustomerRequestJob;
     setSelected(next);
     setDecision("open");
     setNote("");
@@ -2036,12 +2658,13 @@ function AdminCustomerDeskPage() {
   return <Shell role="admin" title="Customer Requests Management">
     <PageTitle title="Customer Requests Management" text="Review only active customer requests: payments, care requests, task assignment, and withdrawals." icon="clipboard" />
     <div className="mt-4 grid gap-3 md:grid-cols-4">
-      {customerDeskSections.map(section=><button key={section.id} onClick={()=>setActiveSection(section.id)} className={"rounded-2xl border p-4 text-left shadow-sm transition " + (activeSection===section.id ? "border-[#1f6b45] bg-[#e9fff3] ring-2 ring-[#1f6b45]/20" : "border-[#e3ded0] bg-white/95 hover:border-[#1f6b45]")}><div className="flex items-start justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#f6f3e8]"><Icon name={section.icon} /></span><Badge tone={section.tone}>{customerDeskJobs.filter(job=>job.queue===section.id && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`)).length}</Badge></div><h2 className="mt-3 text-lg font-black">{section.title}</h2><p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-[#667267]">{section.text}</p></button>)}
+      {customerDeskSections.map(section=><button key={section.id} onClick={()=>setActiveSection(section.id)} className={"rounded-2xl border p-4 text-left shadow-sm transition " + (activeSection===section.id ? "border-[#1f6b45] bg-[#e9fff3] ring-2 ring-[#1f6b45]/20" : "border-[#e3ded0] bg-white/95 hover:border-[#1f6b45]")}><div className="flex items-start justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#f6f3e8]"><Icon name={section.icon} /></span><Badge tone={section.tone}>{customerRequestJobs.filter(job=>job.queue===section.id && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`)).length}</Badge></div><h2 className="mt-3 text-lg font-black">{section.title}</h2><p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-[#667267]">{section.text}</p></button>)}
     </div>
-    {activeSection === "payment" && <div className="mt-5"><AdminManualPaymentQueue /></div>}
-    {activeSection === "care" && <div className="mt-5"><AdminLiveCareRequestQueue mode="care" /></div>}
+    {activeSection === "payment" && <div className="mt-5"><AdminManualPaymentQueue sourceType="farm_buy" /></div>}
+    {activeSection === "care" && <div className="mt-5"><AdminManualPaymentQueue sourceType="care_request" /></div>}
     {activeSection === "task" && <div className="mt-5"><AdminLiveCareRequestQueue mode="task" /></div>}
-    {!["payment","care","task"].includes(activeSection) && <div className="mt-5 grid gap-4 xl:grid-cols-[300px_minmax(520px,1fr)_330px]">
+    {activeSection === "withdraw" && <div className="mt-5"><AdminWithdrawalReviewQueue /></div>}
+    {!["payment","care","task","withdraw"].includes(activeSection) && <div className="mt-5 grid gap-4 xl:grid-cols-[300px_minmax(520px,1fr)_330px]">
       <Card className="min-h-[660px]"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">Customer Queue</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Only requests waiting for admin action appear here. Completed items disappear from this queue.</p></div><Badge tone="warn">{visibleJobs.length}</Badge></div><div className="mt-4 max-h-[560px] space-y-3 overflow-y-auto pr-2">{visibleJobs.length ? visibleJobs.map(job=><button key={`${job.queue}-${job.id}-${job.problem}`} onClick={()=>{setSelected(job); setDecision("open"); setNote(""); setViewer(null);}} className={"w-full rounded-2xl border p-3 text-left transition " + (`${job.queue}-${job.id}-${job.problem}`===selectedKey ? "border-[#1f6b45] bg-emerald-50 shadow-sm" : "border-[#ece6d8] bg-[#fffdf7] hover:border-[#1f6b45]")}><div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#1f6b45] text-sm font-black text-white">{job.avatar}</span><div className="min-w-0 flex-1"><b className="block truncate">{job.name}</b><p className="mt-1 truncate text-xs font-bold text-[#667267]">{job.problem}</p><p className="mt-2 text-xs font-black text-[#1f6b45]">{job.last}</p></div><Badge tone={job.priority === "High" ? "bad" : "warn"}>{job.priority}</Badge></div></button>) : <div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold leading-6 text-[#667267]">No pending {activeSectionInfo.title.toLowerCase()} right now.</div>}</div></Card>
       <div className="grid content-start gap-4"><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Submitted Request</p><h2 className="mt-1 text-3xl font-black">{selected.problem}</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{selected.name} / {selected.email}</p></div><Badge tone={selected.priority === "High" ? "bad" : "warn"}>{activeSectionInfo.title}</Badge></div>{selected.queue === "task" ? <div className="mt-4 grid gap-3 md:grid-cols-2"><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Rooster</p><h3 className="mt-2 text-xl font-black">Thunder King</h3><p className="mt-1 text-sm font-bold text-[#667267]">FC-128 / Pen A-04 / Hatch-Kelso</p></div><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Care Request</p><h3 className="mt-2 text-xl font-black">Give Vitamins</h3><p className="mt-1 text-sm font-bold text-[#667267]">Customer requested photo proof and short note.</p></div><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 md:col-span-2"><p className="text-xs font-black uppercase text-[#667267]">Task Card</p><p className="mt-2 text-sm font-bold leading-6">Verify rooster by QR, give requested service, record product quantity used, upload proof, then submit back to admin.</p></div></div> : <><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Request Items</p><div className="mt-3 space-y-2">{orderItems.map(item=><div key={item.name} className="flex items-center justify-between gap-3 rounded-xl bg-white p-3 text-sm font-bold"><span>{item.name} x {item.qty}</span><b>?{(item.qty * item.price).toLocaleString()}</b></div>)}</div><div className="mt-3 flex items-center justify-between rounded-xl bg-[#1f6b45] p-3 text-white"><b>Total</b><b>?{total.toLocaleString()}</b></div></div>{selected.queue === "withdraw" ? <div className="mt-4 rounded-3xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Withdrawal Method / Admin Proof</p><div className="mt-3 grid gap-3 md:grid-cols-2"><div className="rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Customer payout method</p><h3 className="mt-2 text-xl font-black">{withdrawalMethod.provider}</h3><p className="mt-1 text-sm font-bold text-[#667267]">{withdrawalMethod.holder} / {withdrawalMethod.account}</p></div><div className="rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Admin reference number</p><input value={payoutReference} onChange={e=>setPayoutReference(e.target.value)} placeholder="Paste actual sent reference number" className="mt-2 w-full rounded-xl border border-[#ded8c9] p-3 text-lg font-black" /><p className="mt-2 text-xs font-bold text-[#667267]">Admin enters the real reference from GCash/Maya/bank receipt.</p></div><div className="rounded-2xl bg-white p-4 md:col-span-2"><p className="text-xs font-black uppercase text-[#667267]">Upload payout receipt</p><div className="mt-3 rounded-2xl border-2 border-dashed border-[#d8cfbd] bg-[#f9f6ec] p-4"><input onChange={e=>{ const file=e.target.files?.[0]; setPayoutReceiptName(file?.name || ""); setPayoutReceiptPreview(file ? URL.createObjectURL(file) : ""); }} className="w-full rounded-xl bg-white p-3 text-sm font-bold" type="file" accept="image/*,.pdf" /><p className="mt-3 text-center text-sm font-black">{payoutReceiptName || "No payout receipt selected yet"}</p></div><button type="button" onClick={()=>setViewer("receipt")} className="mt-3 w-full rounded-xl bg-[#eee8d9] px-4 py-3 text-sm font-black">View Payout Proof</button></div></div></div> : <div className="mt-4 grid gap-3 md:grid-cols-2"><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Reference Number</p><h3 className="mt-2 text-xl font-black">{reference}</h3><p className="mt-1 text-xs font-bold text-[#667267]">{receiptStatus}</p></div><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Receipt / Upload</p><h3 className="mt-2 text-xl font-black">Receipt attached</h3><button type="button" onClick={()=>setViewer("receipt")} className="mt-3 w-full rounded-xl bg-[#eee8d9] px-4 py-3 text-sm font-black">View Receipt</button></div></div>}</>}</Card></div>
       <Card className="min-h-[660px]"><h2 className="text-lg font-black">Admin Action</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Action changes depending on the selected request.</p>{selected.queue === "task" ? <div className="mt-4"><p className="text-sm font-black">Assign Caretaker</p><div className="mt-3 space-y-2">{caretakers.map(caretaker=><button key={caretaker.name} onClick={()=>setSelectedCaretaker(caretaker.name)} className={"w-full rounded-2xl border p-3 text-left transition " + (selectedCaretaker===caretaker.name ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}><b>{caretaker.name}</b><p className="mt-1 text-xs font-bold text-[#667267]">{caretaker.load} / {caretaker.skill}</p></button>)}</div><button onClick={completeRequest} className="mt-5 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white">Assign Task</button><p className="mt-3 text-xs font-bold leading-5 text-[#667267]">After assignment, this leaves Customer Requests and appears in the caretaker task list.</p></div> : <div className="mt-4"><div className="grid grid-cols-2 gap-3"><button onClick={()=>submitAction("approved")} className="min-h-20 rounded-2xl bg-[#1f6b45] px-4 py-3 font-black text-white">Approve</button><button onClick={()=>submitAction("rejected")} className="min-h-20 rounded-2xl bg-red-600 px-4 py-3 font-black text-white">Reject</button></div><label className="mt-5 block text-sm font-black">Note to Customer</label><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Reason if rejected, or confirmation note if approved..." className="mt-2 h-32 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold leading-6" /><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Invoice / Receipt</p><p className="mt-2 text-sm font-bold leading-6">Generated after approval. Open before final submit to double-check amount and items.</p><button type="button" onClick={()=>setViewer("invoice")} className="mt-3 w-full rounded-xl bg-[#eee8d9] px-4 py-3 text-sm font-black">View Invoice</button></div><button onClick={completeRequest} disabled={decision === "open"} className={"mt-4 w-full rounded-2xl px-4 py-4 font-black text-white " + (decision === "open" ? "bg-[#b9b3a4]" : "bg-[#1f6b45]")}>Submit Decision</button><p className="mt-3 text-xs font-bold leading-5 text-[#667267]">After submit, request leaves this queue and should be stored in evidence logs.</p></div>}</Card>
@@ -2049,24 +2672,85 @@ function AdminCustomerDeskPage() {
     {viewer && <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4"><div className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">{viewer === "receipt" ? (selected.queue === "withdraw" ? "Admin Payout Proof" : "Customer Receipt Proof") : "Generated Invoice Preview"}</p><h2 className="mt-1 text-2xl font-black">{selected.name}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{selected.problem} / {selected.queue === "withdraw" ? (payoutReference || "No payout reference yet") : reference}</p></div><button type="button" onClick={()=>setViewer(null)} className="rounded-xl bg-[#eee8d9] px-4 py-2 text-sm font-black">Close</button></div>{viewer === "receipt" ? <div className="mt-5 grid gap-4 md:grid-cols-[1fr_260px]"><div className="rounded-2xl border border-[#ece6d8] bg-[#f9f6ec] p-5"><p className="text-xs font-black uppercase text-[#667267]">{selected.queue === "withdraw" ? "Uploaded Admin Payout Receipt" : "Uploaded Customer Screenshot"}</p><div className="mt-4 overflow-hidden rounded-2xl border border-[#d8cfbd] bg-white"><div className="grid min-h-64 place-items-center bg-[#101010] p-5 text-center text-white">{selected.queue === "withdraw" && payoutReceiptPreview ? <img src={payoutReceiptPreview} alt="Admin payout receipt" className="max-h-[360px] w-full object-contain" /> : <div><p className="text-xs font-black uppercase text-white/60">Receipt Screenshot</p><h3 className="mt-2 text-2xl font-black">{selected.queue === "withdraw" ? "Admin payout proof" : "Customer payment proof"}</h3><p className="mt-2 text-sm font-bold text-white/70">{selected.queue === "withdraw" ? (payoutReference || "No payout reference yet") : reference}</p></div>}</div><div className="grid grid-cols-2 divide-x divide-[#d8cfbd] bg-[#f9f6ec] text-center text-sm font-black text-[#17251d]"><div className="p-4">{selected.queue === "withdraw" ? "Sent to customer payout" : "Receiver / sender details"}</div><div className="p-4">{selected.queue === "withdraw" ? withdrawalMethod.provider + " / " + withdrawalMethod.account : "Payment method and amount"}</div></div></div></div><div className="space-y-3"><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Reference</p><b className="mt-2 block text-lg">{selected.queue === "withdraw" ? (payoutReference || "No payout reference yet") : reference}</b></div><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Amount</p><b className="mt-2 block text-lg">?{total.toLocaleString()}</b></div><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Status</p><b className="mt-2 block text-sm">{selected.queue === "withdraw" ? (payoutReceiptName ? "Admin payout receipt attached" : "Waiting for admin payout receipt") : receiptStatus}</b></div></div></div> : <div className="mt-5 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-5"><div className="flex items-start justify-between gap-3 border-b border-[#ece6d8] pb-4"><div><h3 className="text-2xl font-black">{selected.queue === "withdraw" ? "Withdrawal Receipt / Invoice" : "FarmConnect Invoice"}</h3><p className="mt-1 text-sm font-bold text-[#667267]">Customer: {selected.name}</p></div><Badge tone={decision === "approved" ? "good" : decision === "rejected" ? "bad" : "warn"}>{decision === "open" ? "Draft" : decision}</Badge></div>{selected.queue === "withdraw" ? <div className="mt-4 grid gap-3"><div className="grid gap-3 md:grid-cols-2"><div className="rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Payout Method</p><b className="mt-2 block text-lg">{withdrawalMethod.provider}</b><p className="mt-1 text-sm font-bold text-[#667267]">{withdrawalMethod.holder} / {withdrawalMethod.account}</p></div><div className="rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Admin Sent Reference</p><b className="mt-2 block text-lg">{payoutReference || "No reference entered"}</b><p className="mt-1 text-sm font-bold text-[#667267]">Must match uploaded payout receipt.</p></div></div><div className="rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Uploaded Payout Proof</p><b className="mt-2 block text-lg">{payoutReceiptName || "No payout proof uploaded"}</b></div><div className="flex items-center justify-between rounded-2xl bg-[#1f6b45] p-4 text-white"><b>Withdrawal Amount</b><b>?{total.toLocaleString()}</b></div><div className="rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Admin Note</p><p className="mt-2 text-sm font-bold leading-6">{note || "No admin note yet."}</p></div></div> : <><div className="mt-4 space-y-2">{orderItems.map(item=><div key={item.name} className="flex items-center justify-between gap-3 rounded-xl bg-white p-3 text-sm font-bold"><span>{item.name} x {item.qty}</span><b>?{(item.qty * item.price).toLocaleString()}</b></div>)}</div><div className="mt-4 flex items-center justify-between rounded-2xl bg-[#1f6b45] p-4 text-white"><b>Total</b><b>?{total.toLocaleString()}</b></div><div className="mt-4 rounded-2xl bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Admin Note</p><p className="mt-2 text-sm font-bold leading-6">{note || "No admin note yet."}</p></div></>}</div>}</div></div>}
   </Shell>;
 }
-export function AdminCustomerDeskSection({ section }: { section: string }) {
+export function AdminCustomerRequestsSection({ section }: { section: string }) {
   if (section === "payment") {
-    return <Shell role="admin" title="Payment Requests"><PageTitle title="Payment Requests" text="Review live customer payment receipts and reference numbers from Supabase." icon="coins" /><AdminManualPaymentQueue /></Shell>;
+    return <Shell role="admin" title="Payment Requests"><PageTitle title="Payment Requests" text="Review Farm Buy payment receipts and reference numbers from Supabase." icon="coins" /><AdminManualPaymentQueue sourceType="farm_buy" /></Shell>;
   }
-  return <AdminCustomerDeskFormatPage sectionId={section} />;
+  if (section === "care") {
+    return <Shell role="admin" title="Care Request"><PageTitle title="Care Request" text="Approve or reject customer care-request payment proof. Approved payments move to Task Management." icon="rooster" /><AdminManualPaymentQueue sourceType="care_request" /></Shell>;
+  }
+  if (section === "task") {
+    return <Shell role="admin" title="Task Management"><PageTitle title="Task Management" text="Assign a specific active caretaker to paid and approved care requests." icon="clipboard" /><AdminLiveCareRequestQueue mode="task" /></Shell>;
+  }
+  if (section === "withdraw") {
+    return <Shell role="admin" title="Withdrawal Review"><PageTitle title="Withdrawal Review" text="Review the customer's payout method, attach the real payout proof and reference, then submit the decision." icon="wallet" /><AdminWithdrawalReviewQueue /></Shell>;
+  }
+  if (section === "sell") {
+    return <Shell role="admin" title="Sell Requests"><PageTitle title="Sell Requests" text="Approve or reject customer-confirmed rooster sales. Approved requests move to final caretaker release." icon="coins" /><AdminRoosterSaleQueue /></Shell>;
+  }
+  return <AdminCustomerRequestsPage />;
 }
 
-function AdminManualPaymentQueue() {
+function AdminRoosterSaleQueue() {
   const [rows,setRows]=useState<any[]>([]);
+  const [selectedId,setSelectedId]=useState("");
+  const [adminNote,setAdminNote]=useState("");
+  const [saving,setSaving]=useState(false);
+  const [note,setNote]=useState("Loading customer sell requests...");
+  const pending=rows.filter(row=>row.status==="sale_requested");
+  const selected=pending.find(row=>row.id===selectedId)||pending[0]||null;
+  async function load(){
+    try{
+      const data=await getAdminRoosterSaleRequests();
+      setRows(data);
+      const first=data.find((row:any)=>row.status==="sale_requested");
+      setSelectedId(current=>data.some((row:any)=>row.id===current&&row.status==="sale_requested")?current:first?.id||"");
+      setNote(first?"Review the approved inspection price and customer sale confirmation.":"No customer sell request waiting for admin.");
+    }catch(error){setRows([]);setNote(`Sell queue blocked: ${readableAppError(error)||"Apply SQL 040 and check admin login."}`);}
+  }
+  useEffect(()=>{void load();},[]);
+  async function decide(decision:"approved"|"rejected"){
+    if(!selected||saving)return;
+    if(adminNote.trim().length<5){setNote("Write a clear admin note before approving or rejecting.");return;}
+    setSaving(true);
+    try{
+      await adminReviewRoosterSale(selected.id,decision,adminNote.trim());
+      setAdminNote("");
+      await load();
+      setNote(decision==="approved"?"Sale approved. It is now waiting in Task Management for final caretaker release assignment.":"Sale rejected. Customer received your note and may submit again.");
+    }catch(error){setNote(`Sell decision failed: ${readableAppError(error)}`);}finally{setSaving(false);}
+  }
+  const animal=selected?.customer_animals;
+  const customer=selected?.profiles;
+  return <div className="grid gap-4 xl:grid-cols-[280px_minmax(460px,1fr)_320px]">
+    <Card className="min-h-[620px]"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">Customer Queue</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Only customer-confirmed sales appear here.</p></div><Badge tone="warn">{pending.length}</Badge></div><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{pending.map(row=><button key={row.id} onClick={()=>{setSelectedId(row.id);setAdminNote("");}} className={"w-full rounded-2xl border p-3 text-left "+(selected?.id===row.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]")}><b className="block truncate">{row.profiles?.display_name||row.profiles?.full_name||"Customer"}</b><p className="mt-1 truncate text-xs font-bold text-[#667267]">{row.customer_animals?.animal_name||"Rooster"} / {row.customer_animals?.animal_code||"No serial"}</p><p className="mt-2 text-sm font-black text-[#1f6b45]">{peso(Number(row.approved_sale_price||0))}</p></button>)}{!pending.length&&<div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold text-[#667267]">No pending rooster sale.</div>}</div></Card>
+    <Card className="min-h-[620px]">{selected?<><p className="text-xs font-black uppercase text-[#667267]">Submitted Sell Request</p><h2 className="mt-1 text-3xl font-black">{animal?.animal_name||"Owned Rooster"}</h2><p className="mt-1 text-sm font-bold text-[#667267]">Customer: {customer?.display_name||customer?.full_name||customer?.email||"Customer"}</p><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="Serial ID" value={animal?.animal_code||"Not recorded"}/><Info label="Breed" value={animal?.breed_snapshot||animal?.bloodline_snapshot||"Recorded breed"}/><Info label="Caretaker Price" value={peso(Number(selected.caretaker_quoted_price||0))}/><Info label="Admin-Approved Price" value={peso(Number(selected.approved_sale_price||0))}/></div><div className="mt-4 rounded-2xl bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Customer Note</p><p className="mt-2 text-sm font-bold leading-6">{selected.customer_note||"Customer confirmed the approved price."}</p></div><div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">Approval does not credit the wallet yet. It creates a final caretaker release task. Wallet credit happens only after that proof is approved in Task Verification.</div></>:<div className="grid min-h-[500px] place-items-center text-center"><div><h2 className="text-2xl font-black">No sell request selected</h2><p className="mt-2 text-sm font-bold text-[#667267]">A customer-confirmed sale will appear here.</p></div></div>}</Card>
+    <Card className="min-h-[620px]"><h2 className="text-lg font-black">Admin Action</h2><p className="mt-1 text-xs font-bold text-[#667267]">Write the reason or release instruction.</p><textarea value={adminNote} onChange={event=>setAdminNote(event.target.value)} disabled={!selected||saving} placeholder="Required admin note..." className="mt-4 h-48 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold disabled:opacity-50"/><button onClick={()=>void decide("approved")} disabled={!selected||saving} className="mt-4 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">Approve for Final Release</button><button onClick={()=>void decide("rejected")} disabled={!selected||saving} className="mt-3 w-full rounded-2xl bg-red-600 px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">Reject with Note</button><p className="mt-4 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{note}</p></Card>
+  </div>;
+}
+
+function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "care_request" } = {}) {
+  const [rows,setRows]=useState<any[]>([]);
+  const [selectedId,setSelectedId]=useState("");
   const [note,setNote]=useState("Loading manual payment requests...");
-  const [adminNote,setAdminNote]=useState("Checked reference, amount, receiver, and receipt.");
-  const activeRows = rows.filter(row=>["for_review","needs_info"].includes(String(row.status || "for_review")));
+  const [adminNote,setAdminNote]=useState("");
+  const [decision,setDecision]=useState<"approved" | "rejected" | null>(null);
+  const [viewer,setViewer]=useState<"receipt" | "invoice" | null>(null);
+  const [saving,setSaving]=useState(false);
+  const activeRows = rows.filter(row=>{
+    const active = ["for_review","needs_info"].includes(String(row.status || "for_review"));
+    const rowSource = String(row.source_type || row.sourceType || "").toLowerCase();
+    return active && (!sourceType || rowSource === sourceType);
+  });
+  const selected = activeRows.find(row=>row.id===selectedId) || activeRows[0] || null;
 
   async function load() {
     try {
       const live = await getAdminManualPaymentRequests();
       setRows(live);
-      setNote(live.length ? "Live manual payments loaded from Supabase." : "No live manual payment requests yet.");
+      const filtered = live.filter((row:any)=>["for_review","needs_info"].includes(String(row.status || "for_review")) && (!sourceType || String(row.source_type || "").toLowerCase()===sourceType));
+      setSelectedId(current=>filtered.some((row:any)=>row.id===current) ? current : filtered[0]?.id || "");
+      setNote(filtered.length ? "Select one customer request and review every detail before deciding." : "No payment request waiting for admin review.");
     } catch {
       setRows([]);
       setNote("Manual payment queue could not load from Supabase. Check admin login, SQL 009, and RLS before approving payments.");
@@ -2075,18 +2759,47 @@ function AdminManualPaymentQueue() {
 
   useEffect(()=>{ load(); }, []);
 
-  async function decide(id: string, decision: "approved" | "rejected" | "needs_info") {
+  async function submitDecision() {
+    if (!selected || !decision || saving) return;
+    if (decision === "rejected" && adminNote.trim().length < 5) {
+      setNote("Write a clear rejection reason so the customer knows what to correct and resubmit.");
+      return;
+    }
     try {
+      setSaving(true);
       setNote(`Saving ${decision} decision...`);
-      await adminReviewManualPayment(id, decision, adminNote);
-      setNote(`Payment ${decision}. Inbox/evidence logs updated.`);
+      await adminReviewManualPayment(selected.id, decision, adminNote || "Payment proof checked and approved by admin.");
+      setNote(decision === "approved"
+        ? "Payment approved. Invoice, inbox, evidence, and linked request records were updated."
+        : "Payment rejected. The customer received your reason and may resubmit corrected proof.");
+      setDecision(null);
+      setAdminNote("");
+      setViewer(null);
       await load();
-    } catch {
-      setNote("Admin decision failed. Check SQL 009/RLS/admin login.");
+    } catch (error) {
+      setNote(`Admin decision failed: ${readableAppError(error) || "Check SQL 009/025, RLS, and the active admin profile."}`);
+    } finally {
+      setSaving(false);
     }
   }
 
-  return <Card><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-black">Pending Manual Payments</h2><p className="mt-1 text-sm font-bold text-[#667267]">{note}</p></div><Badge tone="warn">{activeRows.length} review</Badge></div><textarea value={adminNote} onChange={e=>setAdminNote(e.target.value)} className="mt-4 h-20 w-full rounded-xl border border-[#ded8c9] p-3 text-sm font-bold" /><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{activeRows.map(row=>{ const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles; const customer = profile?.display_name || profile?.full_name || profile?.email || row.senderName || "Customer"; const summary = row.summary || {}; return <article key={row.id} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">{String(row.source_type || row.sourceType || "payment").replaceAll("_"," ")}</p><h3 className="text-lg font-black">{customer}</h3><p className="text-sm font-bold text-[#667267]">{row.payment_method || row.paymentMethod} - Ref {row.reference_number || row.referenceNumber}</p></div><Badge tone={row.status === "approved" ? "good" : row.status === "rejected" ? "bad" : "warn"}>{row.status || "for_review"}</Badge></div><div className="mt-3 grid gap-2 text-sm md:grid-cols-4"><Info label="Amount" value={peso(Number(row.amount_expected || row.amountExpected || 0))} /><Info label="Risk" value={row.risk_status || "unchecked"} /><Info label="Receiver" value={row.receiver_account || row.receiverAccount || "Recorded"} /><Info label="Source" value={summary.source || row.source_type || "Payment"} /></div>{row.receipt_image_url || row.receiptImageUrl ? <a href={row.receipt_image_url || row.receiptImageUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-xl bg-white px-3 py-2 text-sm font-black text-[#1f6b45] shadow-sm">Open Receipt</a> : null}<div className="mt-3 grid gap-2 sm:grid-cols-3"><button onClick={()=>decide(row.id,"approved")} className="rounded-xl bg-[#1f6b45] px-3 py-2 text-sm font-black text-white">Approve</button><button onClick={()=>decide(row.id,"needs_info")} className="rounded-xl bg-amber-300 px-3 py-2 text-sm font-black">Needs Info</button><button onClick={()=>decide(row.id,"rejected")} className="rounded-xl bg-red-600 px-3 py-2 text-sm font-black text-white">Reject</button></div></article>})}{activeRows.length===0 && <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No payment proof waiting for admin review.</p>}</div></Card>;
+  const queueTitle = sourceType === "care_request" ? "Care Request Payment Review" : sourceType === "farm_buy" ? "Farm Buy Payment Review" : "Pending Manual Payments";
+  const profile = selected ? (Array.isArray(selected.profiles) ? selected.profiles[0] : selected.profiles) : null;
+  const customer = profile?.display_name || profile?.full_name || profile?.email || selected?.sender_name || "Customer";
+  const summary = selected?.summary || {};
+  const summaryItems = selected ? (Array.isArray(summary.lines) ? summary.lines : Array.isArray(summary.items) ? summary.items : Array.isArray(summary.cartItems) ? summary.cartItems : Array.isArray(summary.products) ? summary.products : []) : [];
+  const rooster = summary.rooster?.name || summary.rooster_name || selected?.rooster_name || "Recorded rooster";
+  const service = summary.service?.name || summary.service_name || selected?.service_name || "Care request";
+  const receiptUrl = selected?.receipt_image_url || selected?.receiptImageUrl || "";
+  const selectRequest = (id:string) => { setSelectedId(id); setDecision(null); setAdminNote(""); setViewer(null); };
+  return <>
+    <div className="grid gap-4 xl:grid-cols-[280px_minmax(480px,1fr)_320px]">
+      <Card className="min-h-[620px]"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">Customer Queue</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Pending requests only. Submitted decisions disappear from this queue.</p></div><Badge tone="warn">{activeRows.length}</Badge></div><div className="mt-4 max-h-[510px] space-y-3 overflow-y-auto pr-2">{activeRows.map(row=>{ const rowProfile=Array.isArray(row.profiles)?row.profiles[0]:row.profiles; const rowCustomer=rowProfile?.display_name||rowProfile?.full_name||rowProfile?.email||row.sender_name||"Customer"; return <button key={row.id} type="button" onClick={()=>selectRequest(row.id)} className={"w-full rounded-2xl border p-3 text-left transition " + (selected?.id===row.id?"border-[#1f6b45] bg-emerald-50 shadow-sm":"border-[#ece6d8] bg-[#fffdf7] hover:border-[#1f6b45]")}><div className="flex items-start justify-between gap-2"><div className="min-w-0"><b className="block truncate">{rowCustomer}</b><p className="mt-1 truncate text-xs font-bold text-[#667267]">{row.payment_method} / Ref {row.reference_number}</p><p className="mt-2 text-xs font-black text-[#1f6b45]">{row.created_at?new Date(row.created_at).toLocaleString():"For review"}</p></div><Badge tone={row.risk_status==="clear"?"good":"warn"}>{row.risk_status||"check"}</Badge></div></button>})}{!activeRows.length&&<div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold leading-6 text-[#667267]">No pending {sourceType==="care_request"?"care-request":"Farm Buy"} payment right now.</div>}</div></Card>
+      <Card className="min-h-[620px]">{selected?<><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Submitted Request</p><h2 className="mt-1 text-3xl font-black">{customer}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{profile?.email||selected.sender_name||"Customer payment"}</p></div><Badge tone="warn">{queueTitle}</Badge></div>{sourceType==="care_request"?<div className="mt-4 grid gap-3 md:grid-cols-2"><Info label="Rooster" value={rooster}/><Info label="Requested Service" value={service}/><Info label="Customer Note" value={summary.customer_note||"No customer note"}/><Info label="Payment Status" value={String(selected.status||"for_review").replaceAll("_"," ")}/></div>:<div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Farm Buy Items</p><div className="mt-3 space-y-2">{summaryItems.length?summaryItems.map((item:any,index:number)=>{ const name=item.name||item.product?.name||item.product_name||`Item ${index+1}`; const qty=Number(item.qty||item.quantity||1); const price=Number(item.price||item.unit_price||0); return <div key={`${name}-${index}`} className="flex items-center justify-between gap-3 rounded-xl bg-white p-3 text-sm font-bold"><span>{name} x {qty}</span><b>{peso(price*qty)}</b></div>}):<p className="rounded-xl bg-white p-3 text-sm font-bold text-[#667267]">Order summary is linked to this payment record.</p>}</div></div>}<div className="mt-4 grid gap-3 md:grid-cols-2"><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Payment Details</p><Info label="Method" value={selected.payment_method||"Not recorded"}/><div className="mt-2"><Info label="Receiver" value={selected.receiver_account||"Not recorded"}/></div><div className="mt-2"><Info label="Sender" value={selected.sender_name||"Not recorded"}/></div></div><div className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Evidence</p><Info label="Reference Number" value={selected.reference_number||"Missing"}/><button type="button" disabled={!receiptUrl} onClick={()=>setViewer("receipt")} className="mt-3 w-full rounded-xl bg-[#eee8d9] px-4 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-50">View Receipt</button></div></div><div className="mt-4 flex items-center justify-between rounded-2xl bg-[#1f6b45] p-4 text-white"><b>Total Amount</b><b className="text-xl">{peso(Number(selected.amount_expected||0))}</b></div></>:<div className="grid min-h-[500px] place-items-center text-center"><div><h2 className="text-2xl font-black">No pending request</h2><p className="mt-2 text-sm font-bold text-[#667267]">A submitted customer payment will appear here.</p></div></div>}</Card>
+      <Card className="min-h-[620px]"><h2 className="text-lg font-black">Admin Action</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Choose a decision, write a clear note, review the invoice, then submit.</p><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" disabled={!selected} onClick={()=>setDecision("approved")} className={"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 " + (decision==="approved"?"bg-[#145a38] ring-4 ring-emerald-200":"bg-[#1f6b45]")}>Approve</button><button type="button" disabled={!selected} onClick={()=>setDecision("rejected")} className={"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 " + (decision==="rejected"?"bg-red-700 ring-4 ring-red-200":"bg-red-600")}>Reject</button></div><label className="mt-5 block text-sm font-black">Note to Customer<textarea value={adminNote} onChange={event=>setAdminNote(event.target.value)} placeholder="Reason if rejected, or confirmation note if approved..." className="mt-2 h-32 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold leading-6"/></label><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Invoice / Decision Preview</p><p className="mt-2 text-sm font-bold leading-6">Double-check customer, items/service, amount, reference, and decision before submitting.</p><button type="button" disabled={!selected||!decision} onClick={()=>setViewer("invoice")} className="mt-3 w-full rounded-xl bg-[#eee8d9] px-4 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-50">View Invoice</button></div><button type="button" disabled={!selected||!decision||saving} onClick={submitDecision} className="mt-4 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:cursor-not-allowed disabled:bg-[#b9b3a4]">{saving?"Saving...":"Submit Decision"}</button><p className="mt-3 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{note}</p></Card>
+    </div>
+    {viewer&&selected&&<div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"><div className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">{viewer==="receipt"?"Customer Receipt":"Invoice / Decision Preview"}</p><h2 className="mt-1 text-2xl font-black">{customer}</h2></div><button type="button" onClick={()=>setViewer(null)} className="rounded-xl bg-[#eee8d9] px-4 py-2 font-black">Close</button></div>{viewer==="receipt"?<div className="mt-5"><div className="grid min-h-80 place-items-center overflow-hidden rounded-2xl bg-[#111] p-4">{receiptUrl?<img src={receiptUrl} alt="Customer payment receipt" className="max-h-[560px] w-full object-contain"/>:<p className="font-black text-white">No receipt attached</p>}</div><div className="mt-4 grid gap-3 md:grid-cols-3"><Info label="Reference" value={selected.reference_number||"Missing"}/><Info label="Payment Method" value={selected.payment_method||"Missing"}/><Info label="Amount" value={peso(Number(selected.amount_expected||0))}/></div></div>:<div className="mt-5 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-5"><div className="flex items-start justify-between gap-3 border-b border-[#ece6d8] pb-4"><div><h3 className="text-2xl font-black">FarmConnect {sourceType==="care_request"?"Care Payment":"Farm Buy"} Invoice</h3><p className="mt-1 text-sm font-bold text-[#667267]">Reference: {selected.reference_number}</p></div><Badge tone={decision==="approved"?"good":"bad"}>{decision}</Badge></div><div className="mt-4 grid gap-3 md:grid-cols-2"><Info label="Customer" value={customer}/><Info label="Amount" value={peso(Number(selected.amount_expected||0))}/><Info label="Method / Receiver" value={`${selected.payment_method||""} / ${selected.receiver_account||""}`}/><Info label="Admin Note" value={adminNote||"No note"}/></div></div>}</div></div>}
+  </>;
 }
 
 function AdminCaretakerApplicationQueue() {
@@ -2194,7 +2907,7 @@ export function AdminCaretakerRegistrationPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [note, setNote] = useState("Loading caretaker registration records...");
   const registrationPath = "/caretaker/signup";
-  const registrationUrl = typeof window === "undefined" ? registrationPath : `${window.location.origin}${registrationPath}`;
+  const copyRegistrationUrl = () => navigator.clipboard?.writeText(new URL(registrationPath, window.location.origin).href);
 
   async function load() {
     try {
@@ -2224,10 +2937,10 @@ export function AdminCaretakerRegistrationPage() {
         <Card>
           <h2 className="text-xl font-black">Registration Link</h2>
           <p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Send this only to caretaker applicants. They still cannot enter the caretaker app until admin approval.</p>
-          <div className="mt-4 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-black break-all">{registrationUrl}</div>
+          <div className="mt-4 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-black break-all">{registrationPath}</div>
           <div className="mt-4 grid gap-2">
             <Link href={registrationPath} className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Open Registration Page</Link>
-            <button onClick={()=>navigator.clipboard?.writeText(registrationUrl)} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Copy Link</button>
+            <button onClick={copyRegistrationUrl} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Copy Link</button>
             <button onClick={printList} className="rounded-xl bg-amber-300 px-4 py-3 font-black">Print Approved / Rejected</button>
           </div>
           <p className="mt-4 text-sm font-bold text-[#667267]">{note}</p>
@@ -2295,8 +3008,8 @@ type AdminBridgeKind = "customer" | "caretaker" | "farm" | "money" | "evidence" 
 
 const adminRoleBridges: Record<AdminBridgeKind, Array<{ step: string; from: string; admin: string; to: string; customer: string; href: string; tone: "good" | "warn" | "bad" | "neutral" }>> = {
   customer: [
-    { step: "Payment", from: "Customer pays by QR and submits receipt/reference", admin: "Admin checks receiver, amount, reference, duplicate risk", to: "Approve creates inventory/rooster/inbox receipt", customer: "Customer sees receipt, inventory, rooster, or reject note", href: "/admin/customer-desk/wallet", tone: "warn" },
-    { step: "Care Concern", from: "Customer reports wrong rooster, weak proof, or health worry", admin: "Admin opens request, caretaker proof, QR/serial, and chat trail", to: "Create correction task or release approved care log", customer: "Customer sees approved care log or formal explanation", href: "/admin/customer-desk/care", tone: "bad" },
+    { step: "Payment", from: "Customer pays by QR and submits receipt/reference", admin: "Admin checks receiver, amount, reference, duplicate risk", to: "Approve creates inventory/rooster/inbox receipt", customer: "Customer sees receipt, inventory, rooster, or reject note", href: "/admin/customer-requests/wallet", tone: "warn" },
+    { step: "Care Concern", from: "Customer reports wrong rooster, weak proof, or health worry", admin: "Admin opens request, caretaker proof, QR/serial, and chat trail", to: "Create correction task or release approved care log", customer: "Customer sees approved care log or formal explanation", href: "/admin/customer-requests/care", tone: "bad" },
     { step: "Support", from: "Customer asks KaFarm first", admin: "Admin joins only if escalated", to: "Admin reply is saved in live chat evidence", customer: "Customer sees admin reply in support chat", href: "/admin/live-chat", tone: "neutral" },
   ],
   caretaker: [
@@ -2311,12 +3024,12 @@ const adminRoleBridges: Record<AdminBridgeKind, Array<{ step: string; from: stri
   ],
   money: [
     { step: "Cash-In", from: "Customer uploads receipt/reference", admin: "Admin checks duplicate, receiver, and amount", to: "Approve posts credit/record", customer: "Customer sees status and receipt", href: "/admin/transactions/cashin", tone: "warn" },
-    { step: "Withdrawal", from: "Customer requests payout", admin: "Admin checks KYC, payout account, balance, and proof", to: "Manual payout receipt sent to inbox", customer: "Customer sees withdrawal status", href: "/admin/customer-desk/withdraw", tone: "bad" },
+    { step: "Withdrawal", from: "Customer requests payout", admin: "Admin checks KYC, payout account, balance, and proof", to: "Manual payout receipt sent to inbox", customer: "Customer sees withdrawal status", href: "/admin/customer-requests/withdraw", tone: "bad" },
     { step: "Treasury", from: "System gathers pending money events", admin: "Admin views holds, payouts, payroll, and incoming cash", to: "Owner gets clean money picture", customer: "No customer-facing changes here", href: "/admin/treasury", tone: "neutral" },
   ],
   evidence: [
     { step: "Evidence Packet", from: "Customer/caretaker/system creates proof", admin: "Admin filters by case and opens related records", to: "Decision links back to original issue", customer: "Customer only sees approved/needed notices", href: "/admin/evidence", tone: "neutral" },
-    { step: "Resolved Case", from: "Issue is completed", admin: "Admin keeps final note, receipt, proof, and timestamp", to: "Case can be archived/deleted from work queue", customer: "Customer sees final status where relevant", href: "/admin/customer-desk/resolved", tone: "good" },
+    { step: "Resolved Case", from: "Issue is completed", admin: "Admin keeps final note, receipt, proof, and timestamp", to: "Case can be archived/deleted from work queue", customer: "Customer sees final status where relevant", href: "/admin/customer-requests/resolved", tone: "good" },
   ],
   kafarm: [
     { step: "Ask KaFarm", from: "Admin asks what happened", admin: "KaFarm points to queue, evidence, and safe next step", to: "Admin decides manually", customer: "No sensitive action without admin approval", href: "/admin/kafarm", tone: "neutral" },
@@ -2333,7 +3046,7 @@ function AdminRoleBridge({ kind }: { kind: AdminBridgeKind }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-black">Role Bridge</h2>
-          <p className="mt-1 text-sm font-bold text-[#667267]">Customer → Admin → Caretaker → Admin → Customer flow, para hindi maligaw ang trabaho.</p>
+          <p className="mt-1 text-sm font-bold text-[#667267]">Customer â†’ Admin â†’ Caretaker â†’ Admin â†’ Customer flow, para hindi maligaw ang trabaho.</p>
         </div>
         <Badge tone="good">Wired Map</Badge>
       </div>
@@ -2361,116 +3074,344 @@ function AdminRoleBridge({ kind }: { kind: AdminBridgeKind }) {
   );
 }
 
-function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "care" | "task" } = {}) {
+function AdminWithdrawalReviewQueue() {
   const [rows,setRows]=useState<any[]>([]);
+  const [selectedId,setSelectedId]=useState("");
+  const [decision,setDecision]=useState<"approved" | "rejected" | null>(null);
+  const [adminNote,setAdminNote]=useState("");
+  const [reference,setReference]=useState("");
+  const [receiptFile,setReceiptFile]=useState<File | null>(null);
+  const [receiptPreview,setReceiptPreview]=useState("");
+  const [viewer,setViewer]=useState<"proof" | "invoice" | null>(null);
+  const [statusNote,setStatusNote]=useState("Loading withdrawal requests...");
+  const [saving,setSaving]=useState(false);
+  const activeRows=rows.filter(row=>["for_review","needs_info","kyc_required"].includes(String(row.status||"for_review")));
+  const selected=activeRows.find(row=>row.id===selectedId)||activeRows[0]||null;
+  const profile=selected?(Array.isArray(selected.profiles)?selected.profiles[0]:selected.profiles):null;
+  const customer=profile?.display_name||profile?.full_name||profile?.email||selected?.payout_holder||"Customer";
+
+  async function load(){
+    try {
+      const data=await getAdminWithdrawalRequests();
+      setRows(data);
+      const active=data.filter((row:any)=>["for_review","needs_info","kyc_required"].includes(String(row.status||"for_review")));
+      setSelectedId(current=>active.some((row:any)=>row.id===current)?current:active[0]?.id||"");
+      setStatusNote(active.length?"Select one withdrawal and verify the saved payout account before sending money.":"No withdrawal request waiting for admin review.");
+    } catch(error){
+      setRows([]);
+      setStatusNote(`Withdrawal queue could not load: ${error instanceof Error?error.message:"Check admin login, SQL 020, and RLS."}`);
+    }
+  }
+  useEffect(()=>{ void load(); },[]);
+  useEffect(()=>()=>{ if(receiptPreview) URL.revokeObjectURL(receiptPreview); },[receiptPreview]);
+
+  function selectRequest(id:string){
+    setSelectedId(id); setDecision(null); setAdminNote(""); setReference(""); setReceiptFile(null); setReceiptPreview(""); setViewer(null);
+  }
+  function chooseFile(file?:File){
+    if(receiptPreview) URL.revokeObjectURL(receiptPreview);
+    setReceiptFile(file||null);
+    setReceiptPreview(file?URL.createObjectURL(file):"");
+  }
+  async function submitDecision(){
+    if(!selected||!decision||saving)return;
+    if(String(selected.status)==="kyc_required"&&decision==="approved"){setStatusNote("Cannot approve yet: customer KYC must be approved before payout release.");return;}
+    if(decision==="rejected"&&adminNote.trim().length<5){setStatusNote("Write a clear rejection reason for the customer.");return;}
+    if(decision==="approved"&&(!reference.trim()||!receiptFile)){setStatusNote("Approval needs the real payout reference and uploaded payout receipt.");return;}
+    try{
+      setSaving(true); setStatusNote(`Saving ${decision} withdrawal decision...`);
+      let storedPath:string|null=null;
+      if(decision==="approved"&&receiptFile){
+        storedPath=await uploadPrivateEvidenceFile({bucket:"withdrawal-proofs",folder:selected.id,kind:"admin-payout",file:receiptFile,maxBytes:10*1024*1024,allowedMimeTypes:["image/jpeg","image/png","image/webp","application/pdf"]});
+      }
+      await adminReviewWithdrawalRequest(selected.id,decision,adminNote||"Payout details and proof checked by admin.",decision==="approved"?reference:null,storedPath,receiptFile?.name||null);
+      setStatusNote(decision==="approved"?"Payout proof saved. Customer inbox now asks for confirmation.":"Withdrawal returned to the customer with your rejection reason.");
+      setDecision(null);setAdminNote("");setReference("");setReceiptFile(null);setReceiptPreview("");setViewer(null);
+      await load();
+    }catch(error){setStatusNote(`Withdrawal decision failed: ${error instanceof Error?error.message:"Check SQL 020/034, storage policy, RLS, and admin login."}`);}finally{setSaving(false);}
+  }
+  return <>
+    <div className="grid gap-4 xl:grid-cols-[280px_minmax(480px,1fr)_320px]">
+      <Card className="min-h-[620px]"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">Customer Queue</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Only withdrawals waiting for admin action appear here.</p></div><Badge tone="warn">{activeRows.length}</Badge></div><div className="mt-4 max-h-[510px] space-y-3 overflow-y-auto pr-2">{activeRows.map(row=>{const p=Array.isArray(row.profiles)?row.profiles[0]:row.profiles;const name=p?.display_name||p?.full_name||p?.email||row.payout_holder||"Customer";return <button key={row.id} type="button" onClick={()=>selectRequest(row.id)} className={"w-full rounded-2xl border p-3 text-left transition "+(selected?.id===row.id?"border-[#1f6b45] bg-emerald-50 shadow-sm":"border-[#ece6d8] bg-[#fffdf7] hover:border-[#1f6b45]")}><div className="flex items-start justify-between gap-2"><div className="min-w-0"><b className="block truncate">{name}</b><p className="mt-1 truncate text-xs font-bold text-[#667267]">{row.payout_method} / {peso(Number(row.amount||0))}</p><p className="mt-2 text-xs font-black text-[#1f6b45]">{row.created_at?new Date(row.created_at).toLocaleString():"For review"}</p></div><Badge tone={row.status==="kyc_required"?"bad":"warn"}>{String(row.status||"review").replaceAll("_"," ")}</Badge></div></button>})}{!activeRows.length&&<div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold text-[#667267]">No pending withdrawal review.</div>}</div></Card>
+      <Card className="min-h-[620px]">{selected?<><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Submitted Withdrawal</p><h2 className="mt-1 text-3xl font-black">{customer}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{profile?.email||"Customer payout request"}</p></div><Badge tone={selected.status==="kyc_required"?"bad":"warn"}>{String(selected.status||"for_review").replaceAll("_"," ")}</Badge></div><div className="mt-4 grid gap-3 md:grid-cols-2"><Info label="Amount" value={peso(Number(selected.amount||0))}/><Info label="Withdrawal Method" value={selected.payout_method||"Not recorded"}/><Info label="Account Holder" value={selected.payout_holder||"Not recorded"}/><Info label="Account / Mobile" value={selected.payout_account||"Not recorded"}/></div><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Customer Note</p><p className="mt-2 text-sm font-bold leading-6">{selected.customer_note||"No customer note."}</p></div><div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">Send only to the exact saved method, holder, and account shown above. A KYC-required request cannot be approved.</div></>:<div className="grid min-h-[500px] place-items-center text-center"><div><h2 className="text-2xl font-black">No pending request</h2><p className="mt-2 text-sm font-bold text-[#667267]">A submitted withdrawal will appear here.</p></div></div>}</Card>
+      <Card className="min-h-[620px]"><h2 className="text-lg font-black">Admin Action</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Send payout externally first. Attach its real receipt and reference before approval.</p><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" disabled={!selected} onClick={()=>setDecision("approved")} className={"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 "+(decision==="approved"?"bg-[#145a38] ring-4 ring-emerald-200":"bg-[#1f6b45]")}>Approve</button><button type="button" disabled={!selected} onClick={()=>setDecision("rejected")} className={"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 "+(decision==="rejected"?"bg-red-700 ring-4 ring-red-200":"bg-red-600")}>Reject</button></div>{decision==="approved"&&<div className="mt-4 grid gap-3"><label className="text-sm font-black">Admin Payout Reference<input value={reference} onChange={event=>setReference(event.target.value)} placeholder="Reference from GCash, Maya, or bank" className="mt-2 w-full rounded-xl border border-[#ded8c9] bg-[#fffdf7] p-3 font-black"/></label><label className="rounded-2xl border-2 border-dashed border-[#d8cfbd] bg-[#f9f6ec] p-3 text-sm font-black">Upload Payout Receipt<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={event=>chooseFile(event.target.files?.[0])} className="mt-2 block w-full text-xs"/><span className="mt-2 block text-xs text-[#667267]">{receiptFile?.name||"No file selected"}</span></label><button type="button" disabled={!receiptFile} onClick={()=>setViewer("proof")} className="rounded-xl bg-[#eee8d9] px-4 py-3 text-sm font-black disabled:opacity-50">View Payout Proof</button></div>}<label className="mt-4 block text-sm font-black">Note to Customer<textarea value={adminNote} onChange={event=>setAdminNote(event.target.value)} placeholder="Reason if rejected, or payout confirmation note..." className="mt-2 h-28 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold"/></label><button type="button" disabled={!selected||!decision} onClick={()=>setViewer("invoice")} className="mt-4 w-full rounded-xl bg-[#eee8d9] px-4 py-3 text-sm font-black disabled:opacity-50">View Invoice</button><button type="button" disabled={!selected||!decision||saving} onClick={submitDecision} className="mt-3 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">{saving?"Saving...":"Submit Decision"}</button><p className="mt-3 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{statusNote}</p></Card>
+    </div>
+    {viewer&&selected&&<div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"><div className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">{viewer==="proof"?"Admin Payout Proof":"Withdrawal Invoice Preview"}</p><h2 className="mt-1 text-2xl font-black">{customer}</h2></div><button type="button" onClick={()=>setViewer(null)} className="rounded-xl bg-[#eee8d9] px-4 py-2 font-black">Close</button></div>{viewer==="proof"?<div className="mt-5 grid min-h-80 place-items-center overflow-hidden rounded-2xl bg-[#111] p-4">{receiptPreview&&receiptFile?.type.startsWith("image/")?<img src={receiptPreview} alt="Admin payout receipt" className="max-h-[560px] w-full object-contain"/>:<div className="text-center text-white"><Icon name="file" className="mx-auto h-12 w-12"/><p className="mt-3 font-black">{receiptFile?.name||"No payout receipt selected"}</p></div>}</div>:<div className="mt-5 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-5"><h3 className="text-2xl font-black">FarmConnect Withdrawal Invoice</h3><div className="mt-4 grid gap-3 md:grid-cols-2"><Info label="Customer" value={customer}/><Info label="Amount" value={peso(Number(selected.amount||0))}/><Info label="Payout Method" value={`${selected.payout_method} / ${selected.payout_holder}`}/><Info label="Payout Account" value={selected.payout_account||"Missing"}/><Info label="Admin Reference" value={reference||"Required before approval"}/><Info label="Decision" value={decision||"Not selected"}/><Info label="Receipt File" value={receiptFile?.name||"Required before approval"}/><Info label="Admin Note" value={adminNote||"No note"}/></div></div>}</div></div>}
+  </>;
+}
+
+function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } = {}) {
+  const [rows,setRows]=useState<any[]>([]);
+  const [caretakers,setCaretakers]=useState<any[]>([]);
+  const [selectedId,setSelectedId]=useState("");
+  const [selectedCaretakerId,setSelectedCaretakerId]=useState("");
   const [note,setNote]=useState("Loading live care requests...");
+  const [assigning,setAssigning]=useState(false);
   const visibleRows = rows.filter(row=>{
     const status = String(row.status || "");
     if (mode === "task") return status === "paid_pending_assignment" || status === "pending_assignment";
-    if (mode === "care") return ["payment_for_review","payment_rejected","paid_pending_assignment","pending_assignment"].includes(status);
     return !["completed","approved","rejected","cancelled"].includes(status);
   });
+  const selected=visibleRows.find(row=>row.id===selectedId)||visibleRows[0]||null;
   async function load() {
     try {
-      const data = await getAdminCareRequests();
+      const [data, activeCaretakers] = await Promise.all([
+        getAdminCareRequests(),
+        getActiveCaretakersForAssignment(),
+      ]);
       setRows(data);
-      setNote(data.length ? "Live care requests loaded from Supabase." : "No live care requests yet.");
+      setCaretakers(activeCaretakers);
+      const nextVisible=data.filter((row:any)=>mode==="task"?["paid_pending_assignment","pending_assignment"].includes(String(row.status||"")):!["completed","approved","rejected","cancelled"].includes(String(row.status||"")));
+      setSelectedId(current=>nextVisible.some((row:any)=>row.id===current)?current:nextVisible[0]?.id||"");
+      setNote(data.length
+        ? "Only approved and paid care requests are ready for caretaker assignment."
+        : "No live care requests yet.");
     } catch {
-      setNote("Care request table is not ready yet. Run SQL 011 before testing this queue.");
+      setRows([]);
+      setCaretakers([]);
+      setNote("Task assignment queue could not load. Check admin login, active caretakers, and SQL 011.");
     }
   }
   useEffect(()=>{ load(); }, []);
-  async function assign(row: any) {
-    try {
-      await adminAssignCareRequest(row.id, null, "Assigned from Farm Operations.");
-      await load();
-      setNote(`Assigned ${row.service_name} for ${row.rooster_name}. It should now appear in caretaker Active Tasks.`);
-    } catch {
-      setNote("Assign failed. Check admin login, active caretaker, or SQL 011.");
+  async function assign() {
+    if (!selected || !selectedCaretakerId) {
+      setNote("Select one active caretaker before assigning this task.");
+      return;
     }
+    try {
+      setAssigning(true);
+      await adminAssignCareRequest(selected.id, selectedCaretakerId, "Assigned from Customer Requests Task Management.");
+      await load();
+      setSelectedCaretakerId("");
+      setNote(`Assigned ${selected.service_name} for ${selected.rooster_name}. It now appears in the caretaker's Active Tasks.`);
+    } catch(error) {
+      setNote(`Assign failed: ${error instanceof Error?error.message:"Check admin login, active caretaker, or SQL 011."}`);
+    } finally { setAssigning(false); }
   }
-  return <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">{mode === "task" ? "Task Assignment Queue" : "Live Care Request Queue"}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{note}</p></div><Badge tone="warn">{visibleRows.length}</Badge></div><div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-2">{visibleRows.map(row=>{ const status = String(row.status || ""); const canAssign = status === "paid_pending_assignment" || status === "pending_assignment"; return <div key={row.id} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><b className="block truncate text-lg">{row.rooster_name}</b><p className="text-sm font-bold text-[#667267]">{row.service_name} - {status.replaceAll("_"," ")}</p><p className="mt-1 text-xs font-bold text-[#667267]">{row.customer_note || "No customer note"}</p></div><Badge tone={canAssign ? "warn" : status === "payment_rejected" ? "bad" : "neutral"}>{peso(Number(row.service_price || 0))}</Badge></div><div className="mt-3 flex flex-wrap gap-2"><button onClick={()=>assign(row)} disabled={!canAssign} className={"rounded-xl px-3 py-2 text-sm font-black " + (!canAssign ? "bg-[#eee8d9] text-[#8b8476]" : "bg-[#1f6b45] text-white")}>{status === "payment_for_review" ? "Waiting Payment" : status === "payment_rejected" ? "Payment Rejected" : "Assign Caretaker"}</button><button onClick={()=>setNote(`${row.rooster_name}: ${row.service_name}. Proof needed: ${row.required_proof || "Photo proof"}. Status: ${status.replaceAll("_"," ")}.`)} className="rounded-xl bg-[#f6f3e8] px-3 py-2 text-sm font-black">View</button></div></div>})}{visibleRows.length===0 && <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-5 text-sm font-bold text-[#667267]">No active care request in this stage. Paid care requests will appear here for caretaker assignment.</div>}</div></Card>;
+  return <div className="grid gap-4 xl:grid-cols-[280px_minmax(480px,1fr)_320px]">
+    <Card className="min-h-[620px]"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">Customer Queue</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Paid and approved care requests waiting for assignment.</p></div><Badge tone="warn">{visibleRows.length}</Badge></div><div className="mt-4 max-h-[510px] space-y-3 overflow-y-auto pr-2">{visibleRows.map(row=><button key={row.id} type="button" onClick={()=>{setSelectedId(row.id);setSelectedCaretakerId("");}} className={"w-full rounded-2xl border p-3 text-left transition "+(selected?.id===row.id?"border-[#1f6b45] bg-emerald-50 shadow-sm":"border-[#ece6d8] bg-[#fffdf7] hover:border-[#1f6b45]")}><b className="block truncate">{row.customer_name||row.customer_email||"Customer"}</b><p className="mt-1 truncate text-xs font-bold text-[#667267]">{row.rooster_name} / {row.service_name}</p><p className="mt-2 text-xs font-black text-[#1f6b45]">{row.created_at?new Date(row.created_at).toLocaleString():"Ready to assign"}</p></button>)}{!visibleRows.length&&<div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold text-[#667267]">No paid care request waiting for caretaker assignment.</div>}</div></Card>
+    <Card className="min-h-[620px]">{selected?<><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Approved Task Card</p><h2 className="mt-1 text-3xl font-black">{selected.service_name||"Care Task"}</h2><p className="mt-1 text-sm font-bold text-[#667267]">Customer: {selected.customer_name||selected.customer_email||"Customer"}</p></div><Badge tone="warn">{String(selected.status||"pending assignment").replaceAll("_"," ")}</Badge></div><div className="mt-4 grid gap-3 md:grid-cols-2"><Info label="Rooster Name" value={selected.rooster_name||"Not recorded"}/><Info label="QR / Serial" value={selected.rooster_serial||selected.animal_serial||"Verify in caretaker app"}/><Info label="Service" value={selected.service_name||"Care request"}/><Info label="Paid Amount" value={peso(Number(selected.service_price||0))}/></div><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Customer Instruction</p><p className="mt-2 text-sm font-bold leading-6">{selected.customer_note||"No extra instruction."}</p></div><div className="mt-4 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold leading-6 text-[#667267]"><b className="text-[#17251d]">Required proof:</b> {selected.required_proof||"Documentation, photo upload, and rooster verification before sending to admin."}</div></>:<div className="grid min-h-[500px] place-items-center text-center"><div><h2 className="text-2xl font-black">No task to assign</h2><p className="mt-2 text-sm font-bold text-[#667267]">Approved care payments will create task cards here.</p></div></div>}</Card>
+    <Card className="min-h-[620px]"><h2 className="text-lg font-black">Assign Caretaker</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Choose one active caretaker. Assignment is the only action on this page.</p><div className="mt-4 max-h-[430px] space-y-2 overflow-y-auto pr-2">{caretakers.map(caretaker=><button key={caretaker.id} type="button" disabled={!selected} onClick={()=>setSelectedCaretakerId(caretaker.id)} className={"w-full rounded-2xl border p-3 text-left transition disabled:opacity-40 "+(selectedCaretakerId===caretaker.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]")}><b>{caretaker.display_name||caretaker.full_name||"Caretaker"}</b><p className="mt-1 text-xs font-bold text-[#667267]">{caretaker.farm_role||"Active caretaker"}</p></button>)}{selected&&caretakers.length===0&&<div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-900">No active caretaker available. Approve a caretaker account first.</div>}</div><button type="button" onClick={assign} disabled={!selected||!selectedCaretakerId||assigning} className="mt-5 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">{assigning?"Assigning...":"Assign Task"}</button><p className="mt-3 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{note}</p></Card>
+  </div>;
 }
 
 function AdminLiveTaskProofQueue() {
   const [rows,setRows]=useState<any[]>([]);
+  const [proofUrls,setProofUrls]=useState<Record<string,string>>({});
+  const [selectedId,setSelectedId]=useState("");
+  const [adminNote,setAdminNote]=useState("");
+  const [reviewing,setReviewing]=useState(false);
   const [note,setNote]=useState("Loading task proof submissions...");
   const pendingRows = rows.filter(row=>String(row.admin_review_status || row.status || "pending") === "pending");
+  const selected = pendingRows.find(row=>row.id===selectedId) || pendingRows[0] || null;
   async function load() {
     try {
       const data = await getAdminTaskProofs();
       setRows(data);
+      const signedEntries = await Promise.all(data.map(async row => {
+        const stored = row.proof_file_urls?.[0] || row.proof_url;
+        if (!stored) return [row.id, ""] as const;
+        try { return [row.id, await createPrivateEvidenceUrl("caretaker-task-proofs", stored)] as const; }
+        catch { return [row.id, ""] as const; }
+      }));
+      setProofUrls(Object.fromEntries(signedEntries));
+      const nextPending = data.find(row=>String(row.admin_review_status || row.status || "pending") === "pending");
+      setSelectedId(current=>data.some(row=>row.id===current) ? current : nextPending?.id || "");
       setNote(data.length ? "Live caretaker proofs loaded from Supabase." : "No live proof submissions yet.");
-    } catch {
-      setNote("Task proof table is not ready yet. Run SQL 011 before testing proof review.");
+    } catch (error) {
+      const message = readableAppError(error);
+      console.error("KaFarm admin task proof queue issue", {
+        page: "/admin/caretaker-management",
+        expected: "Load submitted caretaker task proofs for admin review.",
+        actual: message,
+      });
+      setNote(`Task proof queue blocked: ${message}`);
     }
   }
   useEffect(()=>{ load(); }, []);
   async function review(row: any, decision: "approved" | "rejected" | "backjob") {
+    if (decision !== "approved" && !adminNote.trim()) {
+      setNote("Write a clear correction note before returning this task to the caretaker.");
+      return;
+    }
+    setReviewing(true);
     try {
-      await adminReviewTaskProof(row.id, decision, decision === "approved" ? "Proof approved by admin." : decision === "backjob" ? "Needs correction/backjob." : "Proof rejected by admin.");
+      await adminReviewTaskProof(row.id, decision, adminNote.trim() || "Proof approved by admin.");
+      setAdminNote("");
       await load();
       setNote(`Proof ${decision}. Customer inbox and care request status should update.`);
-    } catch {
-      setNote("Proof review failed. Check admin login or SQL 011.");
+    } catch (error) {
+      setNote(`Proof review failed: ${readableAppError(error)}`);
+    } finally {
+      setReviewing(false);
     }
   }
-  return <Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">Live Proof Review</h2><p className="mt-1 text-sm font-bold text-[#667267]">{note}</p></div><Badge tone="warn">{pendingRows.length}</Badge></div><div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-2">{pendingRows.map(row=>{ const reviewStatus = String(row.admin_review_status || row.status || "pending"); return <div key={row.id} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><div className="flex gap-3"><img src={row.proof_url || "/farmconnect/marketplace/fc-product-feeds.jpg"} alt="" className="h-16 w-16 rounded-xl object-cover" /><div className="min-w-0 flex-1"><b className="block truncate">{row.caretaker_tasks?.rooster_name || "Rooster"} - {row.caretaker_tasks?.task_type || "Task proof"}</b><p className="text-sm font-bold text-[#667267]">{row.qr_verified ? "QR verified" : "QR not verified"} / {row.serial_exception ? "Serial exception" : "Normal mode"}</p><p className="mt-1 text-xs font-bold text-[#667267]">{row.preset_note || row.free_note || "No note"}</p></div><Badge tone={reviewStatus==="approved"?"good":reviewStatus==="rejected"?"bad":"warn"}>{reviewStatus}</Badge></div><div className="mt-3 grid gap-2 sm:grid-cols-3"><button onClick={()=>review(row,"approved")} className="rounded-xl bg-[#1f6b45] px-3 py-2 text-sm font-black text-white">Approve</button><button onClick={()=>review(row,"backjob")} className="rounded-xl bg-amber-300 px-3 py-2 text-sm font-black">Backjob</button><button onClick={()=>review(row,"rejected")} className="rounded-xl bg-red-600 px-3 py-2 text-sm font-black text-white">Reject</button></div></div>})}{pendingRows.length===0 && <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-5 text-sm font-bold text-[#667267]">No proof submissions waiting for admin decision.</div>}</div></Card>;
+  const task = selected?.caretaker_tasks;
+  const proofUrl = selected ? proofUrls[selected.id] : "";
+  const isQrTagging = task?.workflow_type === "qr_tagging";
+  const isSalePriceProof = task?.workflow_type === "sale_price_inspection";
+  const isSaleReleaseProof = task?.workflow_type === "sale_release_confirmation";
+
+  return <div className="grid gap-4 xl:grid-cols-[280px_minmax(460px,1fr)_300px]">
+    <Card className="min-h-[620px]">
+      <div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">Task Queue</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Submitted proofs waiting for review.</p></div><Badge tone="warn">{pendingRows.length}</Badge></div>
+      <div className="mt-4 max-h-[510px] space-y-3 overflow-y-auto pr-2">
+        {pendingRows.map(row=><button key={row.id} type="button" onClick={()=>{setSelectedId(row.id);setAdminNote("");}} className={"w-full rounded-2xl border p-3 text-left transition "+(selected?.id===row.id?"border-[#1f6b45] bg-emerald-50 shadow-sm":"border-[#ece6d8] bg-[#fffdf7] hover:border-[#1f6b45]")}><b className="block truncate">{row.caretaker_tasks?.task_type||"Submitted Task"}</b><p className="mt-1 truncate text-xs font-bold text-[#667267]">{row.caretaker_tasks?.rooster_name||"Rooster"}</p><div className="mt-2 flex items-center justify-between gap-2"><span className="truncate text-xs font-black text-[#1f6b45]">{row.caretakers?.display_name||row.caretakers?.full_name||"Caretaker"}</span><Badge tone={String(row.caretaker_tasks?.workflow_type||"").startsWith("sale_")?"bad":"warn"}>{row.caretaker_tasks?.workflow_type==="sale_price_inspection"?"Sale Price":row.caretaker_tasks?.workflow_type==="sale_release_confirmation"?"Final Sale":"Pending"}</Badge></div></button>)}
+        {!pendingRows.length&&<div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold text-[#667267]">No submitted task waiting for admin review.</div>}
+      </div>
+    </Card>
+
+    <Card className="min-h-[620px]">
+      {selected?<><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Selected Submission</p><h2 className="mt-1 text-3xl font-black">{task?.task_type||"Task Proof"}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{task?.rooster_name||"Rooster"} {task?.rooster_tag?`/ ${task.rooster_tag}`:""}</p></div><Badge tone="warn">Needs Review</Badge></div>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-[#e3ded0] bg-[#f6f3e8]">
+          {proofUrl?<a href={proofUrl} target="_blank" rel="noreferrer" title="Open full submitted proof"><img src={proofUrl} alt="Caretaker submitted proof" className="h-[300px] w-full bg-white object-contain" /></a>:<div className="grid h-[300px] place-items-center text-sm font-black text-[#667267]">No uploaded image</div>}
+          <div className="flex items-center justify-between gap-3 border-t border-[#e3ded0] bg-white p-3"><span className="text-xs font-black text-[#667267]">Uploaded caretaker evidence</span>{proofUrl&&<a href={proofUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-[#eee8d9] px-4 py-2 text-xs font-black">View Full Photo</a>}</div>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2"><Info label="Caretaker" value={selected.caretakers?.display_name||selected.caretakers?.full_name||"Caretaker"}/><Info label="Submitted" value={selected.created_at?new Date(selected.created_at).toLocaleString():"Recorded"}/><Info label="Verification" value={isSaleReleaseProof?"No QR required":isQrTagging?"New QR attached":selected.qr_verified?"QR verified":selected.serial_exception?"Serial exception":"Not verified"}/><Info label="Proof Status" value={selected.proof_check_status||"Needs review"}/>{isSalePriceProof&&<Info label="Caretaker Price" value={peso(Number(selected.declared_amount||0))}/>}<Info label="Workflow" value={isSalePriceProof?"Special Sale Price Inspection":isSaleReleaseProof?"Special Final Sale Release":"Standard Care Task"}/></div>
+        <div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Caretaker Documentation</p><p className="mt-2 whitespace-pre-wrap text-sm font-bold leading-6">{selected.free_note||selected.preset_note||"No documentation submitted."}</p></div></>:<div className="grid min-h-[500px] place-items-center text-center"><div><h2 className="text-2xl font-black">No proof selected</h2><p className="mt-2 text-sm font-bold text-[#667267]">A submitted caretaker task will appear here.</p></div></div>}
+    </Card>
+
+    <Card className="min-h-[620px]">
+      <h2 className="text-lg font-black">Admin Decision</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">{isSalePriceProof?"Approve only after checking the photo, QR and entered price.":isSaleReleaseProof?"Approve only after confirming the caretaker acknowledged final physical release.":"Review the photo and documentation first."}</p>
+      <textarea value={adminNote} onChange={event=>setAdminNote(event.target.value)} disabled={!selected||reviewing} placeholder="Approval note or clear correction instruction..." className="mt-4 h-44 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold disabled:opacity-50" />
+      <button type="button" onClick={()=>selected&&review(selected,"approved")} disabled={!selected||reviewing} className="mt-4 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">{reviewing?"Saving...":"Approve Task"}</button>
+      <button type="button" onClick={()=>selected&&review(selected,"backjob")} disabled={!selected||reviewing} className="mt-3 w-full rounded-2xl bg-red-600 px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">Reject / Send Backjob</button>
+      <div className="mt-4 space-y-3 text-xs font-bold leading-5"><p className="rounded-xl bg-emerald-50 p-3 text-emerald-900"><b>Approve:</b> completes the task, stores evidence, and releases the customer update.</p><p className="rounded-xl bg-red-50 p-3 text-red-900"><b>Backjob:</b> returns the task to the caretaker Active Tasks with your required correction.</p></div>
+      <p className="mt-4 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{note}</p>
+    </Card>
+  </div>;
 }
 
 function AdminCaretakerManagementPage({ config }: { config: string[] }) {
   const tabs = [
     { id:"registration", label:"Registration", hint:"Permanent signup link" },
-    { id:"verification", label:"Verification", hint:"Approve applicants" },
     { id:"list", label:"List", hint:"Approved caretakers" },
     { id:"task-verification", label:"Task Verification", hint:"Review submitted work" },
     { id:"completed", label:"Completed Tasks", hint:"Approved work history" },
   ];
-  const applicants = [
-    { id:"app-1", name:"Juan Dela Cruz", email:"juan.caretaker@test.local", phone:"0917 333 1122", selfie:"JD", selfieFile:"juan-selfie.jpg", resumeFile:"juan-resume.pdf", resume:"6 years farm care, QR trained, feeding logs, vitamins, and rooster handling.", payment:"GCash / Juan Dela Cruz / 09173331122", status:"Pending" },
-    { id:"app-2", name:"Mia Santos", email:"mia.caretaker@test.local", phone:"0918 555 2211", selfie:"MS", selfieFile:"mia-selfie.jpg", resumeFile:"mia-resume.pdf", resume:"Vitamins, supplements, video proof trained, and mobile upload ready.", payment:"Maya / Mia Santos / 09185552211", status:"Pending" },
-  ];
-  const caretakers = [
-    { id:"ct-1", name:"Juan Dela Cruz", avatar:"JD", status:"Active", selfieFile:"juan-selfie.jpg", resumeFile:"juan-resume.pdf", resume:"6 years farm care", payment:"GCash / Juan Dela Cruz / 09173331122", assigned:[
-      { id:"as-1", customer:"Aydana Buratino", rooster:"Thunder King", task:"Give Vitamins", status:"Pending", note:"Customer wants photo proof and short note after vitamins.", file:"No file yet" },
-      { id:"as-2", customer:"Marco Reyes", rooster:"Red Ace", task:"Feed Check", status:"Approved", note:"0.12 kg feed record approved.", file:"feed-check-proof.jpg" },
-    ] },
-    { id:"ct-2", name:"Mia Santos", avatar:"MS", status:"Active", selfieFile:"mia-selfie.jpg", resumeFile:"mia-resume.pdf", resume:"Video proof trained", payment:"Maya / Mia Santos / 09185552211", assigned:[
-      { id:"as-3", customer:"Lina Cruz", rooster:"Bantay", task:"Photo Update", status:"Pending", note:"Needs clear body and leg photo.", file:"No file yet" },
-    ] },
-    { id:"ct-3", name:"Rico Tan", avatar:"RT", status:"Active", selfieFile:"rico-selfie.jpg", resumeFile:"rico-resume.pdf", resume:"Night watch", payment:"UnionBank / Rico Tan / 4409", assigned:[] },
-  ];
-  const submissions = [
-    { id:"sub-1", caretaker:"Juan Dela Cruz", customer:"Aydana Buratino", rooster:"Thunder King", request:"Give Vitamins", proofFile:"vitamins-proof.jpg", documentation:"QR verified. Vitamins given. 1 photo attached. Caretaker note: rooster active after dose.", adminResult:"Approve sends update to customer Care Logs. Reject sends backjob to caretaker Tasks.", status:"Pending Review" },
-    { id:"sub-2", caretaker:"Mia Santos", customer:"Lina Cruz", rooster:"Bantay", request:"Premium Feed", proofFile:"feed-proof.jpg", documentation:"0.12 kg feed used. Photo attached. Appetite normal. Inventory should deduct feed quantity.", adminResult:"Approve sends update to customer Care Logs. Reject sends backjob to caretaker Tasks.", status:"Pending Review" },
-  ];
-  const completed = [
-    { id:"done-1", caretaker:"Juan Dela Cruz", customer:"Marco Reyes", rooster:"Red Ace", request:"Feed Check", date:"Today 8:20 AM", proofFile:"feed-check-proof.jpg", proof:"Approved photo proof and notes. Customer can review this in Care Logs." },
-    { id:"done-2", caretaker:"Mia Santos", customer:"Aydana Buratino", rooster:"Thunder King", request:"Photo Update", date:"Yesterday 5:15 PM", proofFile:"photo-update-set.jpg", proof:"Approved image set. Stored for admin evidence and customer update history." },
-  ];
+  const emptyCaretaker = { id:"", name:"No caretaker selected", avatar:"-", status:"", selfieFile:"", resumeFile:"", resume:"", payment:"", assigned:[] as any[] };
+  const [applicants,setApplicants]=useState<any[]>([]);
+  const [caretakers,setCaretakers]=useState<any[]>([]);
+  const [completed,setCompleted]=useState<any[]>([]);
+  const [loadNote,setLoadNote]=useState("Loading registered caretakers and task history...");
   const [tab,setTab]=useState(tabs[0].id);
-  const [selectedApplicant,setSelectedApplicant]=useState(applicants[0]);
-  const [selectedCaretaker,setSelectedCaretaker]=useState(caretakers[0]);
-  const [selectedAssigned,setSelectedAssigned]=useState(caretakers[0].assigned[0] || null);
-  const [selectedSubmission,setSelectedSubmission]=useState(submissions[0]);
-  const [selectedCompleted,setSelectedCompleted]=useState(completed[0]);
+  const [selectedCaretaker,setSelectedCaretaker]=useState<any>(emptyCaretaker);
+  const [selectedAssigned,setSelectedAssigned]=useState<any>(null);
+  const [selectedCompleted,setSelectedCompleted]=useState<any>(null);
   const [note,setNote]=useState("");
   const [adminRequestFile,setAdminRequestFile]=useState("");
   const [viewer,setViewer]=useState<any>(null);
-  const signupLink = typeof window !== "undefined" ? `${window.location.origin}/caretaker/signup` : "/caretaker/signup";
+  const signupLink = "/caretaker/signup";
+  const copySignupLink = () => navigator.clipboard?.writeText(new URL(signupLink, window.location.origin).href);
   const completedForCaretaker = completed.filter(row=>row.caretaker===selectedCaretaker.name);
+  useEffect(()=>{
+    let active = true;
+    (async()=>{
+      try {
+        const [applicationRows, directoryRows, taskRows, proofRows] = await Promise.all([
+          getCaretakerApplications(),
+          getAdminCaretakerDirectory(),
+          getAdminCaretakerTasks(),
+          getAdminTaskProofs(),
+        ]);
+        if (!active) return;
+        const proofByTask = new Map<string,any>();
+        proofRows.forEach((proof:any)=>proofByTask.set(proof.caretaker_task_id || proof.task_id, proof));
+        const liveCaretakers = directoryRows.map((row:any)=>{
+          const name = row.display_name || row.full_name || row.email || "Unnamed caretaker";
+          const assigned = taskRows.filter((task:any)=>task.caretaker_id===row.id).map((task:any)=>{
+            const proof = proofByTask.get(task.id);
+            return {
+              id:task.id,
+              customer:task.profiles?.display_name || task.profiles?.full_name || task.profiles?.email || "Customer",
+              rooster:task.rooster_name || task.rooster_tag || "Rooster",
+              task:task.task_type || "Care task",
+              status:task.status || proof?.admin_review_status || "active",
+              note:task.admin_note || task.customer_note || proof?.free_note || proof?.preset_note || "No note",
+              file:(proof?.proof_urls || [proof?.proof_url]).filter(Boolean)[0] || "No file yet",
+            };
+          });
+          return {
+            id:row.id,
+            email:row.email,
+            name,
+            avatar:name.split(/\s+/).map((part:string)=>part[0]).join("").slice(0,2).toUpperCase(),
+            status:row.status || "active",
+            selfieFile:row.avatar_url || "No selfie file",
+            resumeFile:row.resume_url || "No resume file",
+            resume:row.resume_summary || row.farm_role || "Approved caretaker",
+            payment:[row.payment_mode || row.payout_method,row.payment_account_name,row.payment_account_number].filter(Boolean).join(" / ") || "No payout method",
+            assigned,
+          };
+        });
+        applicationRows.filter((application:any)=>application.status==="approved").forEach((application:any)=>{
+          const alreadyListed = liveCaretakers.some((caretaker:any)=>
+            caretaker.id===application.created_caretaker_id ||
+            (application.email && caretaker.email===application.email)
+          );
+          if (alreadyListed) return;
+          const name = application.display_name || application.full_name || application.email || "Approved caretaker";
+          liveCaretakers.push({
+            id:application.created_caretaker_id || `application-${application.id}`,
+            email:application.email,
+            name,
+            avatar:name.split(/\s+/).map((part:string)=>part[0]).join("").slice(0,2).toUpperCase(),
+            status:"approved",
+            selfieFile:application.avatar_url || "No selfie file",
+            resumeFile:application.resume_url || "No resume file",
+            resume:application.farm_role || "Approved caretaker application",
+            payment:[application.payment_method,application.payment_account_name,application.payment_account_number].filter(Boolean).join(" / ") || "No payout method",
+            assigned:taskRows.filter((task:any)=>task.caretaker_id===application.created_caretaker_id).map((task:any)=>({
+              id:task.id,
+              customer:task.profiles?.display_name || task.profiles?.full_name || task.profiles?.email || "Customer",
+              rooster:task.rooster_name || task.rooster_tag || "Rooster",
+              task:task.task_type || "Care task",
+              status:task.status || "active",
+              note:task.admin_note || task.customer_note || "No note",
+              file:"No file yet",
+            })),
+          });
+        });
+        const completedRows = proofRows.filter((proof:any)=>proof.admin_review_status==="approved").map((proof:any)=>{
+          const task = proof.caretaker_tasks || {};
+          const caretaker = proof.caretakers || {};
+          const customer = proof.profiles || {};
+          return {
+            id:proof.id,
+            caretaker:caretaker.display_name || caretaker.full_name || "Unknown caretaker",
+            customer:customer.display_name || customer.full_name || customer.email || "Customer",
+            rooster:task.rooster_name || task.rooster_tag || "Rooster",
+            request:task.task_type || proof.proof_type || "Completed task",
+            date:new Date(proof.reviewed_at || task.reviewed_at || proof.created_at).toLocaleString("en-PH"),
+            proofFile:(proof.proof_urls || [proof.proof_url]).filter(Boolean)[0] || "No file attached",
+            proof:proof.admin_note || proof.free_note || proof.preset_note || "Approved task proof and documentation.",
+          };
+        });
+        setApplicants(applicationRows);
+        setCaretakers(liveCaretakers);
+        setCompleted(completedRows);
+        setSelectedCaretaker(liveCaretakers[0] || emptyCaretaker);
+        setSelectedAssigned(liveCaretakers[0]?.assigned?.[0] || null);
+        setSelectedCompleted(completedRows[0] || null);
+        setLoadNote(`${applicationRows.length} registered application(s), ${liveCaretakers.length} approved caretaker(s), ${completedRows.length} completed task(s).`);
+      } catch (error:any) {
+        if (!active) return;
+        setLoadNote(`Live caretaker records failed to load: ${error?.message || "Unknown error"}`);
+      }
+    })();
+    return ()=>{ active=false; };
+  },[]);
   function reset(next: string) { setTab(next); setNote(""); setViewer(null); setAdminRequestFile(""); }
   function openViewer(payload:any) { setViewer(payload); }
-  return <Shell role="admin" title={config[0]}><PageTitle title="Caretaker Management" text="Registration, verification, assignments, proof review, backjobs, and completed evidence." icon="user" />
-    <div className="mt-4 grid gap-3 md:grid-cols-5">{tabs.map(item=><button key={item.id} onClick={()=>reset(item.id)} className={"rounded-2xl border p-4 text-left shadow-sm transition " + (tab===item.id ? "border-[#1f6b45] bg-[#e9fff3] ring-2 ring-[#1f6b45]/20" : "border-[#e3ded0] bg-white/95 hover:border-[#1f6b45]")}><h2 className="text-lg font-black">{item.label}</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">{item.hint}</p></button>)}</div>
+  return <Shell role="admin" title={config[0]}><PageTitle title="Caretaker Management" text="Registration link, approved caretaker list, task proof review, backjobs, and completed evidence. Account approval is handled in Account Verification." icon="user" />
+    <KaFarm>{loadNote}</KaFarm>
+    <div className="mt-4 grid gap-3 md:grid-cols-4">{tabs.map(item=><button key={item.id} onClick={()=>reset(item.id)} className={"rounded-2xl border p-4 text-left shadow-sm transition " + (tab===item.id ? "border-[#1f6b45] bg-[#e9fff3] ring-2 ring-[#1f6b45]/20" : "border-[#e3ded0] bg-white/95 hover:border-[#1f6b45]")}><h2 className="text-lg font-black">{item.label}</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">{item.hint}</p></button>)}</div>
 
-    {tab === "registration" && <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_300px]"><Card><p className="text-xs font-black uppercase text-[#667267]">Permanent Registration Link</p><h2 className="mt-1 text-3xl font-black">Caretaker signup link</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Send this link to applicants. It is permanent; account stays inactive until admin verification approves selfie, resume, and payment details.</p><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 font-black">{signupLink}</div><button type="button" onClick={()=>navigator.clipboard?.writeText(signupLink)} className="mt-4 rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">Copy Link</button></Card><Card><p className="text-xs font-black uppercase text-[#667267]">Registered Caretakers</p><h2 className="mt-2 text-5xl font-black text-[#1f6b45]">{applicants.length + caretakers.length}</h2><p className="mt-2 text-sm font-bold text-[#667267]">{applicants.length} pending / {caretakers.length} approved.</p></Card></div>}
+    {tab === "registration" && <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_340px]"><Card><p className="text-xs font-black uppercase text-[#667267]">Permanent Registration Link</p><h2 className="mt-1 text-3xl font-black">Caretaker signup link</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Send this link to applicants. It is permanent; account stays inactive until Account Verification approves selfie, resume, and payment details.</p><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 font-black">{signupLink}</div><button type="button" onClick={copySignupLink} className="mt-4 rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">Copy Link</button><h3 className="mt-6 text-lg font-black">Registered Applications</h3><div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-2">{applicants.length ? applicants.map((application:any)=><div key={application.id} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><b className="block truncate">{application.display_name || application.full_name || application.email}</b><p className="truncate text-xs font-bold text-[#667267]">{application.email}</p></div><Badge tone={application.status==="approved" ? "good" : application.status==="rejected" ? "bad" : "warn"}>{application.status}</Badge></div></div>) : <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No caretaker application found.</p>}</div></Card><Card><p className="text-xs font-black uppercase text-[#667267]">Registered Caretakers</p><h2 className="mt-2 text-5xl font-black text-[#1f6b45]">{applicants.length}</h2><p className="mt-2 text-sm font-bold text-[#667267]">{applicants.filter((row:any)=>row.status==="pending_approval" || row.status==="needs_info").length} waiting / {caretakers.length} approved caretaker records.</p><Link href="/admin/account-verification" className="mt-5 block rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Open Account Verification</Link></Card></div>}
 
-    {tab === "verification" && <AdminCaretakerApplicationQueue />}
+    {tab === "list" && <div className="mt-5 grid gap-4 xl:grid-cols-[300px_minmax(480px,1fr)_320px]"><Card className="min-h-[640px]"><h2 className="text-lg font-black">Caretaker List</h2><div className="mt-4 space-y-3">{caretakers.map((c:any)=><button key={c.id} onClick={()=>{setSelectedCaretaker(c); setSelectedAssigned(c.assigned[0] || null);}} className={"w-full rounded-2xl border p-3 text-left " + (selectedCaretaker.id===c.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}><b>{c.name}</b><p className="text-xs font-bold text-[#667267]">{c.resume}</p><Badge tone={c.assigned.some((a:any)=>a.status==="Pending") ? "warn" : "good"}>{c.assigned.length} tasks</Badge></button>)}{caretakers.length===0 && <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No approved caretaker record found.</p>}</div></Card><Card className="min-h-[640px]"><p className="text-xs font-black uppercase text-[#667267]">Live Proof Review / Assignments</p><h2 className="mt-1 text-3xl font-black">{selectedCaretaker.name}</h2><div className="mt-4 grid gap-3 md:grid-cols-2"><button onClick={()=>openViewer({ type:"selfie", title:selectedCaretaker.name, file:selectedCaretaker.selfieFile, body:"Approved caretaker selfie on record.", badge:selectedCaretaker.avatar })} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">View Selfie</button><button onClick={()=>openViewer({ type:"resume", title:selectedCaretaker.name, file:selectedCaretaker.resumeFile, body:selectedCaretaker.resume, badge:"CV" })} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">View Resume</button></div><div className="mt-4 space-y-3">{selectedCaretaker.assigned.length ? selectedCaretaker.assigned.map((task:any)=><button key={task.id} onClick={()=>{setSelectedAssigned(task); openViewer({ type:"task", title:task.task, file:task.file, body:`${task.customer} / ${task.rooster}. ${task.note}`, badge:task.status==="Approved" ? "?" : "!" });}} className="w-full rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 text-left text-sm font-bold"><div className="flex justify-between gap-3"><span>{task.customer} / {task.rooster}</span><Badge tone={task.status==="Pending" ? "warn" : "good"}>{task.status}</Badge></div><p className="mt-1 text-[#667267]">{task.task} - {task.note}</p><p className="mt-2 text-xs text-[#1f6b45]">File: {task.file}</p></button>) : <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No active assigned task.</p>}</div></Card><Card className="min-h-[640px]"><h2 className="text-lg font-black">Admin Request</h2><p className="mt-1 text-xs font-bold text-[#667267]">Send admin task/note to caretaker. File is optional, but caretaker note is required before they submit back.</p><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Example: Recheck Thunder King, upload clearer photo, include feed grams/kg used..." className="mt-4 h-36 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold" /><label className="mt-3 block rounded-2xl border border-dashed border-[#d8cfbd] bg-[#f9f6ec] p-3 text-sm font-bold text-[#667267]">Optional file for caretaker<input onChange={e=>setAdminRequestFile(e.target.files?.[0]?.name || "")} className="mt-2 block w-full" type="file" />{adminRequestFile && <span className="mt-2 block text-[#1f6b45]">Attached: {adminRequestFile}</span>}</label><button className="mt-4 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white">Send Admin Request</button><p className="mt-3 text-xs font-bold leading-5 text-[#667267]">Goes to caretaker app /caretaker/tasks as admin request/backjob style task.</p></Card></div>}
 
-    {tab === "list" && <div className="mt-5 grid gap-4 xl:grid-cols-[300px_minmax(480px,1fr)_320px]"><Card className="min-h-[640px]"><h2 className="text-lg font-black">Caretaker List</h2><div className="mt-4 space-y-3">{caretakers.map(c=><button key={c.id} onClick={()=>{setSelectedCaretaker(c); setSelectedAssigned(c.assigned[0] || null);}} className={"w-full rounded-2xl border p-3 text-left " + (selectedCaretaker.id===c.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}><b>{c.name}</b><p className="text-xs font-bold text-[#667267]">{c.resume}</p><Badge tone={c.assigned.some(a=>a.status==="Pending") ? "warn" : "good"}>{c.assigned.length} tasks</Badge></button>)}</div></Card><Card className="min-h-[640px]"><p className="text-xs font-black uppercase text-[#667267]">Live Proof Review / Assignments</p><h2 className="mt-1 text-3xl font-black">{selectedCaretaker.name}</h2><div className="mt-4 grid gap-3 md:grid-cols-2"><button onClick={()=>openViewer({ type:"selfie", title:selectedCaretaker.name, file:selectedCaretaker.selfieFile, body:"Approved caretaker selfie on record.", badge:selectedCaretaker.avatar })} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">View Selfie</button><button onClick={()=>openViewer({ type:"resume", title:selectedCaretaker.name, file:selectedCaretaker.resumeFile, body:selectedCaretaker.resume, badge:"CV" })} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">View Resume</button></div><div className="mt-4 space-y-3">{selectedCaretaker.assigned.length ? selectedCaretaker.assigned.map(task=><button key={task.id} onClick={()=>{setSelectedAssigned(task); openViewer({ type:"task", title:task.task, file:task.file, body:`${task.customer} / ${task.rooster}. ${task.note}`, badge:task.status==="Approved" ? "?" : "!" });}} className="w-full rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 text-left text-sm font-bold"><div className="flex justify-between gap-3"><span>{task.customer} / {task.rooster}</span><Badge tone={task.status==="Pending" ? "warn" : "good"}>{task.status}</Badge></div><p className="mt-1 text-[#667267]">{task.task} - {task.note}</p><p className="mt-2 text-xs text-[#1f6b45]">File: {task.file}</p></button>) : <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No active assigned task.</p>}</div></Card><Card className="min-h-[640px]"><h2 className="text-lg font-black">Admin Request</h2><p className="mt-1 text-xs font-bold text-[#667267]">Send admin task/note to caretaker. File is optional, but caretaker note is required before they submit back.</p><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Example: Recheck Thunder King, upload clearer photo, include feed grams/kg used..." className="mt-4 h-36 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold" /><label className="mt-3 block rounded-2xl border border-dashed border-[#d8cfbd] bg-[#f9f6ec] p-3 text-sm font-bold text-[#667267]">Optional file for caretaker<input onChange={e=>setAdminRequestFile(e.target.files?.[0]?.name || "")} className="mt-2 block w-full" type="file" />{adminRequestFile && <span className="mt-2 block text-[#1f6b45]">Attached: {adminRequestFile}</span>}</label><button className="mt-4 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white">Send Admin Request</button><p className="mt-3 text-xs font-bold leading-5 text-[#667267]">Goes to caretaker app /caretaker/tasks as admin request/backjob style task.</p></Card></div>}
-
-    {tab === "task-verification" && <div className="mt-5 grid gap-4 xl:grid-cols-[300px_minmax(480px,1fr)_320px]"><Card className="min-h-[640px]"><h2 className="text-lg font-black">Submitted Task Queue</h2><div className="mt-4 space-y-3">{submissions.map(sub=><button key={sub.id} onClick={()=>setSelectedSubmission(sub)} className={"w-full rounded-2xl border p-3 text-left " + (selectedSubmission.id===sub.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}><b>{sub.caretaker}</b><p className="text-xs font-bold text-[#667267]">{sub.customer} / {sub.request}</p><Badge tone="warn">{sub.status}</Badge></button>)}</div></Card><Card className="min-h-[640px]"><p className="text-xs font-black uppercase text-[#667267]">Selected Work Box</p><h2 className="mt-1 text-3xl font-black">{selectedSubmission.request}</h2><div className="mt-4 grid gap-3 md:grid-cols-2"><Info label="Customer" value={selectedSubmission.customer} /><Info label="Rooster" value={selectedSubmission.rooster} /><Info label="Caretaker" value={selectedSubmission.caretaker} /><Info label="Uploaded File" value={selectedSubmission.proofFile} /></div><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Documentation / Notes</p><p className="mt-2 text-sm font-bold leading-6">{selectedSubmission.documentation}</p><button onClick={()=>openViewer({ type:"task", title:selectedSubmission.request, file:selectedSubmission.proofFile, body:selectedSubmission.documentation, badge:"?" })} className="mt-4 rounded-xl bg-[#eee8d9] px-4 py-3 font-black">View Submitted Proof</button></div></Card><Card className="min-h-[640px]"><h2 className="text-lg font-black">Admin Next Step</h2><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Approval note or rejection/backjob instruction..." className="mt-4 h-40 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold" /><div className="mt-4 grid grid-cols-2 gap-3"><button className="rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white">Approve</button><button className="rounded-2xl bg-red-600 px-4 py-4 font-black text-white">Reject / Backjob</button></div><div className="mt-4 space-y-2 text-xs font-bold leading-5 text-[#667267]"><p className="rounded-xl bg-emerald-50 p-3">Approve: sends customer update to /customer/care-logs and stores completed evidence.</p><p className="rounded-xl bg-red-50 p-3">Reject: sends backjob to caretaker app /caretaker/tasks with your note.</p></div></Card></div>}
+    {tab === "task-verification" && <div className="mt-5"><AdminLiveTaskProofQueue /></div>}
 
     {tab === "completed" && <div className="mt-5 grid gap-4 xl:grid-cols-[300px_minmax(520px,1fr)]"><Card className="min-h-[640px]"><h2 className="text-lg font-black">Caretaker List</h2><div className="mt-4 space-y-3">{caretakers.map(c=><button key={c.id} onClick={()=>{setSelectedCaretaker(c); const first=completed.find(row=>row.caretaker===c.name); if(first) setSelectedCompleted(first);}} className={"w-full rounded-2xl border p-3 text-left " + (selectedCaretaker.id===c.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}><b>{c.name}</b><p className="text-xs font-bold text-[#667267]">Completed task records</p></button>)}</div></Card><Card className="min-h-[640px]"><p className="text-xs font-black uppercase text-[#667267]">Completed Task Review</p><h2 className="mt-1 text-3xl font-black">{selectedCaretaker.name}</h2><div className="mt-4 space-y-3">{completedForCaretaker.length ? completedForCaretaker.map(row=><button key={row.id} onClick={()=>{setSelectedCompleted(row); openViewer({ type:"task", title:row.request, file:row.proofFile, body:`${row.customer} / ${row.rooster}. ${row.proof}`, badge:"?" });}} className="w-full rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 text-left"><b>{row.request}</b><p className="mt-1 text-sm font-bold text-[#667267]">{row.customer} / {row.rooster} / {row.date}</p><p className="mt-2 text-xs font-bold text-[#667267]">{row.proof}</p></button>) : <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No completed task for this caretaker yet.</p>}</div>{selectedCompleted && <div className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-900">Latest selected: {selectedCompleted.request} / {selectedCompleted.customer}. Customer page destination: Care Logs.</div>}</Card></div>}
 
@@ -2584,7 +3525,7 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
   ];
   const caretakerReports = [
     { id:"ct-1", account:"Juan Dela Cruz", avatar:"JD", issue:"QR scan failed during feed task", source:"Caretaker chat", where:"/caretaker/tasks", findings:"KaFarm detected camera/QR issue. Task has customer payment and rooster details, but caretaker needs admin exception or serial fallback.", solution:"Admin can release exception mode, add serial verification note, then caretaker submits proof with documentation.", risk:"Medium", status:"Open", evidence:"Task Request Feed, rooster FC-128, customer Aydana", update:"Admin released an alternate verification step. Please submit serial, notes, and proof." },
-    { id:"ct-2", account:"Mia Santos", avatar:"MS", issue:"Rejected proof needs backjob clarification", source:"Task verification", where:"/admin/caretaker-desk -> Task Verification", findings:"Submitted photo was blurry and feed quantity was missing. Backjob already marked but caretaker needs clearer instruction.", solution:"Send backjob note: retake photo, include feed weight, confirm rooster QR/serial, then resubmit.", risk:"Low", status:"Open", evidence:"Premium Feed proof rejected, Lina Cruz, CR-22013", update:"Please resubmit with clearer photo and feed quantity used." },
+    { id:"ct-2", account:"Mia Santos", avatar:"MS", issue:"Rejected proof needs backjob clarification", source:"Task verification", where:"/admin/caretaker-management -> Task Verification", findings:"Submitted photo was blurry and feed quantity was missing. Backjob already marked but caretaker needs clearer instruction.", solution:"Send backjob note: retake photo, include feed weight, confirm rooster QR/serial, then resubmit.", risk:"Low", status:"Open", evidence:"Premium Feed proof rejected, Lina Cruz, CR-22013", update:"Please resubmit with clearer photo and feed quantity used." },
   ];
   const completedCustomer = [
     { id:"cc-1", account:"Aydana Buratino", avatar:"AB", issue:"Withdrawal receipt question", resolved:"Admin payout reference was confirmed and inbox receipt sent.", date:"Today 3:20 PM", evidence:"Withdrawal Receipt #WD-30012" },
@@ -2660,7 +3601,7 @@ function AdminOperationsDeskFormat({ kind, config }: { kind: "caretaker" | "farm
   const rowsByKind = {
     caretaker: [
       { id:"registration", name:"Caretaker Registration", status:"Permanent link", main:"Admin sends caretaker signup link", detail:"Permanent registration link; applicant can register even if the link is forwarded.", route:"/admin/caretaker-registration", priority:"Normal" },
-      { id:"verification", name:"Caretaker Verification", status:"Needs approval", main:"New caretaker account review", detail:"Check email, name, phone, selfie/photo, and resume before account becomes active.", route:"/admin/caretaker-registration", priority:"High" },
+      { id:"verification", name:"Caretaker Verification", status:"Needs approval", main:"New caretaker account review", detail:"Check email, name, phone, selfie/photo, and resume before account becomes active.", route:"/admin/account-verification", priority:"High" },
       { id:"list", name:"Caretaker List", status:"Approved only", main:"Approved caretakers and assignments", detail:"Column 1 list, column 2 selfie/resume, column 3 assigned customers/tasks.", route:"/admin/caretakers", priority:"Normal" },
       { id:"task-proof", name:"Task Verification", status:"Needs proof review", main:"Caretaker submitted task proof", detail:"Check submitted photo/video, documentation, QR/serial, customer, rooster, and requested work.", route:"/admin/evidence", priority:"High" },
       { id:"completed", name:"Completed Tasks", status:"Evidence storage", main:"Approved caretaker work history", detail:"Approved tasks, customers served, proof submitted, date/time, and admin decision.", route:"/admin/evidence", priority:"Normal" },
@@ -2668,11 +3609,11 @@ function AdminOperationsDeskFormat({ kind, config }: { kind: "caretaker" | "farm
     farm: [
       { id:"products", name:"Product Sales Summary", status:"Calendar filter", main:"Products bought by customers", detail:"Default shows total sold and total amount. Calendar shows daily product sales like feeds sold on a selected date.", route:"/admin/farm-operations", priority:"Normal" },
       { id:"customers", name:"Customer Registry", status:"Calendar filter", main:"Registered customer count and list", detail:"Default shows all registered customers. Calendar shows customers registered on a selected date.", route:"/admin/customers", priority:"Normal" },
-      { id:"paid-care", name:"Paid Care Requests", status:"Revenue view", main:"Total paid care requests", detail:"List caretaker/service/price paid so owner sees care service income and who handled the work.", route:"/admin/customer-desk/care", priority:"Normal" },
+      { id:"paid-care", name:"Paid Care Requests", status:"Revenue view", main:"Total paid care requests", detail:"List caretaker/service/price paid so owner sees care service income and who handled the work.", route:"/admin/customer-requests/care", priority:"Normal" },
     ],
     money: [
       { id:"cashin", name:"Cash-In Review", status:"Manual check", main:"Customer uploaded receipt", detail:"Check receiver account, reference number, sender, amount, and duplicate risk.", route:"/admin/transactions/cashin", priority:"High" },
-      { id:"withdraw", name:"Withdrawal", status:"Sensitive", main:"Customer requested payout", detail:"Check KYC, payout account name/number, wallet trail, upload proof, send receipt.", route:"/admin/customer-desk/withdraw", priority:"High" },
+      { id:"withdraw", name:"Withdrawal", status:"Sensitive", main:"Customer requested payout", detail:"Check KYC, payout account name/number, wallet trail, upload proof, send receipt.", route:"/admin/customer-requests/withdraw", priority:"High" },
       { id:"treasury", name:"Treasury", status:"Read only", main:"Owner money view", detail:"Available cash, pending payouts, holds, income, and payroll due.", route:"/admin/treasury", priority:"Normal" },
     ],
     evidence: [
@@ -2725,7 +3666,7 @@ function AdminOperationsDeskFormat({ kind, config }: { kind: "caretaker" | "farm
     ? <AdminLiveTaskProofQueue />
     : kind === "money"
       ? <AdminManualPaymentQueue />
-      : <Card><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Read Only Guide</p><h2 className="mt-1 text-xl font-black">Evidence and issue trail</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">This desk is for finding records, reviewing status, and deciding what page to open next. Sensitive actions stay in the linked approval pages.</p></div><Badge tone="neutral">Report Only</Badge></div><div className="mt-4 grid gap-3 md:grid-cols-3"><div className="rounded-2xl bg-[#f4efe4] p-4"><b>1. Select</b><p className="mt-1 text-xs font-bold text-[#667267]">Choose customer, caretaker, or admin trail.</p></div><div className="rounded-2xl bg-[#f4efe4] p-4"><b>2. Inspect</b><p className="mt-1 text-xs font-bold text-[#667267]">Open evidence before any decision.</p></div><div className="rounded-2xl bg-[#f4efe4] p-4"><b>3. Resolve</b><p className="mt-1 text-xs font-bold text-[#667267]">Move finished work to resolved logs.</p></div></div></Card>;
+      : <Card><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Read Only Guide</p><h2 className="mt-1 text-xl font-black">Evidence and issue trail</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">This page is for finding records, reviewing status, and deciding what page to open next. Sensitive actions stay in the linked approval pages.</p></div><Badge tone="neutral">Report Only</Badge></div><div className="mt-4 grid gap-3 md:grid-cols-3"><div className="rounded-2xl bg-[#f4efe4] p-4"><b>1. Select</b><p className="mt-1 text-xs font-bold text-[#667267]">Choose customer, caretaker, or admin trail.</p></div><div className="rounded-2xl bg-[#f4efe4] p-4"><b>2. Inspect</b><p className="mt-1 text-xs font-bold text-[#667267]">Open evidence before any decision.</p></div><div className="rounded-2xl bg-[#f4efe4] p-4"><b>3. Resolve</b><p className="mt-1 text-xs font-bold text-[#667267]">Move finished work to resolved logs.</p></div></div></Card>;
 
 
   function actionPlan(row: OperationsRow) {
@@ -2754,7 +3695,7 @@ function AdminOperationsDeskFormat({ kind, config }: { kind: "caretaker" | "farm
     <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(620px,1fr)_320px]">
       <div className="grid content-start gap-4"><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Selected Work Box</p><h2 className="mt-1 text-3xl font-black">{selected.name}</h2><p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-[#667267]">{selected.detail}</p></div><Badge tone={toneFor(selected)}>{selected.status}</Badge></div><div className="mt-4 grid gap-3 md:grid-cols-2">{details.map(card=><div key={card.label} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">{card.label}</p><p className="mt-2 text-sm font-black leading-6">{card.value}</p></div>)}</div><div className="mt-4 flex flex-wrap gap-3"><Link href={selected.route} className="rounded-xl bg-[#1f6b45] px-4 py-3 text-sm font-black text-white">Open Linked Page</Link><Link href="/admin/evidence" className="rounded-xl bg-[#eee8d9] px-4 py-3 text-sm font-black">Open Evidence</Link></div></Card>{supportPanel}</div>
 
-      <Card className="min-h-[640px]"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Admin Next Step</p><h2 className="mt-1 text-xl font-black">{plan.label}</h2></div><Badge tone={toneFor(selected)}>{selected.priority}</Badge></div><p className="mt-3 rounded-2xl bg-[#f4efe4] p-4 text-sm font-bold leading-6 text-[#526154]">{plan.next}</p><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Check Before Action</p><div className="mt-3 space-y-2">{plan.checks.map(check=><div key={check} className="flex gap-2 text-sm font-bold leading-5"><span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-100 text-xs text-[#1f6b45]">?</span><span>{check}</span></div>)}</div></div><label className="mt-5 block text-sm font-black">Admin Notes / Reason</label><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Write clear reason, evidence checked, and next instruction..." className="mt-2 h-36 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold leading-6" /><div className="mt-5 grid grid-cols-2 gap-3"><button onClick={()=>mark("approved")} className="min-h-20 rounded-2xl bg-[#1f6b45] px-4 py-3 text-sm font-black text-white shadow-sm">{plan.primary}</button><button onClick={()=>mark("rejected")} className="min-h-20 rounded-2xl bg-red-600 px-4 py-3 text-sm font-black text-white shadow-sm">{plan.secondary}</button></div><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Current UI Decision</p><p className={"mt-2 text-lg font-black " + (decision==="approved"?"text-[#1f6b45]":decision==="rejected"?"text-red-700":"text-[#667267]")}>{decision === "approved" ? plan.primary : decision === "rejected" ? plan.secondary : "Waiting for admin decision"}</p><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">This is UI review state only. Backend approval functions will be wired per real request type.</p></div><div className="mt-4 grid gap-2"><Link href={selected.route} className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Open Work Page</Link><Link href="/admin/evidence" className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">Open Evidence</Link><Link href="/admin/customer-desk/resolved" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Resolved Logs</Link></div></Card>
+      <Card className="min-h-[640px]"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Admin Next Step</p><h2 className="mt-1 text-xl font-black">{plan.label}</h2></div><Badge tone={toneFor(selected)}>{selected.priority}</Badge></div><p className="mt-3 rounded-2xl bg-[#f4efe4] p-4 text-sm font-bold leading-6 text-[#526154]">{plan.next}</p><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><p className="text-xs font-black uppercase text-[#667267]">Check Before Action</p><div className="mt-3 space-y-2">{plan.checks.map(check=><div key={check} className="flex gap-2 text-sm font-bold leading-5"><span className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-100 text-xs text-[#1f6b45]">?</span><span>{check}</span></div>)}</div></div><label className="mt-5 block text-sm font-black">Admin Notes / Reason</label><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Write clear reason, evidence checked, and next instruction..." className="mt-2 h-36 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold leading-6" /><div className="mt-5 grid grid-cols-2 gap-3"><button onClick={()=>mark("approved")} className="min-h-20 rounded-2xl bg-[#1f6b45] px-4 py-3 text-sm font-black text-white shadow-sm">{plan.primary}</button><button onClick={()=>mark("rejected")} className="min-h-20 rounded-2xl bg-red-600 px-4 py-3 text-sm font-black text-white shadow-sm">{plan.secondary}</button></div><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-white p-4"><p className="text-xs font-black uppercase text-[#667267]">Current UI Decision</p><p className={"mt-2 text-lg font-black " + (decision==="approved"?"text-[#1f6b45]":decision==="rejected"?"text-red-700":"text-[#667267]")}>{decision === "approved" ? plan.primary : decision === "rejected" ? plan.secondary : "Waiting for admin decision"}</p><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">This is UI review state only. Backend approval functions will be wired per real request type.</p></div><div className="mt-4 grid gap-2"><Link href={selected.route} className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Open Work Page</Link><Link href="/admin/evidence" className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">Open Evidence</Link><Link href="/admin/customer-requests/resolved" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Resolved Logs</Link></div></Card>
     </div>
   </Shell>;
 }
@@ -2776,23 +3717,23 @@ function AdminWorkDesk({ kind, config }: { kind: "caretaker" | "farm" | "money" 
     { type: "Treasury", name: "Today", amount: 18400, status: "Available after holds", source: "FarmConnect" },
   ];
   const evidenceRows = [
-    { title: "KYC duplicate packet", owner: "Aydana Buratino", status: "Open", source: "Customer Desk" },
+    { title: "KYC duplicate packet", owner: "Aydana Buratino", status: "Open", source: "Account Verification" },
     { title: "Blurred vitamin proof", owner: "Mia Santos", status: "Review", source: "Caretaker proof" },
-    { title: "Cash-in duplicate reference", owner: "Marco Reyes", status: "Investigate", source: "Money Desk" },
+    { title: "Cash-in duplicate reference", owner: "Marco Reyes", status: "Investigate", source: "Customer Requests" },
     { title: "Resolved withdrawal", owner: "Lina Cruz", status: "Archived", source: "Resolved Cases" },
   ];
   const payrollTotal = caretakerRows.reduce((sum,row)=>sum + row.pay * row.present, 0);
   const cards = adminDeskCards[kind] || [];
   if (kind === "kafarm") return <Shell role="admin" title={config[0]}><PageTitle title="Ka-Farm Console" text="Buddy troubleshooter for admin: it explains what happened, what evidence to open, and what action is safest." icon="support" /><div className="grid gap-5 xl:grid-cols-[1fr_420px]"><div className="grid gap-4 md:grid-cols-2"><Card><h2 className="text-xl font-black">What Ka-Farm Does</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Reads customer/caretaker/admin logs, summarizes the problem, points to the correct evidence, and suggests the next safe action.</p></Card><Card><h2 className="text-xl font-black">Limit</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Ka-Farm can guide and prepare templates, but admin still approves payouts, KYC decisions, caretaker exceptions, and final customer messages.</p></Card><Card><h2 className="text-xl font-black">Ask Examples</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Ano naiwan? Bakit flagged ang proof? Ano evidence bago ako magrelease ng withdrawal? Sino caretaker ng rooster na ito?</p></Card><Card><h2 className="text-xl font-black">Turnover Guide</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">If owner is away, Ka-Farm shows the workflow bridge: customer request, admin check, caretaker task, proof review, customer update.</p></Card></div><KaFarmAdmin /></div></Shell>;
-  return <Shell role="admin" title={config[0]}><PageTitle title={config[0]} text={config[1]} icon={config[2] as IconName} /><KaFarm>{kind === "caretaker" ? "Caretaker desk is for applications, resume review, payment method records, payroll, proof, and chat. Start with pending applications." : kind === "farm" ? "Farm operations connects rooster inventory, customer ownership, request queue, sale pricing, and invoices." : kind === "money" ? "Money desk separates cash-in checks, withdrawal review, treasury, and receipts so admin can follow the money trail." : "Evidence desk keeps the farm protected: every proof, receipt, override, and decision stays searchable."}</KaFarm><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cards.map(card=><Link key={card.title} href={card.href} className="rounded-2xl border border-[#e3ded0] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><Icon name={card.icon} className="h-7 w-7 text-[#1f6b45]" /><h2 className="mt-3 text-xl font-black">{card.title}</h2><p className="mt-2 min-h-[72px] text-sm font-bold leading-6 text-[#667267]">{card.text}</p></Link>)}</div><AdminRoleBridge kind={kind} />{kind === "caretaker" && <><AdminCaretakerApplicationQueue /><div className="mt-5 grid gap-5 xl:grid-cols-[360px_1fr]"><Card><h2 className="text-xl font-black">Active Caretaker List</h2><div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-2">{caretakerRows.map(row=><div key={row.name} className="rounded-2xl border border-[#ece6d8] p-3"><div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-[#1f6b45] font-black text-white">{row.avatar}</div><div className="min-w-0 flex-1"><b className="block truncate">{row.name}</b><p className="truncate text-sm font-bold text-[#667267]">{row.role}</p></div><Badge tone={row.status.includes("Review")?"warn":"good"}>{row.status}</Badge></div></div>)}</div></Card><Card><div className="grid gap-4 lg:grid-cols-2"><div><h2 className="text-xl font-black">Resume View</h2><div className="mt-4 rounded-3xl bg-[#f6f3e8] p-5"><div className="grid h-24 w-24 place-items-center rounded-full bg-white text-3xl font-black">JD</div><h3 className="mt-4 text-2xl font-black">Juan Dela Cruz</h3><p className="font-bold text-[#667267]">{caretakerRows[0].resume}</p><p className="mt-3 text-sm font-bold text-[#667267]">Contact and address stay admin-only.</p></div></div><div><h2 className="text-xl font-black">Payroll Snapshot</h2><div className="mt-4 rounded-3xl bg-emerald-50 p-5"><p className="text-sm font-black uppercase text-[#667267]">15th / 30th Payroll</p><p className="mt-2 text-3xl font-black text-[#1f6b45]">{peso(payrollTotal)}</p><p className="mt-2 text-sm font-bold text-[#667267]">Computed from per-day rate, present days, absent days, and payout mode.</p></div>{caretakerRows.map(row=><div key={row.name+"pay"} className="mt-3 flex items-center justify-between rounded-xl border p-3 text-sm font-bold"><span>{row.name}</span><span>{row.present} present / {row.absent} absent - {peso(row.pay*row.present)}</span></div>)}</div></div></Card></div></>}{kind === "farm" && <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]"><Card><h2 className="text-xl font-black">Rooster Inventory</h2><div className="mt-4 max-h-[430px] overflow-y-auto pr-2"><div className="grid gap-3">{farmRows.map(row=><div key={row.rooster} className="grid gap-3 rounded-2xl border border-[#ece6d8] p-4 md:grid-cols-6"><b>{row.rooster}</b><span>{row.status}</span><span>{row.owner}</span><span>{row.caretaker}</span><span>{row.pen}</span><span className="text-[#667267]">{row.note}</span></div>)}</div></div></Card><Card><h2 className="text-xl font-black">Request Queue</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Sell requests and care requests land here first. Admin sets price or assigns caretaker; caretaker checks weight/status when needed.</p><Link href="/admin/sell-requests" className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Sell Queue</Link></Card></div>}{kind === "money" && <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]"><AdminManualPaymentQueue /><Card><h2 className="text-xl font-black">Treasury Meaning</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Treasury is the owner view of money: real cash received, pending manual payments, locked customer savings, unpaid withdrawals, payroll due, and available farm funds.</p><Link href="/admin/customer-desk/withdraw" className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Withdrawal Desk</Link></Card></div>}{kind === "evidence" && <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]"><Card><h2 className="text-xl font-black">Evidence Stream</h2><div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-2">{evidenceRows.map(row=><div key={row.title} className="grid gap-3 rounded-2xl border border-[#ece6d8] p-4 md:grid-cols-4"><b>{row.title}</b><span>{row.owner}</span><span>{row.source}</span><Badge tone={row.status==="Archived"?"good":"warn"}>{row.status}</Badge></div>)}</div></Card><Card><h2 className="text-xl font-black">Resolved Cases</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Finished problems move here with final decision, receipt/invoice, customer notice, admin note, and evidence links.</p><Link href="/admin/customer-desk/resolved" className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Resolved</Link></Card></div>}</Shell>;
+  return <Shell role="admin" title={config[0]}><PageTitle title={config[0]} text={config[1]} icon={config[2] as IconName} /><KaFarm>{kind === "caretaker" ? "Caretaker management is for applications, resume review, payment method records, payroll, proof, and chat. Start with pending applications." : kind === "farm" ? "Farm operations connects rooster inventory, customer ownership, request queue, sale pricing, and invoices." : kind === "money" ? "Payment review separates cash-in checks, withdrawal review, treasury, and receipts so admin can follow the money trail." : "Evidence logs keep the farm protected: every proof, receipt, override, and decision stays searchable."}</KaFarm><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cards.map(card=><Link key={card.title} href={card.href} className="rounded-2xl border border-[#e3ded0] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><Icon name={card.icon} className="h-7 w-7 text-[#1f6b45]" /><h2 className="mt-3 text-xl font-black">{card.title}</h2><p className="mt-2 min-h-[72px] text-sm font-bold leading-6 text-[#667267]">{card.text}</p></Link>)}</div><AdminRoleBridge kind={kind} />{kind === "caretaker" && <><AdminCaretakerApplicationQueue /><div className="mt-5 grid gap-5 xl:grid-cols-[360px_1fr]"><Card><h2 className="text-xl font-black">Active Caretaker List</h2><div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-2">{caretakerRows.map(row=><div key={row.name} className="rounded-2xl border border-[#ece6d8] p-3"><div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-[#1f6b45] font-black text-white">{row.avatar}</div><div className="min-w-0 flex-1"><b className="block truncate">{row.name}</b><p className="truncate text-sm font-bold text-[#667267]">{row.role}</p></div><Badge tone={row.status.includes("Review")?"warn":"good"}>{row.status}</Badge></div></div>)}</div></Card><Card><div className="grid gap-4 lg:grid-cols-2"><div><h2 className="text-xl font-black">Resume View</h2><div className="mt-4 rounded-3xl bg-[#f6f3e8] p-5"><div className="grid h-24 w-24 place-items-center rounded-full bg-white text-3xl font-black">JD</div><h3 className="mt-4 text-2xl font-black">Juan Dela Cruz</h3><p className="font-bold text-[#667267]">{caretakerRows[0].resume}</p><p className="mt-3 text-sm font-bold text-[#667267]">Contact and address stay admin-only.</p></div></div><div><h2 className="text-xl font-black">Payroll Snapshot</h2><div className="mt-4 rounded-3xl bg-emerald-50 p-5"><p className="text-sm font-black uppercase text-[#667267]">15th / 30th Payroll</p><p className="mt-2 text-3xl font-black text-[#1f6b45]">{peso(payrollTotal)}</p><p className="mt-2 text-sm font-bold text-[#667267]">Computed from per-day rate, present days, absent days, and payout mode.</p></div>{caretakerRows.map(row=><div key={row.name+"pay"} className="mt-3 flex items-center justify-between rounded-xl border p-3 text-sm font-bold"><span>{row.name}</span><span>{row.present} present / {row.absent} absent - {peso(row.pay*row.present)}</span></div>)}</div></div></Card></div></>}{kind === "farm" && <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]"><Card><h2 className="text-xl font-black">Rooster Inventory</h2><div className="mt-4 max-h-[430px] overflow-y-auto pr-2"><div className="grid gap-3">{farmRows.map(row=><div key={row.rooster} className="grid gap-3 rounded-2xl border border-[#ece6d8] p-4 md:grid-cols-6"><b>{row.rooster}</b><span>{row.status}</span><span>{row.owner}</span><span>{row.caretaker}</span><span>{row.pen}</span><span className="text-[#667267]">{row.note}</span></div>)}</div></div></Card><Card><h2 className="text-xl font-black">Request Queue</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Sell requests and care requests land here first. Admin sets price or assigns caretaker; caretaker checks weight/status when needed.</p><Link href="/admin/sell-requests" className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Sell Queue</Link></Card></div>}{kind === "money" && <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]"><AdminManualPaymentQueue /><Card><h2 className="text-xl font-black">Treasury Meaning</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Treasury is the owner view of money: real cash received, pending manual payments, locked customer savings, unpaid withdrawals, payroll due, and available farm funds.</p><Link href="/admin/customer-requests/withdraw" className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Withdrawal Review</Link></Card></div>}{kind === "evidence" && <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]"><Card><h2 className="text-xl font-black">Evidence Stream</h2><div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-2">{evidenceRows.map(row=><div key={row.title} className="grid gap-3 rounded-2xl border border-[#ece6d8] p-4 md:grid-cols-4"><b>{row.title}</b><span>{row.owner}</span><span>{row.source}</span><Badge tone={row.status==="Archived"?"good":"warn"}>{row.status}</Badge></div>)}</div></Card><Card><h2 className="text-xl font-black">Resolved Cases</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Finished problems move here with final decision, receipt/invoice, customer notice, admin note, and evidence links.</p><Link href="/admin/customer-requests/resolved" className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Resolved</Link></Card></div>}</Shell>;
 }
 
-export function AdminDesk({ kind }: { kind: "customer" | "caretaker" | "farm" | "money" | "chat" | "evidence" | "kafarm" | "issues" | "verification" }) {
+export function AdminWorkspace({ kind }: { kind: "customer" | "caretaker" | "farm" | "money" | "chat" | "evidence" | "kafarm" | "issues" | "verification" }) {
   const config = {
     customer: ["Customer Requests Management", "Review customer payment receipts, care requests, task assignment, and withdrawal requests.", "clipboard"],
-    caretaker: ["Caretaker Management", "Registration, verification, caretaker list, task verification, and completed task evidence.", "user"],
+    caretaker: ["Caretaker Management", "Registration link, caretaker list, task verification, and completed task evidence.", "user"],
     farm: ["Farm Operations", "Product sales summary, customer registry, and paid care request income.", "rooster"],
-    money: ["Money Desk", "Review cash-ins, withdrawals, treasury, receipts, and money evidence.", "coins"],
+    money: ["Payment Review", "Payment and withdrawal review now live under Customer Requests Management.", "coins"],
     chat: ["Live Chat", "Only escalated Ka-Farm chats and caretaker-admin chats appear here.", "chat"],
     evidence: ["Evidence Logs", "Customer, caretaker, and admin evidence organized person by person.", "file"],
     kafarm: ["KaFarm Console", "Context-aware IT-Ops buddy for admin investigation, evidence, reports, and safe next steps.", "support"],
@@ -2800,7 +3741,7 @@ export function AdminDesk({ kind }: { kind: "customer" | "caretaker" | "farm" | 
     verification: ["Account Verification", "Customer, caretaker, and admin verification shortcuts from one source of truth.", "shield"],
   }[kind];
   if (kind === "chat") return <AdminLiveChatPage />;
-  if (kind === "customer") return <AdminCustomerDeskPage />;
+  if (kind === "customer") return <AdminCustomerRequestsPage />;
   if (kind === "caretaker") return <AdminCaretakerManagementPage config={config} />;
   if (kind === "farm" || kind === "money" || kind === "evidence" || kind === "issues" || kind === "verification") return <AdminOperationsDeskFormat kind={kind} config={config} />;
   return <AdminWorkDesk kind={kind as "caretaker" | "farm" | "money" | "evidence" | "kafarm"} config={config} />;
