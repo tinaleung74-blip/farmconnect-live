@@ -34,6 +34,7 @@ with expected_objects(kind, object_name) as (
     ('table','support_chat_sessions'),
     ('table','support_chat_messages'),
     ('table','kafarm_incidents'),
+    ('table','kafarm_device_usage_logs'),
     ('function','current_profile_id'),
     ('function','is_admin'),
     ('function','customer_submit_kyc'),
@@ -62,8 +63,10 @@ with expected_objects(kind, object_name) as (
     ('function','admin_support_complete_chat'),
     ('function','kafarm_record_incident'),
     ('function','admin_kafarm_update_incident_status'),
+    ('function','kafarm_record_device_usage'),
     ('view','admin_support_escalated_chats'),
-    ('view','admin_kafarm_incident_queue')
+    ('view','admin_kafarm_incident_queue'),
+    ('view','admin_kafarm_device_usage_summary')
 ), object_status as (
   select kind, object_name,
     case
@@ -92,6 +95,8 @@ with expected_objects(kind, object_name) as (
     'evidence',
     'kafarm incidents admin read all',
     'kafarm incidents owner read own'
+    ,'kafarm device usage admin read'
+    ,'kafarm device usage owner read'
   ]) p
 )
 select kind, object_name, exists

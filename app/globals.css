@@ -67,4 +67,49 @@ canvas {
   }
 }
 
+/* KaFarm device capture chooses the tablet composition independently of UA quirks. */
+html[data-farmconnect-layout="tablet"] .fc-customer-tablet-nav {
+  display: flex;
+}
 
+html[data-farmconnect-layout="tablet"] .fc-desktop-header-nav {
+  display: none;
+}
+
+html[data-farmconnect-layout="tablet"] .fc-customer-mobile-nav {
+  display: none;
+}
+
+html[data-farmconnect-layout="tablet"] .fc-shell-content {
+  padding-bottom: 1.5rem;
+}
+
+html[data-farmconnect-layout="tablet"] .fc-customer-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html[data-farmconnect-layout="tablet"] .fc-customer-dashboard-body {
+  grid-template-columns: minmax(0, 1.35fr) minmax(250px, 0.8fr);
+}
+
+html[data-farmconnect-layout="tablet"] .fc-customer-dashboard {
+  max-width: 72rem;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-customer-phone-dashboard {
+  display: block;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-customer-dashboard-desktop {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  html[data-farmconnect-layout="tablet"] .fc-customer-dashboard-body {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-farmconnect-layout="tablet"] .fc-customer-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

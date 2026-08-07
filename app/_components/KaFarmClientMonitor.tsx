@@ -25,6 +25,50 @@ type KaFarmClientIncident = {
 
 const STORAGE_KEY = "farmconnect_kafarm_incidents";
 const MAX_INCIDENTS = 25;
+const DEVICE_SESSION_KEY = "farmconnect_device_audit_session";
+
+type FarmConnectDeviceType = "phone" | "tablet" | "desktop";
+
+function getDeviceAuditContext() {
+  const width = Math.max(window.innerWidth, 1);
+  const height = Math.max(window.innerHeight, 1);
+  const ua = navigator.userAgent.toLowerCase();
+  const isIPad = /ipad/.test(ua) || (/macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const isTabletUa = isIPad || /tablet|android(?!.*mobile)|kindle|silk/.test(ua);
+  const isPhoneUa = /iphone|ipod|android.*mobile|windows phone|opera mini/.test(ua);
+  const deviceType: FarmConnectDeviceType = isPhoneUa || width < 640
+    ? "phone"
+    : isTabletUa || width < 1100
+      ? "tablet"
+      : "desktop";
+  const browserFamily = /edg\//.test(ua) ? "Edge" : /firefox\//.test(ua) ? "Firefox" : /samsungbrowser\//.test(ua) ? "Samsung Internet" : /chrome\//.test(ua) ? "Chrome" : /safari\//.test(ua) ? "Safari" : "Other";
+  const osFamily = /windows/.test(ua) ? "Windows" : /android/.test(ua) ? "Android" : /iphone|ipad|ipod/.test(ua) ? "iOS/iPadOS" : /macintosh|mac os/.test(ua) ? "macOS" : /linux/.test(ua) ? "Linux" : "Other";
+  const layoutMode = deviceType === "phone" ? "mobile" : deviceType === "tablet" ? "tablet" : "desktop";
+  document.documentElement.dataset.farmconnectDevice = deviceType;
+  document.documentElement.dataset.farmconnectLayout = layoutMode;
+  return {
+    deviceType,
+    layoutMode,
+    viewportWidth: width,
+    viewportHeight: height,
+    orientation: width >= height ? "landscape" : "portrait",
+    browserFamily,
+    osFamily,
+    touchCapable: navigator.maxTouchPoints > 0 || window.matchMedia("(pointer: coarse)").matches,
+  };
+}
+
+function getDeviceSessionKey() {
+  try {
+    const existing = window.sessionStorage.getItem(DEVICE_SESSION_KEY);
+    if (existing) return existing;
+    const created = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `device-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    window.sessionStorage.setItem(DEVICE_SESSION_KEY, created);
+    return created;
+  } catch {
+    return `device-${Date.now()}`;
+  }
+}
 
 function getPageContext() {
   if (typeof window === "undefined") return { route: "server", role: "unknown" };
@@ -296,9 +340,41 @@ export function KaFarmClientMonitor() {
     const originalConsoleError = console.error.bind(console);
     const originalConsoleWarn = console.warn.bind(console);
     let mutationCount = 0;
+    let deviceAuditTimer: number | undefined;
     const mutationObserver = new MutationObserver(() => {
       mutationCount += 1;
     });
+
+    const recordDeviceUsage = async () => {
+      try {
+        const context = getPageContext();
+        const device = getDeviceAuditContext();
+        await supabase.rpc("kafarm_record_device_usage", {
+          p_session_key: getDeviceSessionKey(),
+          p_app_role: context.role,
+          p_route: context.route,
+          p_device_type: device.deviceType,
+          p_layout_mode: device.layoutMode,
+          p_viewport_width: device.viewportWidth,
+          p_viewport_height: device.viewportHeight,
+          p_orientation: device.orientation,
+          p_browser_family: device.browserFamily,
+          p_os_family: device.osFamily,
+          p_touch_capable: device.touchCapable,
+          p_metadata: { source: "KaFarmClientMonitor", capture: "privacy_safe" },
+        });
+      } catch {
+        // Device audit must never block the user or create a second incident.
+      }
+    };
+
+    const scheduleDeviceAudit = (delay = 700) => {
+      window.clearTimeout(deviceAuditTimer);
+      deviceAuditTimer = window.setTimeout(recordDeviceUsage, delay);
+    };
+
+    const onDeviceViewportChange = () => scheduleDeviceAudit(900);
+    const onDeviceRouteAction = () => scheduleDeviceAudit(1000);
 
     const tracePerformance = () => {
       try {
@@ -404,7 +480,7 @@ export function KaFarmClientMonitor() {
         const response = await originalFetch(input, init);
         if (!response.ok) {
           const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-          const isMonitorRpc = url.includes("/rest/v1/rpc/kafarm_record_incident");
+          const isMonitorRpc = url.includes("/rest/v1/rpc/kafarm_record_incident") || url.includes("/rest/v1/rpc/kafarm_record_device_usage");
           const isExpectedLoginFailure = url.includes("/auth/v1/token") && response.status === 400;
           const isLocalRscRequest = url.includes("localhost:3000") && url.includes("_rsc=");
           if (isMonitorRpc || isExpectedLoginFailure || isLocalRscRequest) return response;
@@ -426,7 +502,7 @@ export function KaFarmClientMonitor() {
       } catch (error) {
         const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
         const isLocalRscRequest = url.includes("localhost:3000") && url.includes("_rsc=");
-        if (url.includes("/rest/v1/rpc/kafarm_record_incident") || isLocalRscRequest) throw error;
+        if (url.includes("/rest/v1/rpc/kafarm_record_incident") || url.includes("/rest/v1/rpc/kafarm_record_device_usage") || isLocalRscRequest) throw error;
         saveIncident({
           title: "Network/API request blocked",
           category: "API",
@@ -499,7 +575,8 @@ export function KaFarmClientMonitor() {
               safeRecovery: "Leave the current page stable and show a clear validation/retry message instead of silent failure.",
             });
           }
-        }, 900);
+        // Next.js client navigation can take several seconds while protected pages verify the session.
+        }, 5000);
       } catch {
         // Click monitoring should never block a real click.
       }
@@ -510,18 +587,28 @@ export function KaFarmClientMonitor() {
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onUnhandled);
     window.addEventListener("load", runPageQualityScan);
+    window.addEventListener("resize", onDeviceViewportChange);
+    window.addEventListener("orientationchange", onDeviceViewportChange);
+    window.addEventListener("popstate", onDeviceRouteAction);
     document.addEventListener("click", onClickCapture, true);
+    document.addEventListener("click", onDeviceRouteAction, true);
     runPageQualityScan();
+    scheduleDeviceAudit(500);
 
     return () => {
       window.fetch = originalFetch;
       console.error = originalConsoleError;
       console.warn = originalConsoleWarn;
       mutationObserver.disconnect();
+      window.clearTimeout(deviceAuditTimer);
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onUnhandled);
       window.removeEventListener("load", runPageQualityScan);
+      window.removeEventListener("resize", onDeviceViewportChange);
+      window.removeEventListener("orientationchange", onDeviceViewportChange);
+      window.removeEventListener("popstate", onDeviceRouteAction);
       document.removeEventListener("click", onClickCapture, true);
+      document.removeEventListener("click", onDeviceRouteAction, true);
     };
   }, []);
 

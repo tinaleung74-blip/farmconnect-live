@@ -153,6 +153,27 @@ export type KaFarmReaderRun = {
   contractCoverage: KaFarmSystemSnapshot["contractCoverage"];
   safety: KaFarmSystemSnapshot["safety"];
   buddyReport: string;
+  deviceUsage?: {
+    ok: boolean;
+    error: string | null;
+    periodDays: number;
+    totalSessions: number;
+    totalRouteViews: number;
+    deviceTypes: Array<{
+      deviceType: "desktop" | "tablet" | "phone";
+      layoutMode: string;
+      uniqueSessions: number;
+      routeViews: number;
+      lastSeenAt: string | null;
+    }>;
+    recentRoutes: Array<{
+      route: string;
+      appRole: string;
+      deviceType: string;
+      views: number;
+      lastSeenAt: string;
+    }>;
+  };
 };
 
 export const kaFarmReaderScopes: KaFarmReaderScope[] = ["whole-app", "system", "customer", "admin", "caretaker", "database", "flow"];

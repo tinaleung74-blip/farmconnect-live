@@ -226,6 +226,61 @@ export default function KaFarmWholeAppReaderPage() {
                 ))}
               </div>
 
+              <section className="rounded-3xl border border-[#cfe3d2] bg-[#f8fff9] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-black text-[#0f3f2c]">Device Usage / Layout Mode</h3>
+                    <p className="mt-1 text-xs font-bold text-[#637064]">
+                      Privacy-safe 30-day summary. Walang raw fingerprint, IP address, password, token, o full user-agent na sine-save.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[#e8fff2] px-3 py-1 text-[10px] font-black uppercase text-[#1d7a45]">
+                    Server audit
+                  </span>
+                </div>
+
+                {!result.deviceUsage?.ok ? (
+                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+                    Device audit is not active yet. Run <span className="font-mono">database/applied/042_kafarm_device_usage_audit.sql</span>, then open the app once from desktop, tablet, and phone.
+                  </div>
+                ) : (
+                  <>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                      {result.deviceUsage.deviceTypes.map((item) => (
+                        <div key={item.deviceType} className="rounded-2xl border border-[#dbe6d7] bg-white p-4">
+                          <p className="text-[10px] font-black uppercase text-[#1d7a45]">{item.layoutMode} layout</p>
+                          <p className="mt-1 text-lg font-black capitalize text-[#14241b]">{item.deviceType}</p>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-[#637064]">
+                            <span>{item.uniqueSessions} session(s)</span>
+                            <span>{item.routeViews} route view(s)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-[#dbe6d7] bg-white">
+                      <div className="border-b border-[#e8eee5] px-4 py-3">
+                        <p className="text-xs font-black uppercase text-[#0f3f2c]">Recent device routes</p>
+                      </div>
+                      {!result.deviceUsage.recentRoutes.length ? (
+                        <p className="p-4 text-sm font-bold text-[#637064]">Wala pang recorded authenticated device usage.</p>
+                      ) : (
+                        <div className="max-h-56 divide-y divide-[#edf1ea] overflow-y-auto">
+                          {result.deviceUsage.recentRoutes.map((item) => (
+                            <div key={`${item.deviceType}-${item.appRole}-${item.route}`} className="grid gap-1 px-4 py-3 text-xs font-bold sm:grid-cols-[90px_100px_1fr_auto] sm:items-center">
+                              <span className="capitalize text-[#1d7a45]">{item.deviceType}</span>
+                              <span className="capitalize text-[#637064]">{item.appRole}</span>
+                              <span className="break-all text-[#14241b]">{item.route}</span>
+                              <span className="text-[#637064]">{item.views} view(s)</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </section>
+
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#f1f5ed] p-3 text-xs font-bold text-[#526053]">
                 <span>Snapshot: {new Date(result.snapshot.generatedAt).toLocaleString()}</span>
                 <span>Source: {result.snapshot.sourceFingerprint.slice(0, 12)}</span>

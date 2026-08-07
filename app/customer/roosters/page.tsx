@@ -1,2 +1,2 @@
-import { CustomerRoosters } from "@/lib/farmconnect-v1";
-export default CustomerRoosters;
+import { CustomerRoostersResponsive } from "@/lib/farmconnect-v1";
+export default CustomerRoostersResponsive;

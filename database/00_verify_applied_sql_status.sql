@@ -89,6 +89,10 @@ with expected(migration, kind, object_name) as (
     ('041_inbox_read_state.sql','column','inbox_items.read_at'),
     ('041_inbox_read_state.sql','function','customer_mark_inbox_item_read'),
 
+    ('042_kafarm_device_usage_audit.sql','table','kafarm_device_usage_logs'),
+    ('042_kafarm_device_usage_audit.sql','function','kafarm_record_device_usage'),
+    ('042_kafarm_device_usage_audit.sql','view','admin_kafarm_device_usage_summary'),
+
     ('026_care_task_assignment_customer_animal_fk_fix.sql','function','admin_assign_care_request'),
     ('026_care_task_assignment_customer_animal_fk_fix.sql','table','caretaker_tasks'),
     ('026_care_task_assignment_customer_animal_fk_fix.sql','table','farm_care_requests'),

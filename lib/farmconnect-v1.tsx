@@ -331,6 +331,21 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
   const router = useRouter();
   const links = nav[role];
   const headerLinks = role === "admin" ? links.filter(([label]) => ["Dashboard", "Customer Requests", "Caretaker Management", "Farm Operations", "Issue Management", "Account Verification"].includes(label)) : links;
+  const customerPhoneLinks = [
+    ["Home", "/customer/dashboard", "home"],
+    ["Roosters", "/customer/roosters", "rooster"],
+    ["Farm Buy", "/customer/farm-buy", "bag"],
+    ["Requests", "/customer/farm-requests", "clipboard"],
+    ["More", "/customer/settings", "settings"],
+  ] as const;
+  const customerTabletLinks = [
+    ["Dashboard", "/customer/dashboard", "home"],
+    ["My Roosters", "/customer/roosters", "rooster"],
+    ["Farm Buy", "/customer/farm-buy", "bag"],
+    ["Requests", "/customer/farm-requests", "clipboard"],
+    ["Wallet", "/customer/wallet", "wallet"],
+    ["Inbox", "/customer/inbox", "inbox"],
+  ] as const;
   const [inboxCount,setInboxCount]=useState(0);
   const [accessReady,setAccessReady]=useState(false);
   useEffect(()=>{
@@ -376,7 +391,7 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
               <small className="block max-w-32 truncate text-[10px] font-bold text-white/78 sm:max-w-48 sm:text-xs">{title}</small>
             </span>
           </Link>
-          <nav className="hidden items-center gap-2 lg:flex">
+          <nav className="fc-desktop-header-nav hidden items-center gap-2 lg:flex">
             {headerLinks.map(([label, href, icon]) => {
               const navCard = role === "customer" ? customerNavCardStyle[label] : undefined;
               return (
@@ -405,14 +420,35 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-7xl px-3 py-4 pb-28 drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] sm:px-4 sm:py-6">{children}</div>
-      <nav aria-label={`${role} mobile navigation`} className="fc-scroll-row fixed bottom-2 left-1/2 z-40 flex w-[calc(100%-16px)] max-w-3xl -translate-x-1/2 snap-x gap-1 overflow-x-auto rounded-2xl border border-[#ded8c9] bg-white/96 p-2 shadow-xl backdrop-blur lg:hidden">
-        {headerLinks.map(([label, href, icon]) => (
-          <Link key={href} href={href} className="grid min-w-[76px] flex-1 snap-start place-items-center rounded-xl px-2 py-2 text-center text-[10px] font-bold sm:min-w-[92px] sm:text-[11px]">
-            <FarmImageIcon name={icon as IconName} className="mb-1 h-7 w-7 rounded-md" fallbackClassName="mb-1 h-5 w-5" /> {label.split(" ")[0]}
-          </Link>
-        ))}
-      </nav>
+      {role === "customer" && (
+        <nav aria-label="Customer tablet navigation" className="fc-customer-tablet-nav sticky top-[72px] z-30 mx-auto hidden max-w-5xl items-center justify-center gap-2 border-b border-[#d7e2d5] bg-white/94 px-3 py-2 shadow-md backdrop-blur">
+          {customerTabletLinks.map(([label, href, icon]) => (
+            <Link key={href} href={href} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-[#dbe6d7] bg-[#fbfbf6] px-3 py-2 text-center text-xs font-black text-[#174d36] transition hover:border-[#1f6b45] hover:bg-emerald-50">
+              <FarmImageIcon name={icon as IconName} className="h-7 w-7 rounded-md" fallbackClassName="h-5 w-5" />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
+      <div className={`fc-shell-content mx-auto max-w-7xl px-3 py-4 drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] sm:px-4 sm:py-6 ${role === "customer" ? "pb-28 sm:pb-6 lg:pb-28" : "pb-28"}`}>{children}</div>
+      {role === "customer" ? (
+        <nav aria-label="Customer phone navigation" className="fc-customer-mobile-nav fixed bottom-2 left-1/2 z-40 flex w-[calc(100%-16px)] max-w-md -translate-x-1/2 gap-1 rounded-2xl border border-[#ded8c9] bg-white/96 p-2 shadow-xl backdrop-blur sm:hidden">
+          {customerPhoneLinks.map(([label, href, icon]) => (
+            <Link key={href} href={href} className="grid min-w-0 flex-1 place-items-center rounded-xl px-1 py-2 text-center text-[10px] font-black text-[#174d36]">
+              <FarmImageIcon name={icon as IconName} className="mb-1 h-7 w-7 rounded-md" fallbackClassName="mb-1 h-5 w-5" />
+              <span className="truncate">{label}</span>
+            </Link>
+          ))}
+        </nav>
+      ) : (
+        <nav aria-label={`${role} mobile navigation`} className="fc-scroll-row fixed bottom-2 left-1/2 z-40 flex w-[calc(100%-16px)] max-w-3xl -translate-x-1/2 snap-x gap-1 overflow-x-auto rounded-2xl border border-[#ded8c9] bg-white/96 p-2 shadow-xl backdrop-blur lg:hidden">
+          {headerLinks.map(([label, href, icon]) => (
+            <Link key={href} href={href} className="grid min-w-[76px] flex-1 snap-start place-items-center rounded-xl px-2 py-2 text-center text-[10px] font-bold sm:min-w-[92px] sm:text-[11px]">
+              <FarmImageIcon name={icon as IconName} className="mb-1 h-7 w-7 rounded-md" fallbackClassName="mb-1 h-5 w-5" /> {label.split(" ")[0]}
+            </Link>
+          ))}
+        </nav>
+      )}
     </main>
   );
 }
@@ -455,18 +491,293 @@ function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone
   return <span className={"rounded-full px-3 py-1 text-xs font-black " + c}>{children}</span>;
 }
 
+type CustomerDashboardProfile = {
+  display_name?: string | null;
+  full_name?: string | null;
+  wallet_balance?: number | string | null;
+  kyc_status?: string | null;
+  verification_status?: string | null;
+};
+type CustomerDashboardAnimal = {
+  id: string;
+  animal_name?: string | null;
+  animal_code?: string | null;
+  status?: string | null;
+  acquired_from?: string | null;
+  acquired_at?: string | null;
+  source_product_id?: string | null;
+  source_product_name?: string | null;
+  breed_snapshot?: string | null;
+  bloodline_snapshot?: string | null;
+  sale_status?: string | null;
+  approved_sale_price?: number | string | null;
+  ownership_metadata?: Record<string, unknown> | null;
+};
+type CustomerDashboardRequest = {
+  id?: string;
+  status?: string | null;
+  review_status?: string | null;
+  amount?: number | string | null;
+  amount_expected?: number | string | null;
+  created_at?: string | null;
+};
+type CustomerDashboardTransaction = CustomerDashboardRequest & {
+  title?: string | null;
+  transaction_type?: string | null;
+  type?: string | null;
+  amount_value?: number | string | null;
+};
+type CustomerDashboardInbox = {
+  id: string;
+  created_at?: string | null;
+  title?: string | null;
+  subject?: string | null;
+  message?: string | null;
+  body?: string | null;
+  description?: string | null;
+};
+type CustomerDashboardState = {
+  loadedAt: number;
+  profile: CustomerDashboardProfile | null;
+  roosters: CustomerDashboardAnimal[];
+  inventory: Record<string, unknown>[];
+  careRequests: CustomerDashboardRequest[];
+  payments: CustomerDashboardRequest[];
+  transactions: CustomerDashboardTransaction[];
+  inbox: CustomerDashboardInbox[];
+  careLogs: CareLogRecord[];
+};
+type CustomerDashboardIconName = "bird" | "feather" | "shopping-cart" | "triangle-alert" | "camera" | "wallet-cards" | "clipboard-list" | "image" | "activity" | "bell";
+const customerDashboardIconPath: Record<CustomerDashboardIconName, string> = {
+  bird: "/farmconnect/dashboard-icons/bird.svg",
+  feather: "/farmconnect/dashboard-icons/feather.svg",
+  "shopping-cart": "/farmconnect/dashboard-icons/shopping-cart.svg",
+  "triangle-alert": "/farmconnect/dashboard-icons/triangle-alert.svg",
+  camera: "/farmconnect/dashboard-icons/camera.svg",
+  "wallet-cards": "/farmconnect/dashboard-icons/wallet-cards.svg",
+  "clipboard-list": "/farmconnect/dashboard-icons/clipboard-list.svg",
+  image: "/farmconnect/dashboard-icons/image.svg",
+  activity: "/farmconnect/dashboard-icons/activity.svg",
+  bell: "/farmconnect/dashboard-icons/bell.svg",
+};
+function CustomerDashboardIcon({ name, className = "h-5 w-5" }: { name: CustomerDashboardIconName; className?: string }) {
+  const mask = `url(${customerDashboardIconPath[name]})`;
+  return <span aria-hidden="true" className={`inline-block shrink-0 bg-current ${className}`} style={{ WebkitMaskImage: mask, maskImage: mask, WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat", WebkitMaskPosition: "center", maskPosition: "center", WebkitMaskSize: "contain", maskSize: "contain" }} />;
+}
+
 export function CustomerHome() {
-  const cards = [
-    { t: "My Roosters", d: "Premium rooster assets, care records, caretaker logs.", h: "/customer/roosters", img: "/farmconnect/icons/my-rooster.png", bg: "linear-gradient(135deg, #e4ffe9 0%, #fff17a 48%, #dcecff 100%)", border: "#f6b64a", chipBg: "#fff0bd", chipText: "#8a4b00" },
-    { t: "Farm Buy", d: "Add products to cart, buy with wallet, cash in if short.", h: "/customer/farm-buy", img: "/farmconnect/icons/farm-buy.png", bg: "linear-gradient(135deg, #dcecff 0%, #fff17a 45%, #e4ffe9 100%)", border: "#1f5db8", chipBg: "#e4eeff", chipText: "#0f3f91" },
-    { t: "Farm Requests", d: "Choose rooster, service, note, then send request.", h: "/customer/farm-requests", img: "/farmconnect/icons/farm-request.png", bg: "linear-gradient(135deg, #e4ffe9 0%, #dcecff 48%, #fff17a 100%)", border: "#d92525", chipBg: "#ffe2de", chipText: "#9b1c1c" },
-    { t: "Wallet", d: "Cash-in, withdraw, payout account, transaction records.", h: "/customer/wallet", img: "/farmconnect/icons/farm-wallet.png", bg: "linear-gradient(135deg, #dcecff 0%, #e4ffe9 48%, #fff17a 100%)", border: "#0d4fb3", chipBg: "#dceaff", chipText: "#0d3f8f" },
-    { t: "Inbox", d: "Receipts, caretaker updates, KYC notices, and alerts.", h: "/customer/inbox", img: "/farmconnect/icons/farm-inbox.png", bg: "linear-gradient(135deg, #dcecff 0%, #fff17a 52%, #e4ffe9 100%)", border: "#1263c7", chipBg: "#e2efff", chipText: "#104d9a" },
-    { t: "Support", d: "Ask Ka-Farm first, then open live chat when needed.", h: "/customer/support", img: "/farmconnect/icons/support.png", bg: "linear-gradient(135deg, #e4ffe9 0%, #dcecff 50%, #fff17a 100%)", border: "#2367c9", chipBg: "#fff0b8", chipText: "#754800" },
-    { t: "Inventory", d: "Customer-owned feeds, vitamins, supplies, and deductions.", h: "/customer/inventory", img: "/farmconnect/icons/farm-bag.png", bg: "linear-gradient(135deg, #fff17a 0%, #dcecff 48%, #e4ffe9 100%)", border: "#f2b600", chipBg: "#fff0a8", chipText: "#7b5200" },
-    { t: "Settings", d: "Profile, KYC, contact details, password, and wallet PIN.", h: "/customer/settings", img: "/farmconnect/icons/farm-settings.png", bg: "linear-gradient(135deg, #dcecff 0%, #fff17a 48%, #e4ffe9 100%)", border: "#1d66d1", chipBg: "#e1ecff", chipText: "#0e459b" },
-  ];
-  return <Shell role="customer" title="Customer App"><PageTitle title="Customer Home" text="A simple command center for roosters, buying, requests, wallet, inbox, and support." icon="home" /><KaFarm>Start with My Roosters if you want to check care. Use Farm Buy for products and Farm Requests for services.</KaFarm><div className="mt-5 grid max-h-[640px] gap-4 overflow-y-auto pr-2 md:grid-cols-2 xl:grid-cols-4">{cards.map(card=><Link key={card.h} href={card.h} style={{ background: card.bg, borderColor: card.border }} className="group rounded-2xl border p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><div className="flex items-start justify-between gap-3"><span className="grid h-20 w-20 place-items-center rounded-2xl bg-white/75 p-1 shadow-sm ring-1 ring-white/80"><img src={card.img} alt="" className="h-16 w-16 object-contain transition group-hover:scale-105" /></span><span style={{ backgroundColor: card.chipBg, color: card.chipText }} className="rounded-full px-3 py-1 text-xs font-black shadow-sm">Open</span></div><h2 className="mt-4 text-xl font-black text-[#17251d]">{card.t}</h2><p className="mt-2 text-sm font-bold leading-6 text-[#526056]">{card.d}</p></Link>)}</div></Shell>;
+  const [greeting, setGreeting] = useState("Welcome back");
+  const [loadNote, setLoadNote] = useState("Checking live farm records");
+  const [dashboard, setDashboard] = useState<CustomerDashboardState>({
+    loadedAt: 0,
+    profile: null,
+    roosters: [],
+    inventory: [],
+    careRequests: [],
+    payments: [],
+    transactions: [],
+    inbox: [],
+    careLogs: [],
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    const loadDashboard = async () => {
+      const hour = new Date().getHours();
+      setGreeting(hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
+      setLoadNote("Checking live farm records");
+      try {
+        const profile = await getCurrentProfile();
+        if (!profile || !mounted) return;
+        const results = await Promise.allSettled([
+          getCustomerOwnedRoosters(),
+          getCustomerInventoryItems(),
+          getCustomerCareRequests(),
+          getCustomerManualPaymentRequests(),
+          getWalletTransactions(profile.id),
+          getInboxItems(profile.id),
+          getCareLogRecords(),
+        ]);
+        if (!mounted) return;
+        const rows = <T,>(index: number) => results[index].status === "fulfilled" ? results[index].value as T[] : [];
+        setDashboard({
+          loadedAt: Date.now(),
+          profile: profile as CustomerDashboardProfile,
+          roosters: rows<CustomerDashboardAnimal>(0),
+          inventory: rows<Record<string, unknown>>(1),
+          careRequests: rows<CustomerDashboardRequest>(2),
+          payments: rows<CustomerDashboardRequest>(3),
+          transactions: rows<CustomerDashboardTransaction>(4),
+          inbox: rows<CustomerDashboardInbox>(5),
+          careLogs: rows<CareLogRecord>(6),
+        });
+        const failed = results.filter(result => result.status === "rejected").length;
+        setLoadNote(failed ? `${failed} record source${failed === 1 ? "" : "s"} need refresh` : "Live records updated");
+      } catch {
+        if (mounted) setLoadNote("Live records could not refresh");
+      }
+    };
+    void loadDashboard();
+    const onFocus = () => void loadDashboard();
+    window.addEventListener("focus", onFocus);
+    return () => { mounted = false; window.removeEventListener("focus", onFocus); };
+  }, []);
+
+  const profile = dashboard.profile || {};
+  const ownedRoosters = (dashboard.roosters || []).filter(isRealOwnedAnimal);
+  const featured = ownedRoosters[0] || null;
+  const featureMeta = (featured?.ownership_metadata || {}) as Record<string, string | number | null | undefined>;
+  const careLogs = dashboard.careLogs || [];
+  const careRequests = dashboard.careRequests || [];
+  const payments = dashboard.payments || [];
+  const transactions = dashboard.transactions || [];
+  const inbox = dashboard.inbox || [];
+  const normalizedStatus = (row: CustomerDashboardRequest) => String(row.status || row.review_status || "").toLowerCase();
+  const pendingStatuses = ["pending", "open", "for_review", "needs_review", "needs_info", "awaiting_payment", "submitted"];
+  const approvedStatuses = ["approved", "paid", "assigned", "active", "in_progress"];
+  const completedStatuses = ["completed", "released", "fulfilled", "done"];
+  const allRequests = [...careRequests, ...payments];
+  const requestCount = (statuses: string[]) => allRequests.filter(row => statuses.includes(normalizedStatus(row))).length;
+  const attentionCount = allRequests.filter(row => ["rejected", "needs_info", "backjob", "failed"].includes(normalizedStatus(row))).length;
+  const growingCount = ownedRoosters.filter(row => /chick|starter|young|growing/i.test(`${row.source_product_name || ""} ${String(row.ownership_metadata?.stage || "")}`)).length;
+  const readyForSale = ownedRoosters.filter(row => Number(row.approved_sale_price || 0) > 0 || /price_ready|approved_for_sale/i.test(String(row.sale_status || ""))).length;
+  const availableBalance = Number(profile.wallet_balance || 0);
+  const approvedEarnings = transactions.reduce((sum: number, row) => {
+    const status = normalizedStatus(row);
+    const amount = Number(row.amount || row.amount_value || 0);
+    return amount > 0 && (!status || completedStatuses.concat("approved").includes(status)) ? sum + amount : sum;
+  }, 0);
+  const pendingFunds = payments.filter(row => pendingStatuses.includes(normalizedStatus(row))).reduce((sum: number, row) => sum + Number(row.amount_expected || row.amount || 0), 0);
+  const kycReady = ["approved", "verified"].includes(String(profile.kyc_status || profile.verification_status || "").toLowerCase());
+  const displayName = profile.display_name || profile.full_name || "Customer";
+  const acquiredAt = featured?.acquired_at ? new Date(featured.acquired_at) : null;
+  const ageDays = acquiredAt && dashboard.loadedAt && !Number.isNaN(acquiredAt.getTime()) ? Math.max(0, Math.floor((dashboard.loadedAt - acquiredAt.getTime()) / 86400000)) : null;
+  const featureLogs = featured ? careLogs.filter(log => log.rooster === featured.animal_name) : [];
+  const featuredPhoto = String(featureMeta.image_url || featureLogs.find(log => /^https?:\/\//i.test(log.image))?.image || (featured ? "/farmconnect/roosters/fc-stage-1-chick-base.jpg" : ""));
+  const careProgress = featured ? Math.min(100, featureLogs.length * 20) : 0;
+  const recentActivity = [
+    ...inbox.map(row => ({ id: `inbox-${row.id}`, at: row.created_at, title: row.title || row.subject || "Inbox update", text: row.message || row.body || row.description || "Open Inbox to review this update.", href: "/customer/inbox" })),
+    ...transactions.map(row => ({ id: `wallet-${row.id}`, at: row.created_at, title: row.title || String(row.transaction_type || row.type || "Wallet activity").replaceAll("_", " "), text: `${Number(row.amount || 0) >= 0 ? "+" : ""}${peso(Number(row.amount || 0))}`, href: "/customer/wallet" })),
+  ].sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime()).slice(0, 3);
+  const panel = "rounded-xl border border-amber-300/55 bg-[#0b2f24]/90 text-white shadow-[0_12px_28px_rgba(0,0,0,0.24)] backdrop-blur-md";
+  const linkButton = "flex min-h-10 items-center justify-between rounded-lg border border-amber-300/70 px-4 py-2 text-sm font-black text-amber-200 transition hover:bg-amber-300/15";
+
+  return <Shell role="customer" title="Customer App">
+    <section className="fc-customer-phone-dashboard mx-auto hidden max-w-md space-y-3">
+      <div className="rounded-[24px] border border-amber-300/60 bg-[#0c4934]/95 p-4 text-white shadow-xl backdrop-blur">
+        <div className="flex items-center justify-between gap-2 text-[10px] font-black"><span className="inline-flex items-center gap-2 rounded-full bg-emerald-950/35 px-3 py-2"><span className="h-2 w-2 rounded-full bg-emerald-300" />{loadNote}</span><span className="text-white/70">{dashboard.loadedAt ? `Updated ${new Date(dashboard.loadedAt).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}` : "Waiting"}</span></div>
+        <p className="mt-4 text-xs font-black text-amber-200">{greeting},</p><h1 className="mt-1 text-3xl font-black leading-tight">{displayName}</h1><p className="mt-1 text-xs font-bold text-white/70">Here&apos;s how your farm is doing today.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          ["bird", "Total Roosters", ownedRoosters.length, "Owned assets"],
+          ["feather", "Growing", growingCount, "Active care"],
+          ["shopping-cart", "Ready for Sale", readyForSale, readyForSale ? "Price approved" : "None yet"],
+          ["triangle-alert", "Needs Attention", attentionCount, attentionCount ? "Open requests" : "All clear"],
+        ].map(([icon, label, value, note]) => <div key={String(label)} className="min-h-[96px] rounded-[20px] border border-white/80 bg-white/94 p-3 text-[#163c2d] shadow-lg backdrop-blur"><div className="flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-[#197044]"><CustomerDashboardIcon name={icon as CustomerDashboardIconName} className="h-4 w-4" /></span><div><p className="text-[9px] font-black uppercase text-[#63746a]">{label}</p><b className="block text-2xl leading-none">{value}</b><small className="mt-2 block text-[10px] font-bold text-[#708078]">{note}</small></div></div></div>)}
+      </div>
+
+      <section className="overflow-hidden rounded-[24px] border border-white/80 bg-white/96 p-4 text-[#163c2d] shadow-xl backdrop-blur">
+        <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase text-[#25724d]">Featured Rooster</p><h2 className="mt-1 text-2xl font-black">{featured?.animal_name || "No rooster yet"}</h2></div>{featured && <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black text-[#197044]">Growing</span>}</div>
+        {featured ? <><div className="relative mt-3 overflow-hidden rounded-[20px]"><img src={featuredPhoto} alt={featured.animal_name || "Featured rooster"} className="h-48 w-full object-cover" /><span className="absolute bottom-3 left-3 rounded-full bg-[#14613f] px-3 py-2 text-[10px] font-black text-white">Ownership verified</span></div><div className="mt-3 flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase text-[#708078]">FarmConnect ID</p><b className="text-sm text-[#167048]">{featured.animal_code || "Tag pending"}</b></div><span className="rounded-full bg-[#f5f2e8] px-3 py-2 text-[10px] font-black">{String(featureMeta.stage || "Starter Chick")}</span></div><div className="mt-3 grid grid-cols-2 gap-2">{[["Age", ageDays == null ? "Not recorded" : `${ageDays} days owned`],["Weight", featureMeta.weight || featureMeta.latest_weight || "Not recorded"],["Breed", featured.breed_snapshot || featured.bloodline_snapshot || "Recorded breed"],["Caretaker", featureMeta.caretaker_name || "Not assigned"]].map(([label,value])=><div key={String(label)} className="rounded-2xl bg-[#f6f5ee] p-3"><p className="text-[9px] font-black uppercase text-[#708078]">{label}</p><b className="mt-1 block text-xs">{String(value)}</b></div>)}</div><div className="mt-3"><div className="flex justify-between text-[10px] font-black"><span>Care progress</span><span>{careProgress}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-[#dfe8e1]"><div className="h-full rounded-full bg-[#1d7650]" style={{width:`${careProgress}%`}} /></div></div><Link href="/customer/roosters" className="mt-4 flex min-h-11 items-center justify-between rounded-xl bg-[#145f3e] px-4 text-sm font-black text-white">View My Roosters <span>&gt;</span></Link></> : <div className="mt-3 rounded-2xl bg-[#f6f5ee] p-6 text-center"><p className="text-sm font-bold text-[#708078]">Approved rooster purchases will appear here.</p><Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">Open Farm Buy</Link></div>}
+      </section>
+
+      <div className="grid gap-3">
+        <section className="rounded-[22px] bg-white/96 p-4 text-[#163c2d] shadow-lg"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase text-[#708078]">Farm Wallet</p><h2 className="mt-1 text-3xl font-black">{peso(availableBalance)}</h2></div><CustomerDashboardIcon name="wallet-cards" className="h-8 w-8 text-[#197044]" /></div><div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold"><span className="rounded-xl bg-[#f6f5ee] p-3">Approved<br/><b>{peso(approvedEarnings)}</b></span><span className="rounded-xl bg-[#f6f5ee] p-3">Pending<br/><b>{peso(pendingFunds)}</b></span></div><Link href="/customer/wallet" className="mt-3 flex items-center justify-between text-sm font-black text-[#197044]">View Wallet <span>&gt;</span></Link></section>
+        <section className="rounded-[22px] bg-white/96 p-4 text-[#163c2d] shadow-lg"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase text-[#708078]">Requests</p><h2 className="mt-1 text-xl font-black">{requestCount(pendingStatuses)} pending</h2></div><CustomerDashboardIcon name="clipboard-list" className="h-8 w-8 text-[#197044]" /></div><div className="mt-3 flex gap-2 text-xs font-bold"><span className="flex-1 rounded-xl bg-[#f6f5ee] p-3">Approved<br/><b>{requestCount(approvedStatuses)}</b></span><span className="flex-1 rounded-xl bg-[#f6f5ee] p-3">Completed<br/><b>{requestCount(completedStatuses)}</b></span></div><Link href="/customer/farm-requests" className="mt-3 flex items-center justify-between text-sm font-black text-[#197044]">View Requests <span>&gt;</span></Link></section>
+        <section className="rounded-[22px] bg-white/96 p-4 text-[#163c2d] shadow-lg"><p className="text-[10px] font-black uppercase text-[#25724d]">Farm Timeline</p><h2 className="mt-1 text-xl font-black">Growth Updates</h2><div className="mt-3 space-y-2">{careLogs.slice(0,3).map((log,index)=><Link key={`${log.title}-phone-${index}`} href="/customer/care-logs" className="flex items-center gap-3 rounded-xl bg-[#f6f5ee] p-3"><span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-50 text-[#197044]"><CustomerDashboardIcon name={log.type === "Photo" ? "image" : "activity"} className="h-4 w-4" /></span><span className="min-w-0"><b className="block truncate text-sm">{log.title}</b><small className="block truncate text-[#708078]">{log.rooster} - {log.uploaded}</small></span></Link>)}{careLogs.length===0&&<p className="rounded-xl bg-[#f6f5ee] p-4 text-xs font-bold text-[#708078]">Verified farm updates will appear here.</p>}</div></section>
+      </div>
+    </section>
+
+    <section className="fc-customer-dashboard fc-customer-dashboard-desktop mx-auto max-w-6xl space-y-3">
+      <div className={`${panel} flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between`}>
+        <div><h1 className="text-2xl font-black leading-tight sm:text-3xl lg:text-4xl">{greeting}, {displayName}</h1><p className="mt-1 text-sm font-bold text-white/75">Here&apos;s how your farm is doing today.</p></div>
+        <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-white/75"><span className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-black/15 px-3 py-2"><span className="h-2 w-2 rounded-full bg-emerald-400" />{loadNote}</span><span>{dashboard.loadedAt ? `Updated ${new Date(dashboard.loadedAt).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}` : "Waiting for records"}</span></div>
+      </div>
+
+      <div className="fc-customer-summary-grid grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {[
+          ["bird", "Total Roosters", ownedRoosters.length],
+          ["feather", "Growing", growingCount],
+          ["shopping-cart", "Ready for Sale", readyForSale],
+          ["triangle-alert", "Needs Attention", attentionCount],
+        ].map(([icon, label, value]) => <div key={String(label)} className={`${panel} flex min-h-20 items-center gap-3 p-3 sm:p-4`}><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-amber-300/40 text-amber-200"><CustomerDashboardIcon name={icon as CustomerDashboardIconName} /></span><div className="min-w-0"><p className="text-xs font-bold text-white/70 sm:text-sm">{label}</p><b className="mt-1 block text-xl">{value}</b></div></div>)}
+      </div>
+
+      <div className="fc-customer-dashboard-body grid gap-3 lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,1fr)]">
+        <div className="space-y-3">
+          <section className={`${panel} p-4`}>
+            <h2 className="text-lg font-black">Featured Rooster</h2>
+            {featured ? <div className="mt-3 grid gap-4 sm:grid-cols-[165px_1fr]">
+              {featuredPhoto ? <img src={featuredPhoto} alt={featured.animal_name || "Featured rooster"} className="h-44 w-full rounded-xl border border-white/25 object-cover sm:h-[165px]" /> : <div className="grid h-44 w-full place-items-center rounded-xl border border-dashed border-white/30 bg-black/10 text-center text-white/55 sm:h-[165px]"><span><CustomerDashboardIcon name="camera" className="mx-auto h-10 w-10"/><small className="mt-2 block font-bold">Latest verified photo</small></span></div>}
+              <div className="min-w-0"><h3 className="truncate text-2xl font-black">{featured.animal_name || "Owned Rooster"}</h3><p className="mt-1 text-sm font-bold text-amber-200">{featured.animal_code || "Tag pending"}</p><div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm"><span><b className="text-white/60">Age</b><strong className="mt-1 block">{ageDays == null ? "Not recorded" : `${ageDays} days owned`}</strong></span><span><b className="text-white/60">Weight</b><strong className="mt-1 block">{featureMeta.weight || featureMeta.latest_weight || "Not recorded"}</strong></span><span><b className="text-white/60">Breed</b><strong className="mt-1 block">{featured.breed_snapshot || featured.bloodline_snapshot || "Recorded breed"}</strong></span><span><b className="text-white/60">Caretaker</b><strong className="mt-1 block">{featureMeta.caretaker_name || "Not assigned"}</strong></span><span><b className="text-white/60">Health</b><strong className="mt-1 block">{featureMeta.health || "Awaiting update"}</strong></span></div><div className="mt-4"><div className="flex justify-between text-xs font-bold text-white/70"><span>Care progress</span><span>{careProgress}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-amber-300" style={{ width: `${careProgress}%` }} /></div></div><Link href="/customer/roosters" className={`${linkButton} mt-4 ml-auto max-w-44`}>View Roosters <span>›</span></Link></div>
+            </div> : <div className="mt-3 grid min-h-44 place-items-center rounded-xl border border-dashed border-white/25 bg-black/10 p-6 text-center"><div><CustomerDashboardIcon name="camera" className="mx-auto h-10 w-10 text-white/45"/><h3 className="mt-3 text-lg font-black">No rooster selected</h3><p className="mt-1 text-sm text-white/65">Approved rooster purchases will appear here.</p><Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-lg bg-amber-300 px-4 py-2 text-sm font-black text-[#173126]">Open Farm Buy</Link></div></div>}
+          </section>
+
+          <section className={`${panel} p-4`}><h2 className="text-lg font-black">Growth Updates</h2><div className="mt-3 space-y-2">{careLogs.slice(0, 4).map((log, index) => <Link key={`${log.title}-${log.uploaded}-${index}`} href="/customer/care-logs" className="flex items-start gap-3 rounded-lg bg-white/7 p-3 transition hover:bg-white/12"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-amber-300/35 text-amber-200"><CustomerDashboardIcon name={log.type === "Photo" ? "image" : "activity"} className="h-4 w-4"/></span><span className="min-w-0"><b className="block truncate">{log.title}</b><span className="mt-1 block text-xs text-white/65">{log.rooster} · {log.uploaded} {log.time}</span></span></Link>)}{careLogs.length === 0 && <div className="grid min-h-32 place-items-center rounded-xl border border-dashed border-white/20 text-center text-sm font-bold text-white/60">Verified feeding, health, weight, and photo updates will appear here.</div>}</div></section>
+
+          <section className={`${panel} p-4`}><h2 className="text-lg font-black">Other Roosters</h2><div className="mt-3 flex gap-2 overflow-x-auto pb-1">{ownedRoosters.slice(1).map(row => { const photo = String(row.ownership_metadata?.image_url || careLogs.find(log => log.rooster === row.animal_name && /^https?:\/\//i.test(log.image))?.image || ""); return <Link key={row.id} href="/customer/roosters" className="flex min-w-48 items-center gap-3 rounded-lg border border-white/15 bg-white/7 p-3">{photo ? <img src={photo} alt="" className="h-12 w-12 rounded-lg object-cover"/> : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-dashed border-white/25 text-white/45"><CustomerDashboardIcon name="camera"/></span>}<span className="min-w-0"><b className="block truncate">{row.animal_name || "Owned rooster"}</b><small className="block truncate text-white/60">{row.animal_code || "Tag pending"}</small></span></Link>; })}{ownedRoosters.length < 2 && <p className="text-sm font-bold text-white/60">No other roosters yet.</p>}</div></section>
+        </div>
+
+        <aside className="space-y-3">
+          <section className={`${panel} p-4`}><div className="flex items-center gap-2 text-amber-200"><CustomerDashboardIcon name="wallet-cards"/><h2 className="text-xl font-black text-white">Farm Wallet</h2></div><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-3"><span className="text-white/70">Available Balance</span><b>{peso(availableBalance)}</b></div><div className="flex justify-between gap-3"><span className="text-white/70">Approved Earnings</span><b>{peso(approvedEarnings)}</b></div><div className="flex justify-between gap-3"><span className="text-white/70">Pending Funds</span><b>{peso(pendingFunds)}</b></div><div className="flex justify-between gap-3"><span className="text-white/70">Withdrawal Eligibility</span><b>{kycReady ? "Eligible" : "KYC required"}</b></div></div><Link href="/customer/wallet" className={`${linkButton} mt-4`}>View Wallet <span>›</span></Link></section>
+
+          <section className={`${panel} p-4`}><div className="flex items-center gap-2 text-amber-200"><CustomerDashboardIcon name="clipboard-list"/><h2 className="text-xl font-black text-white">Requests</h2></div><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between"><span className="text-white/70">Pending</span><b>{requestCount(pendingStatuses)}</b></div><div className="flex justify-between"><span className="text-white/70">Approved</span><b>{requestCount(approvedStatuses)}</b></div><div className="flex justify-between"><span className="text-white/70">Completed</span><b>{requestCount(completedStatuses)}</b></div></div><Link href="/customer/farm-requests" className={`${linkButton} mt-4`}>View Requests <span>›</span></Link></section>
+
+          <section className={`${panel} flex items-center gap-3 p-4`}><img src="/farmconnect/icons/my-rooster.png" alt="KaFarm" className="h-12 w-12 rounded-xl bg-white object-contain"/><div className="min-w-0"><h2 className="text-lg font-black">KaFarm Insight</h2><p className="mt-1 text-sm text-white/65">{attentionCount ? `${attentionCount} request${attentionCount === 1 ? "" : "s"} need your attention.` : ownedRoosters.length ? "No customer request currently needs your response." : "Your first approved rooster will unlock farm insights."}</p></div></section>
+
+          <section className={`${panel} p-4`}><div className="flex items-center gap-2 text-amber-200"><CustomerDashboardIcon name="bell"/><h2 className="text-xl font-black text-white">Latest Activity</h2></div><div className="mt-3 space-y-2">{recentActivity.map(activity => <Link key={activity.id} href={activity.href} className="block rounded-lg bg-white/7 p-3 hover:bg-white/12"><b className="block truncate text-sm capitalize">{activity.title}</b><span className="mt-1 block truncate text-xs text-white/60">{activity.text}</span></Link>)}{recentActivity.length === 0 && <p className="rounded-lg border border-dashed border-white/20 p-4 text-sm font-bold text-white/60">Payments, orders, and caretaker updates will appear here.</p>}</div></section>
+        </aside>
+      </div>
+    </section>
+  </Shell>;
+}
+
+export function CustomerRoostersResponsive() {
+  const [phone, setPhone] = useState(false);
+  const [rows, setRows] = useState<RoosterCard[]>([]);
+  const [selected, setSelected] = useState<RoosterCard | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const update = () => setPhone(document.documentElement.dataset.farmconnectDevice === "phone" || innerWidth < 640);
+    update();
+    addEventListener("resize", update);
+    return () => removeEventListener("resize", update);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    getCustomerOwnedRoosters().then(items => {
+      if (!active) return;
+      const mapped = items.filter(isRealOwnedAnimal).map((row, index) => {
+        const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Bloodline";
+        return { id: row.id, name: row.animal_name || `${breed} Chick`, breed, tag: row.animal_code || `FB-${index + 1}`, stage: row.acquired_from === "farm_buy" ? "Starter Chick" : "Owned Rooster", status: row.status === "sold" ? "Sold" : "In Care", health: "New", value: "Estimating", image: "/farmconnect/roosters/fc-stage-1-chick-base.jpg", pen: "Pending assignment", caretaker: "Pending assignment", saleStatus: row.sale_status || "not_listed", approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price), ownershipMetadata: row.ownership_metadata || {} } as RoosterCard;
+      });
+      setRows(mapped);
+      setSelected(mapped[0] || null);
+    }).catch(() => { if (active) { setRows([]); setSelected(null); } }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  if (!phone) return <CustomerRoosters />;
+  const setup = rows.filter(row => row.caretaker === "Pending assignment").length;
+
+  return <Shell role="customer" title="My Roosters"><section className="mx-auto max-w-md space-y-3 pb-2">
+    <div className="rounded-[24px] border border-white/80 bg-white/96 p-4 shadow-xl"><div className="flex items-center gap-3"><img src="/farmconnect/icons/my-rooster.png" alt="" className="h-16 w-16 rounded-2xl object-contain"/><div><p className="text-[10px] font-black uppercase text-[#24724d]">Your Premium Farm Assets</p><h1 className="mt-1 text-3xl font-black leading-none text-[#17382b]">My Roosters</h1><p className="mt-2 text-xs font-bold leading-5 text-[#65746b]">Follow every rooster from ownership to active farm care.</p></div></div></div>
+    <div className="grid grid-cols-3 divide-x divide-[#d9d8cf] rounded-[20px] border border-white/80 bg-white/95 py-4 text-center shadow-lg">{[["Owned Assets", rows.length], ["In Setup", setup], ["Care Alerts", 0]].map(([label,value]) => <div key={String(label)}><p className="text-[8px] font-black uppercase text-[#6c776f]">{label}</p><b className="mt-1 block text-xl text-[#166844]">{value}</b></div>)}</div>
+    <div><div className="flex items-end justify-between"><div><p className="text-[10px] font-black uppercase text-amber-200">Your Collection</p><h2 className="mt-1 text-lg font-black text-white">Select a rooster</h2></div><span className="text-[10px] font-black text-white/70">Swipe -&gt;</span></div><div className="fc-scroll-row mt-2 flex snap-x gap-2 overflow-x-auto pb-2">{rows.map(row => <button key={row.id} onClick={() => setSelected(row)} className={`flex min-w-[255px] snap-start items-center gap-3 rounded-[18px] border p-2 text-left shadow-lg ${selected?.id === row.id ? "border-amber-300 bg-emerald-50" : "border-white/80 bg-white/95"}`}><img src={row.image} alt="" className="h-16 w-20 rounded-xl object-cover"/><span className="min-w-0 flex-1"><small className="block text-[8px] font-black uppercase text-[#25724d]">Owned Rooster</small><b className="block truncate text-sm text-[#17382b]">{row.name}</b><span className="block truncate text-[10px] font-bold text-[#708078]">{row.tag}</span></span><span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-50 text-xs font-black text-[#197044]">{selected?.id === row.id ? "OK" : ">"}</span></button>)}</div></div>
+    {loading && <div className="rounded-[22px] bg-white/95 p-6 text-center text-sm font-black shadow-lg">Loading your rooster records...</div>}
+    {!loading && !selected && <div className="rounded-[22px] bg-white/95 p-6 text-center shadow-lg"><h2 className="text-xl font-black">No roosters yet</h2><Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">Open Farm Buy</Link></div>}
+    {selected && <section className="rounded-[24px] border border-white/80 bg-white/96 p-3 text-[#17382b] shadow-xl"><div className="relative overflow-hidden rounded-[20px]"><img src={selected.image} alt={selected.name} className="h-64 w-full object-cover"/><div className="absolute inset-x-0 top-0 flex justify-between p-3"><span className="rounded-full bg-[#145f3e] px-3 py-2 text-[9px] font-black text-white">Ownership verified</span><span className="rounded-full bg-[#145f3e] px-3 py-2 text-[9px] font-black text-white">{selected.status}</span></div><div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-16 text-white"><span className="rounded-full bg-amber-300 px-3 py-1 text-[9px] font-black uppercase text-[#17382b]">{selected.stage}</span><h2 className="mt-3 text-3xl font-black">{selected.name}</h2><p className="mt-1 text-xs font-bold text-white/75">{selected.tag}</p></div></div>
+      <div className="mt-3 grid grid-cols-3 gap-2">{[["Verified", "Ownership"], ["Protected", "Farm record"], ["Monitored", "Care status"]].map(([title,caption]) => <div key={title} className="rounded-xl bg-[#f5f5ef] p-2 text-center"><b className="block text-[9px] text-[#166844]">{title}</b><small className="text-[8px] text-[#708078]">{caption}</small></div>)}</div>
+      <div className="mt-3 rounded-2xl border border-[#dfe5dc] bg-[#f8f8f2] p-3"><div className="flex justify-between"><div><p className="text-[9px] font-black uppercase text-[#25724d]">Farm Setup Journey</p><b className="mt-1 block text-sm">Waiting for farm assignment</b></div><b className="text-sm text-[#166844]">42%</b></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[#dce5dd]"><div className="h-full w-[42%] rounded-full bg-[#1c704b]"/></div><div className="mt-3 grid grid-cols-3 gap-1 text-center text-[9px] font-bold"><span className="rounded-lg bg-emerald-50 p-2">OK<br/>Purchased</span><span className="rounded-lg bg-amber-50 p-2">2<br/>Assignment</span><span className="rounded-lg bg-[#eef3f8] p-2">3<br/>Farm care</span></div></div>
+      <div className="mt-3 grid grid-cols-2 gap-2"><Info label="Health" value="New & Healthy"/><Info label="Est. Value" value={selected.value}/><Info label="Bloodline" value={selected.breed}/><Info label="Pen & Caretaker" value={selected.caretaker}/></div>
+      <div className="mt-3 rounded-2xl bg-[#f5f5ef] p-3"><p className="text-[9px] font-black uppercase text-[#25724d]">Latest Care Update</p><b className="mt-1 block text-sm">New purchase recorded</b><p className="mt-1 text-[10px] font-bold leading-5 text-[#708078]">Your receipt is verified. Admin farm assignment is the next step.</p></div>
+      <div className="mt-3 grid grid-cols-3 gap-2"><Link href="/customer/farm-requests" className="rounded-xl bg-[#145f3e] px-2 py-3 text-center text-[10px] font-black text-white">Request Care</Link><Link href="/customer/care-logs" className="rounded-xl bg-[#f0ecdf] px-2 py-3 text-center text-[10px] font-black">Care Logs</Link><Link href={`/customer/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-2 py-3 text-center text-[10px] font-black">Sell</Link></div>
+    </section>}
+  </section></Shell>;
 }
 
 export function CustomerRoosters() {
@@ -4079,19 +4390,6 @@ export function LegacyAccessPage({ role }: { role: Role }) {
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

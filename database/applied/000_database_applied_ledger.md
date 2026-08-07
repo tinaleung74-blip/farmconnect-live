@@ -594,3 +594,26 @@ Purpose:
 Expected success output:
 
 - `inbox_read_state_ready = 1`
+
+## 042_kafarm_device_usage_audit.sql
+
+Status: **APPLIED**
+
+Verified from Supabase SQL output:
+
+- `kafarm_device_usage_logs_ready = 1`
+- `kafarm_record_device_usage_ready = 1`
+- `admin_kafarm_device_usage_summary_ready = 1`
+
+Purpose:
+
+- Classify active sessions as phone, tablet, or desktop and record the selected layout mode.
+- Save privacy-safe route/device audit logs on the server without raw fingerprints, IP addresses, secrets, or full user-agent strings.
+- Let active admins and the KaFarm Whole-App Reader review device usage across Customer, Caretaker, and Admin routes.
+- Preserve responsive behavior: desktop layout stays unchanged, while tablet and phone use their dedicated breakpoints.
+
+Expected success output:
+
+- `kafarm_device_usage_logs_ready = 1`
+- `kafarm_record_device_usage_ready = 1`
+- `admin_kafarm_device_usage_summary_ready = 1`
