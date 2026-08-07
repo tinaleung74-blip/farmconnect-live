@@ -123,14 +123,21 @@ const nav = {
 } as const;
 
 const gamefowlBloodlines = [
-  "Hatch", "Kelso", "Sweater", "Roundhead", "Lemon", "Claret", "Albany", "Grey", "Law Grey", "Regular Grey",
-  "Lacy Roundhead", "Boston Roundhead", "Butcher", "Radio", "Whitehackle", "McLean Hatch", "Blueface Hatch",
-  "Yellow Leg Hatch", "Gilmore Hatch", "Spangled Hatch", "Mug", "Sid Taylor", "Blackwater", "Brown Red",
-  "Black McRae", "Harold Brown Grey", "Madigin Grey", "Cardinal Kelso", "Out and Out Kelso", "Jumper Kelso",
-  "Firebird Kelso", "Possum Sweater", "5K Sweater", "5000 Sweater", "Yellow Leg Sweater", "Lemon 84",
-  "Duke Hulsey", "Shamo", "Asil", "Brazilian", "Peruvian", "Spanish Game", "Sweater-Kelso", "Hatch-Claret",
-  "Hatch-Grey", "Lemon-Hatch", "Roundhead-Hatch", "Kelso-Roundhead",
+  "Hatch",
+  "Kelso",
+  "Sweater",
+  "Roundhead",
+  "Lemon",
+  "Claret",
+  "Albany",
+  "Grey",
+  "Lacy Roundhead",
+  "Radio",
+  "Whitehackle",
+  "Yellow Leg Hatch",
 ];
+
+const gamefowlBloodlineKeys = new Set(gamefowlBloodlines.map(bloodline => bloodline.toLowerCase()));
 
 const breedChickProducts = gamefowlBloodlines.map((breed, index) => ({
   id: `breed-chick-${breed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
@@ -1081,7 +1088,17 @@ export function FarmBuy() {
     getFarmProducts()
       .then(rows => {
         if (!mounted || rows.length === 0) return;
-        const mappedProducts: FarmProductCard[] = rows.map(row => {
+        const visibleBloodlines = new Set<string>();
+        const filteredRows = rows.filter(row => {
+          const category = normalizeFarmProductCategory(String(row.category || "Farm Items").replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase()));
+          if (category !== "Breed Chicks" && row.product_type !== "breed_chick") return true;
+          const nameBloodline = String(row.name || "").match(/\(([^)]+)\)/)?.[1];
+          const bloodline = String(row.bloodline || row.breed || nameBloodline || "").trim().toLowerCase();
+          if (!gamefowlBloodlineKeys.has(bloodline) || visibleBloodlines.has(bloodline)) return false;
+          visibleBloodlines.add(bloodline);
+          return true;
+        });
+        const mappedProducts: FarmProductCard[] = filteredRows.map(row => {
           const category = normalizeFarmProductCategory(String(row.category || "Farm Items").replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase()));
           return {
             id: row.id,
@@ -4450,8 +4467,6 @@ export function LegacyAccessPage({ role }: { role: Role }) {
     </main>
   );
 }
-
-
 
 
 

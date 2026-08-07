@@ -617,3 +617,17 @@ Expected success output:
 - `kafarm_device_usage_logs_ready = 1`
 - `kafarm_record_device_usage_ready = 1`
 - `admin_kafarm_device_usage_summary_ready = 1`
+
+## 043_farmbuy_common_gamefowl_bloodlines.sql
+
+Status: **APPLIED** (verified through KaFarm SQL gateway; 12 visible bloodlines)
+
+Purpose:
+
+- Limit the Farm Buy breed-chick catalog to 12 common Philippine gamefowl bloodlines.
+- Keep older product rows and purchase history intact instead of deleting them.
+- Mark catalog visibility in `farm_products.product_metadata` for database auditing.
+
+Expected success output:
+
+- `farmbuy_common_gamefowl_bloodlines_ready = 12`
