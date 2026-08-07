@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   adminReviewCaretakerApplication,
@@ -115,6 +116,7 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 function AdminVerificationShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const links = [
     ["Dashboard", "/admin"],
     ["Customer Requests", "/admin/customer-requests"],
@@ -125,7 +127,7 @@ function AdminVerificationShell({ children }: { children: React.ReactNode }) {
   ];
   async function logout() {
     await supabase.auth.signOut();
-    window.location.assign("/admin/login");
+    router.push("/admin/login");
   }
 
   return <main className="min-h-screen bg-[#f6f3e8] bg-cover bg-center bg-no-repeat text-[#17251d]" style={{ backgroundImage: "linear-gradient(180deg,rgba(255,253,247,.24),rgba(246,243,232,.18)),url('/farmconnect/farmconnect-hero-wallpaper.jpg')", backgroundAttachment: "fixed" }}>

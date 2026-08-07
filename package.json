@@ -7,6 +7,15 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint",
+        "test:db": "node scripts/qa/database-contract.mjs",
+        "test:lint-critical": "node scripts/qa/critical-lint.mjs",
+        "test:business": "node scripts/qa/business-flow-contract.mjs",
+        "test:e2e": "playwright test",
+        "test:e2e:headed": "playwright test --headed",
+        "test:accounts:create": "node scripts/qa/test-accounts.mjs create",
+        "test:accounts:delete": "node scripts/qa/test-accounts.mjs delete",
+        "test:report": "node scripts/qa/build-readiness-report.mjs",
+        "test:readiness": "node scripts/qa/run-readiness.mjs",
         "kafarm:snapshot": "node scripts/kafarm/build-system-snapshot.mjs",
         "predev": "npm run kafarm:snapshot",
         "prebuild": "npm run kafarm:snapshot"
@@ -20,6 +29,7 @@
         "react-dom": "19.2.4"
     },
     "devDependencies": {
+        "@playwright/test": "^1.62.1",
         "@tailwindcss/postcss": "^4",
         "@types/node": "^20",
         "@types/react": "^19",

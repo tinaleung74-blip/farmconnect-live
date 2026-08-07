@@ -347,6 +347,8 @@ export function KaFarmClientMonitor() {
 
     const recordDeviceUsage = async () => {
       try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) return;
         const context = getPageContext();
         const device = getDeviceAuditContext();
         await supabase.rpc("kafarm_record_device_usage", {

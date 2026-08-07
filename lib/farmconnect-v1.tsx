@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAdminEscalatedChats, getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, runAdminSupportAction, saveKaFarmSupportMessage, sendSupportMessage } from "@/lib/backend/support-chat";
 import { getEscalationNotice, getKaFarmReply, shouldEscalateToAdmin } from "@/lib/kafarm-brain";
-import { adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewRoosterSale, adminReviewTaskProof, checkoutFarmCart, confirmRoosterSale, confirmWithdrawalResult, createCareRequest, createPrivateEvidenceUrl, getActiveCaretakersForAssignment, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCurrentProfile, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord } from "@/lib/farmconnect-data";
+import { adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewRoosterSale, adminReviewTaskProof, confirmRoosterSale, confirmWithdrawalResult, createCareRequest, createPrivateEvidenceUrl, getActiveCaretakersForAssignment, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCurrentProfile, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord } from "@/lib/farmconnect-data";
 import { supabase } from "@/lib/supabase";
 
 type Role = "customer" | "caretaker" | "admin";
@@ -170,12 +170,6 @@ function normalizeFarmProductCategory(category: string) {
 
 type FarmProductCard = typeof products[number] & { product_type?: string | null; stage?: string | null; bloodline?: string | null; breed?: string | null; product_metadata?: Record<string, unknown> | null };
 
-const roosters = [
-  { id: "r1", name: "Thunder King", breed: "Hatch-Kelso", tag: "FC-128", stage: "Young Rooster", status: "In Care", health: "Good", value: "P8,000 - P12,000", image: "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg", pen: "Pen A-04", caretaker: "Juan D." },
-  { id: "r2", name: "Red Ace", breed: "Asil", tag: "FC-212", stage: "Starter", status: "In Care", health: "Excellent", value: "P3,500 - P5,000", image: "/farmconnect/roosters/fc-stage-1-chick-base.jpg", pen: "Brooder B-02", caretaker: "Mario S." },
-  { id: "r3", name: "Bantay", breed: "Sweater-Roundhead", tag: "FC-301", stage: "Adult", status: "For Sale", health: "Good", value: "P10,000 - P15,000", image: "/farmconnect/roosters/fc-stage-4-adult-rooster-base.jpg", pen: "Pen C-01", caretaker: "Juan D." },
-];
-
 function isRealOwnedAnimal(row: any) {
   const meta = row?.ownership_metadata || {};
   const source = String(row?.acquired_from || "").toLowerCase();
@@ -187,7 +181,18 @@ function isRealOwnedAnimal(row: any) {
   return Boolean(row?.id && (source === "farm_buy" || source.includes("admin") || hasEvidence));
 }
 
-type RoosterCard = typeof roosters[number] & {
+type RoosterCard = {
+  id: string;
+  name: string;
+  breed: string;
+  tag: string;
+  stage: string;
+  status: string;
+  health: string;
+  value: string;
+  image: string;
+  pen: string;
+  caretaker: string;
   saleStatus?: string;
   approvedSalePrice?: number | null;
   ownershipMetadata?: Record<string, unknown>;
@@ -204,19 +209,13 @@ const services = [
   { name: "List for Sale", category: "Sell", price: 0, proof: "Admin sale review", eta: "1-2 days" },
 ];
 
-const transactions = [
-  { type: "Cash In", amount: 2500, status: "Auto-approved", date: "Today 9:14 AM", receipt: "RCPT-9F21" },
-  { type: "Farm Buy", amount: -850, status: "Completed", date: "Today 9:22 AM", receipt: "RCPT-11AF" },
-  { type: "Withdrawal", amount: -1000, status: "Pending Review", date: "Yesterday", receipt: "Pending" },
-];
-
-const inboxItems = [
-  { tab: "Receipts", title: "Cash-In Receipt", text: "P2,500 added to wallet. Ref GC-829113.", status: "Completed", action: "read" },
-  { tab: "Receipts", title: "Farm Buy Receipt", text: "Premium Rooster Feeds, 10 kg. Invoice INV-FB-1001 is ready.", status: "Completed", action: "invoice", href: "/customer/inbox/invoice/farm-buy" },
-  { tab: "Caretaker Updates", title: "Thunder King Update", text: "Morning feed completed. Photo verified by caretaker.", status: "Verified", action: "carelogs", href: "/customer/care-logs" },
-  { tab: "Caretaker Updates", title: "Red Ace Photo Update", text: "Evening photo update uploaded and ready to view.", status: "Verified", action: "carelogs", href: "/customer/care-logs" },
-  { tab: "Alerts", title: "Withdrawal Review", text: "Your withdrawal is being reviewed for safety.", status: "Pending", action: "read" },
-];
+type WalletTransactionRow = {
+  type: string;
+  amount: number;
+  status: string;
+  date: string;
+  receipt: string;
+};
 
 type CaretakerTaskView = {
   id: string;
@@ -902,6 +901,7 @@ export function CustomerSellRooster() {
   const [note, setNote] = useState("");
   const [statusNote, setStatusNote] = useState("Loading rooster sale record...");
   const [busy, setBusy] = useState(false);
+  const [renderedAt] = useState(() => Date.now());
   const animalId = search.get("id") || "";
 
   async function load() {
@@ -954,7 +954,7 @@ export function CustomerSellRooster() {
   const breed = animal?.breed_snapshot || animal?.bloodline_snapshot || "Recorded breed";
   const acquired = animal?.acquired_at ? new Date(animal.acquired_at) : null;
   const age = acquired && !Number.isNaN(acquired.getTime())
-    ? `${Math.max(0, Math.floor((Date.now() - acquired.getTime()) / 86400000))} days in your account`
+    ? `${Math.max(0, Math.floor((renderedAt - acquired.getTime()) / 86400000))} days in your account`
     : String(meta.age || "Not recorded");
   const weight = String(meta.weight || meta.latest_weight || "Pending caretaker inspection");
   const approvedPrice = Number(sale?.approved_sale_price || animal?.approved_sale_price || 0);
@@ -980,12 +980,6 @@ export function CareLogsPage() {
   const [status, setStatus] = useState("All");
   const [liveLogs, setLiveLogs] = useState<CareLogRecord[]>([]);
   const [localProofLogs, setLocalProofLogs] = useState<CareLogRecord[]>([]);
-  const demoLogs: CareLogRecord[] = [
-    { rooster: "Thunder King", title: "Morning Feeding", type: "Feed", item: "Premium Rooster Feeds", amount: "0.12 kg", productCost: 10, laborCost: 0, detail: "Fed from customer-owned inventory. Appetite normal after feeding.", status: "Verified", caretaker: "Juan D.", uploaded: "July 8, 2026", time: "7:30 AM", proof: "Photo proof", reviewer: "Admin reviewed", image: "/farmconnect/marketplace/fc-product-feeds.jpg" },
-    { rooster: "Thunder King", title: "Photo Update", type: "Photo", item: "Body condition", amount: "3 photos", productCost: 0, laborCost: 0, detail: "Clear body, feather, and leg photos uploaded for customer viewing.", status: "Approved", caretaker: "Juan D.", uploaded: "July 8, 2026", time: "8:10 AM", proof: "Photo proof", reviewer: "Admin approved", image: "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg" },
-    { rooster: "Thunder King", title: "Health Note", type: "Health", item: "Daily observation", amount: "1 note", productCost: 0, laborCost: 0, detail: "Active, eating normally, no visible wounds or unusual behavior.", status: "Verified", caretaker: "Juan D.", uploaded: "July 8, 2026", time: "9:05 AM", proof: "Preset note", reviewer: "Auto checked", image: "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg" },
-    { rooster: "Red Ace", title: "Vitamins", type: "Care", item: "Rooster Vitamins", amount: "1 dose", productCost: 75, laborCost: 0, detail: "Vitamin dose prepared and logged. Waiting for final review.", status: "Waiting Review", caretaker: "Mario S.", uploaded: "July 7, 2026", time: "5:20 PM", proof: "Product photo", reviewer: "Pending admin", image: "/farmconnect/marketplace/fc-product-vitamins.jpg" },
-  ];
   useEffect(() => {
     setLocalProofLogs(getSubmittedTaskProofs().map(submittedProofToCareLog));
     let mounted = true;
@@ -1045,8 +1039,6 @@ function RoosterPhoto({ src, alt, size }: { src: string; alt: string; size: "thu
 }
 
 function Info({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-[#f6f3e8] p-4"><p className="text-xs font-black uppercase text-[#667267]">{label}</p><p className="mt-1 font-black">{value}</p></div>; }
-function MiniPanel({ title, items }: { title: string; items: string[] }) { return <div className="rounded-xl border border-[#e3ded0] p-4"><b>{title}</b><ul className="mt-3 space-y-2 text-sm text-[#667267]">{items.map(i=><li key={i}>{i}</li>)}</ul></div>; }
-
 export function FarmBuy() {
   const router = useRouter();
   const [cat, setCat] = useState("All");
@@ -1055,7 +1047,6 @@ export function FarmBuy() {
   const [marketNote, setMarketNote] = useState("Add items to Cart first. When your wallet is enough, tap Buy.");
   const [carePurpose, setCarePurpose] = useState<{ rooster: string; caretaker: string; item: string; qty: string; reason: string } | null>(null);
   const [balance, setBalance] = useState(0);
-  const [lastCheckoutId, setLastCheckoutId] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -1130,7 +1121,6 @@ export function FarmBuy() {
     .filter((row): row is { product: FarmProductCard; qty: number } => Boolean(row.product));
   const itemCount = cartEntries.reduce((sum, row) => sum + row.qty, 0);
   const total = cartEntries.reduce((sum, row) => sum + row.product.price * row.qty, 0);
-  const missing = Math.max(0, total - balance);
 
   function setQty(productId: string, qty: number) {
     const next = { ...cart, [productId]: Math.max(0, qty) };
@@ -1175,7 +1165,7 @@ export function FarmBuy() {
     }
   }
 
-  return <Shell role="customer" title="Farm Buy"><PageTitle title="Farm Buy" text="Choose quantity with plus and minus. Selected items appear in your cart." icon="bag" /><KaFarm>{marketNote}</KaFarm>{carePurpose && <Card className="mb-5 border-2 border-amber-300 bg-amber-50"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">Linked Care Purchase</h2><p className="mt-1 text-sm font-bold text-[#667267]">{carePurpose.item} ({carePurpose.qty}) for {carePurpose.rooster}</p><p className="mt-1 text-sm text-[#667267]">Caretaker: {carePurpose.caretaker} - {carePurpose.reason}</p></div><button onClick={()=>setCarePurpose(null)} className="rounded-xl bg-white px-4 py-3 font-black">Clear Link</button></div></Card>}<div className="fc-farmbuy-layout mt-5 grid min-w-0 max-w-full gap-5 overflow-hidden lg:grid-cols-[minmax(0,1fr)_360px]"><div className="fc-farmbuy-products min-w-0 max-w-full"><div className="fc-scroll-row mb-4 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap">{cats.map(c=><button key={c} onClick={()=>setCat(c)} className={"shrink-0 rounded-full px-4 py-2 text-sm font-black " + (cat===c?"bg-[#1f6b45] text-white":"bg-white")}>{c}</button>)}</div><div className="fc-farmbuy-product-grid grid gap-3 md:max-h-[760px] md:grid-cols-2 md:overflow-y-auto md:pr-2 xl:grid-cols-3">{visible.map(p=><section key={p.id} className={"fc-farmbuy-product-card overflow-hidden rounded-2xl border bg-white shadow-sm transition " + ((cart[p.id]||0)>0?"border-[#1f6b45] ring-2 ring-emerald-100":"border-[#e3ded0]")}><div className="fc-farmbuy-product-media relative"><img src={p.image} alt="" className="fc-farmbuy-product-image h-44 w-full object-cover" /><Badge tone={(cart[p.id]||0)>0?"good":"neutral"}>{p.category}</Badge></div><div className="fc-farmbuy-product-body p-4"><h3 className="text-base font-black leading-tight sm:text-lg">{p.name}</h3>{(p.bloodline || p.breed) && <p className="mt-1 text-sm font-black text-[#1f6b45]">{p.bloodline || p.breed}</p>}<div className="mt-3 flex items-end justify-between gap-3"><div><p className="text-2xl font-black">{peso(p.price)}</p><p className="text-sm font-bold text-[#667267]">{p.unit}</p></div><p className="rounded-xl bg-[#f6f3e8] px-3 py-2 text-sm font-black">{p.stock} left</p></div><div className="fc-farmbuy-product-qty mt-3 flex items-center justify-between rounded-2xl bg-[#f6f3e8] p-2 sm:mt-4"><button aria-label={`Remove ${p.name}`} onClick={()=>setQty(p.id,(cart[p.id]||0)-1)} className="grid h-11 w-11 place-items-center rounded-xl bg-white text-xl font-black shadow-sm">-</button><div className="text-center"><p className="text-xs font-black uppercase text-[#667267]">Qty</p><p className="text-xl font-black">{cart[p.id]||0}</p></div><button aria-label={`Add one ${p.name}`} onClick={()=>setQty(p.id,(cart[p.id]||0)+1)} className="grid h-11 w-11 place-items-center rounded-xl bg-[#1f6b45] text-xl font-black text-white shadow-sm">+</button></div></div></section>)}</div></div><Card id="farm-buy-cart" className="h-fit scroll-mt-24 border-2 border-[#1f6b45] lg:sticky lg:top-32"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-2xl font-black"><Icon name="bag" /> Cart</h2><Badge tone={itemCount>0?"good":"neutral"}>{itemCount}</Badge></div><div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto pr-2">{cartEntries.map(({product,qty})=><div key={product.id} className="rounded-xl bg-[#f6f3e8] p-3"><div className="flex justify-between gap-3 text-sm"><span><b>{product.name}</b><br/><span className="text-[#667267]">{qty} x {peso(product.price)}</span></span><b>{peso(product.price*qty)}</b></div></div>)}{total===0 && <p className="rounded-xl bg-[#f6f3e8] p-3 text-sm text-[#667267]">Cart is empty. Use plus on a product.</p>}</div><div className="mt-4 border-t pt-4"><Info label="Manual Payment" value="Admin review required" /><div className="mt-3 flex justify-between text-lg font-black"><span>Total</span><span>{peso(total)}</span></div>{lastCheckoutId && <div className="mt-4 grid gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-sm font-black text-emerald-900">Payment saved: {lastCheckoutId.slice(0, 8)}</p><div className="grid gap-2 sm:grid-cols-3"><Link href="/customer/roosters" className="rounded-xl bg-white px-3 py-2 text-center text-sm font-black text-[#1f6b45] shadow-sm">My Roosters</Link><Link href="/customer/inventory" className="rounded-xl bg-white px-3 py-2 text-center text-sm font-black text-[#1f6b45] shadow-sm">Inventory</Link><Link href="/customer/inbox/invoice/farm-buy" className="rounded-xl bg-[#1f6b45] px-3 py-2 text-center text-sm font-black text-white">Receipt</Link></div></div>}{total===0 && <button disabled className="mt-4 w-full rounded-xl bg-[#d8d2c3] px-4 py-3 font-black text-[#7a766b]">Pay</button>}{total>0 && <button onClick={buyCart} className="mt-4 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Pay</button>}<p className="mt-2 text-xs font-bold text-[#667267]">External payment only. Upload reference and receipt; admin approves before items appear.</p></div></Card></div></Shell>;
+  return <Shell role="customer" title="Farm Buy"><PageTitle title="Farm Buy" text="Choose quantity with plus and minus. Selected items appear in your cart." icon="bag" /><KaFarm>{marketNote}</KaFarm>{carePurpose && <Card className="mb-5 border-2 border-amber-300 bg-amber-50"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">Linked Care Purchase</h2><p className="mt-1 text-sm font-bold text-[#667267]">{carePurpose.item} ({carePurpose.qty}) for {carePurpose.rooster}</p><p className="mt-1 text-sm text-[#667267]">Caretaker: {carePurpose.caretaker} - {carePurpose.reason}</p></div><button onClick={()=>setCarePurpose(null)} className="rounded-xl bg-white px-4 py-3 font-black">Clear Link</button></div></Card>}<div className="fc-farmbuy-layout mt-5 grid min-w-0 max-w-full gap-5 overflow-hidden lg:grid-cols-[minmax(0,1fr)_360px]"><div className="fc-farmbuy-products min-w-0 max-w-full"><div className="fc-scroll-row mb-4 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap">{cats.map(c=><button key={c} onClick={()=>setCat(c)} className={"shrink-0 rounded-full px-4 py-2 text-sm font-black " + (cat===c?"bg-[#1f6b45] text-white":"bg-white")}>{c}</button>)}</div><div className="fc-farmbuy-product-grid grid gap-3 md:max-h-[760px] md:grid-cols-2 md:overflow-y-auto md:pr-2 xl:grid-cols-3">{visible.map(p=><section key={p.id} className={"fc-farmbuy-product-card overflow-hidden rounded-2xl border bg-white shadow-sm transition " + ((cart[p.id]||0)>0?"border-[#1f6b45] ring-2 ring-emerald-100":"border-[#e3ded0]")}><div className="fc-farmbuy-product-media relative"><img src={p.image} alt="" className="fc-farmbuy-product-image h-44 w-full object-cover" /><Badge tone={(cart[p.id]||0)>0?"good":"neutral"}>{p.category}</Badge></div><div className="fc-farmbuy-product-body p-4"><h3 className="text-base font-black leading-tight sm:text-lg">{p.name}</h3>{(p.bloodline || p.breed) && <p className="mt-1 text-sm font-black text-[#1f6b45]">{p.bloodline || p.breed}</p>}<div className="mt-3 flex items-end justify-between gap-3"><div><p className="text-2xl font-black">{peso(p.price)}</p><p className="text-sm font-bold text-[#667267]">{p.unit}</p></div><p className="rounded-xl bg-[#f6f3e8] px-3 py-2 text-sm font-black">{p.stock} left</p></div><div className="fc-farmbuy-product-qty mt-3 flex items-center justify-between rounded-2xl bg-[#f6f3e8] p-2 sm:mt-4"><button aria-label={`Remove ${p.name}`} onClick={()=>setQty(p.id,(cart[p.id]||0)-1)} className="grid h-11 w-11 place-items-center rounded-xl bg-white text-xl font-black shadow-sm">-</button><div className="text-center"><p className="text-xs font-black uppercase text-[#667267]">Qty</p><p className="text-xl font-black">{cart[p.id]||0}</p></div><button aria-label={`Add one ${p.name}`} onClick={()=>setQty(p.id,(cart[p.id]||0)+1)} className="grid h-11 w-11 place-items-center rounded-xl bg-[#1f6b45] text-xl font-black text-white shadow-sm">+</button></div></div></section>)}</div></div><Card id="farm-buy-cart" className="h-fit scroll-mt-24 border-2 border-[#1f6b45] lg:sticky lg:top-32"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-2xl font-black"><Icon name="bag" /> Cart</h2><Badge tone={itemCount>0?"good":"neutral"}>{itemCount}</Badge></div><div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto pr-2">{cartEntries.map(({product,qty})=><div key={product.id} className="rounded-xl bg-[#f6f3e8] p-3"><div className="flex justify-between gap-3 text-sm"><span><b>{product.name}</b><br/><span className="text-[#667267]">{qty} x {peso(product.price)}</span></span><b>{peso(product.price*qty)}</b></div></div>)}{total===0 && <p className="rounded-xl bg-[#f6f3e8] p-3 text-sm text-[#667267]">Cart is empty. Use plus on a product.</p>}</div><div className="mt-4 border-t pt-4"><Info label="Manual Payment" value="Admin review required" /><div className="mt-3 flex justify-between text-lg font-black"><span>Total</span><span>{peso(total)}</span></div>{total===0 && <button disabled className="mt-4 w-full rounded-xl bg-[#d8d2c3] px-4 py-3 font-black text-[#7a766b]">Pay</button>}{total>0 && <button onClick={buyCart} className="mt-4 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Pay</button>}<p className="mt-2 text-xs font-bold text-[#667267]">External payment only. Upload reference and receipt; admin approves before items appear.</p></div></Card></div></Shell>;
 }
 export function InventoryPage() {
   const [ownedItems, setOwnedItems] = useState<FarmProductCard[]>([]);
@@ -1293,16 +1283,6 @@ export function FarmRequests() {
   return <Shell role="customer" title="Farm Requests"><PageTitle title="Farm Requests" text="Choose a rooster, choose a service, add a note, then Pay or Send Request." icon="clipboard" /><KaFarm>{requestNote}</KaFarm><div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.15fr_0.9fr]"><Card><h2 className="text-lg font-black xl:text-xl">1. Rooster List</h2><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{ownedRoosters.map(r=><button key={r.id} onClick={()=>setRooster(r)} className={"flex w-full items-center gap-3 rounded-xl border p-3 text-left " + (rooster?.id===r.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8]")}><img src={r.image} className="h-12 w-12 rounded-lg object-cover" alt="" /><span className="min-w-0"><b className="block truncate">{r.name}</b><p className="truncate text-sm text-[#667267]">{r.tag}</p></span></button>)}{ownedRoosters.length===0 && <p className="rounded-xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-4 text-sm font-bold text-[#667267]">No owned rooster yet. Approved Farm Buy rooster purchases will appear here.</p>}</div></Card><Card><h2 className="text-lg font-black xl:text-xl">2. Choose Service</h2><div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto pr-2">{services.map(s=><button key={s.name} onClick={()=>setService(s)} className={"w-full rounded-xl border p-3 text-left " + (service.name===s.name?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8]")}><div className="flex flex-wrap justify-between gap-2"><b>{s.name}</b><span>{s.price?peso(s.price):"Free"}</span></div><p className="text-sm text-[#667267]">{s.proof} - {s.eta}</p></button>)}</div><label className="mt-4 block text-sm font-black">Customer Instruction</label><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Tell the farm what you want..." className="mt-2 min-h-24 w-full rounded-xl border border-[#ded8c9] p-3" /><button onClick={submitRequest} className="mt-3 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">{submitting ? "Saving..." : service.price>0 ? "Pay" : "Send Request"}</button>{service.price>0 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-[#7a4b00]">Manual external payment. Admin approves before the task goes to caretaker.</p>}</Card><Card><h2 className="text-lg font-black xl:text-xl">3. Request Logs</h2><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{careRows.map(row=><div key={row.id} className="rounded-xl bg-[#f6f3e8] p-3"><b>{row.rooster_name}</b><p className="text-sm text-[#667267]">{row.service_name} - {String(row.status || "").replaceAll("_"," ")}</p><p className="mt-1 text-xs font-bold text-[#667267]">{row.customer_note || "No note"}</p><button onClick={()=>setRequestNote(`Care request ${row.service_name}: ${String(row.status || "").replaceAll("_"," ")}.`)} className="mt-2 rounded-lg bg-white px-3 py-2 text-sm font-black">View Care</button></div>)}{careRows.length===0 && <p className="rounded-xl bg-[#f6f3e8] p-3 text-sm font-bold text-[#667267]">No care request records yet.</p>}</div></Card></div></Shell>;
 }
 
-function SavingsModal({ lockedSavings, balance, onClose, onLock, onUnlock }: { lockedSavings: number; balance: number; onClose: () => void; onLock: () => void; onUnlock: () => void }) {
-  const pockets: { name: string; label: string; amount: number; days: string; icon: IconName; tone: string }[] = [
-    { name: "Savings 01", label: "Feed reserve", amount: lockedSavings || 0, days: lockedSavings ? "Active lock" : "Ready to start", icon: "wallet", tone: "border-[#1f6b45] text-[#1f6b45]" },
-    { name: "Savings 02", label: "Vet emergency", amount: 0, days: "Open slot", icon: "shield", tone: "border-amber-400 text-amber-700" },
-    { name: "Savings 03", label: "Rooster upgrade", amount: 0, days: "Open slot", icon: "bag", tone: "border-[#7d6a4c] text-[#7d6a4c]" },
-    { name: "Savings 04", label: "Withdrawal hold", amount: 0, days: "Open slot", icon: "coins", tone: "border-[#8aa08b] text-[#4d6f50]" },
-  ];
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"><section className="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><h2 className="text-3xl font-black">Go Save</h2><p className="mt-1 text-sm font-bold text-[#667267]">4% per annum savings interest rate</p></div><button onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full bg-[#f6f3e8] font-black">x</button></div><div className="mt-5 rounded-3xl bg-[#f6f3e8] p-5 text-center"><p className="text-xs font-black uppercase text-[#667267]">Total Savings</p><p className="mt-1 text-4xl font-black">{peso(lockedSavings)}</p><p className="mt-1 text-sm font-bold text-[#667267]">Available to lock: {peso(Math.max(0, balance - lockedSavings))}</p></div><div className="mt-5 grid gap-4 sm:grid-cols-2">{pockets.map(p=><button key={p.name} onClick={onLock} className="rounded-3xl border border-[#ece6d8] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-center gap-4"><div className={"grid h-20 w-20 shrink-0 place-items-center rounded-full border-2 bg-white " + p.tone}><Icon name={p.icon} className="h-8 w-8" /></div><div><b className="text-lg">{p.name}</b><p className="text-sm font-bold text-[#667267]">{p.label}</p><p className="mt-2 text-xl font-black">{peso(p.amount)}</p><p className="text-xs font-bold text-[#667267]">{p.days}</p></div></div></button>)}</div><div className="mt-5 grid gap-3 sm:grid-cols-3"><button onClick={onLock} className="rounded-2xl bg-[#1f6b45] px-4 py-3 font-black text-white">Lock Ã¢â€šÂ±500</button><button onClick={onUnlock} className="rounded-2xl bg-[#eee8d9] px-4 py-3 font-black">Unlock Savings</button><button onClick={onClose} className="rounded-2xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">Done</button></div></section></div>;
-}
-
 function PinGate({ title, onClose, onConfirm }: { title: string; onClose: () => void; onConfirm: () => void }) {
   const [pin, setPin] = useState("");
   const [note, setNote] = useState("Enter your 6-digit wallet PIN to continue.");
@@ -1369,7 +1349,7 @@ export function WalletPage() {
   const [showLockedSavings, setShowLockedSavings] = useState(false);
   const [pinGate, setPinGate] = useState<null | "balance" | "save">(null);
   const [walletNote, setWalletNote] = useState("Loading live wallet records...");
-  const [walletRows, setWalletRows] = useState<typeof transactions>([]);
+  const [walletRows, setWalletRows] = useState<WalletTransactionRow[]>([]);
   const availableBalance = Math.max(0, balance - lockedSavings);
   useEffect(() => {
     let mounted = true;
@@ -1397,8 +1377,6 @@ export function WalletPage() {
     return () => { mounted = false; };
   }, []);
   return <Shell role="customer" title="Wallet"><PageTitle title="Wallet" text="Withdraw FarmConnect Coin and review transaction records." icon="wallet" />{pinGate && <PinGate title="Enter Wallet PIN" onClose={()=>setPinGate(null)} onConfirm={()=>{setShowLockedSavings(true); setWalletNote("Locked savings are visible after PIN confirmation."); setPinGate(null);}} />}{showSavings && <SavingsModalFc lockedSavings={lockedSavings} balance={balance} onClose={()=>setShowSavings(false)} onLock={(amount)=>{const next=Math.min(balance, lockedSavings + amount); setLockedSavings(next); setShowLockedSavings(true); setWalletNote(`FC ${fcCoin(amount)} locked in Save. Total locked: FC ${fcCoin(next)}.`);}} onUnlock={(amount)=>{const next=Math.max(0, lockedSavings - amount); setLockedSavings(next); setShowLockedSavings(true); setWalletNote(`FC ${fcCoin(amount)} unlocked. Remaining locked: FC ${fcCoin(next)}.`);}} />}<section className="mx-auto max-w-md space-y-3 sm:hidden"><section className="rounded-[24px] border border-white/80 bg-white/96 p-4 text-[#163c2d] shadow-xl"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase text-[#708078]">Available Balance</p><div className="mt-2 flex items-center gap-2"><span className="text-sm font-black text-[#197044]">FC</span><b className="text-4xl">{showAmounts?fcCoin(availableBalance):"******"}</b></div></div><button type="button" onClick={()=>setShowAmounts(!showAmounts)} className="grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-[#197044]" aria-label={showAmounts?"Hide balance":"Show balance"}><Icon name={showAmounts?"eyeOff":"eye"} /></button></div><div className="mt-4 h-2 rounded-full bg-[#dfe8e1]"><div className="h-full w-2/3 rounded-full bg-[#1d7650]" /></div></section><section className="rounded-[22px] border border-white/80 bg-white/96 p-4 text-[#163c2d] shadow-lg"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase text-[#708078]">Locked Savings</p><b className="mt-1 block text-2xl">{showLockedSavings?`FC ${fcCoin(lockedSavings)}`:"FC ******"}</b><small className="font-bold text-[#708078]">Wallet PIN required</small></div><button type="button" onClick={()=>showLockedSavings?setShowLockedSavings(false):setPinGate("save")} className="grid h-10 w-10 place-items-center rounded-full bg-[#f5f2e8] text-[#197044]"><Icon name={showLockedSavings?"eyeOff":"eye"} /></button></div></section><Link href="/customer/withdraw" className="flex min-h-16 items-center justify-between rounded-[20px] bg-[#14613f] px-4 text-white shadow-lg"><span className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15"><Icon name="wallet" /></span><span><b className="block">Withdraw Funds</b><small className="text-white/70">Review method and request payout</small></span></span><span>&gt;</span></Link><section className="rounded-[22px] border border-white/80 bg-white/96 p-4 text-[#163c2d] shadow-lg"><div className="flex items-center justify-between"><h2 className="text-xl font-black">Transaction History</h2><span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black text-[#197044]">Live</span></div><div className="mt-3 space-y-2">{walletRows.length===0&&<p className="rounded-xl bg-[#f6f5ee] p-4 text-xs font-bold text-[#708078]">No transactions yet. Approved payments and withdrawals will appear here.</p>}{walletRows.map(t=><div key={`${t.receipt}-phone`} className="rounded-xl bg-[#f6f5ee] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><b className="block truncate text-sm">{t.type}</b><small className="block text-[#708078]">{t.date} - {t.status}</small></div><b className="shrink-0 text-sm">{showAmounts?`FC ${fcCoin(t.amount)}`:"******"}</b></div><Link href="/customer/inbox" className="mt-2 inline-flex text-xs font-black text-[#197044]">Open receipt &gt;</Link></div>)}</div></section><KaFarm>{walletNote}</KaFarm></section><div className="hidden rounded-[28px] bg-[#070716] p-4 text-white shadow-2xl sm:block md:p-6"><section className="grid gap-4 lg:grid-cols-2"><div className="relative overflow-hidden rounded-[24px] bg-[radial-gradient(circle_at_82%_0%,rgba(255,81,246,0.9),transparent_32%),linear-gradient(135deg,#2810b8_0%,#7719df_48%,#d915c7_100%)] p-5 shadow-[0_18px_45px_rgba(102,22,221,0.45)]"><div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-fuchsia-300/25 blur-2xl" /><div className="relative flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><p className="text-sm font-bold text-white/75">Available Balance</p></div><div className="mt-5 flex items-center gap-3"><span className="text-3xl font-black">FC</span><p className="text-4xl font-black md:text-5xl">{showAmounts?fcCoin(availableBalance):"******"}</p><button onClick={()=>setShowAmounts(!showAmounts)} className="grid h-9 w-9 place-items-center rounded-full text-white/90"><Icon name={showAmounts?"eyeOff":"eye"} /></button></div></div><span className="mt-12 h-10 w-10" aria-hidden="true" /></div></div><div className="relative overflow-hidden rounded-[24px] bg-[radial-gradient(circle_at_82%_0%,rgba(255,81,246,0.75),transparent_32%),linear-gradient(135deg,#21124f_0%,#5a1ab7_48%,#a814b7_100%)] p-5 text-left shadow-[0_18px_45px_rgba(102,22,221,0.35)]"><div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-fuchsia-300/20 blur-2xl" /><div className="relative flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><p className="text-sm font-bold text-white/75">Locked Savings</p><button onClick={()=>showLockedSavings?setShowLockedSavings(false):setPinGate("save")} className="text-white/70"><Icon name={showLockedSavings?"eyeOff":"eye"} className="h-4 w-4" /></button></div><div className="mt-5 flex items-center gap-3"><span className="text-3xl font-black">FC</span><p className="text-4xl font-black md:text-5xl">{showLockedSavings?fcCoin(lockedSavings):"******"}</p></div><p className="mt-2 text-sm font-bold text-white/65">PIN required</p></div><span className="mt-12 h-10 w-10" aria-hidden="true" /></div></div></section><div className="mt-5 grid gap-3"><Link href="/customer/withdraw" className="rounded-2xl bg-white/10 p-4 text-left font-black text-white shadow-sm ring-1 ring-white/10"><Icon name="wallet" className="mb-3 h-7 w-7" />Withdraw Funds</Link></div><div className="mt-5 rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10"><h2 className="text-xl font-black">Transaction History</h2><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{walletRows.length === 0 && <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-4 text-sm font-bold text-white/65">No transactions yet. Approved payments and withdrawals will appear here.</div>}{walletRows.map(t=><div key={t.receipt} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/10"><div><b>{t.type}</b><p className="text-sm text-white/65">{t.date} - {t.status}</p></div><div className="text-right"><b>{showAmounts?fcCoin(t.amount):"******"}</b><Link href="/customer/inbox" className="ml-3 rounded-lg bg-white/10 px-3 py-2 text-sm font-black">Open Receipt</Link></div></div>)}</div></div></div></Shell>;
-  return <Shell role="customer" title="Wallet"><PageTitle title="Wallet" text="FarmConnect Coin balance, cash-in, withdrawal, and locked savings." icon="wallet" />{pinGate && <PinGate title="Enter Wallet PIN" onClose={()=>setPinGate(null)} onConfirm={()=>{setShowLockedSavings(true); setWalletNote("Locked savings are visible after PIN confirmation."); setPinGate(null);}} />}{showSavings && <SavingsModalFc lockedSavings={lockedSavings} balance={balance} onClose={()=>setShowSavings(false)} onLock={()=>{const next=Math.min(balance, lockedSavings + 500); setLockedSavings(next); setWalletNote(`${fcCoin(next)} is locked in Go Save.`);}} onUnlock={()=>{setLockedSavings(0); setWalletNote("Locked savings released back to available FarmConnect Coin.");}} />}<div className="grid gap-5"><section className="rounded-3xl border border-[#e3ded0] bg-white p-4 shadow-sm"><div className="rounded-3xl bg-[#f6f3e8] p-5"><div className="flex flex-wrap items-center justify-between gap-4"><div className="flex items-center gap-4"><FCCoin className="h-16 w-16 text-lg" /><div><p className="text-sm font-black uppercase text-[#667267]">FarmConnect Coin Balance</p><p className="mt-1 text-5xl font-black">{showAmounts?fcCoin(balance):"FC ****"}</p></div></div><button onClick={()=>setShowAmounts(!showAmounts)} className="rounded-2xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">{showAmounts?"Hide":"Show"}</button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Available</p><p className="mt-1 text-2xl font-black">{showAmounts?fcCoin(availableBalance):"FC ****"}</p></div><button onClick={()=>setPinGate("save")} className="rounded-2xl bg-white p-4 text-left shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Locked Savings</p><p className="mt-1 text-2xl font-black">{showAmounts?fcCoin(lockedSavings):"FC ****"}</p><p className="mt-1 text-xs font-bold text-[#667267]">PIN required to open</p></button></div></div></section><div className="grid gap-3 sm:grid-cols-3"><Link href="/customer/cashin" className="rounded-2xl bg-[#1f6b45] p-4 text-left font-black text-white shadow-sm"><Icon name="coins" className="mb-3 h-7 w-7" />Add Cash</Link><Link href="/customer/withdraw" className="rounded-2xl bg-amber-300 p-4 text-left font-black shadow-sm"><Icon name="wallet" className="mb-3 h-7 w-7" />Withdraw Funds</Link><button onClick={()=>setPinGate("save")} className="rounded-2xl bg-white p-4 text-left font-black text-[#1f6b45] shadow-sm"><Icon name="shield" className="mb-3 h-7 w-7" />Save / Lock</button></div><Card><h2 className="text-xl font-black">Transaction History</h2><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{walletRows.map(t=><div key={t.receipt} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ece6d8] p-3"><div><b>{t.type}</b><p className="text-sm text-[#667267]">{t.date} - {t.status}</p></div><div className="text-right"><b>{showAmounts?fcCoin(t.amount):"FC ****"}</b><Link href="/customer/inbox" className="ml-3 rounded-lg bg-[#f6f3e8] px-3 py-2 text-sm font-black">Open Receipt</Link></div></div>)}</div></Card></div></Shell>;
-  return <Shell role="customer" title="Wallet"><PageTitle title="Wallet" text="Add cash, withdraw funds, and lock savings before spending." icon="wallet" />{pinGate && <PinGate title={pinGate==="save"?"Unlock Go Save":"Show Wallet Balance"} onClose={()=>setPinGate(null)} onConfirm={()=>{if(pinGate==="balance"){setShowAmounts(true); setWalletNote("Wallet balance is now visible for this session.");} else {setShowSavings(true); setWalletNote("Go Save opened. Choose a savings pocket before locking funds.");} setPinGate(null);}} />}{showSavings && <SavingsModal lockedSavings={lockedSavings} balance={balance} onClose={()=>setShowSavings(false)} onLock={()=>{const next=Math.min(balance, lockedSavings + 500); setLockedSavings(next); setWalletNote(`${peso(next)} is locked in savings. Locked savings cannot be used for buying until unlocked.`);}} onUnlock={()=>{setLockedSavings(0); setWalletNote("Locked savings released back to available balance.");}} />}<div className="grid gap-5 xl:grid-cols-[1fr_380px]"><div className="grid gap-5"><section className="rounded-2xl border border-[#e3ded0] bg-white p-4 shadow-sm"><div className="rounded-2xl bg-[#f6f3e8] p-5"><div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm font-black uppercase text-[#667267]">Total Balance</p><p className="mt-2 text-5xl font-black">{showAmounts?peso(balance):"Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"}</p></div><button onClick={()=>showAmounts?setShowAmounts(false):setPinGate("balance")} className="rounded-2xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">{showAmounts?"Hide":"Show"}</button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Available Balance</p><p className="mt-1 text-2xl font-black">{showAmounts?peso(availableBalance):"Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"}</p></div><div className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase text-[#667267]">Locked Savings</p><p className="mt-1 text-2xl font-black">{showAmounts?peso(lockedSavings):"Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"}</p></div></div></div></section><div className="grid gap-3 sm:grid-cols-3"><Link href="/customer/cashin" className="rounded-2xl bg-[#1f6b45] p-4 text-left font-black text-white shadow-sm"><Icon name="coins" className="mb-3 h-7 w-7" />Add Cash</Link><Link href="/customer/withdraw" className="rounded-2xl bg-amber-300 p-4 text-left font-black shadow-sm"><Icon name="wallet" className="mb-3 h-7 w-7" />Withdraw Funds</Link><button onClick={()=>setPinGate("save")} className="rounded-2xl bg-white p-4 text-left font-black text-[#1f6b45] shadow-sm"><Icon name="shield" className="mb-3 h-7 w-7" />Save / Lock</button></div><Card><h2 className="text-xl font-black">Transaction History</h2><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">{walletRows.map(t=><div key={t.receipt} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ece6d8] p-3"><div><b>{t.type}</b><p className="text-sm text-[#667267]">{t.date} - {t.status}</p></div><div className="text-right"><b>{showAmounts?peso(t.amount):"Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"}</b><Link href="/customer/inbox" className="ml-3 rounded-lg bg-[#f6f3e8] px-3 py-2 text-sm font-black">Open Receipt</Link></div></div>)}</div></Card></div><div className="grid h-fit gap-5"><KaFarm>{walletNote}</KaFarm><Card><h2 className="text-xl font-black">Savings Lock</h2><p className="mt-2 text-sm font-bold text-[#667267]">PIN is required before viewing or moving wallet savings.</p><div className="mt-4 grid gap-3"><button onClick={()=>setPinGate("save")} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Open Go Save</button><button onClick={()=>setWalletNote("Payout Account opened: PIN is required before adding or changing GCash, Maya, or bank details.")} className="rounded-xl bg-white px-4 py-3 font-black text-[#1f6b45] shadow-sm">Payout Account</button></div></Card></div></div></Shell>;
 }
 
 export function CashInPage() {
@@ -1430,50 +1408,6 @@ const payoutProviders: PayoutProvider[] = [
   { name: "UnionBank", type: "Bank", colors: "from-[#f58220] to-[#ffb000]", text: "text-[#281400]", hint: "UnionBank account number" },
   { name: "Security Bank", type: "Bank", colors: "from-[#1446a0] to-[#1d77ff]", text: "text-white", hint: "Security Bank account number" },
 ];
-const savedPayoutAccounts: { provider: string; holder: string; masked: string; status: string }[] = [];
-function providerStyle(name: string) { return payoutProviders.find(p => p.name === name) || payoutProviders[0]; }
-function PayoutAccountCard({ account, active, onClick }: { account: typeof savedPayoutAccounts[number]; active?: boolean; onClick?: () => void }) {
-  const provider = providerStyle(account.provider);
-  return <button onClick={onClick} className={("relative overflow-hidden rounded-3xl bg-gradient-to-br p-4 text-left shadow-sm ring-1 transition " + provider.colors + " " + provider.text + " " + (active ? "ring-4 ring-sky-200" : "ring-white/30 hover:-translate-y-0.5 hover:shadow-lg"))}><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase opacity-75">{provider.type}</p><h3 className="mt-1 text-2xl font-black">{account.provider}</h3></div><Badge tone={account.status === "Verified" ? "good" : "neutral"}>{account.status}</Badge></div><div className="mt-8"><p className="text-sm font-bold opacity-80">Account holder</p><p className="text-lg font-black">{account.holder}</p><p className="mt-2 text-sm font-black opacity-85">{account.masked}</p></div></button>;
-}
-export function WithdrawPage() {
-  const [selected, setSelected] = useState<typeof savedPayoutAccounts[number] | null>(savedPayoutAccounts[0] || null);
-  const [amount, setAmount] = useState("");
-  const [error, setError] = useState("");
-  const [pinOpen, setPinOpen] = useState(false);
-  const [note, setNote] = useState("Choose where your withdrawal will be sent. We keep a record of the exact payout account you selected.");
-  const amountValue = Number(amount || 0);
-  const submit = () => {
-    if (!selected) {
-      setError("Please add or choose a payout account first.");
-      return;
-    }
-    if (!amount || amountValue < 100) {
-      setError("Minimum withdrawal is FC 100.");
-      return;
-    }
-    setError("");
-    setPinOpen(true);
-  };
-  return <Shell role="customer" title="Withdraw"><PageTitle title="Withdraw Funds" text="Request payout from available FarmConnect Coin." icon="wallet" />{pinOpen && selected && <PinGate title="Enter PIN to Withdraw" onClose={()=>setPinOpen(false)} onConfirm={()=>{ void (async()=>{ try { await submitWithdrawalRequest({ amount: amountValue, payoutMethod: selected.provider, payoutHolder: selected.holder, payoutAccount: selected.masked, customerNote: "Customer submitted withdrawal from wallet page." }); setNote(`Withdrawal request sent: FC ${fcCoin(amountValue)} to ${selected.provider} ${selected.masked}. Admin will review and upload payout proof.`); setAmount(""); } catch { setNote("Withdrawal request could not be saved yet. Please login again or ask admin to check withdrawal database wiring."); } finally { setPinOpen(false); } })();}} />}<div className="grid gap-5 xl:grid-cols-[1fr_380px]"><div className="grid gap-5"><Card><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">Payout Method</h2><p className="mt-1 text-sm font-bold text-[#667267]">Choose a saved payout account or add a new one.</p></div><Link href="/customer/withdraw/add-payout" className="rounded-2xl bg-[#0f6fb8] px-4 py-3 font-black text-white">+ Add</Link></div><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{savedPayoutAccounts.map(account=><PayoutAccountCard key={account.provider + account.masked} account={account} active={selected?.masked===account.masked} onClick={()=>{setSelected(account); setNote(`${account.provider} selected. Withdrawal record will use ${account.holder} / ${account.masked}.`);}} />)}<Link href="/customer/withdraw/add-payout" className="grid min-h-[190px] place-items-center rounded-3xl border-2 border-dashed border-sky-200 bg-sky-50 p-4 text-center text-[#0f6fb8]"><span><span className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-white text-3xl font-black shadow-sm">+</span><b className="block text-lg">Add payout account</b><span className="mt-1 block text-sm font-bold text-[#4d6f91]">GCash, Maya, GoTyme, or bank</span></span></Link></div>{savedPayoutAccounts.length===0 && <p className="mt-3 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No payout account saved yet. Add one before requesting withdrawal.</p>}</Card><Card><h2 className="text-xl font-black">Withdrawal Amount</h2><div className="mt-4 grid gap-3"><label className="text-sm font-black">Amount</label><input value={amount} onChange={e=>{setAmount(e.target.value.replace(/\D/g, "")); setError("");}} inputMode="numeric" placeholder="Enter amount" className="rounded-2xl border border-[#ded8c9] px-4 py-4 text-2xl font-black" /><div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-[#f6f3e8] p-3 text-sm font-bold text-[#667267]"><span>Minimum withdrawal</span><b className="text-[#17251d]">FC 100</b></div>{error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-black text-red-700">{error}</p>}<button onClick={submit} className="rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white">Withdraw</button></div></Card></div><div className="grid h-fit gap-5"><Card><h2 className="text-xl font-black">Withdrawal Safety</h2><p className="mt-2 text-sm font-bold text-[#667267]">{note}</p><div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-[#7a4b00]">Warning: FarmConnect is not liable if the customer saves a wrong payout name, number, or account. The selected account is logged before every withdrawal.</div></Card><Card className="h-fit"><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Withdrawal History</h2><Badge tone="neutral">Recent</Badge></div><div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2"><p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No withdrawal records yet. Submitted requests and admin payout proofs will appear here.</p></div></Card></div></div></Shell>;
-}
-export function AddPayoutPage() {
-  const [provider, setProvider] = useState<PayoutProvider>(payoutProviders[0]);
-  const [holder, setHolder] = useState("");
-  const [account, setAccount] = useState("");
-  const [pinOpen, setPinOpen] = useState(false);
-  const [message, setMessage] = useState("Select an e-wallet or bank first, then enter the exact account details.");
-  const ready = holder.trim().length > 2 && account.trim().length >= 6;
-  const save = () => {
-    if (!ready) {
-      setMessage("Please enter the account holder name and correct payout number before saving.");
-      return;
-    }
-    setPinOpen(true);
-  };
-  return <Shell role="customer" title="Add Payout"><PageTitle title="Add Payout Account" text="Save where withdrawals will be sent. PIN is required before saving." icon="wallet" />{pinOpen && <PinGate title="Save Payout Account" onClose={()=>setPinOpen(false)} onConfirm={()=>{setPinOpen(false); setMessage(`${provider.name} payout account saved for ${holder}. This action is recorded for withdrawal safety.`);}} />}<div className="grid gap-5 xl:grid-cols-[360px_1fr_360px]"><Card><h2 className="text-xl font-black">1. Choose Method</h2><p className="mt-1 text-sm font-bold text-[#667267]">E-wallets and common banks.</p><div className="mt-4 max-h-[640px] space-y-3 overflow-y-auto pr-2">{payoutProviders.map(p=><button key={p.name} onClick={()=>{setProvider(p); setMessage(`${p.name} selected. Enter the exact details shown on that account.`);}} className={("w-full rounded-2xl bg-gradient-to-br p-4 text-left shadow-sm ring-1 transition " + p.colors + " " + p.text + " " + (provider.name===p.name ? "ring-4 ring-sky-200" : "ring-white/30"))}><p className="text-xs font-black uppercase opacity-75">{p.type}</p><div className="mt-2 flex items-center justify-between gap-3"><b className="text-xl">{p.name}</b><span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black">Select</span></div></button>)}</div></Card><Card><h2 className="text-xl font-black">2. Account Details</h2><div className={("mt-4 rounded-3xl bg-gradient-to-br p-5 shadow-sm " + provider.colors + " " + provider.text)}><p className="text-xs font-black uppercase opacity-75">Selected</p><h3 className="mt-1 text-3xl font-black">{provider.name}</h3><p className="mt-2 text-sm font-bold opacity-80">{provider.hint}</p></div><div className="mt-5 grid gap-3"><label className="text-sm font-black">Account Holder Name</label><input value={holder} onChange={e=>setHolder(e.target.value)} placeholder="Name on payout account" className="rounded-2xl border border-[#ded8c9] px-4 py-3 font-bold" /><label className="text-sm font-black">Account Number / Mobile Number</label><input value={account} onChange={e=>setAccount(e.target.value)} inputMode="numeric" placeholder={provider.hint} className="rounded-2xl border border-[#ded8c9] px-4 py-3 font-bold" /></div></Card><Card><h2 className="text-xl font-black">3. Review & Add</h2><div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-[#7a4b00]">Warning: Make sure the name, number, and selected bank/e-wallet are correct. FarmConnect is not liable if funds are sent to details saved incorrectly by the customer.</div><div className="mt-4 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]"><p><b>Record:</b> Saving this creates a customer action log with provider, holder name, masked account number, date, and PIN confirmation.</p></div><p className="mt-4 text-sm font-bold text-[#667267]">{message}</p><button onClick={save} className="mt-4 w-full rounded-2xl bg-[#0f6fb8] px-4 py-4 font-black text-white">Add with Wallet PIN</button><Link href="/customer/withdraw" className="mt-3 block rounded-2xl bg-[#eee8d9] px-4 py-3 text-center font-black">Back to Withdraw</Link></Card></div></Shell>;
-}
-
 type LivePayoutAccount = {
   id: string;
   provider: string;
@@ -2520,64 +2454,6 @@ export function CaretakerTasks() {
   </Shell>;
 }
 
-function CaretakerTasksLegacy() {
-  const [tasks,setTasks]=useState<CaretakerTaskView[]>([]);
-  const [selected,setSelected]=useState<CaretakerTaskView | null>(null);
-  const [taskNote,setTaskNote]=useState("Loading active tasks from database...");
-  const [qrVerified,setQrVerified]=useState(false);
-  const [proofReady,setProofReady]=useState(false);
-  const [feedUsed,setFeedUsed]=useState("0.25");
-  const [exceptionRequested,setExceptionRequested]=useState(false);
-  const needsVideo = selected ? /vitamin|supplement|vet/i.test(selected.task + " " + selected.proof + " " + selected.note) : false;
-  const needsFeedQty = selected ? /feed/i.test(selected.task + " " + selected.proof) : false;
-  useEffect(()=>{
-    let mounted = true;
-    getCaretakerActiveTasks()
-      .then(rows=>{
-        if (!mounted) return;
-        const mapped = (rows || []).map(mapCaretakerTaskRow);
-        setTasks(mapped);
-        setSelected(mapped[0] || null);
-        if (mapped.length) {
-          setTaskNote("Live caretaker tasks loaded from database. Scan QR, capture proof, then submit.");
-        } else {
-          setTaskNote("No assigned task yet. New approved requests will appear here after admin assignment.");
-        }
-      })
-      .catch(()=>setTaskNote("Task database is not ready yet. Run SQL 011 before live testing caretaker workflow."));
-    return () => { mounted = false; };
-  }, []);
-  async function submit(){
-    if(!selected){ setTaskNote("No task selected."); return; }
-    if(!qrVerified){ setTaskNote("Scan QR first. If QR/camera fails, ask admin for serial exception mode."); return; }
-    if(!proofReady){ setTaskNote("Open camera or upload proof first. The proof checker needs a fresh photo/video before submit."); return; }
-    const proof = saveSubmittedTaskProof(selected);
-    try {
-      await submitCaretakerTaskProof({
-        taskId: selected.id,
-        proofUrl: proof.image,
-        presetNote: `${selected.task} proof submitted${needsFeedQty ? ` - ${feedUsed} kg used` : ""}`,
-        freeNote: selected.note,
-        qrVerified,
-        serialException: exceptionRequested,
-        feedQuantityUsed: needsFeedQty ? Number(feedUsed || 0) : null,
-        feedUnit: needsFeedQty ? "kg" : null,
-      });
-    } catch {
-      setTaskNote("Proof submit failed. Check caretaker login, assignment, and task permission before retrying.");
-      return;
-    }
-    const nextTasks = tasks.filter(t=>t.id!==selected.id);
-    setTasks(nextTasks);
-    setSelected(nextTasks[0] || selected);
-    setQrVerified(false);
-    setProofReady(false);
-    setExceptionRequested(false);
-    setTaskNote(`${selected.task} submitted for ${selected.rooster}. Inventory use, admin proof review, customer inbox notice, and care log record were created.`);
-  }
-  return <Shell role="caretaker" title="Active Tasks"><PageTitle title="Active Tasks" text="Open one assigned request, complete its proof, then send it for admin review." icon="clipboard" /><KaFarm>{taskNote}</KaFarm><div className="mt-5 grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Assigned Tasks</h2><Badge tone={tasks.length ? "warn" : "neutral"}>{tasks.length} open</Badge></div><div className="mt-4 max-h-[560px] space-y-3 overflow-y-auto pr-2">{tasks.map(t=><button key={t.id} onClick={()=>{setSelected(t);setQrVerified(false);setProofReady(false);setExceptionRequested(false);setTaskNote(`Opened ${t.task}. Read the instruction before starting.`);}} className={"w-full rounded-xl border p-3 text-left " + (selected?.id===t.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]")}><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-full bg-[#e7eadf] font-black">{t.requester[0]}</div><div className="min-w-0 flex-1"><b className="block truncate">{t.requester}</b><p className="truncate text-sm text-[#667267]">{t.rooster} - {t.task}</p></div><Badge tone={t.priority==="urgent"?"warn":"neutral"}>{t.priority}</Badge></div><p className="mt-2 text-xs font-bold text-[#667267]">{t.due}</p></button>)}{tasks.length===0 && <div className="grid min-h-60 place-items-center rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-6 text-center"><div><Icon name="clipboard" className="mx-auto h-8 w-8 text-[#1f6b45]"/><b className="mt-3 block">No assigned task</b><p className="mt-1 text-sm font-bold text-[#667267]">Approved care requests appear here after admin assigns them to you.</p></div></div>}</div></Card><Card>{selected ? <><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Selected Task</p><h2 className="mt-1 text-2xl font-black">{selected.task}</h2><p className="mt-1 text-sm font-bold text-[#667267]">{selected.rooster} / {selected.tag} - {selected.pen}</p></div><div className="flex gap-2"><Badge tone={qrVerified?"good":"warn"}>{qrVerified?"QR verified":"QR needed"}</Badge>{needsVideo&&<Badge tone="warn">Video needed</Badge>}</div></div><div className="mt-4 grid gap-3 md:grid-cols-2"><div className="rounded-2xl bg-amber-50 p-4"><b>Instruction</b><p className="mt-1 text-sm font-bold leading-6 text-[#667267]">{selected.note}</p></div><div className="rounded-2xl bg-[#f6f3e8] p-4"><b>Required Proof</b><p className="mt-1 text-sm font-bold text-[#667267]">{selected.proof}{needsVideo?" + short video":""}</p></div></div>{needsFeedQty&&<div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 p-4"><b>Feed Used</b><div className="mt-2 flex items-center gap-2"><input value={feedUsed} onChange={e=>setFeedUsed(e.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal" className="w-28 rounded-xl border p-3 font-black"/><span className="font-bold text-[#667267]">kg</span></div></div>}<div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><button onClick={()=>{setQrVerified(true);setTaskNote("QR verified. Camera and upload are now available.");}} className="rounded-xl bg-[#eee8d9] px-3 py-3 font-black"><Icon name="qr" className="mx-auto mb-1 h-5 w-5"/>Scan QR</button><button onClick={()=>{if(!qrVerified){setTaskNote("Scan QR first before camera.");return;}setProofReady(true);setTaskNote("Camera proof is ready for review.");}} className="rounded-xl bg-[#eee8d9] px-3 py-3 font-black"><Icon name="camera" className="mx-auto mb-1 h-5 w-5"/>Camera</button><button onClick={()=>{if(!qrVerified){setTaskNote("Scan QR first before upload.");return;}setProofReady(true);setTaskNote("Uploaded proof is ready for review.");}} className="rounded-xl bg-[#eee8d9] px-3 py-3 font-black"><Icon name="upload" className="mx-auto mb-1 h-5 w-5"/>Upload</button><Link href="/caretaker/chat" className="rounded-xl bg-amber-300 px-3 py-3 text-center font-black">Ask Admin</Link><button onClick={submit} className="rounded-xl bg-[#1f6b45] px-3 py-3 font-black text-white">Submit</button></div></> : <div className="grid min-h-[420px] place-items-center rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-8 text-center"><div><h2 className="text-2xl font-black">Waiting for assignment</h2><p className="mt-2 max-w-md text-sm font-bold leading-6 text-[#667267]">There is nothing to work on yet. You will see the customer, rooster, instruction, and required proof here after admin assigns a task.</p><Link href="/caretaker/chat" className="mt-5 inline-block rounded-xl bg-amber-300 px-5 py-3 font-black">Chat Admin</Link></div></div>}</Card></div></Shell>;
-}
-
 export function CompletedTasks() { const [local,setLocal]=useState<SubmittedTaskProof[]>([]); useEffect(()=>setLocal(getSubmittedTaskProofs()), []); const rows = [...local.map(p=>({ rooster:p.rooster, task:p.task, time:p.submittedAt, status:p.status, image:p.image })), ...completedTasks]; return <Shell role="caretaker" title="Completed Tasks"><PageTitle title="Completed Tasks" text="Submitted tasks appear here for recall. Proof thumbnails are view-only." icon="check" /><div className="grid max-h-[620px] gap-4 overflow-y-auto pr-2 md:grid-cols-2">{rows.map(t=><Card key={t.task+t.time}><div className="flex gap-4"><img src={t.image} className="h-20 w-20 rounded-xl object-cover" alt="" /><div><h2 className="font-black">{t.task}</h2><p className="text-sm text-[#667267]">{t.rooster} - {t.time}</p><Badge tone={t.status==="Verified"?"good":"warn"}>{t.status}</Badge></div></div></Card>)}</div></Shell>; }
 export function CaretakerChat() {
   type ChatMsg = { from: "caretaker" | "kafarm" | "admin"; text: string; at: string };
@@ -2674,67 +2550,6 @@ export function CaretakerChat() {
 export function CaretakerProfile() { const [profileNote,setProfileNote]=useState("Profile includes resume, salary, and payout method for admin payroll."); return <Shell role="caretaker" title="Profile"><PageTitle title="Profile" text="Your work profile, resume, salary, and payout method." icon="user" /><KaFarm>{profileNote}</KaFarm><Card className="mt-5"><div className="flex flex-wrap gap-5"><div className="grid h-24 w-24 place-items-center rounded-full bg-[#dfeada] text-3xl font-black">JD</div><div><h2 className="text-2xl font-black">Juan D.</h2><p>Senior Farm Caretaker</p><p className="mt-2 text-[#667267]">Salary: {peso(18000)} / month - GCash payroll</p><button onClick={()=>setProfileNote("Resume preview opened. Name, address, and contact details are hidden from customer-facing views.")} className="mt-4 rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">View Resume</button></div></div></Card></Shell>; }
 
 
-export function AdminOperationChecker() {
-  const [selected,setSelected]=useState("kyc");
-  const [submittedProofs,setSubmittedProofs]=useState<SubmittedTaskProof[]>([]);
-  useEffect(()=>setSubmittedProofs(getSubmittedTaskProofs()), []);
-  const queues = [
-    { id: "kyc", title: "KYC Review", count: 4, status: "Needs admin", tone: "warn" as const, icon: "shield" as IconName, owner: "Account Verification", next: "Check consent, ID front/back, selfie, duplicate flags, then approve/hold." },
-    { id: "care", title: "Care Requests", count: 5, status: "Assign caretaker", tone: "warn" as const, icon: "clipboard" as IconName, owner: "Farm Operations", next: "Assign by rooster, service, customer note, and caretaker load." },
-    { id: "proof", title: "Proof Review", count: Math.max(3, submittedProofs.length), status: submittedProofs.length ? "New proof submitted" : "Check quality", tone: "bad" as const, icon: "camera" as IconName, owner: "Caretaker Management", next: "Review QR/serial, photo clarity, uploaded time, and rooster tag before customer release." },
-    { id: "cashin", title: "Cash-In Checks", count: 2, status: "Duplicate scan", tone: "warn" as const, icon: "wallet" as IconName, owner: "Customer Requests", next: "Match amount, sender, payment channel, reference, and duplicate risk." },
-    { id: "withdraw", title: "Withdrawals", count: 3, status: "Manual payout", tone: "warn" as const, icon: "coins" as IconName, owner: "Customer Requests", next: "Require KYC approved, payout name match, wallet PIN trail, proof upload, then receipt." },
-    { id: "support", title: "Escalated Chat", count: 2, status: "Admin reply", tone: "neutral" as const, icon: "chat" as IconName, owner: "Live Chat", next: "Read Ka-Farm summary, open evidence, answer customer, and log decision." },
-  ];
-  const active = queues.find(q=>q.id===selected) || queues[0];
-  const handoff = [
-    { label: "Customer", value: "Request, KYC, wallet, receipt, support" },
-    { label: "Admin", value: "Review, assign, approve, hold, document" },
-    { label: "Caretaker", value: "Verify rooster, perform task, upload proof" },
-    { label: "Back to Customer", value: "Inbox notice, care logs, invoice, wallet status" },
-  ];
-  return <Shell role="admin" title="Operations Checker"><PageTitle title="Operations Checker" text="Admin control room for customer, caretaker, money, KYC, proof, and support checks." icon="clipboard" /><KaFarm>Start with the highest risk queue. Admin is the final reviewer for KYC, money, proof, and dispute decisions.</KaFarm><div className="mt-5 grid gap-5 xl:grid-cols-[380px_1fr_340px]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Admin Check Queue</h2><Badge tone="warn">{queues.reduce((sum,q)=>sum+q.count,0)} open</Badge></div><div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto pr-2">{queues.map(q=><button key={q.id} onClick={()=>setSelected(q.id)} className={("w-full rounded-2xl border p-4 text-left transition " + (selected===q.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]"))}><div className="flex items-center gap-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-[#1f6b45] shadow-sm"><Icon name={q.icon} /></span><span className="min-w-0 flex-1"><b className="block truncate">{q.title}</b><span className="mt-1 block text-sm font-bold text-[#667267]">{q.owner}</span></span><Badge tone={q.tone}>{q.count}</Badge></div><p className="mt-3 text-sm font-bold leading-6 text-[#667267]">{q.status}</p></button>)}</div></Card><div className="grid gap-5"><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">Selected Operation</p><h2 className="mt-1 text-3xl font-black">{active.title}</h2><p className="mt-1 text-sm font-bold text-[#667267]">Owner: {active.owner}</p></div><Badge tone={active.tone}>{active.status}</Badge></div><div className="mt-5 rounded-2xl bg-[#f6f3e8] p-4"><b>Next admin action</b><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{active.next}</p></div>{selected==="proof" && submittedProofs.length>0 && <div className="mt-4 max-h-[260px] space-y-3 overflow-y-auto pr-2">{submittedProofs.map(p=><div key={p.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-3"><div className="flex items-center gap-3"><img src={p.image} alt="" className="h-14 w-14 rounded-xl object-cover" /><div className="min-w-0 flex-1"><b className="block truncate">{p.rooster} - {p.task}</b><p className="text-xs font-bold text-[#667267]">{p.caretaker} - {p.submittedAt}</p></div><Badge tone="warn">Review</Badge></div><p className="mt-2 text-sm font-bold text-[#667267]">{p.proof} / {p.note}</p></div>)}</div>}<div className="mt-5 grid gap-3 sm:grid-cols-3"><Link href="/admin/customer-requests" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Customer</Link><Link href="/admin/caretaker-management" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Caretaker</Link><Link href="/admin/evidence" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Evidence</Link></div></Card><Card><h2 className="text-xl font-black">Handoff Flow</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{handoff.map((h,i)=><div key={h.label} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-[#1f6b45] text-sm font-black text-white">{i+1}</span><b>{h.label}</b></div><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{h.value}</p></div>)}</div></Card></div><Card><h2 className="text-xl font-black">Release Rules</h2><div className="mt-4 space-y-3 text-sm font-bold leading-6 text-[#667267]"><p className="rounded-2xl bg-amber-50 p-3 text-amber-900">KYC and withdrawals stay locked until admin final approval.</p><p className="rounded-2xl bg-red-50 p-3 text-red-800">Wrong rooster, duplicate receipt, or face risk never auto-releases to customer.</p><p className="rounded-2xl bg-emerald-50 p-3 text-emerald-900">Clean caretaker proof can publish to customer care logs after review.</p><p className="rounded-2xl bg-[#f6f3e8] p-3">Every action must leave evidence: who, what, when, and why.</p></div></Card></div></Shell>;
-}
-
-function KaFarmCaretakerErrorLab() {
-  const [note, setNote] = useState("Ready for local KaFarm error test.");
-  if (process.env.NODE_ENV === "production") return null;
-
-  const triggerLevelOne = () => {
-    console.warn("KaFarm test level 1 caretaker warning: camera permission warning on /caretaker/dashboard");
-    setNote("Level 1 sent: warning. Check /admin/kafarm -> System -> Problem -> Run.");
-  };
-
-  const triggerLevelTwo = () => {
-    console.error("KaFarm test level 2 caretaker runtime error: task proof upload button returned post code error 422");
-    setNote("Level 2 sent: console/API-style error. Check System or Production Error.");
-  };
-
-  const triggerLevelThree = () => {
-    setNote("Level 3 sent: fatal runtime error will be thrown.");
-    window.setTimeout(() => {
-      throw new Error("KaFarm test level 3 fatal error: caretaker task screen stopped during QR verification");
-    }, 250);
-  };
-
-  return (
-    <Card className="mt-5 border-2 border-dashed border-amber-300 bg-amber-50/90">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-black uppercase text-amber-800">Local KaFarm Test Lab</p>
-          <h2 className="text-xl font-black text-[#14241b]">Caretaker Error Level 1-3</h2>
-          <p className="mt-1 text-sm font-bold text-[#667267]">{note}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={triggerLevelOne} className="rounded-xl bg-white px-4 py-3 text-sm font-black text-amber-800 shadow-sm">Level 1 Warning</button>
-          <button onClick={triggerLevelTwo} className="rounded-xl bg-orange-500 px-4 py-3 text-sm font-black text-white shadow-sm">Level 2 Error</button>
-          <button onClick={triggerLevelThree} className="rounded-xl bg-red-600 px-4 py-3 text-sm font-black text-white shadow-sm">Level 3 Fatal</button>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 export function CaretakerOperationChecker() {
   const [tasks,setTasks]=useState<CaretakerTaskView[]>([]);
   const [selected,setSelected]=useState<CaretakerTaskView | null>(null);
@@ -2766,51 +2581,6 @@ const adminQueues = [
   { title: "Unassigned Requests", count: 5, text: "Paid requests waiting for caretaker.", href: "/admin/farm-operations", icon: "clipboard" },
 ];
 
-const adminDeskCards: Record<string, Array<{ title: string; text: string; icon: IconName; href: string }>> = {
-  customer: [
-    { title: "Customers", text: "Customer list, rooster count, owner nickname, duplicates, and account status.", icon: "users", href: "/admin/customers" },
-    { title: "Payments", text: "Customer payments, farm buy receipts, service fees, and invoice history.", icon: "coins", href: "/admin/transactions" },
-    { title: "Wallet / Withdrawals", text: "Payment proofs, withdrawal requests, payout account checks, and pending holds.", icon: "wallet", href: "/admin/customer-requests/withdraw" },
-    { title: "KYC / Risk", text: "Identity checks, duplicate accounts, suspicious links, and account review.", icon: "shield", href: "/admin/risk-management" },
-    { title: "Care Concerns", text: "Customer reports about care quality, wrong rooster, health worries, or proof issues.", icon: "alert", href: "/admin/customer-requests" },
-    { title: "Sell Requests", text: "Customer requests to sell rooster, pricing estimate, sale invoice, and payout trail.", icon: "rooster", href: "/admin/sell-requests" },
-    { title: "Support Tickets", text: "Escalated Ka-Farm chats and live admin conversations.", icon: "chat", href: "/admin/live-chat" },
-    { title: "Logbook", text: "Everything customer did: buys, requests, messages, receipts, proofs, and admin actions.", icon: "file", href: "/admin/evidence" },
-  ],
-  caretaker: [
-    { title: "Registration Control", text: "Admin-only caretaker signup link, pending approvals, and printable approved/rejected records.", icon: "clipboard", href: "/admin/caretaker-registration" },
-    { title: "Caretaker List", text: "Two-column review: caretaker list on the left, resume/photo/profile on the right.", icon: "users", href: "/admin/caretakers" },
-    { title: "Payroll", text: "15th/30th payroll, time in/out, absent count, per-day rate, payout mode, receipt.", icon: "coins", href: "/admin/caretaker-management" },
-    { title: "Proof Review", text: "Caretaker submissions flagged by system: blurred, old photo, wrong rooster, missing video.", icon: "camera", href: "/admin/evidence" },
-    { title: "Caretaker Logs", text: "All, rejects, completed, and performance history per caretaker.", icon: "file", href: "/admin/evidence" },
-    { title: "Caretaker Chat", text: "Messenger-style admin chat for QR, scanner, camera, and unclear task issues.", icon: "chat", href: "/admin/live-chat" },
-    { title: "Attendance", text: "Daily attendance, absent/present count, and payroll computation source.", icon: "clipboard", href: "/admin/caretaker-management" },
-  ],
-  farm: [
-    { title: "Rooster Inventory", text: "Farm rooster inventory: available, taken, customer owner, caretaker, pen, QR/serial.", icon: "rooster", href: "/admin/farm-operations" },
-    { title: "Customer Roosters", text: "Who owns which rooster, current caretaker, care status, and sell readiness.", icon: "users", href: "/admin/farm-operations" },
-    { title: "Request Queue", text: "Customer care/sell requests waiting for admin assignment and caretaker work.", icon: "clipboard", href: "/admin/farm-operations" },
-    { title: "Sell Pricing", text: "Admin sets price, caretaker verifies weight/status, system prepares sale computation.", icon: "coins", href: "/admin/sell-requests" },
-    { title: "Sale / Invoice", text: "Sold roosters, customer share, farm share, and invoice sent to inbox.", icon: "file", href: "/admin/sell-requests" },
-  ],
-  money: [
-    { title: "Cash-In Checks", text: "Incoming money, screenshot proof, sender, channel, reference, duplicate and amount check.", icon: "wallet", href: "/admin/transactions/cashin" },
-    { title: "Withdrawals", text: "Manual payout flow opens Customer Requests withdrawal review.", icon: "coins", href: "/admin/customer-requests/withdraw" },
-    { title: "Treasury Guide", text: "Simple business view: available cash, locked funds, pending payouts, income, and holds.", icon: "shield", href: "/admin/treasury" },
-    { title: "Receipts / Invoices", text: "Cash-in, withdrawal, farm buy, care request, and sale records.", icon: "file", href: "/admin/evidence" },
-  ],
-  chat: [
-    { title: "Customer Live Chat", text: "Only chats escalated by Ka-Farm appear here.", icon: "support", href: "/admin/live-chat" },
-    { title: "Caretaker Chat", text: "QR exception, camera issue, wrong rooster, and urgent farm messages.", icon: "chat", href: "/admin/live-chat" },
-    { title: "AI Logs", text: "Customer/caretaker Ka-Farm conversations kept for evidence.", icon: "file", href: "/admin/evidence" },
-  ],
-  evidence: [
-    { title: "System Evidence Logs", text: "Main logs: receipts, proofs, overrides, admin actions, and system checker results.", icon: "search", href: "/admin/evidence" },
-    { title: "Proof Review Logs", text: "Task photos/videos, QR status, upload metadata, and admin decisions.", icon: "camera", href: "/admin/evidence" },
-    { title: "Resolved Cases", text: "Closed issues with decision, evidence, receipt, message, and delete/archive.", icon: "check", href: "/admin/customer-requests/resolved" },
-    { title: "Audit Logs", text: "Who changed what, when, and why, so the farm has documentation.", icon: "file", href: "/admin/audit-logs" },
-  ],
-};
 const adminDashboardIndicators = [
   { title: "Issues", value: "5", sub: "2 high priority reports", detail: "Customer/caretaker problems needing investigation.", href: "/admin/issue-management", icon: "alert" as IconName, tone: "bad" as const },
   { title: "Requests", value: "12", sub: "Payments, care, withdrawals", detail: "Customer submitted requests waiting for admin movement.", href: "/admin/customer-requests", icon: "clipboard" as IconName, tone: "warn" as const },
@@ -2919,12 +2689,6 @@ function AdminLiveChatPage() {
   const isPlaceholderChat = selected.id.startsWith("demo-");
   return <Shell role="admin" title="Live Chat"><PageTitle title="Escalated Chats" text="Only chats escalated by KaFarm appear here. Admin can join, reply, end, and complete the chat." icon="chat" /><div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)_320px]"><Card><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Escalation Queue</h2><Badge tone="warn">{chats.filter(c=>c.status!=="Completed").length}</Badge></div><button onClick={loadChats} className="mt-3 w-full rounded-xl bg-[#eee8d9] px-3 py-2 text-sm font-black">Refresh Database Queue</button><p className="mt-2 text-xs font-bold leading-5 text-[#667267]">{dbNote}</p><div className="mt-4 max-h-[640px] space-y-3 overflow-y-auto pr-2">{chats.map(chat=><button key={chat.id} onClick={()=>setSelected(chat)} className={("w-full rounded-2xl border p-3 text-left transition " + (selected.id===chat.id?"border-[#1f6b45] bg-emerald-50":"border-[#ece6d8] bg-[#fffdf7]"))}><div className="flex items-center gap-3"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#1f6b45] font-black text-white">{chat.avatar}</div><div className="min-w-0 flex-1"><b className="block truncate">{chat.name}</b><p className="truncate text-xs font-black uppercase text-[#667267]">{chat.role}</p><p className="truncate text-sm font-bold text-[#667267]">{chat.issue}</p></div><Badge tone={chat.status==="Completed"?"good":chat.status==="Ended"?"neutral":"warn"}>{chat.status}</Badge></div><p className="mt-2 line-clamp-2 text-xs font-bold leading-5 text-[#667267]">{chat.summary}</p><p className="mt-2 text-xs font-black text-[#1f6b45]">{chat.last}</p></button>)}</div></Card><div className="grid gap-5"><Card><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">KaFarm Summary Before Admin Joins</p><h2 className="mt-1 text-2xl font-black">{selected.name}</h2><p className="text-sm font-bold text-[#667267]">{selected.issue}</p></div><div className="flex flex-wrap gap-2"><Badge tone={selected.risk==="High"?"bad":selected.risk==="Medium"?"warn":"neutral"}>{selected.risk} Risk</Badge><Badge>{selected.role}</Badge></div></div><div className="mt-4 grid gap-3 md:grid-cols-2"><Info label="Related Record" value={selected.relatedRecord} /><Info label="Status" value={selected.status} /></div><div className="mt-4 rounded-2xl bg-[#f6f3e8] p-4"><b>Issue Summary</b><p className="mt-1 text-sm font-bold leading-6 text-[#667267]">{selected.summary}</p></div><div className="mt-4 rounded-2xl bg-sky-50 p-4 text-[#12375a]"><b>Suggested Reply</b><p className="mt-1 text-sm font-bold leading-6">{selected.suggestedReply}</p></div></Card><Card><h2 className="text-xl font-black">Chat Thread</h2><div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-2">{selected.messages.map((m,i)=><div key={i} className={("max-w-[86%] rounded-2xl p-3 " + (m.from==="admin"?"ml-auto bg-[#1f6b45] text-white":m.from==="customer"||m.from==="caretaker"?"bg-sky-50 text-[#12375a] ring-1 ring-sky-100":"bg-[#f6f3e8]"))}><b>{m.from==="admin"?"Admin":m.from==="customer"?"Customer":m.from==="caretaker"?"Caretaker":"Ka-Farm"}</b><p className="mt-1 text-sm leading-6">{m.text}</p>{m.at && <p className="mt-1 text-[11px] font-black opacity-70">{m.at}</p>}</div>)}</div><div className="mt-4 flex gap-2"><input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendAdminReply()}} placeholder={isPlaceholderChat?"Waiting for real escalated chat":"Admin reply..."} disabled={isPlaceholderChat} className="flex-1 rounded-xl border border-[#ded8c9] p-3 font-bold disabled:bg-[#f6f3e8] disabled:text-[#8b8b8b]" /><button onClick={sendAdminReply} disabled={isPlaceholderChat} className="rounded-xl bg-[#1f6b45] px-5 font-black text-white disabled:cursor-not-allowed disabled:bg-[#cfc7b5]">Send</button></div></Card></div><Card><h2 className="text-xl font-black">Admin Actions</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Database-backed chat handling and evidence-ready transcript. No wallet, KYC, withdrawal, fraud, or record edits here.</p><div className="mt-4 grid gap-2"><button onClick={joinChat} disabled={isPlaceholderChat} className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white disabled:cursor-not-allowed disabled:bg-[#cfc7b5]">{isPlaceholderChat?"Waiting for Chat":"Join Chat"}</button><button onClick={endChat} disabled={isPlaceholderChat} className="rounded-xl bg-amber-300 px-4 py-3 font-black disabled:cursor-not-allowed disabled:bg-[#e4ddcf]">End Chat</button><button onClick={completeChat} disabled={isPlaceholderChat} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black disabled:cursor-not-allowed">Complete Chat</button><Link href="/admin/evidence" className="rounded-xl bg-white px-4 py-3 text-center font-black shadow-sm">Open Evidence</Link></div><div className="mt-4 rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold leading-6 text-[#667267]">{dbNote}</div></Card></div></Shell>;
 }
-const adminCustomerProfiles = [
-  { id: "cust-1", name: "Aydana Buratino", avatar: "AB", kyc: "Pending Review", wallet: "Active", pin: "Set", payout: "Not added", risk: "Medium", issue: "KYC submitted, withdrawal locked", last: "Today 5:42 PM", email: "aydana@example.com", phone: "+63 917 555 0198" },
-  { id: "cust-2", name: "Marco Reyes", avatar: "MR", kyc: "Approved", wallet: "Active", pin: "Set", payout: "GCash verified", risk: "Low", issue: "Cash-in receipt reviewed", last: "Today 4:10 PM", email: "marco@example.com", phone: "+63 918 333 4411" },
-  { id: "cust-3", name: "Lina Cruz", avatar: "LC", kyc: "Needs Review", wallet: "Hold", pin: "Reset requested", payout: "Maya pending", risk: "High", issue: "Possible duplicate account", last: "Yesterday 8:18 PM", email: "lina@example.com", phone: "+63 919 222 1188" },
-];
-
 const emptyCustomerRequestJob = {
   id: "empty",
   name: "No pending request",
@@ -3691,7 +3455,7 @@ function AdminCaretakerManagementPage({ config }: { config: string[] }) {
   const [loadNote,setLoadNote]=useState("Loading registered caretakers and task history...");
   const [tab,setTab]=useState(tabs[0].id);
   const [selectedCaretaker,setSelectedCaretaker]=useState<any>(emptyCaretaker);
-  const [selectedAssigned,setSelectedAssigned]=useState<any>(null);
+  const [,setSelectedAssigned]=useState<any>(null);
   const [selectedCompleted,setSelectedCompleted]=useState<any>(null);
   const [note,setNote]=useState("");
   const [adminRequestFile,setAdminRequestFile]=useState("");
@@ -3793,7 +3557,6 @@ function AdminCaretakerManagementPage({ config }: { config: string[] }) {
         setCaretakers(liveCaretakers);
         setCompleted(completedRows);
         setSelectedCaretaker(liveCaretakers[0] || emptyCaretaker);
-        setSelectedAssigned(liveCaretakers[0]?.assigned?.[0] || null);
         setSelectedCompleted(completedRows[0] || null);
         setLoadNote(`${applicationRows.length} registered application(s), ${liveCaretakers.length} approved caretaker(s), ${completedRows.length} completed task(s).`);
       } catch (error:any) {
@@ -3821,8 +3584,15 @@ function AdminCaretakerManagementPage({ config }: { config: string[] }) {
   </Shell>;
 }
 function AdminFarmOperationsPage({ config }: { config: string[] }) {
-  const todayKey = new Date().toISOString().slice(0,10);
-  const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+  const [calendarKeys] = useState(() => {
+    const now = new Date();
+    return {
+      today: now.toISOString().slice(0,10),
+      yesterday: new Date(now.getTime() - 86400000).toISOString().slice(0,10),
+    };
+  });
+  const todayKey = calendarKeys.today;
+  const yesterdayKey = calendarKeys.yesterday;
   const [section,setSection]=useState("products");
   const [range,setRange]=useState<"total" | "monthly" | "daily">("total");
   const [date,setDate]=useState(todayKey);
@@ -3972,9 +3742,6 @@ function AdminAccountVerificationPage({ config }: { config: string[] }) {
   </Shell>;
 }
 function AdminOperationsDeskFormat({ kind, config }: { kind: "caretaker" | "farm" | "money" | "evidence" | "issues" | "verification"; config: string[] }) {
-  if (kind === "farm") return <AdminFarmOperationsPage config={config} />;
-  if (kind === "issues") return <AdminIssueManagementPage config={config} />;
-  if (kind === "verification") return <AdminAccountVerificationPage config={config} />;
   const rowsByKind = {
     caretaker: [
       { id:"registration", name:"Caretaker Registration", status:"Permanent link", main:"Admin sends caretaker signup link", detail:"Permanent registration link; applicant can register even if the link is forwarded.", route:"/admin/caretaker-registration", priority:"Normal" },
@@ -4012,6 +3779,10 @@ function AdminOperationsDeskFormat({ kind, config }: { kind: "caretaker" | "farm
   const [selected,setSelected]=useState(rowsByKind[0]);
   const [decision,setDecision]=useState<"open" | "approved" | "rejected">("open");
   const [note,setNote]=useState("");
+
+  if (kind === "farm") return <AdminFarmOperationsPage config={config} />;
+  if (kind === "issues") return <AdminIssueManagementPage config={config} />;
+  if (kind === "verification") return <AdminAccountVerificationPage config={config} />;
 
   type OperationsRow = (typeof rowsByKind)[number];
 
@@ -4077,51 +3848,20 @@ function AdminOperationsDeskFormat({ kind, config }: { kind: "caretaker" | "farm
   </Shell>;
 }
 
-function AdminWorkDesk({ kind, config }: { kind: "caretaker" | "farm" | "money" | "evidence" | "kafarm"; config: string[] }) {
-  const caretakerRows = [
-    { name: "Juan Dela Cruz", role: "Senior caretaker", status: "On duty", resume: "6 years farm care, QR trained", pay: 500, present: 5, absent: 0, mode: "GCash", avatar: "JD" },
-    { name: "Mia Santos", role: "Feed and supplement", status: "Needs proof review", resume: "Vitamin/video task trained", pay: 500, present: 4, absent: 1, mode: "Maya", avatar: "MS" },
-    { name: "Rico Tan", role: "Night watch", status: "Available", resume: "Pen rotation and health check", pay: 500, present: 3, absent: 2, mode: "UnionBank", avatar: "RT" },
-  ];
-  const farmRows = [
-    { rooster: "Bantay", status: "Taken", owner: "Aydana Buratino", caretaker: "Juan D.", pen: "A-04", note: "Care active" },
-    { rooster: "Red Ace", status: "Available", owner: "Farm stock", caretaker: "Unassigned", pen: "B-02", note: "Ready to sell" },
-    { rooster: "Kidlat", status: "Sell request", owner: "Marco Reyes", caretaker: "Mia S.", pen: "C-01", note: "Needs weight check" },
-  ];
-  const moneyRows = [
-    { type: "Cash-in", name: "Marco Reyes", amount: 1200, status: "Reference check", source: "GCash" },
-    { type: "Withdrawal", name: "Aydana Buratino", amount: 2500, status: "KYC locked", source: "Maya" },
-    { type: "Treasury", name: "Today", amount: 18400, status: "Available after holds", source: "FarmConnect" },
-  ];
-  const evidenceRows = [
-    { title: "KYC duplicate packet", owner: "Aydana Buratino", status: "Open", source: "Account Verification" },
-    { title: "Blurred vitamin proof", owner: "Mia Santos", status: "Review", source: "Caretaker proof" },
-    { title: "Cash-in duplicate reference", owner: "Marco Reyes", status: "Investigate", source: "Customer Requests" },
-    { title: "Resolved withdrawal", owner: "Lina Cruz", status: "Archived", source: "Resolved Cases" },
-  ];
-  const payrollTotal = caretakerRows.reduce((sum,row)=>sum + row.pay * row.present, 0);
-  const cards = adminDeskCards[kind] || [];
-  if (kind === "kafarm") return <Shell role="admin" title={config[0]}><PageTitle title="Ka-Farm Console" text="Buddy troubleshooter for admin: it explains what happened, what evidence to open, and what action is safest." icon="support" /><div className="grid gap-5 xl:grid-cols-[1fr_420px]"><div className="grid gap-4 md:grid-cols-2"><Card><h2 className="text-xl font-black">What Ka-Farm Does</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Reads customer/caretaker/admin logs, summarizes the problem, points to the correct evidence, and suggests the next safe action.</p></Card><Card><h2 className="text-xl font-black">Limit</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Ka-Farm can guide and prepare templates, but admin still approves payouts, KYC decisions, caretaker exceptions, and final customer messages.</p></Card><Card><h2 className="text-xl font-black">Ask Examples</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Ano naiwan? Bakit flagged ang proof? Ano evidence bago ako magrelease ng withdrawal? Sino caretaker ng rooster na ito?</p></Card><Card><h2 className="text-xl font-black">Turnover Guide</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">If owner is away, Ka-Farm shows the workflow bridge: customer request, admin check, caretaker task, proof review, customer update.</p></Card></div><KaFarmAdmin /></div></Shell>;
-  return <Shell role="admin" title={config[0]}><PageTitle title={config[0]} text={config[1]} icon={config[2] as IconName} /><KaFarm>{kind === "caretaker" ? "Caretaker management is for applications, resume review, payment method records, payroll, proof, and chat. Start with pending applications." : kind === "farm" ? "Farm operations connects rooster inventory, customer ownership, request queue, sale pricing, and invoices." : kind === "money" ? "Payment review separates cash-in checks, withdrawal review, treasury, and receipts so admin can follow the money trail." : "Evidence logs keep the farm protected: every proof, receipt, override, and decision stays searchable."}</KaFarm><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{cards.map(card=><Link key={card.title} href={card.href} className="rounded-2xl border border-[#e3ded0] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><Icon name={card.icon} className="h-7 w-7 text-[#1f6b45]" /><h2 className="mt-3 text-xl font-black">{card.title}</h2><p className="mt-2 min-h-[72px] text-sm font-bold leading-6 text-[#667267]">{card.text}</p></Link>)}</div><AdminRoleBridge kind={kind} />{kind === "caretaker" && <><AdminCaretakerApplicationQueue /><div className="mt-5 grid gap-5 xl:grid-cols-[360px_1fr]"><Card><h2 className="text-xl font-black">Active Caretaker List</h2><div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-2">{caretakerRows.map(row=><div key={row.name} className="rounded-2xl border border-[#ece6d8] p-3"><div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-[#1f6b45] font-black text-white">{row.avatar}</div><div className="min-w-0 flex-1"><b className="block truncate">{row.name}</b><p className="truncate text-sm font-bold text-[#667267]">{row.role}</p></div><Badge tone={row.status.includes("Review")?"warn":"good"}>{row.status}</Badge></div></div>)}</div></Card><Card><div className="grid gap-4 lg:grid-cols-2"><div><h2 className="text-xl font-black">Resume View</h2><div className="mt-4 rounded-3xl bg-[#f6f3e8] p-5"><div className="grid h-24 w-24 place-items-center rounded-full bg-white text-3xl font-black">JD</div><h3 className="mt-4 text-2xl font-black">Juan Dela Cruz</h3><p className="font-bold text-[#667267]">{caretakerRows[0].resume}</p><p className="mt-3 text-sm font-bold text-[#667267]">Contact and address stay admin-only.</p></div></div><div><h2 className="text-xl font-black">Payroll Snapshot</h2><div className="mt-4 rounded-3xl bg-emerald-50 p-5"><p className="text-sm font-black uppercase text-[#667267]">15th / 30th Payroll</p><p className="mt-2 text-3xl font-black text-[#1f6b45]">{peso(payrollTotal)}</p><p className="mt-2 text-sm font-bold text-[#667267]">Computed from per-day rate, present days, absent days, and payout mode.</p></div>{caretakerRows.map(row=><div key={row.name+"pay"} className="mt-3 flex items-center justify-between rounded-xl border p-3 text-sm font-bold"><span>{row.name}</span><span>{row.present} present / {row.absent} absent - {peso(row.pay*row.present)}</span></div>)}</div></div></Card></div></>}{kind === "farm" && <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]"><Card><h2 className="text-xl font-black">Rooster Inventory</h2><div className="mt-4 max-h-[430px] overflow-y-auto pr-2"><div className="grid gap-3">{farmRows.map(row=><div key={row.rooster} className="grid gap-3 rounded-2xl border border-[#ece6d8] p-4 md:grid-cols-6"><b>{row.rooster}</b><span>{row.status}</span><span>{row.owner}</span><span>{row.caretaker}</span><span>{row.pen}</span><span className="text-[#667267]">{row.note}</span></div>)}</div></div></Card><Card><h2 className="text-xl font-black">Request Queue</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Sell requests and care requests land here first. Admin sets price or assigns caretaker; caretaker checks weight/status when needed.</p><Link href="/admin/sell-requests" className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Sell Queue</Link></Card></div>}{kind === "money" && <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]"><AdminManualPaymentQueue /><Card><h2 className="text-xl font-black">Treasury Meaning</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Treasury is the owner view of money: real cash received, pending manual payments, locked customer savings, unpaid withdrawals, payroll due, and available farm funds.</p><Link href="/admin/customer-requests/withdraw" className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Withdrawal Review</Link></Card></div>}{kind === "evidence" && <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]"><Card><h2 className="text-xl font-black">Evidence Stream</h2><div className="mt-4 max-h-[430px] space-y-3 overflow-y-auto pr-2">{evidenceRows.map(row=><div key={row.title} className="grid gap-3 rounded-2xl border border-[#ece6d8] p-4 md:grid-cols-4"><b>{row.title}</b><span>{row.owner}</span><span>{row.source}</span><Badge tone={row.status==="Archived"?"good":"warn"}>{row.status}</Badge></div>)}</div></Card><Card><h2 className="text-xl font-black">Resolved Cases</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Finished problems move here with final decision, receipt/invoice, customer notice, admin note, and evidence links.</p><Link href="/admin/customer-requests/resolved" className="mt-4 inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Resolved</Link></Card></div>}</Shell>;
-}
-
-export function AdminWorkspace({ kind }: { kind: "customer" | "caretaker" | "farm" | "money" | "chat" | "evidence" | "kafarm" | "issues" | "verification" }) {
+export function AdminWorkspace({ kind }: { kind: "customer" | "caretaker" | "farm" | "chat" | "evidence" | "issues" | "verification" }) {
   const config = {
     customer: ["Customer Requests Management", "Review customer payment receipts, care requests, task assignment, and withdrawal requests.", "clipboard"],
     caretaker: ["Caretaker Management", "Registration link, caretaker list, task verification, and completed task evidence.", "user"],
     farm: ["Farm Operations", "Product sales summary, customer registry, and paid care request income.", "rooster"],
-    money: ["Payment Review", "Payment and withdrawal review now live under Customer Requests Management.", "coins"],
     chat: ["Live Chat", "Only escalated Ka-Farm chats and caretaker-admin chats appear here.", "chat"],
     evidence: ["Evidence Logs", "Customer, caretaker, and admin evidence organized person by person.", "file"],
-    kafarm: ["KaFarm Console", "Context-aware IT-Ops buddy for admin investigation, evidence, reports, and safe next steps.", "support"],
     issues: ["Issue Management", "Customer reports, caretaker reports, and completed issue storage with KaFarm investigation.", "alert"],
     verification: ["Account Verification", "Customer, caretaker, and admin verification shortcuts from one source of truth.", "shield"],
   }[kind];
   if (kind === "chat") return <AdminLiveChatPage />;
   if (kind === "customer") return <AdminCustomerRequestsPage />;
   if (kind === "caretaker") return <AdminCaretakerManagementPage config={config} />;
-  if (kind === "farm" || kind === "money" || kind === "evidence" || kind === "issues" || kind === "verification") return <AdminOperationsDeskFormat kind={kind} config={config} />;
-  return <AdminWorkDesk kind={kind as "caretaker" | "farm" | "money" | "evidence" | "kafarm"} config={config} />;
+  return <AdminOperationsDeskFormat kind={kind} config={config} />;
 }
 
 export function AccessPage({ role }: { role: Role }) {
@@ -4465,60 +4205,6 @@ export function CaretakerSignupPage() {
     </AuthShell>
   );
 }
-
-export function LegacyAccessPage({ role }: { role: Role }) {
-  const href = role === "admin" ? "/admin" : role === "caretaker" ? "/caretaker/dashboard" : "/customer/dashboard";
-  const title = role === "admin" ? "Admin Access" : role === "caretaker" ? "Caretaker Access" : "Customer Access";
-  return (
-    <main className="grid min-h-screen place-items-center bg-[#f6f3e8] px-4 text-[#17251d]">
-      <Card className="w-full max-w-xl">
-        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#1f6b45] text-white"><Icon name="shield" /></div>
-        <h1 className="mt-5 text-3xl font-black">{title}</h1>
-        <KaFarm>Account sign-in will be connected after the V1 flow test. For now, open the app safely without old database screens.</KaFarm>
-        <Link href={href} className="mt-5 inline-block rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">Open {title}</Link>
-        <Link href="/" className="ml-3 inline-block rounded-xl bg-[#eee8d9] px-5 py-3 font-black">Home</Link>
-      </Card>
-    </main>
-  );
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

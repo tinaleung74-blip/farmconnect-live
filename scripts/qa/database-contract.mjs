@@ -1,0 +1,147 @@
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { createClient } from "@supabase/supabase-js";
+
+function readEnvFile(file) {
+  if (!fs.existsSync(file)) return {};
+  return Object.fromEntries(
+    fs.readFileSync(file, "utf8")
+      .split(/\r?\n/)
+      .map(line => line.match(/^([^#=]+)=(.*)$/))
+      .filter(Boolean)
+      .map(match => [match[1].trim(), match[2].trim().replace(/^['"]|['"]$/g, "")]),
+  );
+}
+
+const localEnv = readEnvFile(path.join(process.cwd(), ".env.local"));
+const env = { ...localEnv, ...process.env };
+const outputDir = path.join(process.cwd(), "test-results", "kafarm");
+const reportPath = path.join(outputDir, "database-contract.json");
+
+const requiredTables = [
+  "profiles",
+  "manual_payment_requests",
+  "payment_evidence_logs",
+  "inbox_items",
+  "customer_animals",
+  "customer_inventory_items",
+  "farm_care_requests",
+  "caretaker_tasks",
+  "task_proofs",
+  "caretaker_applications",
+  "caretakers",
+  "wallet_transactions",
+  "withdrawal_requests",
+  "withdrawal_evidence_logs",
+  "kafarm_incidents",
+];
+
+const requiredDefinerFunctions = [
+  "current_profile_id",
+  "is_admin",
+  "customer_submit_manual_payment",
+  "admin_review_manual_payment",
+  "customer_create_care_request",
+  "admin_assign_care_request",
+  "caretaker_submit_task_proof",
+  "admin_review_task_proof",
+  "submit_caretaker_application",
+  "admin_review_caretaker_application",
+  "customer_submit_withdrawal_request",
+  "admin_review_withdrawal_request",
+  "kafarm_database_health_snapshot",
+];
+
+function fail(message) {
+  throw new Error(message);
+}
+
+async function main() {
+  const url = env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const email = env.E2E_ADMIN_EMAIL;
+  const password = env.E2E_ADMIN_PASSWORD;
+  if (!url || !anonKey) fail("Supabase public URL/key are required in .env.local.");
+  if (!email || !password) fail("E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD are required.");
+
+  const client = createClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const auth = await client.auth.signInWithPassword({ email, password });
+  if (auth.error || !auth.data.user) fail(`Admin sign-in failed: ${auth.error?.message || "no user"}`);
+
+  const profileResult = await client
+    .from("profiles")
+    .select("id,role,account_status")
+    .eq("auth_user_id", auth.data.user.id)
+    .maybeSingle();
+  if (profileResult.error) fail(`Admin profile query failed: ${profileResult.error.message}`);
+
+  const profile = profileResult.data;
+  const adminReady = profile
+    && String(profile.role).toLowerCase() === "admin"
+    && ["active", "approved"].includes(String(profile.account_status).toLowerCase());
+  if (!adminReady) fail("Authenticated E2E account is not an active admin profile.");
+
+  const snapshotResult = await client.rpc("kafarm_database_health_snapshot");
+  if (snapshotResult.error) fail(`Database reader failed: ${snapshotResult.error.message}`);
+  const snapshot = Array.isArray(snapshotResult.data) ? snapshotResult.data[0] : snapshotResult.data;
+  if (!snapshot || typeof snapshot !== "object") fail("Database reader returned no snapshot.");
+
+  const tables = Array.isArray(snapshot.tables) ? snapshot.tables : [];
+  const functions = Array.isArray(snapshot.functions) ? snapshot.functions : [];
+  const missingObjects = Array.isArray(snapshot.missing_objects) ? snapshot.missing_objects : [];
+  const findings = Array.isArray(snapshot.findings) ? snapshot.findings : [];
+
+  const tableChecks = requiredTables.map(name => {
+    const table = tables.find(item => item.table_name === name);
+    return {
+      name,
+      exists: Boolean(table),
+      rlsEnabled: Boolean(table?.rls_enabled),
+      policyCount: Number(table?.policies || 0),
+      ok: Boolean(table && table.rls_enabled && Number(table.policies || 0) > 0),
+    };
+  });
+
+  const functionChecks = requiredDefinerFunctions.map(name => {
+    const entries = functions.filter(item => item.function_name === name);
+    return {
+      name,
+      overloads: entries.length,
+      securityDefiner: entries.length > 0 && entries.every(item => item.security_definer === true),
+      ok: entries.length > 0 && entries.every(item => item.security_definer === true),
+    };
+  });
+
+  const report = {
+    generatedAt: new Date().toISOString(),
+    projectHost: new URL(url).host,
+    adminProfileReady: Boolean(adminReady),
+    missingObjects,
+    databaseFindings: findings,
+    tableChecks,
+    functionChecks,
+    passed:
+      missingObjects.length === 0
+      && findings.length === 0
+      && tableChecks.every(check => check.ok)
+      && functionChecks.every(check => check.ok),
+  };
+
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+  await client.auth.signOut();
+
+  console.log(`[KaFarm DB Contract] ${report.passed ? "PASS" : "FAIL"}`);
+  console.log(`[KaFarm DB Contract] Report: ${reportPath}`);
+  if (!report.passed) process.exitCode = 1;
+}
+
+main().catch(error => {
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(reportPath, `${JSON.stringify({ generatedAt: new Date().toISOString(), passed: false, error: error.message }, null, 2)}\n`);
+  console.error(`[KaFarm DB Contract] FAIL: ${error.message}`);
+  process.exitCode = 1;
+});

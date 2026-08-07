@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { analyzeKaFarmMessage, kafarmCoverage, kafarmIncidentResponseSteps, runKaFarmCouncil } from "@/lib/kafarm-brain";
 import generatedSnapshot from "@/lib/kafarm-system-snapshot.generated.json";
@@ -505,6 +506,7 @@ const toolSolutions: Record<KaFarmToolKey, string[]> = {
 };
 
 export function KafarmCommandCenter() {
+  const router = useRouter();
   const initialCommand = "Good morning KaFarm, ano nangyari sa app natin?";
   const [question, setQuestion] = useState(initialCommand);
   const [clientIncidents, setClientIncidents] = useState<KaFarmIncident[]>([]);
@@ -621,7 +623,7 @@ export function KafarmCommandCenter() {
 
   const logoutToHome = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/";
+    router.push("/");
   };
 
   const selectedStatus = !toolFindings.length && problemEngineRan
