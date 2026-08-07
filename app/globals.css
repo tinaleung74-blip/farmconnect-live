@@ -120,8 +120,7 @@ html[data-farmconnect-layout="mobile"] .fc-customer-phone-dashboard div {
 }
 
 html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-card {
-  display: grid;
-  grid-template-columns: 7rem minmax(0, 1fr);
+  display: block;
   min-width: 0;
   width: 100%;
   max-width: 100%;
@@ -136,13 +135,19 @@ html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-grid {
   max-width: 100%;
 }
 
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+}
+
 html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-media {
-  min-height: 12rem;
+  min-height: 9.5rem;
 }
 
 html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-image {
-  height: 100%;
-  min-height: 12rem;
+  height: 9.5rem;
+  min-height: 9.5rem;
 }
 
 html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-body {
@@ -150,9 +155,34 @@ html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-body {
   padding: 0.75rem;
 }
 
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-body h3 {
+  min-height: 2.25rem;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-body > div:nth-of-type(1) {
+  align-items: center;
+  gap: 0.35rem;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-body > div:nth-of-type(1) p:first-child {
+  font-size: 1.3rem;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-body > div:nth-of-type(1) > p {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.68rem;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-qty {
+  gap: 0.3rem;
+  padding: 0.4rem;
+}
+
 html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-qty button {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 html[data-farmconnect-layout="mobile"] .fc-customer-dashboard-desktop {

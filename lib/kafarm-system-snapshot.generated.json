@@ -1,16 +1,16 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-07T06:01:01.966Z",
+  "generatedAt": "2026-08-07T07:47:29.218Z",
   "sourceFingerprint": "54ccc168f68bddac0a1e780ec4cf804fe9bef6397d20593e35c1d4bd94d76d44",
   "git": {
-    "commit": "920899f5c98f3d28214ad492ed03875b7b0f143f",
+    "commit": "885634ba083ee6e6976f48139a8231c82abf60c3",
     "branch": "master",
     "dirtyFiles": [
       "app/globals.css",
-      "lib/farmconnect-v1.tsx",
       "lib/kafarm-system-snapshot.generated.json",
       "-Filter",
-      ".vscode/"
+      ".vscode/",
+      "public/farmconnect-customer-demo.html"
     ]
   },
   "safety": {
