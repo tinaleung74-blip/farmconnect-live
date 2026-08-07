@@ -349,16 +349,27 @@ export function SecureCaretakerSignupPage() {
     setLoading(true);
     setMessage("Creating login and preparing secure evidence upload...");
     try {
-      let auth = await supabase.auth.signUp({ email:form.email, password:form.password, options:{ data:{ full_name:form.fullName, display_name:form.displayName, phone:form.phone, role:"caretaker_applicant" } } });
-      if (auth.error) {
-        const text=auth.error.message.toLowerCase();
-        if (!text.includes("already") && !text.includes("registered") && !text.includes("exists")) throw auth.error;
-        auth = await supabase.auth.signInWithPassword({ email:form.email, password:form.password });
+      const normalizedEmail=form.email.trim().toLowerCase();
+      const sessionResult=await supabase.auth.getSession();
+      const currentSession=sessionResult.data.session;
+      const currentEmail=currentSession?.user.email?.trim().toLowerCase() || "";
+      if (currentSession && currentEmail !== normalizedEmail) {
+        throw new Error("A different account is currently signed in. Open the caretaker registration link in an Incognito window, then submit with the applicant email.");
       }
-      if (auth.error) throw auth.error;
-      if (!auth.data.user || !auth.data.session) {
-        const signIn=await supabase.auth.signInWithPassword({ email:form.email, password:form.password });
-        if (signIn.error || !signIn.data.user || !signIn.data.session) throw new Error("A valid login session is required before uploading application evidence.");
+
+      let activeSession=currentSession;
+      if (!activeSession) {
+        let auth=await supabase.auth.signUp({ email:normalizedEmail, password:form.password, options:{ data:{ full_name:form.fullName, display_name:form.displayName, phone:form.phone, role:"caretaker_applicant" } } });
+        if (auth.error) {
+          const text=auth.error.message.toLowerCase();
+          if (!text.includes("already") && !text.includes("registered") && !text.includes("exists")) throw auth.error;
+          auth=await supabase.auth.signInWithPassword({ email:normalizedEmail, password:form.password });
+        }
+        if (auth.error) throw auth.error;
+        activeSession=auth.data.session;
+      }
+      if (!activeSession) {
+        throw new Error("Confirm the applicant email first, then return to Login and reopen the caretaker registration link to submit the application.");
       }
       setMessage("Login ready. Uploading private selfie and resume...");
       const [resumePath,avatarPath]=await Promise.all([
