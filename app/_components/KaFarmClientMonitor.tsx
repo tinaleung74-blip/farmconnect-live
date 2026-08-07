@@ -575,8 +575,8 @@ export function KaFarmClientMonitor() {
               safeRecovery: "Leave the current page stable and show a clear validation/retry message instead of silent failure.",
             });
           }
-        // Next.js client navigation can take several seconds while protected pages verify the session.
-        }, 5000);
+        // Protected Next.js pages may verify the session before completing navigation.
+        }, 10000);
       } catch {
         // Click monitoring should never block a real click.
       }

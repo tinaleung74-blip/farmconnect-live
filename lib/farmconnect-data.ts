@@ -3,13 +3,21 @@
 export type AppRole = "customer" | "caretaker" | "admin";
 
 export async function getCurrentProfile() {
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError || !authData.user) return null;
+  // Prefer the locally cached session so a brief auth endpoint outage does not
+  // block an otherwise valid, RLS-protected customer action.
+  const { data: sessionData } = await supabase.auth.getSession();
+  let user = sessionData.session?.user || null;
+
+  if (!user) {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) return null;
+    user = authData.user;
+  }
 
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
-    .eq("auth_user_id", authData.user.id)
+    .eq("auth_user_id", user.id)
     .maybeSingle();
 
   if (error) throw error;
@@ -191,7 +199,23 @@ export async function getAdminCareRequests() {
     .limit(80);
 
   if (error) throw error;
-  return data || [];
+  return (data || []).map((row: any) => {
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    const storedName = String(row.customer_name || "").trim();
+    const customerName =
+      profile?.display_name ||
+      profile?.full_name ||
+      profile?.email ||
+      (storedName.toLowerCase() !== "customer" ? storedName : "") ||
+      row.customer_email ||
+      "Customer";
+
+    return {
+      ...row,
+      customer_name: customerName,
+      customer_email: profile?.email || row.customer_email || null,
+    };
+  });
 }
 
 export async function adminAssignCareRequest(careRequestId: string, caretakerId?: string | null, adminNote?: string | null) {
