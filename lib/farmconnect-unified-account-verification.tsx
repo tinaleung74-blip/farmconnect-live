@@ -369,7 +369,15 @@ export function SecureCaretakerSignupPage() {
       setMessage("Application submitted with private evidence. Admin will review it in Account Verification.");
     } catch (error:unknown) {
       const source=error as { message?:string; details?:string; hint?:string };
-      setMessage(`Application not submitted: ${source.message || source.details || source.hint || "Unknown application error"}`);
+      const rawMessage=source.message || source.details || source.hint || "Unknown application error";
+      const normalizedMessage=rawMessage.toLowerCase();
+      setMessage(
+        normalizedMessage.includes("already") || normalizedMessage.includes("registered") || normalizedMessage.includes("exists")
+          ? "This email already has an account. Use the correct existing password or return to Login. No duplicate application was created."
+          : normalizedMessage.includes("password") && (normalizedMessage.includes("short") || normalizedMessage.includes("weak") || normalizedMessage.includes("characters"))
+            ? "Use a stronger password that meets the required minimum length, then submit again."
+            : `Application not submitted: ${rawMessage}`
+      );
     } finally { setLoading(false); }
   }
 

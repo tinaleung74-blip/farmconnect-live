@@ -482,8 +482,9 @@ export function KaFarmClientMonitor() {
           const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
           const isMonitorRpc = url.includes("/rest/v1/rpc/kafarm_record_incident") || url.includes("/rest/v1/rpc/kafarm_record_device_usage");
           const isExpectedLoginFailure = url.includes("/auth/v1/token") && response.status === 400;
+          const isExpectedSignupValidation = url.includes("/auth/v1/signup") && (response.status === 400 || response.status === 422);
           const isLocalRscRequest = url.includes("localhost:3000") && url.includes("_rsc=");
-          if (isMonitorRpc || isExpectedLoginFailure || isLocalRscRequest) return response;
+          if (isMonitorRpc || isExpectedLoginFailure || isExpectedSignupValidation || isLocalRscRequest) return response;
           saveIncident({
             title: "Failed API request captured",
             category: "API",

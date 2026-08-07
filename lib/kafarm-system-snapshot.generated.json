@@ -1,13 +1,13 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-07T09:54:02.293Z",
-  "sourceFingerprint": "678d2f5473912dbb16b1a32440774089869343dda95c79a9a84458b1fab0b1f0",
+  "generatedAt": "2026-08-07T10:03:43.192Z",
+  "sourceFingerprint": "6f6868743a3479295da4c209979633c16f75c670455fd1b764f4db23b693ee10",
   "git": {
-    "commit": "9d06136d3971be0906c4c02cc4f129f5dfddf78d",
+    "commit": "29fcfea2e44c22697919311c95283e97f99039b1",
     "branch": "master",
     "dirtyFiles": [
       "app/_components/KaFarmClientMonitor.tsx",
-      "lib/farmconnect-v1.tsx",
+      "lib/farmconnect-unified-account-verification.tsx",
       "-Filter",
       ".vscode/"
     ]
@@ -939,7 +939,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 377,
+      "line": 385,
       "role": "caretaker",
       "route": "/caretaker/signup",
       "exportName": "SecureCaretakerSignupPage",
@@ -3404,7 +3404,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 377,
+      "line": 385,
       "ownerRoute": "/caretaker/signup",
       "target": "/login",
       "exists": true,
@@ -4537,7 +4537,7 @@
   "activeManifest": [
     {
       "file": "app/_components/KaFarmClientMonitor.tsx",
-      "sha256": "d55f1b5831534ea337953c2f3c2d187e3159fa8a6f5ac53c214beb374f74dedc"
+      "sha256": "2a9d03a9652c196c1aee1530aada162a984cf00664fc34501f5c081e33ecd6f7"
     },
     {
       "file": "app/admin/account-verification/page.tsx",
@@ -4997,7 +4997,7 @@
     },
     {
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "sha256": "240cb7b5af13643eef844d2c2b388968a53082df45c638efcf1a360893b43658"
+      "sha256": "9d85f8b32601ccc407510d46fa0dddf71bfc7b76c56bd71e03114211bb28516f"
     },
     {
       "file": "lib/farmconnect-v1.tsx",
