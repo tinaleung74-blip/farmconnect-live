@@ -1,15 +1,13 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-07T09:46:47.610Z",
-  "sourceFingerprint": "bef498628ad26155fb4755b4676037d3c20dcaa9203f11a256bc2097c57b3487",
+  "generatedAt": "2026-08-07T09:54:02.293Z",
+  "sourceFingerprint": "678d2f5473912dbb16b1a32440774089869343dda95c79a9a84458b1fab0b1f0",
   "git": {
-    "commit": "1096a1b82c491699ffe89ba0fc34b76b7eefbf58",
+    "commit": "9d06136d3971be0906c4c02cc4f129f5dfddf78d",
     "branch": "master",
     "dirtyFiles": [
       "app/_components/KaFarmClientMonitor.tsx",
-      "lib/farmconnect-data.ts",
       "lib/farmconnect-v1.tsx",
-      "lib/kafarm-system-snapshot.generated.json",
       "-Filter",
       ".vscode/"
     ]
@@ -47,7 +45,7 @@
     "clientStorageKeys": 13,
     "activeFiles": 120,
     "unreachableFiles": 2,
-    "actions": 170,
+    "actions": 168,
     "backendReferences": 89,
     "findings": 0
   },
@@ -2369,28 +2367,6 @@
     },
     {
       "kind": "button",
-      "label": "Approve",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 3194,
-      "role": "customer, admin",
-      "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "exportName": "AdminCustomerRequestsSection",
-      "wiring": "handled-unproven",
-      "handler": "()=>setDecision(\"approved\")} className={\"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 \" + (d"
-    },
-    {
-      "kind": "button",
-      "label": "Reject",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 3194,
-      "role": "customer, admin",
-      "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "exportName": "AdminCustomerRequestsSection",
-      "wiring": "handled-unproven",
-      "handler": "()=>setDecision(\"rejected\")} className={\"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 \" + (d"
-    },
-    {
-      "kind": "button",
       "label": "View Invoice",
       "file": "lib/farmconnect-v1.tsx",
       "line": 3194,
@@ -4561,7 +4537,7 @@
   "activeManifest": [
     {
       "file": "app/_components/KaFarmClientMonitor.tsx",
-      "sha256": "4091c6ae93eabbf9eb59335e9b4dda2717b673621f5c48b5fb1fe3e3ea877fba"
+      "sha256": "d55f1b5831534ea337953c2f3c2d187e3159fa8a6f5ac53c214beb374f74dedc"
     },
     {
       "file": "app/admin/account-verification/page.tsx",
@@ -5025,7 +5001,7 @@
     },
     {
       "file": "lib/farmconnect-v1.tsx",
-      "sha256": "2c02cb23b5f3e37a6f3355e0a85bb3b6c7b11cdeeb02bda8d36be3455487c55b"
+      "sha256": "ec44079406d56471a62f6a084c90604f49faf6a783fc4a25d712c616e4628880"
     },
     {
       "file": "lib/kafarm-brain.ts",

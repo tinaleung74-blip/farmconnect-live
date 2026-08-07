@@ -533,6 +533,9 @@ export function KaFarmClientMonitor() {
 
         const beforeRoute = pageContext.route;
         const beforeMutation = mutationCount;
+        const feedbackTargetId = clicked.getAttribute("data-kafarm-feedback-target") || "";
+        const feedbackTarget = feedbackTargetId ? document.getElementById(feedbackTargetId) : null;
+        const beforeFeedback = feedbackTarget?.textContent?.trim() || "";
           const anchor = clicked instanceof HTMLAnchorElement ? clicked : clicked.closest("a");
           const href = anchor?.getAttribute("href") || clicked.getAttribute("data-href") || "";
           const elementPath = getElementPath(clicked);
@@ -541,8 +544,10 @@ export function KaFarmClientMonitor() {
           const afterRoute = getPageContext().route;
           const routeChanged = beforeRoute !== afterRoute;
           const domChanged = mutationCount !== beforeMutation;
+          const afterFeedback = feedbackTargetId ? document.getElementById(feedbackTargetId)?.textContent?.trim() || "" : "";
+          const feedbackChanged = Boolean(feedbackTargetId && afterFeedback && afterFeedback !== beforeFeedback);
           const openedDialog = Boolean(document.querySelector("dialog[open], [role='dialog'], [data-state='open'], .modal, .popover"));
-          const visibleAction = routeChanged || domChanged || openedDialog;
+          const visibleAction = routeChanged || domChanged || feedbackChanged || openedDialog;
           const targetsCurrentRoute = href.startsWith("/") && new URL(href, window.location.origin).pathname === beforeRoute;
 
           if (href && href !== "#" && href.startsWith("/") && !targetsCurrentRoute && !routeChanged && !openedDialog) {
