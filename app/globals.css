@@ -98,6 +98,61 @@ html[data-farmconnect-layout="tablet"] .fc-customer-dashboard {
 
 html[data-farmconnect-layout="mobile"] .fc-customer-phone-dashboard {
   display: block;
+  min-width: 0;
+  width: 100%;
+  max-width: 28rem;
+  overflow-x: clip;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-customer-phone-dashboard > *,
+html[data-farmconnect-layout="mobile"] .fc-customer-phone-dashboard > * > section {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-customer-phone-dashboard section,
+html[data-farmconnect-layout="mobile"] .fc-customer-phone-dashboard a,
+html[data-farmconnect-layout="mobile"] .fc-customer-phone-dashboard span,
+html[data-farmconnect-layout="mobile"] .fc-customer-phone-dashboard div {
+  min-width: 0;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-card {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-layout,
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-products,
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-grid {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-media {
+  min-height: 12rem;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-image {
+  height: 100%;
+  min-height: 12rem;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-body {
+  min-width: 0;
+  padding: 0.75rem;
+}
+
+html[data-farmconnect-layout="mobile"] .fc-farmbuy-product-qty button {
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 html[data-farmconnect-layout="mobile"] .fc-customer-dashboard-desktop {
@@ -105,6 +160,11 @@ html[data-farmconnect-layout="mobile"] .fc-customer-dashboard-desktop {
 }
 
 @media (max-width: 767px) {
+  .fc-shell-content:has(.fc-customer-phone-dashboard) {
+    padding-bottom: 10rem;
+    overflow-x: clip;
+  }
+
   html[data-farmconnect-layout="tablet"] .fc-customer-dashboard-body {
     grid-template-columns: 1fr;
   }

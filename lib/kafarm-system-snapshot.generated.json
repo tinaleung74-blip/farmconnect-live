@@ -1,11 +1,12 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-07T05:38:30.394Z",
-  "sourceFingerprint": "365e0a853329a829de1ba991a0e43ae11702167cc0303cd8ee82fa18827065a3",
+  "generatedAt": "2026-08-07T06:01:01.966Z",
+  "sourceFingerprint": "54ccc168f68bddac0a1e780ec4cf804fe9bef6397d20593e35c1d4bd94d76d44",
   "git": {
-    "commit": "4b2bc0fd08a5abfdfc08da4aa9e3e94cf2799f41",
+    "commit": "920899f5c98f3d28214ad492ed03875b7b0f143f",
     "branch": "master",
     "dirtyFiles": [
+      "app/globals.css",
       "lib/farmconnect-v1.tsx",
       "lib/kafarm-system-snapshot.generated.json",
       "-Filter",
@@ -5023,7 +5024,7 @@
     },
     {
       "file": "lib/farmconnect-v1.tsx",
-      "sha256": "fbed598cd81a756bceec7275a7d310c270cfbd7860443ffb55d3f2b05eec5fa6"
+      "sha256": "c43cc89c6be96f643d736f1b71b650b137772aa788f594be0bb870c29387a13a"
     },
     {
       "file": "lib/kafarm-brain.ts",
