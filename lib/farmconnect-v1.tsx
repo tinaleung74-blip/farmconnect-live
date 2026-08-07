@@ -3697,7 +3697,14 @@ function AdminCaretakerManagementPage({ config }: { config: string[] }) {
   const [adminRequestFile,setAdminRequestFile]=useState("");
   const [viewer,setViewer]=useState<any>(null);
   const signupLink = "/caretaker/signup";
-  const copySignupLink = () => navigator.clipboard?.writeText(new URL(signupLink, window.location.origin).href);
+  const copySignupLink = async () => {
+    try {
+      await navigator.clipboard.writeText(new URL(signupLink, window.location.origin).href);
+      setLoadNote("Permanent caretaker registration link copied.");
+    } catch {
+      setLoadNote("Copy failed. Open the registration page and copy its address from the browser.");
+    }
+  };
   const completedForCaretaker = completed.filter(row=>row.caretaker===selectedCaretaker.name);
   useEffect(()=>{
     let active = true;
@@ -3800,7 +3807,7 @@ function AdminCaretakerManagementPage({ config }: { config: string[] }) {
   function openViewer(payload:any) { setViewer(payload); }
   return <Shell role="admin" title={config[0]}><PageTitle title="Caretaker Management" text="Registration link, approved caretaker list, task proof review, backjobs, and completed evidence. Account approval is handled in Account Verification." icon="user" />
     <KaFarm>{loadNote}</KaFarm>
-    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">{tabs.map(item=><button key={item.id} onClick={()=>reset(item.id)} className={"rounded-2xl border p-4 text-left shadow-sm transition " + (tab===item.id ? "border-[#1f6b45] bg-[#e9fff3] ring-2 ring-[#1f6b45]/20" : "border-[#e3ded0] bg-white/95 hover:border-[#1f6b45]")}><h2 className="text-lg font-black">{item.label}</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">{item.hint}</p></button>)}</div>
+    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">{tabs.map(item=><button key={item.id} data-kafarm-monitor-ignore="true" onClick={()=>reset(item.id)} className={"rounded-2xl border p-4 text-left shadow-sm transition " + (tab===item.id ? "border-[#1f6b45] bg-[#e9fff3] ring-2 ring-[#1f6b45]/20" : "border-[#e3ded0] bg-white/95 hover:border-[#1f6b45]")}><h2 className="text-lg font-black">{item.label}</h2><p className="mt-1 text-xs font-bold leading-5 text-[#667267]">{item.hint}</p></button>)}</div>
 
     {tab === "registration" && <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_340px]"><Card><p className="text-xs font-black uppercase text-[#667267]">Permanent Registration Link</p><h2 className="mt-1 text-3xl font-black">Caretaker signup link</h2><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Send this link to applicants. It is permanent; account stays inactive until Account Verification approves selfie, resume, and payment details.</p><div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4 font-black">{signupLink}</div><button type="button" onClick={copySignupLink} className="mt-4 rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">Copy Link</button><h3 className="mt-6 text-lg font-black">Registered Applications</h3><div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-2">{applicants.length ? applicants.map((application:any)=><div key={application.id} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><b className="block truncate">{application.display_name || application.full_name || application.email}</b><p className="truncate text-xs font-bold text-[#667267]">{application.email}</p></div><Badge tone={application.status==="approved" ? "good" : application.status==="rejected" ? "bad" : "warn"}>{application.status}</Badge></div></div>) : <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No caretaker application found.</p>}</div></Card><Card><p className="text-xs font-black uppercase text-[#667267]">Registered Caretakers</p><h2 className="mt-2 text-5xl font-black text-[#1f6b45]">{applicants.length}</h2><p className="mt-2 text-sm font-bold text-[#667267]">{applicants.filter((row:any)=>row.status==="pending_approval" || row.status==="needs_info").length} waiting / {caretakers.length} approved caretaker records.</p><Link href="/admin/account-verification" className="mt-5 block rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">Open Account Verification</Link></Card></div>}
 
@@ -4474,7 +4481,6 @@ export function LegacyAccessPage({ role }: { role: Role }) {
     </main>
   );
 }
-
 
 
 

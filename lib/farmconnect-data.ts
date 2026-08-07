@@ -1,5 +1,7 @@
 ﻿import { supabase } from "@/lib/supabase";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 export type AppRole = "customer" | "caretaker" | "admin";
 
 export async function getCurrentProfile() {
@@ -882,8 +884,8 @@ export type CaretakerApplicationPayload = {
   workPinSet?: boolean;
 };
 
-export async function submitCaretakerApplication(payload: CaretakerApplicationPayload) {
-  const { data, error } = await supabase.rpc("submit_caretaker_application", {
+export async function submitCaretakerApplication(payload: CaretakerApplicationPayload, client: SupabaseClient = supabase) {
+  const { data, error } = await client.rpc("submit_caretaker_application", {
     p_full_name: payload.fullName,
     p_display_name: payload.displayName || null,
     p_phone: payload.phone,
@@ -1063,8 +1065,8 @@ function storageExtension(file: File) {
   return byMime[file.type] || "bin";
 }
 
-export async function uploadPrivateEvidenceFile(options: PrivateEvidenceUploadOptions) {
-  const { data: authData, error: authError } = await supabase.auth.getUser();
+export async function uploadPrivateEvidenceFile(options: PrivateEvidenceUploadOptions, client: SupabaseClient = supabase) {
+  const { data: authData, error: authError } = await client.auth.getUser();
   if (authError || !authData.user) throw new Error("login_required");
   if (options.file.size <= 0) throw new Error("empty_file");
   if (options.file.size > options.maxBytes) throw new Error("file_too_large");
@@ -1077,7 +1079,7 @@ export async function uploadPrivateEvidenceFile(options: PrivateEvidenceUploadOp
     .join("/");
   const fileName = `${safeStorageSegment(options.kind)}.${storageExtension(options.file)}`;
   const path = [authData.user.id, folder, fileName].filter(Boolean).join("/");
-  const { error } = await supabase.storage
+  const { error } = await client.storage
     .from(options.bucket)
     .upload(path, options.file, {
       cacheControl: "3600",

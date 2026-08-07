@@ -1,12 +1,16 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-07T10:16:46.460Z",
-  "sourceFingerprint": "e9e90a0fcd09fb547892a2ec56782235b72f73983d59bc4a41a5778ae0dcb33d",
+  "generatedAt": "2026-08-07T11:14:23.028Z",
+  "sourceFingerprint": "7a56258d74080c98638fad1bf25c5e0225640d3560a51f5f484d488f7c2afece",
   "git": {
-    "commit": "eb117da81881f02717e612c380b113932c3cd4ac",
+    "commit": "195c9aa1c1bb3a0095c76691bd73fbd1ba836246",
     "branch": "master",
     "dirtyFiles": [
+      "lib/farmconnect-data.ts",
       "lib/farmconnect-unified-account-verification.tsx",
+      "lib/farmconnect-v1.tsx",
+      "lib/kafarm-system-snapshot.generated.json",
+      "lib/supabase.ts",
       "-Filter",
       ".vscode/"
     ]
@@ -938,7 +942,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 396,
+      "line": 386,
       "role": "caretaker",
       "route": "/caretaker/signup",
       "exportName": "SecureCaretakerSignupPage",
@@ -2445,7 +2449,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4308,
+      "line": 4315,
       "role": "system",
       "route": "/signup",
       "exportName": "FarmerSignupPage",
@@ -2647,7 +2651,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
-      "line": 18,
+      "line": 20,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCurrentProfile"
@@ -2656,7 +2660,7 @@
       "kind": "table",
       "name": "farm_products",
       "file": "lib/farmconnect-data.ts",
-      "line": 29,
+      "line": 31,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getFarmProducts"
@@ -2665,7 +2669,7 @@
       "kind": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
-      "line": 71,
+      "line": 73,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "saveCartItem"
@@ -2674,7 +2678,7 @@
       "kind": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
-      "line": 81,
+      "line": 83,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "saveCartItem"
@@ -2683,7 +2687,7 @@
       "kind": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
-      "line": 82,
+      "line": 84,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "saveCartItem"
@@ -2692,7 +2696,7 @@
       "kind": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
-      "line": 95,
+      "line": 97,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "saveCartItem"
@@ -2701,7 +2705,7 @@
       "kind": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
-      "line": 96,
+      "line": 98,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "saveCartItem"
@@ -2710,7 +2714,7 @@
       "kind": "table",
       "name": "animals",
       "file": "lib/farmconnect-data.ts",
-      "line": 113,
+      "line": 115,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerRoosters"
@@ -2719,7 +2723,7 @@
       "kind": "table",
       "name": "customer_animals",
       "file": "lib/farmconnect-data.ts",
-      "line": 128,
+      "line": 130,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerOwnedRoosters"
@@ -2728,7 +2732,7 @@
       "kind": "table",
       "name": "customer_inventory_items",
       "file": "lib/farmconnect-data.ts",
-      "line": 143,
+      "line": 145,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerInventoryItems"
@@ -2737,7 +2741,7 @@
       "kind": "table",
       "name": "farm_care_requests",
       "file": "lib/farmconnect-data.ts",
-      "line": 184,
+      "line": 186,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerCareRequests"
@@ -2746,7 +2750,7 @@
       "kind": "table",
       "name": "farm_care_requests",
       "file": "lib/farmconnect-data.ts",
-      "line": 196,
+      "line": 198,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminCareRequests"
@@ -2755,7 +2759,7 @@
       "kind": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
-      "line": 234,
+      "line": 236,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getActiveCaretakersForAssignment"
@@ -2764,7 +2768,7 @@
       "kind": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
-      "line": 246,
+      "line": 248,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminCaretakerDirectory"
@@ -2773,7 +2777,7 @@
       "kind": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
-      "line": 257,
+      "line": 259,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminCaretakerTasks"
@@ -2782,7 +2786,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
-      "line": 271,
+      "line": 273,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminCaretakerTasks"
@@ -2791,7 +2795,7 @@
       "kind": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
-      "line": 280,
+      "line": 282,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminCaretakerTasks"
@@ -2800,7 +2804,7 @@
       "kind": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
-      "line": 296,
+      "line": 298,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCaretakerActiveTasks"
@@ -2809,7 +2813,7 @@
       "kind": "table",
       "name": "task_proofs",
       "file": "lib/farmconnect-data.ts",
-      "line": 335,
+      "line": 337,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminTaskProofs"
@@ -2818,7 +2822,7 @@
       "kind": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
-      "line": 348,
+      "line": 350,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminTaskProofs"
@@ -2827,7 +2831,7 @@
       "kind": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
-      "line": 358,
+      "line": 360,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminTaskProofs"
@@ -2836,7 +2840,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
-      "line": 369,
+      "line": 371,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminTaskProofs"
@@ -2845,7 +2849,7 @@
       "kind": "table",
       "name": "rooster_sale_requests",
       "file": "lib/farmconnect-data.ts",
-      "line": 397,
+      "line": 399,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerRoosterSaleRequest"
@@ -2854,7 +2858,7 @@
       "kind": "table",
       "name": "rooster_sale_requests",
       "file": "lib/farmconnect-data.ts",
-      "line": 428,
+      "line": 430,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminRoosterSaleRequests"
@@ -2863,7 +2867,7 @@
       "kind": "table",
       "name": "wallet_transactions",
       "file": "lib/farmconnect-data.ts",
-      "line": 467,
+      "line": 469,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getWalletTransactions"
@@ -2872,7 +2876,7 @@
       "kind": "table",
       "name": "inbox_items",
       "file": "lib/farmconnect-data.ts",
-      "line": 479,
+      "line": 481,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getInboxItems"
@@ -2881,7 +2885,7 @@
       "kind": "table",
       "name": "inventory_usage_logs",
       "file": "lib/farmconnect-data.ts",
-      "line": 537,
+      "line": 539,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCareLogRecords"
@@ -2890,7 +2894,7 @@
       "kind": "table",
       "name": "task_proofs",
       "file": "lib/farmconnect-data.ts",
-      "line": 582,
+      "line": 584,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCareLogRecords"
@@ -2899,7 +2903,7 @@
       "kind": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
-      "line": 599,
+      "line": 601,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCareLogRecords"
@@ -2908,7 +2912,7 @@
       "kind": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
-      "line": 608,
+      "line": 610,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCareLogRecords"
@@ -2917,7 +2921,7 @@
       "kind": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
-      "line": 657,
+      "line": 659,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCaretakerTasks"
@@ -2926,7 +2930,7 @@
       "kind": "table",
       "name": "support_conversations",
       "file": "lib/farmconnect-data.ts",
-      "line": 670,
+      "line": 672,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "createSupportConversation"
@@ -2935,7 +2939,7 @@
       "kind": "table",
       "name": "manual_payment_requests",
       "file": "lib/farmconnect-data.ts",
-      "line": 720,
+      "line": 722,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerManualPaymentRequests"
@@ -2944,7 +2948,7 @@
       "kind": "table",
       "name": "manual_payment_requests",
       "file": "lib/farmconnect-data.ts",
-      "line": 732,
+      "line": 734,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminManualPaymentRequests"
@@ -2953,7 +2957,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
-      "line": 743,
+      "line": 745,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminManualPaymentRequests"
@@ -2962,7 +2966,7 @@
       "kind": "table",
       "name": "customer_payout_methods",
       "file": "lib/farmconnect-data.ts",
-      "line": 786,
+      "line": 788,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerPayoutMethods"
@@ -2971,7 +2975,7 @@
       "kind": "table",
       "name": "withdrawal_requests",
       "file": "lib/farmconnect-data.ts",
-      "line": 827,
+      "line": 829,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerWithdrawalRequests"
@@ -2980,7 +2984,7 @@
       "kind": "table",
       "name": "withdrawal_requests",
       "file": "lib/farmconnect-data.ts",
-      "line": 839,
+      "line": 841,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getAdminWithdrawalRequests"
@@ -2989,7 +2993,7 @@
       "kind": "table",
       "name": "caretaker_applications",
       "file": "lib/farmconnect-data.ts",
-      "line": 919,
+      "line": 921,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCaretakerApplications"
@@ -2998,7 +3002,7 @@
       "kind": "table",
       "name": "customer_kyc_profiles",
       "file": "lib/farmconnect-data.ts",
-      "line": 974,
+      "line": 976,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerKycVerificationRecords"
@@ -3007,7 +3011,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
-      "line": 987,
+      "line": 989,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerKycVerificationRecords"
@@ -3016,7 +3020,7 @@
       "kind": "table",
       "name": "kyc_documents",
       "file": "lib/farmconnect-data.ts",
-      "line": 996,
+      "line": 998,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerKycVerificationRecords"
@@ -3025,7 +3029,7 @@
       "kind": "rpc",
       "name": "customer_buy_cart",
       "file": "lib/farmconnect-data.ts",
-      "line": 106,
+      "line": 108,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "checkoutFarmCart"
@@ -3034,7 +3038,7 @@
       "kind": "rpc",
       "name": "customer_create_care_request",
       "file": "lib/farmconnect-data.ts",
-      "line": 164,
+      "line": 166,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "createCareRequest"
@@ -3043,7 +3047,7 @@
       "kind": "rpc",
       "name": "admin_assign_care_request",
       "file": "lib/farmconnect-data.ts",
-      "line": 222,
+      "line": 224,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "adminAssignCareRequest"
@@ -3052,7 +3056,7 @@
       "kind": "rpc",
       "name": "caretaker_submit_task_proof_v3",
       "file": "lib/farmconnect-data.ts",
-      "line": 318,
+      "line": 320,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "submitCaretakerTaskProof"
@@ -3061,7 +3065,7 @@
       "kind": "rpc",
       "name": "admin_review_task_proof",
       "file": "lib/farmconnect-data.ts",
-      "line": 385,
+      "line": 387,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "adminReviewTaskProof"
@@ -3070,7 +3074,7 @@
       "kind": "rpc",
       "name": "customer_request_rooster_sale_price",
       "file": "lib/farmconnect-data.ts",
-      "line": 409,
+      "line": 411,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "requestRoosterSalePrice"
@@ -3079,7 +3083,7 @@
       "kind": "rpc",
       "name": "customer_confirm_rooster_sale",
       "file": "lib/farmconnect-data.ts",
-      "line": 418,
+      "line": 420,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "confirmRoosterSale"
@@ -3088,7 +3092,7 @@
       "kind": "rpc",
       "name": "admin_review_rooster_sale",
       "file": "lib/farmconnect-data.ts",
-      "line": 437,
+      "line": 439,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "adminReviewRoosterSale"
@@ -3097,7 +3101,7 @@
       "kind": "rpc",
       "name": "caretaker_submit_rooster_sale_task",
       "file": "lib/farmconnect-data.ts",
-      "line": 454,
+      "line": 456,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "submitCaretakerRoosterSaleTask"
@@ -3106,7 +3110,7 @@
       "kind": "rpc",
       "name": "customer_mark_inbox_item_read",
       "file": "lib/farmconnect-data.ts",
-      "line": 490,
+      "line": 492,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "markInboxItemRead"
@@ -3115,7 +3119,7 @@
       "kind": "rpc",
       "name": "customer_submit_manual_payment",
       "file": "lib/farmconnect-data.ts",
-      "line": 699,
+      "line": 701,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "submitManualPaymentRequest"
@@ -3124,7 +3128,7 @@
       "kind": "rpc",
       "name": "admin_review_manual_payment",
       "file": "lib/farmconnect-data.ts",
-      "line": 755,
+      "line": 757,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "adminReviewManualPayment"
@@ -3133,7 +3137,7 @@
       "kind": "rpc",
       "name": "customer_save_payout_method",
       "file": "lib/farmconnect-data.ts",
-      "line": 798,
+      "line": 800,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "saveCustomerPayoutMethod"
@@ -3142,7 +3146,7 @@
       "kind": "rpc",
       "name": "customer_submit_withdrawal_request",
       "file": "lib/farmconnect-data.ts",
-      "line": 810,
+      "line": 812,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "submitWithdrawalRequest"
@@ -3151,7 +3155,7 @@
       "kind": "rpc",
       "name": "admin_review_withdrawal_request",
       "file": "lib/farmconnect-data.ts",
-      "line": 856,
+      "line": 858,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "adminReviewWithdrawalRequest"
@@ -3160,7 +3164,7 @@
       "kind": "rpc",
       "name": "submit_caretaker_application",
       "file": "lib/farmconnect-data.ts",
-      "line": 886,
+      "line": 888,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "submitCaretakerApplication"
@@ -3169,7 +3173,7 @@
       "kind": "rpc",
       "name": "customer_confirm_withdrawal_result",
       "file": "lib/farmconnect-data.ts",
-      "line": 908,
+      "line": 910,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "confirmWithdrawalResult"
@@ -3178,7 +3182,7 @@
       "kind": "rpc",
       "name": "admin_review_caretaker_application",
       "file": "lib/farmconnect-data.ts",
-      "line": 933,
+      "line": 935,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "adminReviewCaretakerApplication"
@@ -3187,7 +3191,7 @@
       "kind": "rpc",
       "name": "admin_review_customer_kyc",
       "file": "lib/farmconnect-data.ts",
-      "line": 1027,
+      "line": 1029,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "adminReviewCustomerKyc"
@@ -3214,7 +3218,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4185,
+      "line": 4192,
       "role": "system",
       "route": "lib/farmconnect-v1.tsx",
       "exportName": "UnifiedLoginPage"
@@ -3223,7 +3227,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4266,
+      "line": 4273,
       "role": "system",
       "route": "/signup",
       "exportName": "FarmerSignupPage"
@@ -3403,7 +3407,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 396,
+      "line": 386,
       "ownerRoute": "/caretaker/signup",
       "target": "/login",
       "exists": true,
@@ -3923,7 +3927,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 3805,
+      "line": 3812,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/account-verification",
       "exists": true,
@@ -3931,7 +3935,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4066,
+      "line": 4073,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/evidence",
       "exists": true,
@@ -3939,7 +3943,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4068,
+      "line": 4075,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/evidence",
       "exists": true,
@@ -3947,7 +3951,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4068,
+      "line": 4075,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/customer-requests/resolved",
       "exists": true,
@@ -3955,7 +3959,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4098,
+      "line": 4105,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/sell-requests",
       "exists": true,
@@ -3963,7 +3967,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4098,
+      "line": 4105,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/customer-requests/withdraw",
       "exists": true,
@@ -3971,7 +3975,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4098,
+      "line": 4105,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/customer-requests/resolved",
       "exists": true,
@@ -3979,7 +3983,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4223,
+      "line": 4230,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/register",
       "exists": true,
@@ -3987,7 +3991,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4224,
+      "line": 4231,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/caretaker/signup",
       "exists": true,
@@ -3995,7 +3999,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4225,
+      "line": 4232,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/",
       "exists": true,
@@ -4003,7 +4007,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4281,
+      "line": 4288,
       "ownerRoute": "/signup",
       "target": "/customer/dashboard",
       "exists": true,
@@ -4011,7 +4015,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4309,
+      "line": 4316,
       "ownerRoute": "/signup",
       "target": "/login",
       "exists": true,
@@ -4019,7 +4023,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4455,
+      "line": 4462,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/login",
       "exists": true,
@@ -4027,7 +4031,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4472,
+      "line": 4479,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/",
       "exists": true,
@@ -4992,15 +4996,15 @@
     },
     {
       "file": "lib/farmconnect-data.ts",
-      "sha256": "f08c58a7e32ffdd5672ca9c9402a989107d0843f1ecc73b8323c3a634ff9066e"
+      "sha256": "694cc9502b3dccbbe187b9f69cdd3606632261895cee71751dea01ec5c8f8b28"
     },
     {
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "sha256": "2f5509deefcf059c2e4bc4878290a0b36d96d6fc5bb10f633d968426e964aad0"
+      "sha256": "d3f68aced96948f971f4639b9828c0f1f4b199d14a1776349a644712d4862793"
     },
     {
       "file": "lib/farmconnect-v1.tsx",
-      "sha256": "ec44079406d56471a62f6a084c90604f49faf6a783fc4a25d712c616e4628880"
+      "sha256": "16191d62510bcce243b86b4782824cb150e1c285b1cd506127cd23e68d9aa39d"
     },
     {
       "file": "lib/kafarm-brain.ts",
@@ -5012,7 +5016,7 @@
     },
     {
       "file": "lib/supabase.ts",
-      "sha256": "1548e0a175a01a96e99c8e9b374df6c57822aa184a5f39875a9e3368ec21d0c7"
+      "sha256": "8cbfcc5363c151d5c56ccf1c7f3c4df2c4ab6286b73eb009bfa4047ad5dd49a0"
     }
   ],
   "unreachableFiles": [

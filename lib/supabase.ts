@@ -10,3 +10,13 @@ export const supabase = createClient(
   supabaseUrl,
   supabaseAnonKey
 );
+
+export function createIsolatedSupabaseClient() {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}

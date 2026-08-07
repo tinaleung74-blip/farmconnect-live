@@ -11,7 +11,7 @@ import {
   submitCaretakerApplication,
   uploadPrivateEvidenceFile,
 } from "@/lib/farmconnect-data";
-import { supabase } from "@/lib/supabase";
+import { createIsolatedSupabaseClient, supabase } from "@/lib/supabase";
 
 type VerificationMode = "customer" | "caretaker";
 type VerificationTab = "queue" | "verified";
@@ -350,33 +350,23 @@ export function SecureCaretakerSignupPage() {
     setMessage("Creating login and preparing secure evidence upload...");
     try {
       const normalizedEmail=form.email.trim().toLowerCase();
-      const sessionResult=await supabase.auth.getSession();
-      const currentSession=sessionResult.data.session;
-      const currentEmail=currentSession?.user.email?.trim().toLowerCase() || "";
-      if (currentSession && currentEmail !== normalizedEmail) {
-        throw new Error("A different account is currently signed in. Open the caretaker registration link in an Incognito window, then submit with the applicant email.");
+      const applicantClient=createIsolatedSupabaseClient();
+      let auth=await applicantClient.auth.signUp({ email:normalizedEmail, password:form.password, options:{ data:{ full_name:form.fullName, display_name:form.displayName, phone:form.phone, role:"caretaker_applicant" } } });
+      if (auth.error) {
+        const text=auth.error.message.toLowerCase();
+        if (!text.includes("already") && !text.includes("registered") && !text.includes("exists")) throw auth.error;
+        auth=await applicantClient.auth.signInWithPassword({ email:normalizedEmail, password:form.password });
       }
-
-      let activeSession=currentSession;
-      if (!activeSession) {
-        let auth=await supabase.auth.signUp({ email:normalizedEmail, password:form.password, options:{ data:{ full_name:form.fullName, display_name:form.displayName, phone:form.phone, role:"caretaker_applicant" } } });
-        if (auth.error) {
-          const text=auth.error.message.toLowerCase();
-          if (!text.includes("already") && !text.includes("registered") && !text.includes("exists")) throw auth.error;
-          auth=await supabase.auth.signInWithPassword({ email:normalizedEmail, password:form.password });
-        }
-        if (auth.error) throw auth.error;
-        activeSession=auth.data.session;
-      }
-      if (!activeSession) {
+      if (auth.error) throw auth.error;
+      if (!auth.data.session) {
         throw new Error("Confirm the applicant email first, then return to Login and reopen the caretaker registration link to submit the application.");
       }
       setMessage("Login ready. Uploading private selfie and resume...");
       const [resumePath,avatarPath]=await Promise.all([
-        uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"resume", file:resumeFile, maxBytes:10*1024*1024, allowedMimeTypes:resumeTypes }),
-        uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"avatar", file:avatarFile, maxBytes:5*1024*1024, allowedMimeTypes:["image/jpeg","image/png","image/webp"] }),
+        uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"resume", file:resumeFile, maxBytes:10*1024*1024, allowedMimeTypes:resumeTypes }, applicantClient),
+        uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"avatar", file:avatarFile, maxBytes:5*1024*1024, allowedMimeTypes:["image/jpeg","image/png","image/webp"] }, applicantClient),
       ]);
-      await submitCaretakerApplication({ fullName:form.fullName, displayName:form.displayName, phone:form.phone, birthdate:form.birthdate || null, addressLine:form.addressLine, avatarUrl:avatarPath, resumeUrl:resumePath, farmRole:form.farmRole, paymentMethod:form.paymentMethod, paymentAccountName:form.paymentAccountName, paymentAccountNumber:form.paymentAccountNumber, emergencyContactName:form.emergencyContactName, emergencyContactPhone:form.emergencyContactPhone, workPinSet:false });
+      await submitCaretakerApplication({ fullName:form.fullName, displayName:form.displayName, phone:form.phone, birthdate:form.birthdate || null, addressLine:form.addressLine, avatarUrl:avatarPath, resumeUrl:resumePath, farmRole:form.farmRole, paymentMethod:form.paymentMethod, paymentAccountName:form.paymentAccountName, paymentAccountNumber:form.paymentAccountNumber, emergencyContactName:form.emergencyContactName, emergencyContactPhone:form.emergencyContactPhone, workPinSet:false }, applicantClient);
       setMessage("Application submitted with private evidence. Admin will review it in Account Verification.");
     } catch (error:unknown) {
       const source=error as { message?:string; details?:string; hint?:string };
