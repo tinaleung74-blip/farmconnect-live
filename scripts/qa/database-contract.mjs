@@ -34,7 +34,12 @@ const requiredTables = [
   "wallet_transactions",
   "withdrawal_requests",
   "withdrawal_evidence_logs",
+  "rooster_sale_requests",
+  "customer_kyc_profiles",
   "kafarm_incidents",
+  "workflow_operation_keys",
+  "workflow_chain_runs",
+  "workflow_chain_events",
 ];
 
 const requiredDefinerFunctions = [
@@ -50,7 +55,18 @@ const requiredDefinerFunctions = [
   "admin_review_caretaker_application",
   "customer_submit_withdrawal_request",
   "admin_review_withdrawal_request",
+  "admin_review_rooster_sale",
+  "admin_review_customer_kyc",
   "kafarm_database_health_snapshot",
+  "customer_submit_manual_payment_guarded",
+  "admin_review_manual_payment_guarded",
+  "kafarm_workflow_chain_snapshot",
+  "customer_submit_withdrawal_request_guarded",
+  "admin_review_task_proof_guarded",
+  "admin_review_withdrawal_request_guarded",
+  "admin_review_rooster_sale_guarded",
+  "admin_review_caretaker_application_guarded",
+  "admin_review_customer_kyc_guarded",
 ];
 
 function fail(message) {

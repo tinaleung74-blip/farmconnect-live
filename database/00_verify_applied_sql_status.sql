@@ -140,6 +140,18 @@ with expected(migration, kind, object_name) as (
     ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','customer_save_payout_method')
     ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','customer_confirm_withdrawal_result')
     ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','rooster_sale_workflow_version')
+    ,('044_workflow_chain_guard.sql','table','workflow_operation_keys')
+    ,('044_workflow_chain_guard.sql','table','workflow_chain_runs')
+    ,('044_workflow_chain_guard.sql','table','workflow_chain_events')
+    ,('044_workflow_chain_guard.sql','function','customer_submit_manual_payment_guarded')
+    ,('044_workflow_chain_guard.sql','function','admin_review_manual_payment_guarded')
+    ,('044_workflow_chain_guard.sql','function','kafarm_workflow_chain_snapshot')
+    ,('045_operational_workflow_guard.sql','function','customer_submit_withdrawal_request_guarded')
+    ,('045_operational_workflow_guard.sql','function','admin_review_task_proof_guarded')
+    ,('045_operational_workflow_guard.sql','function','admin_review_withdrawal_request_guarded')
+    ,('045_operational_workflow_guard.sql','function','admin_review_rooster_sale_guarded')
+    ,('045_operational_workflow_guard.sql','function','admin_review_caretaker_application_guarded')
+    ,('045_operational_workflow_guard.sql','function','admin_review_customer_kyc_guarded')
 ),
 object_status as (
   select

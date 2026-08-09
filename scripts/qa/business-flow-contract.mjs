@@ -51,6 +51,11 @@ async function cleanup(service, profileId, caretakerId) {
   await service.from("withdrawal_evidence_logs").delete().eq("profile_id", profileId);
   await service.from("withdrawal_requests").delete().eq("profile_id", profileId);
   await service.from("payment_evidence_logs").delete().eq("profile_id", profileId);
+  const workflowRuns = await service.from("workflow_chain_runs").select("id").eq("subject_profile_id", profileId);
+  const workflowRunIds = (workflowRuns.data || []).map(row => row.id);
+  if (workflowRunIds.length) await service.from("workflow_chain_events").delete().in("workflow_run_id", workflowRunIds);
+  await service.from("workflow_chain_runs").delete().eq("subject_profile_id", profileId);
+  await service.from("workflow_operation_keys").delete().eq("profile_id", profileId);
   await service.from("manual_payment_requests").delete().eq("profile_id", profileId);
   await service.from("customer_inventory_items").delete().eq("profile_id", profileId);
   await service.from("customer_animals").delete().eq("profile_id", profileId);
@@ -81,20 +86,53 @@ async function main() {
     const caretakerProfile = await one(service.from("profiles").select("id").eq("auth_user_id", credentials.caretaker.userId).single(), "caretaker profile");
     caretakerId = (await one(service.from("caretakers").select("id").eq("profile_id", caretakerProfile.id).single(), "caretaker record")).id;
 
-    const paymentId = await rpc(customer, "customer_submit_manual_payment", {
+    const paymentOperationKey = `e2e-payment-${Date.now()}`;
+    const paymentResult = await rpc(customer, "customer_submit_manual_payment_guarded", {
       p_source_type: "farm_buy", p_source_ref: "e2e-backend-contract", p_amount_expected: 1,
       p_summary: { source: "E2E Farm Buy", lines: [{ id: "e2e-breed-chick", name: "E2E Breed Chick", category: "Breed Chicks", quantity: 1, unit_price: 1, total: 1, product_type: "breed_chick", breed: "E2E Asil" }], total: 1 },
       p_payment_method: "E2E", p_receiver_account: "FarmConnect E2E", p_sender_name: "E2E Customer",
       p_reference_number: `E2E-${Date.now()}`, p_receipt_image_url: "e2e://payment-proof.png",
+      p_idempotency_key: paymentOperationKey,
     });
+    const paymentId = paymentResult.id;
+    const duplicateSubmission = await rpc(customer, "customer_submit_manual_payment_guarded", {
+      p_source_type: "farm_buy", p_source_ref: "e2e-backend-contract", p_amount_expected: 1,
+      p_summary: { source: "E2E Farm Buy", lines: [{ id: "e2e-breed-chick", name: "E2E Breed Chick", category: "Breed Chicks", quantity: 1, unit_price: 1, total: 1, product_type: "breed_chick", breed: "E2E Asil" }], total: 1 },
+      p_payment_method: "E2E", p_receiver_account: "FarmConnect E2E", p_sender_name: "E2E Customer",
+      p_reference_number: "E2E-DUPLICATE-IGNORED", p_receipt_image_url: "e2e://payment-proof.png",
+      p_idempotency_key: paymentOperationKey,
+    });
+    if (!duplicateSubmission.duplicate || duplicateSubmission.id !== paymentId) fail("payment retry created a duplicate request");
     const submittedPayment = await one(customer.from("manual_payment_requests").select("id,status").eq("id", paymentId).single(), "customer payment visibility");
     if (submittedPayment.status !== "for_review") fail(`payment status was ${submittedPayment.status}`);
-    checks.push("Customer payment submission and own-record RLS");
+    checks.push("Customer payment submission, own-record RLS, and retry idempotency");
     const adminPayment = await one(admin.from("manual_payment_requests").select("id,status").eq("id", paymentId).single(), "admin payment visibility");
     if (adminPayment.status !== "for_review") fail("admin did not receive the payment queue record");
-    await rpc(admin, "admin_review_manual_payment", { p_payment_request_id: paymentId, p_decision: "approved", p_admin_note: "E2E approved" });
+    await rpc(admin, "admin_review_manual_payment_guarded", { p_payment_request_id: paymentId, p_decision: "approved", p_admin_note: "E2E approved" });
+    const duplicateApproval = await rpc(admin, "admin_review_manual_payment_guarded", { p_payment_request_id: paymentId, p_decision: "approved", p_admin_note: "E2E duplicate approval" });
+    if (!duplicateApproval.duplicate) fail("repeated admin approval was not handled idempotently");
     const animal = await one(customer.from("customer_animals").select("id,animal_name,animal_code,status").eq("profile_id", profileId).eq("source_product_name", "E2E Breed Chick").single(), "approved Farm Buy ownership");
-    checks.push("Admin payment approval creates customer-owned rooster/chick");
+    checks.push("Admin payment approval creates ownership exactly once");
+
+    const rejectedResult = await rpc(customer, "customer_submit_manual_payment_guarded", {
+      p_source_type: "farm_buy", p_source_ref: "e2e-rejection-contract", p_amount_expected: 1,
+      p_summary: { source: "E2E rejected Farm Buy", lines: [] }, p_payment_method: "E2E",
+      p_receiver_account: "FarmConnect E2E", p_sender_name: "E2E Customer",
+      p_reference_number: `E2E-REJECT-${Date.now()}`, p_receipt_image_url: "e2e://rejected-proof.png",
+      p_idempotency_key: `e2e-reject-${Date.now()}`,
+    });
+    await rpc(admin, "admin_review_manual_payment_guarded", { p_payment_request_id: rejectedResult.id, p_decision: "rejected", p_admin_note: "Receipt needs correction" });
+    const rejectionNotice = await one(customer.from("inbox_items").select("id,title").eq("profile_id", profileId).eq("title", "Payment Rejected").order("created_at", { ascending: false }).limit(1).maybeSingle(), "payment rejection notice");
+    if (rejectionNotice.title !== "Payment Rejected") fail("rejection notice was not delivered");
+    const resubmitted = await rpc(customer, "customer_submit_manual_payment_guarded", {
+      p_source_type: "farm_buy", p_source_ref: "e2e-rejection-contract", p_amount_expected: 1,
+      p_summary: { source: "E2E corrected Farm Buy", lines: [] }, p_payment_method: "E2E",
+      p_receiver_account: "FarmConnect E2E", p_sender_name: "E2E Customer",
+      p_reference_number: `E2E-CORRECTED-${Date.now()}`, p_receipt_image_url: "e2e://corrected-proof.png",
+      p_idempotency_key: `e2e-resubmit-${Date.now()}`,
+    });
+    if (!resubmitted.id || resubmitted.id === rejectedResult.id) fail("corrected payment resubmission was not created");
+    checks.push("Payment rejection notification and corrected resubmission");
 
     const careRequestId = await rpc(customer, "customer_create_care_request", {
       p_customer_animal_id: animal.id, p_rooster_name: animal.animal_name, p_rooster_tag: animal.animal_code,
@@ -110,7 +148,9 @@ async function main() {
       p_free_note: "Automated backend workflow proof", p_qr_verified: false, p_serial_exception: true,
       p_feed_quantity_used: null, p_feed_unit: null,
     });
-    await rpc(admin, "admin_review_task_proof", { p_proof_id: proofId, p_decision: "approved", p_admin_note: "E2E proof approved" });
+    await rpc(admin, "admin_review_task_proof_guarded", { p_proof_id: proofId, p_decision: "approved", p_admin_note: "E2E proof approved" });
+    const duplicateProofReview = await rpc(admin, "admin_review_task_proof_guarded", { p_proof_id: proofId, p_decision: "approved", p_admin_note: "E2E repeated proof approval" });
+    if (!duplicateProofReview.duplicate) fail("repeated proof approval was not handled idempotently");
     const released = await one(customer.from("farm_care_requests").select("id,status").eq("id", careRequestId).single(), "customer care result visibility");
     if (released.status !== "released_to_customer") fail(`care result status was ${released.status}`);
     const proofVisible = await one(customer.from("task_proofs").select("id,admin_review_status").eq("id", proofId).single(), "customer proof visibility");
@@ -118,13 +158,19 @@ async function main() {
     checks.push("Caretaker proof, admin approval, and customer care update");
 
     await service.from("profiles").update({ wallet_balance: 500, wallet_on_hold: 0, verification_status: "approved", kyc_status: "approved" }).eq("id", profileId);
-    const withdrawalId = await rpc(customer, "customer_submit_withdrawal_request", { p_amount: 100, p_payout_method: "GCash", p_payout_holder: "E2E Customer", p_payout_account: "09000000001", p_customer_note: "E2E withdrawal" });
+    const withdrawalOperationKey = `e2e-withdrawal-${Date.now()}`;
+    const withdrawalResult = await rpc(customer, "customer_submit_withdrawal_request_guarded", { p_amount: 100, p_payout_method: "GCash", p_payout_holder: "E2E Customer", p_payout_account: "09000000001", p_customer_note: "E2E withdrawal", p_idempotency_key: withdrawalOperationKey });
+    const withdrawalId = withdrawalResult.id;
+    const duplicateWithdrawal = await rpc(customer, "customer_submit_withdrawal_request_guarded", { p_amount: 100, p_payout_method: "GCash", p_payout_holder: "E2E Customer", p_payout_account: "09000000001", p_customer_note: "E2E repeated withdrawal", p_idempotency_key: withdrawalOperationKey });
+    if (!duplicateWithdrawal.duplicate || duplicateWithdrawal.id !== withdrawalId) fail("withdrawal retry created a duplicate wallet hold");
     const held = await one(service.from("profiles").select("wallet_balance,wallet_on_hold").eq("id", profileId).single(), "withdrawal hold");
     if (Number(held.wallet_balance) !== 400 || Number(held.wallet_on_hold) !== 100) fail("withdrawal did not reserve wallet funds exactly once");
-    await rpc(admin, "admin_review_withdrawal_request", { p_withdrawal_request_id: withdrawalId, p_decision: "rejected", p_admin_note: "E2E refund check", p_admin_reference_number: null, p_admin_receipt_url: null, p_admin_receipt_file_name: null });
+    await rpc(admin, "admin_review_withdrawal_request_guarded", { p_withdrawal_request_id: withdrawalId, p_decision: "rejected", p_admin_note: "E2E refund check", p_admin_reference_number: null, p_admin_receipt_url: null, p_admin_receipt_file_name: null });
+    const duplicateWithdrawalReview = await rpc(admin, "admin_review_withdrawal_request_guarded", { p_withdrawal_request_id: withdrawalId, p_decision: "rejected", p_admin_note: "E2E repeated refund check", p_admin_reference_number: null, p_admin_receipt_url: null, p_admin_receipt_file_name: null });
+    if (!duplicateWithdrawalReview.duplicate) fail("repeated withdrawal rejection was not handled idempotently");
     const refunded = await one(service.from("profiles").select("wallet_balance,wallet_on_hold").eq("id", profileId).single(), "withdrawal refund");
     if (Number(refunded.wallet_balance) !== 500 || Number(refunded.wallet_on_hold) !== 0) fail("rejected withdrawal did not refund held funds");
-    checks.push("Withdrawal hold and rejection refund are balanced");
+    checks.push("Withdrawal retry, hold, decision retry, and rejection refund are balanced");
 
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(reportPath, `${JSON.stringify({ generatedAt: new Date().toISOString(), passed: true, checks }, null, 2)}\n`);

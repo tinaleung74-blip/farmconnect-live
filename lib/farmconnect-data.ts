@@ -384,14 +384,14 @@ export async function getAdminTaskProofs() {
 }
 
 export async function adminReviewTaskProof(proofId: string, decision: "approved" | "rejected" | "backjob", note?: string | null) {
-  const { data, error } = await supabase.rpc("admin_review_task_proof", {
+  const { data, error } = await supabase.rpc("admin_review_task_proof_guarded", {
     p_proof_id: proofId,
     p_decision: decision,
     p_admin_note: note || null,
   });
 
   if (error) throw error;
-  return data as string;
+  return data as GuardedWorkflowResult;
 }
 
 export async function getCustomerRoosterSaleRequest(customerAnimalId: string) {
@@ -436,13 +436,13 @@ export async function getAdminRoosterSaleRequests() {
 }
 
 export async function adminReviewRoosterSale(saleRequestId: string, decision: "approved" | "rejected", note: string) {
-  const { data, error } = await supabase.rpc("admin_review_rooster_sale", {
+  const { data, error } = await supabase.rpc("admin_review_rooster_sale_guarded", {
     p_sale_request_id: saleRequestId,
     p_decision: decision,
     p_admin_note: note,
   });
   if (error) throw error;
-  return data as string;
+  return data as GuardedWorkflowResult;
 }
 
 export async function submitCaretakerRoosterSaleTask(payload: {
@@ -695,10 +695,18 @@ export type ManualPaymentPayload = {
   senderName: string;
   referenceNumber: string;
   receiptImageUrl?: string | null;
+  idempotencyKey: string;
+};
+
+type GuardedWorkflowResult = {
+  id: string;
+  duplicate: boolean;
+  status: string;
+  workflow_id?: string | null;
 };
 
 export async function submitManualPaymentRequest(payload: ManualPaymentPayload) {
-  const { data, error } = await supabase.rpc("customer_submit_manual_payment", {
+  const { data, error } = await supabase.rpc("customer_submit_manual_payment_guarded", {
     p_source_type: payload.sourceType,
     p_source_ref: payload.sourceRef || null,
     p_amount_expected: payload.amountExpected,
@@ -708,10 +716,13 @@ export async function submitManualPaymentRequest(payload: ManualPaymentPayload) 
     p_sender_name: payload.senderName,
     p_reference_number: payload.referenceNumber,
     p_receipt_image_url: payload.receiptImageUrl || null,
+    p_idempotency_key: payload.idempotencyKey,
   });
 
   if (error) throw error;
-  return data as string;
+  const result = data as GuardedWorkflowResult;
+  if (!result?.id) throw new Error("WORKFLOW_RESULT_MISSING");
+  return result;
 }
 
 export async function getCustomerManualPaymentRequests() {
@@ -754,14 +765,16 @@ export async function getAdminManualPaymentRequests() {
 }
 
 export async function adminReviewManualPayment(paymentRequestId: string, decision: "approved" | "rejected" | "needs_info", note: string) {
-  const { data, error } = await supabase.rpc("admin_review_manual_payment", {
+  const { data, error } = await supabase.rpc("admin_review_manual_payment_guarded", {
     p_payment_request_id: paymentRequestId,
     p_decision: decision,
     p_admin_note: note || null,
   });
 
   if (error) throw error;
-  return data as string;
+  const result = data as GuardedWorkflowResult;
+  if (!result?.id) throw new Error("WORKFLOW_RESULT_MISSING");
+  return result;
 }
 
 
@@ -771,6 +784,7 @@ export type WithdrawalRequestPayload = {
   payoutHolder: string;
   payoutAccount: string;
   customerNote?: string | null;
+  idempotencyKey: string;
 };
 
 export type CustomerPayoutMethodPayload = {
@@ -809,16 +823,19 @@ export async function saveCustomerPayoutMethod(payload: CustomerPayoutMethodPayl
 }
 
 export async function submitWithdrawalRequest(payload: WithdrawalRequestPayload) {
-  const { data, error } = await supabase.rpc("customer_submit_withdrawal_request", {
+  const { data, error } = await supabase.rpc("customer_submit_withdrawal_request_guarded", {
     p_amount: payload.amount,
     p_payout_method: payload.payoutMethod,
     p_payout_holder: payload.payoutHolder,
     p_payout_account: payload.payoutAccount,
     p_customer_note: payload.customerNote || null,
+    p_idempotency_key: payload.idempotencyKey,
   });
 
   if (error) throw error;
-  return data as string;
+  const result = data as GuardedWorkflowResult;
+  if (!result?.id) throw new Error("WORKFLOW_RESULT_MISSING");
+  return result;
 }
 
 export async function getCustomerWithdrawalRequests() {
@@ -855,7 +872,7 @@ export async function adminReviewWithdrawalRequest(
   adminReceiptUrl?: string | null,
   adminReceiptFileName?: string | null,
 ) {
-  const { data, error } = await supabase.rpc("admin_review_withdrawal_request", {
+  const { data, error } = await supabase.rpc("admin_review_withdrawal_request_guarded", {
     p_withdrawal_request_id: withdrawalRequestId,
     p_decision: decision,
     p_admin_note: adminNote || null,
@@ -865,7 +882,7 @@ export async function adminReviewWithdrawalRequest(
   });
 
   if (error) throw error;
-  return data as string;
+  return data as GuardedWorkflowResult;
 }
 export type CaretakerApplicationPayload = {
   fullName: string;
@@ -932,14 +949,14 @@ export async function getCaretakerApplications(statuses?: string[]) {
 }
 
 export async function adminReviewCaretakerApplication(applicationId: string, decision: "approved" | "rejected" | "needs_info", note: string) {
-  const { data, error } = await supabase.rpc("admin_review_caretaker_application", {
+  const { data, error } = await supabase.rpc("admin_review_caretaker_application_guarded", {
     p_application_id: applicationId,
     p_decision: decision,
     p_note: note || null,
   });
 
   if (error) throw error;
-  return data as string;
+  return data as GuardedWorkflowResult;
 }
 
 type CustomerKycRecord = {
@@ -1026,7 +1043,7 @@ export async function adminReviewCustomerKyc(
   note: string,
   riskLevel: "low" | "medium" | "high" = "low",
 ) {
-  const { data, error } = await supabase.rpc("admin_review_customer_kyc", {
+  const { data, error } = await supabase.rpc("admin_review_customer_kyc_guarded", {
     p_kyc_profile_id: kycProfileId,
     p_decision: decision,
     p_note: note || null,
@@ -1034,7 +1051,7 @@ export async function adminReviewCustomerKyc(
   });
 
   if (error) throw error;
-  return data as string;
+  return data as GuardedWorkflowResult;
 }
 
 type PrivateEvidenceUploadOptions = {

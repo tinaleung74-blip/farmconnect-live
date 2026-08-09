@@ -22,6 +22,14 @@ Current confirmed areas:
 - KaFarm support messages have a DB function: `kafarm_support_send_message`.
 - App still has direct DB calls for KYC, wallet PIN, profile contact, farm cart, caretaker task proof, care logs, and inbox.
 
+Latest applied migration:
+
+- `045_operational_workflow_guard.sql` expands retry protection and reconciliation to the remaining sensitive workflows.
+- Applied through the temporary service-only executor on 2026-08-09 after a successful production build.
+
+- `044_workflow_chain_guard.sql` adds the first scoped workflow guard for manual-payment-backed Farm Buy and care requests.
+- Applied through the local-only gateway and verified by database and isolated business-flow contracts on 2026-08-09.
+
 Recommended next database workflow:
 
 1. Run `../00_app_db_health_check.sql`.

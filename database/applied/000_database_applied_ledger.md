@@ -1,8 +1,33 @@
 # FarmConnect Applied Database Ledger
 
-Last updated: 2026-07-29
+Last updated: 2026-08-09
 
 This is the human-readable database memory from our chat.
+
+## 45. Operational Workflow Guard V3
+
+Status: **applied and database/business/browser verified 2026-08-09**
+
+File: `045_operational_workflow_guard.sql`
+
+- Tracks care, caretaker task, proof, sale, withdrawal, and KYC state changes.
+- Prevents duplicate withdrawal holds and treats repeated admin decisions idempotently.
+- Expands KaFarm reconciliation across every sensitive role-to-role chain.
+- Does not auto-approve, auto-reject, delete, transfer ownership, or send payout.
+
+## 44. Workflow Chain Guard V2
+
+Status: **applied and verified 2026-08-09**
+
+File: `044_workflow_chain_guard.sql`
+
+- Durable workflow runs and append-only step events
+- Idempotent manual-payment submit and review wrappers
+- Admin-only KaFarm business reconciliation reader
+- Initial scope is Farm Buy and care-request manual payments
+- No automatic approval, wallet movement, ownership transfer, or sensitive deletion
+- Database contract passed after execution.
+- Isolated business contract passed with retry, approve, reject, and resubmit coverage.
 
 ## 00. Current Health Check Status
 
@@ -295,7 +320,7 @@ After run:
 
 ## 24. KaFarm Temporary SQL Gateway Bootstrap
 
-Status: **SQL ready, run only while building FarmConnect**
+Status: **bootstrap applied previously / app gateway removed 2026-08-09**
 
 File:
 
@@ -321,6 +346,12 @@ Safety:
 - Disable before real production users:
   - `KAFARM_SQL_GATEWAY_ENABLED=false`
   - or delete `/admin/kafarm/sql-gateway` and `/api/kafarm/sql-gateway`.
+
+Current app state:
+
+- Both gateway routes have been deleted after applying migration 044.
+- Production KaFarm uses allowlisted read-only readers only.
+- The historical bootstrap file remains as database provenance; its service-role-only RPC is not exposed by an app route.
 
 Expected success output:
 

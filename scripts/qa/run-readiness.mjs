@@ -26,7 +26,11 @@ try {
   fs.mkdirSync(path.dirname(buildMarker), { recursive: true });
   fs.writeFileSync(buildMarker, `${JSON.stringify({ passed: true, generatedAt: new Date().toISOString() }, null, 2)}\n`);
   run("test:lint-critical");
+  run("test:security");
+  run("test:dependencies");
+  run("test:recovery");
   run("test:db");
+  run("test:workflow");
   run("test:accounts:create");
   accountsCreated = true;
   run("test:business");

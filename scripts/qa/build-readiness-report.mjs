@@ -7,6 +7,10 @@ const dbPath = path.join(resultDir, "kafarm", "database-contract.json");
 const buildPath = path.join(resultDir, "kafarm", "production-build.json");
 const businessPath = path.join(resultDir, "kafarm", "business-flow-contract.json");
 const lintPath = path.join(resultDir, "kafarm", "critical-lint.json");
+const securityPath = path.join(resultDir, "kafarm", "security-contract.json");
+const dependencyPath = path.join(resultDir, "kafarm", "dependency-contract.json");
+const recoveryPath = path.join(resultDir, "kafarm", "recovery-contract.json");
+const workflowPath = path.join(resultDir, "kafarm", "workflow-reconciliation.json");
 const browserPath = path.join(resultDir, "playwright", "results.json");
 const outputPath = path.join(resultDir, "kafarm", "production-readiness.md");
 
@@ -27,6 +31,10 @@ const database = readJson(dbPath);
 const build = readJson(buildPath);
 const business = readJson(businessPath);
 const lint = readJson(lintPath);
+const security = readJson(securityPath);
+const dependency = readJson(dependencyPath);
+const recovery = readJson(recoveryPath);
+const workflow = readJson(workflowPath);
 const browser = readJson(browserPath);
 const specs = collectSpecs(browser?.suites || []);
 const tests = specs.flatMap(spec => spec.tests || []);
@@ -37,7 +45,11 @@ const databasePassed = database?.passed === true;
 const buildPassed = build?.passed === true;
 const businessPassed = business?.passed === true;
 const lintPassed = lint?.passed === true;
-const passed = buildPassed && browserPassed && databasePassed && businessPassed && lintPassed;
+const securityPassed = security?.passed === true;
+const dependencyPassed = dependency?.passed === true;
+const recoveryPassed = recovery?.passed === true;
+const workflowPassed = workflow?.passed === true;
+const passed = buildPassed && browserPassed && databasePassed && businessPassed && lintPassed && securityPassed && dependencyPassed && recoveryPassed && workflowPassed;
 
 const lines = [
   "# FarmConnect Production Readiness Report",
@@ -49,6 +61,10 @@ const lines = [
   "",
   `- Production build: ${buildPassed ? "PASS" : "FAIL"}`,
   `- Runtime-critical lint: ${lintPassed ? "PASS" : "FAIL"}`,
+  `- Security configuration contract: ${securityPassed ? "PASS" : "FAIL"}`,
+  `- Production dependency vulnerability contract: ${dependencyPassed ? "PASS" : "FAIL"}`,
+  `- Backup/restore recovery contract: ${recoveryPassed ? "PASS" : "FAIL"}`,
+  `- Live workflow reconciliation: ${workflowPassed ? "PASS" : "FAIL"}`,
   `- Live database/RLS contract: ${databasePassed ? "PASS" : "FAIL"}`,
   `- Critical business workflow contract: ${businessPassed ? "PASS" : "FAIL"}`,
   `- Browser E2E on desktop, phone, and tablet: ${browserPassed ? "PASS" : "FAIL"}`,

@@ -102,6 +102,26 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(50);
 
+  const { data: workflowSnapshotData, error: workflowSnapshotError } = await authClient
+    .rpc("kafarm_workflow_chain_snapshot");
+  const workflowSnapshot = Array.isArray(workflowSnapshotData) ? workflowSnapshotData[0] : workflowSnapshotData;
+  const workflowFindings = Array.isArray(workflowSnapshot?.findings) ? workflowSnapshot.findings : [];
+  const workflowIncidents: KaFarmRuntimeIncident[] = workflowFindings.map((finding: Record<string, unknown>, index: number) => ({
+    id: `workflow-${String(finding.source_record_id || index)}`,
+    incident_key: String(finding.finding_code || `workflow-${index}`),
+    title: "Broken workflow chain detected",
+    category: "workflow_reconciliation",
+    severity: String(finding.severity || "medium"),
+    status: "Open",
+    app_role: "flow",
+    route: "/admin/kafarm/whole-app-reader",
+    affected: `Workflow record ${String(finding.source_record_id || "unknown")}`,
+    message: String(finding.message || "A business workflow invariant did not match."),
+    evidence: `finding_code=${String(finding.finding_code || "unknown")}; profile_id=${String(finding.profile_id || "unknown")}`,
+    proposed_fix: "Inspect the source request and its expected result, inbox, and evidence records. Repair only the missing linked result, then rerun reconciliation.",
+    safe_recovery: "Keep the request in needs_review and do not repeat money or ownership actions until the missing chain step is confirmed.",
+  }));
+
   const deviceSince = new Date(Date.now() - 30 * 86400000).toISOString();
   const { data: deviceRowsData, error: deviceError } = await profileClient
     .from("kafarm_device_usage_logs")
@@ -140,7 +160,7 @@ export async function GET(request: NextRequest) {
     generatedSnapshot as unknown as KaFarmSystemSnapshot,
     requestedScope as KaFarmReaderScope,
     deployedCommit,
-    (runtimeIncidents || []) as KaFarmRuntimeIncident[],
+    [...((runtimeIncidents || []) as KaFarmRuntimeIncident[]), ...workflowIncidents],
   );
   const deviceReport = deviceError
     ? "Device usage audit is not available yet. Run database/applied/042_kafarm_device_usage_audit.sql, then reopen each device once."
@@ -151,9 +171,15 @@ export async function GET(request: NextRequest) {
       ].join("\n");
   return json(200, {
     ...result,
-    buddyReport: `${result.buddyReport}\n\n${deviceReport}`,
+    buddyReport: `${result.buddyReport}\n\nWORKFLOW CHAIN MONITOR\n${workflowSnapshotError ? `Unavailable: ${workflowSnapshotError.message}` : workflowFindings.length ? `${workflowFindings.length} business inconsistency finding(s).` : "No broken monitored workflow chain detected."}\n\n${deviceReport}`,
     admin: { id: profile.id, email: profile.email },
     runtimeSource: incidentError ? { ok: false, error: incidentError.message } : { ok: true, openIncidentsRead: runtimeIncidents?.length || 0 },
+    workflowChain: {
+      ok: !workflowSnapshotError,
+      error: workflowSnapshotError?.message || null,
+      countsByStatus: workflowSnapshot?.counts_by_status || {},
+      findingCount: workflowFindings.length,
+    },
     deviceUsage: {
       ok: !deviceError,
       error: deviceError?.message || null,

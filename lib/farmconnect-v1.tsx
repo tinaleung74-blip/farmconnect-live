@@ -1428,6 +1428,7 @@ export function WithdrawPageV2() {
   const [note,setNote]=useState("Loading your payout methods and withdrawal history...");
   const [problemId,setProblemId]=useState("");
   const [problemNote,setProblemNote]=useState("");
+  const withdrawalAttemptKey=useRef("");
   const selected=accounts.find(row=>row.id===selectedId)||accounts[0]||null;
   const amountValue=Number(amount||0);
 
@@ -1451,15 +1452,22 @@ export function WithdrawPageV2() {
     if(amountValue<100){setNote("Minimum withdrawal is FC 100.");return;}
     try{
       setSaving(true);
-      await submitWithdrawalRequest({
+      if(!withdrawalAttemptKey.current){
+        withdrawalAttemptKey.current=`withdrawal-${crypto.randomUUID()}`;
+      }
+      const result=await submitWithdrawalRequest({
         amount:amountValue,
         payoutMethod:selected.provider,
         payoutHolder:selected.account_holder,
         payoutAccount:selected.account_number,
         customerNote:"Customer submitted withdrawal from wallet page.",
+        idempotencyKey:withdrawalAttemptKey.current,
       });
+      withdrawalAttemptKey.current="";
       setAmount("");
-      setNote(`Withdrawal sent for admin review. FC ${fcCoin(amountValue)} is now held, not available for another request.`);
+      setNote(result.duplicate
+        ? "This withdrawal was already received. No second wallet hold was created."
+        : `Withdrawal sent for admin review. FC ${fcCoin(amountValue)} is now held, not available for another request.`);
       await loadWithdrawalData();
     }catch(error){
       setNote(`Withdrawal failed: ${error instanceof Error?error.message:"Check wallet balance, KYC, and SQL 040."}`);
@@ -1695,6 +1703,7 @@ const paymentReceivers = [
 
 export function CustomerPaymentPage() {
   const router = useRouter();
+  const paymentOperationKey = useRef("");
   const [context,setContext]=useState<PaymentContext>({ sourceType:"other", sourceRef:"manual", amountExpected:0, summary:{ source:"Manual Payment", lines:[] } });
   const [method,setMethod]=useState(paymentReceivers[0]);
   const [qrOpen,setQrOpen]=useState<typeof paymentReceivers[number] | null>(null);
@@ -1740,7 +1749,10 @@ export function CustomerPaymentPage() {
         throw new Error("LOGIN_REQUIRED");
       }
       setNote("Saving payment proof for admin review...");
-      const id = await submitManualPaymentRequest({
+      if (!paymentOperationKey.current) {
+        paymentOperationKey.current = globalThis.crypto?.randomUUID?.() || `payment-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      const result = await submitManualPaymentRequest({
         sourceType: context.sourceType,
         sourceRef: context.sourceRef,
         amountExpected: context.amountExpected,
@@ -1750,9 +1762,12 @@ export function CustomerPaymentPage() {
         senderName: sender,
         referenceNumber: reference,
         receiptImageUrl: receipt,
+        idempotencyKey: paymentOperationKey.current,
       });
-      setSubmittedId(id);
-      setNote("Payment proof submitted. Returning to dashboard. Check Inbox for the review notice.");
+      setSubmittedId(result.id);
+      setNote(result.duplicate
+        ? "This payment was already received. Returning to dashboard without creating a duplicate request."
+        : "Payment proof submitted. Returning to dashboard. Check Inbox for the review notice.");
       window.localStorage.removeItem("farmconnect_payment_context");
       window.setTimeout(()=>router.push("/customer/dashboard"), 900);
     } catch (error) {
@@ -2927,10 +2942,12 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     try {
       setSaving(true);
       setNote(`Saving ${decision} decision...`);
-      await adminReviewManualPayment(selected.id, decision, adminNote || "Payment proof checked and approved by admin.");
-      setNote(decision === "approved"
-        ? "Payment approved. Invoice, inbox, evidence, and linked request records were updated."
-        : "Payment rejected. The customer received your reason and may resubmit corrected proof.");
+      const result = await adminReviewManualPayment(selected.id, decision, adminNote || "Payment proof checked and approved by admin.");
+      setNote(result.duplicate
+        ? `This request was already ${result.status}. No duplicate action was created.`
+        : decision === "approved"
+          ? "Payment approved. Invoice, inbox, evidence, and linked request records were updated."
+          : "Payment rejected. The customer received your reason and may resubmit corrected proof.");
       setDecision(null);
       setAdminNote("");
       setViewer(null);
@@ -4205,8 +4222,6 @@ export function CaretakerSignupPage() {
     </AuthShell>
   );
 }
-
-
 
 
 
