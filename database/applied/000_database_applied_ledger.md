@@ -734,7 +734,7 @@ Expected success condition:
 
 ## 051_customer_kyc_private_storage_wiring.sql
 
-Status: **PREPARED / NOT YET VERIFIED LIVE**
+Status: **APPLIED / OWNER VERIFIED 2026-08-09**
 
 Purpose:
 
@@ -747,3 +747,17 @@ Expected success output:
 
 - `customer_kyc_private_bucket_ready = 1`
 - `customer_kyc_storage_policies_ready = 1`
+
+## 052_customer_kyc_review_status_guard.sql
+
+Status: **PREPARED / NOT YET VERIFIED LIVE**
+
+Purpose:
+
+- Accept the live `ready_for_review` KYC status in the guarded admin decision RPC.
+- Require a clear admin note when KYC is rejected for customer resubmission.
+- Keep duplicate approved/rejected decisions idempotent without changing any KYC row during migration.
+
+Expected success output:
+
+- `customer_kyc_review_status_guard_ready = 1`

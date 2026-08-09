@@ -979,6 +979,38 @@ type CustomerKycRecord = {
   [key: string]: unknown;
 };
 
+export type CustomerKycSubmission = {
+  id: string;
+  status: string;
+  adminNote: string | null;
+  submittedAt: string | null;
+};
+
+export async function getCurrentCustomerKycSubmission(): Promise<CustomerKycSubmission | null> {
+  const profile = await getCurrentProfile();
+  if (!profile?.id) return null;
+
+  const { data, error } = await supabase
+    .from("customer_kyc_profiles")
+    .select("*")
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  const row = data as Record<string, unknown>;
+  const status = String(row.status || row.verification_status || row.review_status || "submitted").trim().toLowerCase();
+  const note = row.admin_note || row.review_note || row.rejection_reason || row.decision_note;
+  const submittedAt = row.submitted_at || row.updated_at || row.created_at;
+  return {
+    id: String(row.id),
+    status,
+    adminNote: typeof note === "string" && note.trim() ? note.trim() : null,
+    submittedAt: typeof submittedAt === "string" ? submittedAt : null,
+  };
+}
+
 type VerificationProfileSummary = {
   id: string;
   auth_user_id?: string | null;
@@ -1066,7 +1098,9 @@ export async function adminReviewCustomerKyc(
   });
 
   if (error) throw error;
-  return data as GuardedWorkflowResult;
+  const result = data as GuardedWorkflowResult;
+  if (!result?.id) throw new Error("KYC_REVIEW_RESULT_MISSING");
+  return result;
 }
 
 type PrivateEvidenceUploadOptions = {

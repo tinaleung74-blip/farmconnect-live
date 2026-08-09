@@ -24,7 +24,9 @@ Current confirmed areas:
 
 Latest applied migrations:
 
-- `051_customer_kyc_private_storage_wiring.sql` is prepared but not yet verified live. It wires customer-owned private KYC uploads and admin-only evidence review; apply it before retesting KYC evidence uploads if the live bucket lacks these policies.
+- `052_customer_kyc_review_status_guard.sql` is prepared but not yet verified live. It lets the guarded admin KYC RPC review the live `ready_for_review` state and requires a rejection reason before resubmission.
+
+- `051_customer_kyc_private_storage_wiring.sql` was owner-verified on 2026-08-09 with both expected readiness checks returning `1`. It wires customer-owned private KYC uploads and admin-only evidence review.
 
 - `050_kyc_system_checks_digest_schema_fix.sql` repairs the remaining `pgcrypto.digest()` call inside the KYC system-check helper. Applied and verified on 2026-08-09 through audit `f95e6df7-97e2-4bd4-84d7-605a5bcfd209`.
 - `049_customer_kyc_digest_schema_fix.sql` preserves the live KYC function while schema-qualifying its `pgcrypto.digest()` call. Applied and verified on 2026-08-09 through audit `b2db9940-6281-466f-9eaf-715ef68e2feb`.

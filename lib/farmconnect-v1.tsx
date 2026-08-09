@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAdminEscalatedChats, getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, runAdminSupportAction, saveKaFarmSupportMessage, sendSupportMessage } from "@/lib/backend/support-chat";
 import { getEscalationNotice, getKaFarmReply, shouldEscalateToAdmin } from "@/lib/kafarm-brain";
-import { adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewRoosterSale, adminReviewTaskProof, confirmRoosterSale, confirmWithdrawalResult, createCareRequest, createPrivateEvidenceUrl, getActiveCaretakersForAssignment, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCurrentCaretakerProfile, getCurrentProfile, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord } from "@/lib/farmconnect-data";
+import { adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewRoosterSale, adminReviewTaskProof, confirmRoosterSale, confirmWithdrawalResult, createCareRequest, createPrivateEvidenceUrl, getActiveCaretakersForAssignment, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord } from "@/lib/farmconnect-data";
 import { supabase } from "@/lib/supabase";
 
 type Role = "customer" | "caretaker" | "admin";
@@ -2068,6 +2068,7 @@ export function SupportPage() {
 }
 export function SettingsPage() {
   type SettingsPanel = "kyc" | "pin" | "password" | "contact";
+  type KycFlowState = "loading" | "not_submitted" | "pending" | "rejected" | "approved" | "error";
   const fallbackProfile = { name: "Customer", nickname: "Customer", email: "", phone: "", birthdate: "", kyc: "Not submitted", pin: "Not set", payout: "Not added" };
   const [profile, setProfile] = useState(fallbackProfile);
   const [settingsNote,setSettingsNote]=useState("Choose a settings item from the side menu. Sensitive actions need proof, PIN checks, or admin review.");
@@ -2079,6 +2080,7 @@ export function SettingsPage() {
   const [kycIdBackFile,setKycIdBackFile]=useState<File | null>(null);
   const [kycSelfieFile,setKycSelfieFile]=useState<File | null>(null);
   const [kycSubmitting,setKycSubmitting]=useState(false);
+  const [kycFlow,setKycFlow]=useState<{ state:KycFlowState; note:string | null; submittedAt:string | null }>({ state:"loading", note:null, submittedAt:null });
   const [kycReadStatus,setKycReadStatus]=useState("Upload a clear ID photo so the system can read the name, ID type, and ID number before admin review.");
   const [kycChecking,setKycChecking]=useState(false);
   const kycConsentVersion = "kyc-consent-v1-2026-07-09";
@@ -2116,8 +2118,30 @@ export function SettingsPage() {
       .catch(() => setSettingsNote("Profile could not load yet. Login again if your details look incomplete."));
     return () => { mounted = false; };
   }, []);
+  useEffect(() => {
+    let mounted = true;
+    getCurrentCustomerKycSubmission()
+      .then(submission => {
+        if (!mounted) return;
+        if (!submission) {
+          setKycFlow({ state:"not_submitted", note:null, submittedAt:null });
+          return;
+        }
+        const status = submission.status.replaceAll(" ", "_");
+        const state: KycFlowState = ["approved", "verified", "accepted"].includes(status)
+          ? "approved"
+          : ["rejected", "declined", "denied", "needs_info"].includes(status)
+            ? "rejected"
+            : "pending";
+        setKycFlow({ state, note:submission.adminNote, submittedAt:submission.submittedAt });
+      })
+      .catch(() => {
+        if (mounted) setKycFlow({ state:"error", note:"KYC status could not be checked. Login again before sending another submission.", submittedAt:null });
+      });
+    return () => { mounted = false; };
+  }, []);
   const settingCards: Array<{ key?: SettingsPanel; title: string; text: string; icon: IconName; action: string; tone?: "green" | "amber" | "blue"; href?: string }> = [
-    { key: "kyc", title: "KYC Verification", text: "Upload ID and selfie before withdrawals.", icon: "shield", action: "Open KYC", tone: "amber" },
+    { key: kycFlow.state === "approved" ? undefined : "kyc", title: "KYC Verification", text: kycFlow.state === "approved" ? "Approved and locked." : kycFlow.state === "pending" ? "Submitted and under admin review." : kycFlow.state === "rejected" ? "Rejected. Open to review the reason and resubmit." : "Upload ID and selfie before withdrawals.", icon: "shield", action: kycFlow.state === "approved" ? "Verified" : "Open KYC", tone: "amber" },
     { key: "pin", title: "Wallet PIN", text: "Change PIN only after current PIN check.", icon: "qr", action: "Manage PIN", tone: "blue" },
     { key: "password", title: "Password", text: "Change login password securely.", icon: "settings", action: "Change Password" },
     { title: "Payout Account", text: "Manage GCash, Maya, or bank payout.", icon: "wallet", action: "Manage Payout", href: "/customer/withdraw/add-payout" },
@@ -2182,6 +2206,8 @@ export function SettingsPage() {
       if (error) throw error;
       const reviewRecord = { customer: profile.name, email: profile.email, idType: kyc.idType, idNumber: kyc.idLast4, submittedAt, faceStatus: "Manual admin review", status: "Ready for admin review", note: "Automated face checking is disabled. Admin must verify the ID and selfie before approval.", faceScore: null, engineDetails: ["Manual identity review required"], front: frontPath, back: backPath, selfie: selfiePath, consentAccepted: true, consentAcceptedAt: submittedAt, consentVersion: kycConsentVersion, consentText: kycConsentText };
       if (typeof window !== "undefined") { window.localStorage.setItem("farmconnect_latest_kyc_review", JSON.stringify(reviewRecord)); const rawInbox = window.localStorage.getItem("farmconnect_customer_inbox"); const currentInbox = rawInbox ? JSON.parse(rawInbox) : []; window.localStorage.setItem("farmconnect_customer_inbox", JSON.stringify([inboxNotice, ...currentInbox.filter((item: any)=>item.title !== inboxNotice.title)])); }
+      setKycFlow({ state:"pending", note:null, submittedAt:new Date().toISOString() });
+      setActivePanel(null);
       setKycReadStatus("System read completed. Admin review queue can now verify the ID, selfie, consent, and duplicate-risk checks.");
       setSettingsNote("KYC submitted. Your verification is now under review. Check Inbox for the review notice.");
     } catch (error) {
@@ -2208,7 +2234,25 @@ export function SettingsPage() {
     if (!contact.name.trim() || !contact.phone.trim()) { setSettingsNote("Contact name and phone are required."); return; }
     try { const { data } = await supabase.auth.getUser(); const authUserId = data.user?.id; if (!authUserId) throw new Error("login required"); const { error } = await supabase.from("profiles").update({ full_name: contact.name, display_name: contact.nickname, email: contact.email, phone: contact.phone }).eq("auth_user_id", authUserId); if (error) throw error; setSettingsNote("Contact details updated and ready for Customer Requests records."); } catch { setSettingsNote("Contact form is ready. Once profile columns are matched in the database, this will save directly."); }
   }
-  function openPanel(panel: SettingsPanel, title: string) { setActivePanel(panel); setSettingsNote(`${title} opened. Complete the panel on the right to continue.`); }
+  function openPanel(panel: SettingsPanel, title: string) {
+    if (panel === "kyc" && kycFlow.state === "pending") {
+      setActivePanel(null);
+      setSettingsNote(`Your KYC is in review.${kycFlow.submittedAt ? ` Submitted ${new Date(kycFlow.submittedAt).toLocaleString()}.` : ""}`);
+      return;
+    }
+    if (panel === "kyc" && kycFlow.state === "error") {
+      setActivePanel(null);
+      setSettingsNote(kycFlow.note || "KYC status could not be checked. Login again before submitting.");
+      return;
+    }
+    if (panel === "kyc" && kycFlow.state === "rejected") {
+      setActivePanel(panel);
+      setSettingsNote(`KYC rejected for resubmission. Admin reason: ${kycFlow.note || "Correct the submitted details and upload new evidence."}`);
+      return;
+    }
+    setActivePanel(panel);
+    setSettingsNote(`${title} opened. Complete the panel on the right to continue.`);
+  }
   function idRule(type: string) {
     const rules: Record<string, { label: string; test: (value: string) => boolean; clean: (value: string) => string }> = {
       "National ID": { label: "12 digits", clean: v => v.replace(/\D/g, "").slice(0, 12), test: v => /^\d{12}$/.test(v) },

@@ -25,6 +25,8 @@ const env = Object.fromEntries(read(path.join(root, ".env.local")).split(/\r?\n/
   .map(match => [match[1].trim(), match[2].trim().replace(/^['"]|['"]$/g, "")]));
 const clientFiles = [...walk(path.join(root, "app")), ...walk(path.join(root, "lib"))];
 const customerAppSource = read(path.join(root, "lib", "farmconnect-v1.tsx"));
+const verificationAppSource = read(path.join(root, "lib", "farmconnect-unified-account-verification.tsx"));
+const kycReviewGuardSource = read(path.join(root, "database", "applied", "052_customer_kyc_review_status_guard.sql"));
 const clientSecretReferences = clientFiles
   .filter(file => !file.includes(`${path.sep}api${path.sep}`))
   .filter(file => /SUPABASE_SERVICE_ROLE_KEY|KAFARM_SQL_GATEWAY_TOKEN/.test(read(file)))
@@ -41,6 +43,9 @@ const checks = [
   { name: "KYC RPC receives permanent storage paths", ok: /p_valid_id_front_url: frontPath/.test(customerAppSource) && /p_valid_id_back_url: backPath/.test(customerAppSource) && /p_selfie_url: selfiePath/.test(customerAppSource) },
   { name: "KYC RPC does not receive browser preview URLs", ok: !/p_valid_id_front_url: kycIdPhoto/.test(customerAppSource) && !/p_valid_id_back_url: kycIdBackPhoto/.test(customerAppSource) && !/p_selfie_url: kycSelfiePhoto/.test(customerAppSource) },
   { name: "KYC private-storage policy migration exists", ok: fs.existsSync(path.join(root, "database", "applied", "051_customer_kyc_private_storage_wiring.sql")) },
+  { name: "KYC admin guard accepts live review status", ok: /ready_for_review/.test(kycReviewGuardSource) && /REJECTION_NOTE_REQUIRED/.test(kycReviewGuardSource) },
+  { name: "Customer KYC settings distinguish pending rejected and approved", ok: /Your KYC is in review/.test(customerAppSource) && /KYC rejected for resubmission/.test(customerAppSource) && /Approved and locked/.test(customerAppSource) },
+  { name: "Admin KYC rejection explicitly reopens resubmission", ok: /Reject for Resubmission/.test(verificationAppSource) && /upload corrected KYC evidence/.test(verificationAppSource) },
 ];
 const report = { generatedAt: new Date().toISOString(), passed: checks.every(check => check.ok), checks };
 fs.mkdirSync(outputDir, { recursive: true });
