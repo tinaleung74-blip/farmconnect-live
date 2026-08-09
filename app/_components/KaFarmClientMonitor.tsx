@@ -227,6 +227,16 @@ function summarizeConsoleIssue(level: "error" | "warn", message: string) {
       safeRecovery: "Prevent repeated submit and show a friendly review/pending message while admin checks permissions.",
     };
   }
+  if (text.includes("refresh token") || text.includes("invalid token") || text.includes("session expired")) {
+    return {
+      title: "Expired or invalid login session captured",
+      category: "Authentication",
+      severity: "Medium",
+      status: "Checking",
+      proposedFix: "Clear the stale Supabase session, sign in again with the correct role, and retry the exact page action.",
+      safeRecovery: "Keep unsent form data when possible, return the user to login, and do not classify this as a missing route.",
+    };
+  }
   if (/\b404\b|not found/.test(text)) {
     return {
       title: "HTTP 404 / missing route captured",

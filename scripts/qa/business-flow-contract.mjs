@@ -177,7 +177,20 @@ async function main() {
     if (saleTask.status !== "active" || saleTask.workflow_type !== "sale_price_inspection") fail(`sale assignment produced ${saleTask.status}/${saleTask.workflow_type}`);
     const assignedSale = await one(service.from("rooster_sale_requests").select("status,price_task_id").eq("id", saleRequestId).single(), "assigned sale request");
     if (assignedSale.status !== "price_assigned" || assignedSale.price_task_id !== saleTaskId) fail("sale assignment did not update the linked sale request");
-    checks.push("Rooster sale price request reaches selected caretaker exactly once");
+    const saleProofId = await rpc(caretaker, "caretaker_submit_rooster_sale_task", {
+      p_task_id: saleTaskId,
+      p_declared_amount: 100,
+      p_proof_urls: ["e2e://sale-price-proof.png"],
+      p_free_note: "E2E rooster sale price inspection",
+      p_qr_verified: false,
+      p_serial_exception: true,
+    });
+    const submittedSale = await one(service.from("rooster_sale_requests").select("status,price_proof_id,caretaker_quoted_price").eq("id", saleRequestId).single(), "submitted sale inspection");
+    if (submittedSale.status !== "price_submitted" || submittedSale.price_proof_id !== saleProofId || Number(submittedSale.caretaker_quoted_price) !== 100) fail("sale price proof did not reach admin verification");
+    await rpc(admin, "admin_review_task_proof_guarded", { p_proof_id: saleProofId, p_decision: "approved", p_admin_note: "E2E sale price approved" });
+    const approvedSale = await one(service.from("rooster_sale_requests").select("status,approved_sale_price").eq("id", saleRequestId).single(), "approved sale inspection");
+    if (approvedSale.status !== "price_ready" || Number(approvedSale.approved_sale_price) !== 100) fail("approved sale price was not returned to the customer flow");
+    checks.push("Rooster sale assignment, caretaker proof, and admin price approval");
 
     await service.from("profiles").update({ wallet_balance: 500, wallet_on_hold: 0, verification_status: "approved", kyc_status: "approved" }).eq("id", profileId);
     const withdrawalOperationKey = `e2e-withdrawal-${Date.now()}`;

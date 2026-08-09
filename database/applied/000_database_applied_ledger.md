@@ -689,3 +689,17 @@ Purpose:
 Expected success output:
 
 - `rooster_sale_assignment_qr_fix_ready = 1`
+
+## 048_task_proof_sale_type_constraint_fix.sql
+
+Status: **APPLIED** (verified through the service-only audited executor on 2026-08-09; audit `ed558916-4534-4d37-a9d4-d1be4b6889ba`)
+
+Purpose:
+
+- Allow the proof types emitted by the rooster sale-price and final-release task RPC.
+- Preserve the existing photo and video proof types.
+- Prevent caretaker sale submission from failing before it reaches Admin Task Verification.
+
+Expected success output:
+
+- `task_proof_sale_type_constraint_fix_ready = 1`

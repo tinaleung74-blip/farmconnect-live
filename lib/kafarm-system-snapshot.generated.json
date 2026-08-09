@@ -1,29 +1,19 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-09T08:34:22.480Z",
-  "sourceFingerprint": "3bcf6bf27e63d605eec55f83ae4db9375e50957b7b638abc82d14204be4f263e",
+  "generatedAt": "2026-08-09T08:57:32.616Z",
+  "sourceFingerprint": "37ee72088f59ffe7330c73af2c848d3e62b24cf6d290b374e34db2dea81d7547",
   "git": {
-    "commit": "d7c7109bc3589af13760e385582cc3686b3ef962",
+    "commit": "466a083ae7e6a8ca8dfd21eae8d7fcf120546801",
     "branch": "master",
     "dirtyFiles": [
+      "app/_components/KaFarmClientMonitor.tsx",
       "database/00_verify_applied_sql_status.sql",
       "database/applied/000_database_applied_ledger.md",
       "database/applied/README.md",
-      "lib/farmconnect-data.ts",
-      "lib/farmconnect-v1.tsx",
-      "lib/kafarm-system-snapshot.generated.json",
-      "package.json",
-      "playwright.config.ts",
-      "scripts/qa/build-readiness-report.mjs",
       "scripts/qa/business-flow-contract.mjs",
-      "tests/e2e/admin-smoke.spec.ts",
-      "tests/e2e/public-smoke.spec.ts",
-      "tests/e2e/role-smoke.spec.ts",
       "-Filter",
       ".vscode/",
-      "database/applied/046_payment_correction_and_video_evidence.sql",
-      "database/applied/047_rooster_sale_assignment_qr_fix.sql",
-      "scripts/qa/run-e2e-matrix.mjs"
+      "database/applied/048_task_proof_sale_type_constraint_fix.sql"
     ]
   },
   "safety": {
@@ -2249,7 +2239,7 @@
       "kind": "rpc",
       "name": "kafarm_record_device_usage",
       "file": "app/_components/KaFarmClientMonitor.tsx",
-      "line": 354,
+      "line": 364,
       "role": "system",
       "route": "/",
       "exportName": "KaFarmClientMonitor"
@@ -4141,7 +4131,7 @@
   "activeManifest": [
     {
       "file": "app/_components/KaFarmClientMonitor.tsx",
-      "sha256": "4c0d6e868778dac31bbc128554a04ff7e6ce67eca1a4552055f34cccca48f817"
+      "sha256": "924f93d622cbd153925432e01684061109575eba608bd8f35a0cfe5361cf37c4"
     },
     {
       "file": "app/admin/account-verification/page.tsx",

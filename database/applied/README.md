@@ -24,6 +24,7 @@ Current confirmed areas:
 
 Latest applied migrations:
 
+- `048_task_proof_sale_type_constraint_fix.sql` keeps caretaker sale-price and final-release proofs compatible with the live `task_proofs` validation constraint. Applied and verified on 2026-08-09 through audit `ed558916-4534-4d37-a9d4-d1be4b6889ba`.
 - `047_rooster_sale_assignment_qr_fix.sql` repairs sale task assignment by reading the QR payload from `animal_qr_identities`, its actual source of truth.
 - `046_payment_correction_and_video_evidence.sql` connects rejected Farm Buy/care payments to an exact customer correction page and allows caretaker task videos in the private proof bucket.
 
