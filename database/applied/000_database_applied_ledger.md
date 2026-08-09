@@ -731,3 +731,19 @@ Purpose:
 Expected success condition:
 
 - Both `customer_submit_kyc` and `run_kyc_system_checks` report `qualified=yes` in the live definition check.
+
+## 051_customer_kyc_private_storage_wiring.sql
+
+Status: **PREPARED / NOT YET VERIFIED LIVE**
+
+Purpose:
+
+- Keep the `farmconnect-customer-kyc` bucket private with a 10 MB file limit.
+- Allow customers to upload and read only evidence below their own `auth.uid()/submissions` folder.
+- Allow active admins to create signed review links without exposing KYC evidence publicly.
+- Prevent browser-only `blob:` preview URLs and filename-only records from becoming new KYC evidence.
+
+Expected success output:
+
+- `customer_kyc_private_bucket_ready = 1`
+- `customer_kyc_storage_policies_ready = 1`

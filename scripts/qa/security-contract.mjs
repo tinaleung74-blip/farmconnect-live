@@ -24,6 +24,7 @@ const env = Object.fromEntries(read(path.join(root, ".env.local")).split(/\r?\n/
   .map(line => line.match(/^([^#=]+)=(.*)$/)).filter(Boolean)
   .map(match => [match[1].trim(), match[2].trim().replace(/^['"]|['"]$/g, "")]));
 const clientFiles = [...walk(path.join(root, "app")), ...walk(path.join(root, "lib"))];
+const customerAppSource = read(path.join(root, "lib", "farmconnect-v1.tsx"));
 const clientSecretReferences = clientFiles
   .filter(file => !file.includes(`${path.sep}api${path.sep}`))
   .filter(file => /SUPABASE_SERVICE_ROLE_KEY|KAFARM_SQL_GATEWAY_TOKEN/.test(read(file)))
@@ -36,6 +37,10 @@ const checks = [
   { name: "No service key or gateway token in client modules", ok: clientSecretReferences.length === 0, evidence: clientSecretReferences },
   { name: "Environment files are ignored", ok: /(?:^|\n)\.env\*/.test(read(path.join(root, ".gitignore"))) || /(?:^|\n)\.env\.local/.test(read(path.join(root, ".gitignore"))) },
   { name: "Security headers configured", ok: /Content-Security-Policy|X-Content-Type-Options|frame-ancestors/.test(read(path.join(root, "next.config.ts"))) },
+  { name: "KYC evidence uploads use private storage", ok: /uploadPrivateEvidenceFile\(\{ bucket: "farmconnect-customer-kyc"/.test(customerAppSource) },
+  { name: "KYC RPC receives permanent storage paths", ok: /p_valid_id_front_url: frontPath/.test(customerAppSource) && /p_valid_id_back_url: backPath/.test(customerAppSource) && /p_selfie_url: selfiePath/.test(customerAppSource) },
+  { name: "KYC RPC does not receive browser preview URLs", ok: !/p_valid_id_front_url: kycIdPhoto/.test(customerAppSource) && !/p_valid_id_back_url: kycIdBackPhoto/.test(customerAppSource) && !/p_selfie_url: kycSelfiePhoto/.test(customerAppSource) },
+  { name: "KYC private-storage policy migration exists", ok: fs.existsSync(path.join(root, "database", "applied", "051_customer_kyc_private_storage_wiring.sql")) },
 ];
 const report = { generatedAt: new Date().toISOString(), passed: checks.every(check => check.ok), checks };
 fs.mkdirSync(outputDir, { recursive: true });
