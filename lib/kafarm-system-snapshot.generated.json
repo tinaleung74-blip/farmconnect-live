@@ -1,14 +1,17 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-09T10:04:11.172Z",
+  "generatedAt": "2026-08-09T11:04:43.983Z",
   "sourceFingerprint": "937d8e97156b15fa2d8756c66a90cc944b97eac191663ee806cda144cbcb00b0",
   "git": {
-    "commit": "5b3ad171975c31f7a43358c74a9dd15b1ac7bedd",
+    "commit": "77f3e07dd07796e5d872bfe33721d18b5e936135",
     "branch": "master",
     "dirtyFiles": [
-      "lib/farmconnect-v1.tsx",
+      "database/00_verify_applied_sql_status.sql",
+      "database/applied/000_database_applied_ledger.md",
+      "database/applied/README.md",
       "-Filter",
-      ".vscode/"
+      ".vscode/",
+      "database/applied/049_customer_kyc_digest_schema_fix.sql"
     ]
   },
   "safety": {

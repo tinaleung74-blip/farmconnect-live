@@ -147,6 +147,7 @@ with expected(migration, kind, object_name) as (
     ,('044_workflow_chain_guard.sql','function','admin_review_manual_payment_guarded')
     ,('044_workflow_chain_guard.sql','function','kafarm_workflow_chain_snapshot')
     ,('045_operational_workflow_guard.sql','function','customer_submit_withdrawal_request_guarded')
+    ,('049_customer_kyc_digest_schema_fix.sql','function','customer_submit_kyc')
     ,('045_operational_workflow_guard.sql','function','admin_review_task_proof_guarded')
     ,('045_operational_workflow_guard.sql','function','admin_review_withdrawal_request_guarded')
     ,('045_operational_workflow_guard.sql','function','admin_review_rooster_sale_guarded')

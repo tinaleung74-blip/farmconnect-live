@@ -703,3 +703,17 @@ Purpose:
 Expected success output:
 
 - `task_proof_sale_type_constraint_fix_ready = 1`
+
+## 049_customer_kyc_digest_schema_fix.sql
+
+Status: **APPLIED** (verified through the service-only audited executor on 2026-08-09; audit `b2db9940-6281-466f-9eaf-715ef68e2feb`)
+
+Purpose:
+
+- Preserve the live `customer_submit_kyc` function and its existing signature.
+- Qualify the function's `digest()` call with the actual `pgcrypto` extension schema.
+- Prevent KYC submission from failing with PostgreSQL error `42883` without changing customer or KYC rows.
+
+Expected success condition:
+
+- The live `customer_submit_kyc` definition contains a schema-qualified `digest()` call.
