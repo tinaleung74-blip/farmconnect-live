@@ -2148,7 +2148,7 @@ export function SettingsPage() {
     { key: "contact", title: "Contact Details", text: "Edit phone, email, and nickname.", icon: "user", action: "Edit Contact" },
     { title: "Activity Records", text: "Open receipts, inbox, and records.", icon: "file", action: "Open Inbox", href: "/customer/inbox" },
   ];
-  function cardClass(tone?: "green" | "amber" | "blue") { if (tone === "amber") return "border-amber-200 bg-amber-50"; if (tone === "blue") return "border-sky-200 bg-sky-50"; return "border-[#ece6d8] bg-white"; }
+  function cardClass(tone?: "green" | "amber" | "blue") { if (tone === "amber") return `${kycFlow.state === "approved" ? "pointer-events-none cursor-not-allowed opacity-65 " : ""}border-amber-200 bg-amber-50`; if (tone === "blue") return "border-sky-200 bg-sky-50"; return "border-[#ece6d8] bg-white"; }
   function chooseProfilePhoto(file?: File) { if (!file) return; const url = URL.createObjectURL(file); setProfilePhoto(current => { if (current) URL.revokeObjectURL(current); return url; }); setSettingsNote("Profile photo added. The app centered and fitted it inside the circle so the face stays visible."); }
   function chooseKycPhoto(kind: "front" | "back" | "selfie", file?: File) {
     if (!file) return;

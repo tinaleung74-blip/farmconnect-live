@@ -1,20 +1,14 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-09T12:11:24.998Z",
-  "sourceFingerprint": "43978ab85e10ce917c247be231b63bbea97e7fcf0337079ac2ac8c037fbc7169",
+  "generatedAt": "2026-08-09T12:20:54.107Z",
+  "sourceFingerprint": "37596a19f9626fdd302b4d3f6f426be9becbcb5d0fff6c1c3b497e5b8eb8e28c",
   "git": {
-    "commit": "28ce9994bb21974dcdf7d4a1893feb13579a6507",
+    "commit": "ed325065a77cdb12c31908e1479aaa78b54af4ad",
     "branch": "master",
     "dirtyFiles": [
-      "database/applied/000_database_applied_ledger.md",
-      "database/applied/README.md",
-      "lib/farmconnect-data.ts",
-      "lib/farmconnect-unified-account-verification.tsx",
       "lib/farmconnect-v1.tsx",
-      "scripts/qa/security-contract.mjs",
       "-Filter",
-      ".vscode/",
-      "database/applied/052_customer_kyc_review_status_guard.sql"
+      ".vscode/"
     ]
   },
   "safety": {
@@ -4572,7 +4566,7 @@
     },
     {
       "file": "lib/farmconnect-v1.tsx",
-      "sha256": "efd90f7b8cf667a48f61cf10b68f99aabcc2d20d6dc781e8904cf1d8eb899fa8"
+      "sha256": "50c9739c5fccb2348782fccaeff91387bb2efa321bf700f25a98a14622dc0944"
     },
     {
       "file": "lib/kafarm-brain.ts",
