@@ -192,6 +192,16 @@ async function main() {
     if (approvedSale.status !== "price_ready" || Number(approvedSale.approved_sale_price) !== 100) fail("approved sale price was not returned to the customer flow");
     checks.push("Rooster sale assignment, caretaker proof, and admin price approval");
 
+    await rpc(customer, "customer_confirm_rooster_sale", { p_sale_request_id: saleRequestId, p_customer_note: "E2E customer confirmed sale" });
+    const queuedSale = await one(admin.from("rooster_sale_requests").select("id,status").eq("id", saleRequestId).single(), "admin sell request visibility");
+    if (queuedSale.status !== "sale_requested") fail(`customer sell request reached admin as ${queuedSale.status}`);
+    await rpc(admin, "admin_review_rooster_sale_guarded", { p_sale_request_id: saleRequestId, p_decision: "approved", p_admin_note: "E2E final release approved" });
+    const releaseReady = await one(service.from("rooster_sale_requests").select("status,release_care_request_id").eq("id", saleRequestId).single(), "sale release assignment queue");
+    if (releaseReady.status !== "release_pending_assignment" || !releaseReady.release_care_request_id) fail("approved sell request did not create the final release assignment");
+    const releaseCare = await one(admin.from("farm_care_requests").select("id,status,service_category").eq("id", releaseReady.release_care_request_id).single(), "admin final release task visibility");
+    if (releaseCare.status !== "paid_pending_assignment" || releaseCare.service_category !== "sale_release_confirmation") fail("final release request did not reach Task Management");
+    checks.push("Customer sell confirmation reaches admin and creates final release assignment");
+
     await service.from("profiles").update({ wallet_balance: 500, wallet_on_hold: 0, verification_status: "approved", kyc_status: "approved" }).eq("id", profileId);
     const withdrawalOperationKey = `e2e-withdrawal-${Date.now()}`;
     const withdrawalResult = await rpc(customer, "customer_submit_withdrawal_request_guarded", { p_amount: 100, p_payout_method: "GCash", p_payout_holder: "E2E Customer", p_payout_account: "09000000001", p_customer_note: "E2E withdrawal", p_idempotency_key: withdrawalOperationKey });
