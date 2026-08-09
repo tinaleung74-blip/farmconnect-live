@@ -19,7 +19,7 @@ export default function HomePage() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [signupForm, setSignupForm] = useState({ firstName: "", lastName: "", phone: "", email: "", password: "", consent: false });
+  const [signupForm, setSignupForm] = useState({ firstName: "", lastName: "", birthdate: "", phone: "", email: "", password: "", consent: false });
   const [message, setMessage] = useState("Ka-Farm checks your email role and opens the correct workspace.");
   const [loading, setLoading] = useState(false);
 
@@ -63,8 +63,8 @@ export default function HomePage() {
 
   async function signUp() {
     const fullName = `${signupForm.firstName} ${signupForm.lastName}`.trim();
-    if (!fullName || !signupForm.phone || !signupForm.email || !signupForm.password) {
-      setMessage("Complete name, phone, email, and password first.");
+    if (!fullName || !signupForm.birthdate || !signupForm.phone || !signupForm.email || !signupForm.password) {
+      setMessage("Complete legal name, birthdate, phone, email, and password first.");
       return;
     }
     if (!signupForm.consent) {
@@ -77,7 +77,7 @@ export default function HomePage() {
       const { data, error } = await supabase.auth.signUp({
         email: signupForm.email,
         password: signupForm.password,
-        options: { data: { full_name: fullName, phone: signupForm.phone, role: "customer" } },
+        options: { data: { full_name: fullName, birthdate: signupForm.birthdate, phone: signupForm.phone, role: "customer" } },
       });
       if (error) throw error;
 
@@ -88,6 +88,7 @@ export default function HomePage() {
           phone: signupForm.phone,
           full_name: fullName,
           display_name: fullName,
+          birthdate: signupForm.birthdate,
           role: "customer",
           account_status: "active",
           verification_status: "pending",
@@ -205,6 +206,7 @@ export default function HomePage() {
                   <Field label="First name"><input value={signupForm.firstName} onChange={e=>setSignupForm({...signupForm,firstName:e.target.value})} placeholder="First name" className={inputClass} /></Field>
                   <Field label="Last name"><input value={signupForm.lastName} onChange={e=>setSignupForm({...signupForm,lastName:e.target.value})} placeholder="Last name" className={inputClass} /></Field>
                 </div>
+                <Field label="Birthdate"><input value={signupForm.birthdate} onChange={e=>setSignupForm({...signupForm,birthdate:e.target.value})} type="date" autoComplete="bday" className={inputClass} /></Field>
                 <Field label="Mobile number"><input value={signupForm.phone} onChange={e=>setSignupForm({...signupForm,phone:e.target.value})} type="tel" autoComplete="tel" placeholder="09XX XXX XXXX" className={inputClass} /></Field>
                 <Field label="Email address"><input value={signupForm.email} onChange={e=>setSignupForm({...signupForm,email:e.target.value})} type="email" autoComplete="email" placeholder="name@example.com" className={inputClass} /></Field>
                 <Field label="Create password">

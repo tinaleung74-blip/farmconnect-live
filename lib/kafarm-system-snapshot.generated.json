@@ -1,17 +1,16 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-09T11:20:45.369Z",
-  "sourceFingerprint": "937d8e97156b15fa2d8756c66a90cc944b97eac191663ee806cda144cbcb00b0",
+  "generatedAt": "2026-08-09T11:27:39.702Z",
+  "sourceFingerprint": "0894e35a803b8b4a9a7b2d42c3ca842015f854dd0c7d55131ced6732c9fdc10e",
   "git": {
-    "commit": "87190389a6b4548a6aaac8ff4c95653e33e2909a",
+    "commit": "98e02a019024848ec040dc0c42e25f203861dd70",
     "branch": "master",
     "dirtyFiles": [
-      "database/00_verify_applied_sql_status.sql",
-      "database/applied/000_database_applied_ledger.md",
-      "database/applied/README.md",
+      "app/page.tsx",
+      "lib/farmconnect-data.ts",
+      "lib/farmconnect-unified-account-verification.tsx",
       "-Filter",
-      ".vscode/",
-      "database/applied/050_kyc_system_checks_digest_schema_fix.sql"
+      ".vscode/"
     ]
   },
   "safety": {
@@ -708,7 +707,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/page.tsx",
-      "line": 171,
+      "line": 172,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -719,7 +718,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/page.tsx",
-      "line": 180,
+      "line": 181,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -730,7 +729,7 @@
       "kind": "button",
       "label": "Sign Up",
       "file": "app/page.tsx",
-      "line": 183,
+      "line": 184,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -741,7 +740,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/page.tsx",
-      "line": 213,
+      "line": 215,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -751,17 +750,6 @@
     {
       "kind": "button",
       "label": "Unlabeled button",
-      "file": "app/page.tsx",
-      "line": 222,
-      "role": "system",
-      "route": "/",
-      "exportName": "HomePage",
-      "wiring": "handled-unproven",
-      "handler": null
-    },
-    {
-      "kind": "button",
-      "label": "Sign In",
       "file": "app/page.tsx",
       "line": 224,
       "role": "system",
@@ -772,9 +760,20 @@
     },
     {
       "kind": "button",
+      "label": "Sign In",
+      "file": "app/page.tsx",
+      "line": 226,
+      "role": "system",
+      "route": "/",
+      "exportName": "HomePage",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "kind": "button",
       "label": "Logout",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 138,
+      "line": 147,
       "role": "system",
       "route": "lib/farmconnect-unified-account-verification.tsx",
       "exportName": null,
@@ -785,7 +784,7 @@
       "kind": "button",
       "label": "Check Again",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 301,
+      "line": 314,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -796,7 +795,7 @@
       "kind": "button",
       "label": "Verification Queue Waiting for a real admin decision.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 310,
+      "line": 323,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -807,7 +806,7 @@
       "kind": "button",
       "label": "Verified Accounts Approved customers and caretakers.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 310,
+      "line": 323,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -818,7 +817,7 @@
       "kind": "button",
       "label": "Customers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 312,
+      "line": 325,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -829,7 +828,7 @@
       "kind": "button",
       "label": "Caretakers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 312,
+      "line": 325,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -840,7 +839,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 312,
+      "line": 325,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -851,7 +850,7 @@
       "kind": "button",
       "label": "Open",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 313,
+      "line": 326,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -862,7 +861,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 314,
+      "line": 327,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -873,7 +872,7 @@
       "kind": "button",
       "label": "Reject",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 314,
+      "line": 327,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -884,7 +883,7 @@
       "kind": "button",
       "label": "Close",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 316,
+      "line": 329,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -895,7 +894,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 388,
+      "line": 401,
       "role": "caretaker",
       "route": "/caretaker/signup",
       "exportName": "SecureCaretakerSignupPage",
@@ -2726,7 +2725,7 @@
       "kind": "table",
       "name": "customer_kyc_profiles",
       "file": "lib/farmconnect-data.ts",
-      "line": 1007,
+      "line": 1008,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerKycVerificationRecords"
@@ -2735,7 +2734,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
-      "line": 1020,
+      "line": 1021,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerKycVerificationRecords"
@@ -2744,7 +2743,7 @@
       "kind": "table",
       "name": "kyc_documents",
       "file": "lib/farmconnect-data.ts",
-      "line": 1029,
+      "line": 1030,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "getCustomerKycVerificationRecords"
@@ -2915,7 +2914,7 @@
       "kind": "rpc",
       "name": "admin_review_customer_kyc_guarded",
       "file": "lib/farmconnect-data.ts",
-      "line": 1060,
+      "line": 1061,
       "role": "system",
       "route": "lib/farmconnect-data.ts",
       "exportName": "adminReviewCustomerKyc"
@@ -2924,7 +2923,7 @@
       "kind": "rpc",
       "name": "admin_session_guard_status",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 91,
+      "line": 100,
       "role": "system",
       "route": "lib/farmconnect-unified-account-verification.tsx",
       "exportName": null
@@ -3051,7 +3050,7 @@
     },
     {
       "source": "app/page.tsx",
-      "line": 100,
+      "line": 101,
       "ownerRoute": "/",
       "target": "/customer/dashboard",
       "exists": true,
@@ -3059,7 +3058,7 @@
     },
     {
       "source": "app/page.tsx",
-      "line": 177,
+      "line": 178,
       "ownerRoute": "/",
       "target": "/forgot-password",
       "exists": true,
@@ -3067,7 +3066,7 @@
     },
     {
       "source": "app/page.tsx",
-      "line": 187,
+      "line": 188,
       "ownerRoute": "/",
       "target": "/view-farm",
       "exists": true,
@@ -3099,7 +3098,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 130,
+      "line": 139,
       "ownerRoute": "lib/farmconnect-unified-account-verification.tsx",
       "target": "/admin/login",
       "exists": true,
@@ -3107,7 +3106,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 136,
+      "line": 145,
       "ownerRoute": "lib/farmconnect-unified-account-verification.tsx",
       "target": "/admin",
       "exists": true,
@@ -3115,7 +3114,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 138,
+      "line": 147,
       "ownerRoute": "lib/farmconnect-unified-account-verification.tsx",
       "target": "/admin/kafarm",
       "exists": true,
@@ -3123,7 +3122,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 301,
+      "line": 314,
       "ownerRoute": "/admin/account-verification",
       "target": "/admin/login",
       "exists": true,
@@ -3131,7 +3130,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 388,
+      "line": 401,
       "ownerRoute": "/caretaker/signup",
       "target": "/login",
       "exists": true,
@@ -4536,7 +4535,7 @@
     },
     {
       "file": "app/page.tsx",
-      "sha256": "81243a71b31b6e741551156160f6f9d24ec18b1417549976a5b80be254b07e2d"
+      "sha256": "e7c96134975d8d6a5ed2a4118581f8d61b236a137402b148c1bee48d5c2e584e"
     },
     {
       "file": "app/signup/page.tsx",
@@ -4552,11 +4551,11 @@
     },
     {
       "file": "lib/farmconnect-data.ts",
-      "sha256": "0519a9d32dd903c0b9ac296ea7f19a675622f7886c22bd36d07fd8dab2d9b1c3"
+      "sha256": "4d3d8e82640e153ec21fa1540e229c1b599e0834fe53ba384f24a57644facf5c"
     },
     {
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "sha256": "8442ee25c71487ef70fe5b64f4e6c4894f8ef5310c799b36c7ec7ab118af912c"
+      "sha256": "5d8a0263a55e360db1de2722c3eee1a8cc3846e59c2c39af473e2ea311a70d9e"
     },
     {
       "file": "lib/farmconnect-v1.tsx",

@@ -986,6 +986,7 @@ type VerificationProfileSummary = {
   display_name?: string | null;
   email?: string | null;
   phone?: string | null;
+  birthdate?: string | null;
   verification_status?: string | null;
   account_status?: string | null;
   kyc_risk_level?: string | null;
@@ -1018,7 +1019,7 @@ export async function getCustomerKycVerificationRecords() {
   const profilesResult = profileIds.length
     ? await supabase
         .from("profiles")
-        .select("id,auth_user_id,full_name,display_name,email,phone,verification_status,account_status,kyc_risk_level,kyc_verified_at")
+        .select("id,auth_user_id,full_name,display_name,email,phone,birthdate,verification_status,account_status,kyc_risk_level,kyc_verified_at")
         .in("id", profileIds)
     : { data: [], error: null };
 

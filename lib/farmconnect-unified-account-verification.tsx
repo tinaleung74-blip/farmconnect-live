@@ -35,6 +35,8 @@ type VerificationRow = {
   id: string;
   source: VerificationMode;
   name: string;
+  legalName: string;
+  birthdate: string;
   email: string;
   phone: string;
   submitted: string;
@@ -69,6 +71,13 @@ function displayDate(value: unknown) {
   return Number.isNaN(date.getTime())
     ? text
     : date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function displayDateOnly(value: unknown) {
+  const text = valueText(value, "");
+  if (!text) return "Not recorded";
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T00:00:00` : text);
+  return Number.isNaN(date.getTime()) ? text : date.toLocaleDateString("en-PH", { dateStyle: "long" });
 }
 
 function adminGateReason(reason: string) {
@@ -156,6 +165,8 @@ function mapCustomerRows(rows: UnknownRow[]): VerificationRow[] {
       id: valueText(recordValue(row, "id"), "missing-id"),
       source: "customer",
       name: valueText(recordValue(profile, "display_name"), valueText(recordValue(profile, "full_name"), valueText(recordValue(row, "legal_name"), valueText(recordValue(profile, "email"), "Customer")))),
+      legalName: valueText(recordValue(row, "legal_name"), valueText(recordValue(profile, "full_name"))),
+      birthdate: displayDateOnly(recordValue(row, "birthdate") || recordValue(profile, "birthdate")),
       email: valueText(recordValue(profile, "email"), "No email"),
       phone: valueText(recordValue(profile, "phone"), "No phone"),
       submitted: displayDate(recordValue(row, "submitted_at") || recordValue(row, "updated_at") || recordValue(row, "created_at")),
@@ -177,6 +188,8 @@ function mapCaretakerRows(rows: UnknownRow[]): VerificationRow[] {
     id: valueText(recordValue(row, "id"), "missing-id"),
     source: "caretaker",
     name: valueText(recordValue(row, "display_name"), valueText(recordValue(row, "full_name"), valueText(recordValue(row, "email"), "Caretaker applicant"))),
+    legalName: valueText(recordValue(row, "full_name")),
+    birthdate: displayDateOnly(recordValue(row, "birthdate")),
     email: valueText(recordValue(row, "email"), "No email"),
     phone: valueText(recordValue(row, "phone"), "No phone"),
     submitted: displayDate(recordValue(row, "updated_at") || recordValue(row, "created_at")),
@@ -310,7 +323,7 @@ export function UnifiedAccountVerificationPage() {
     <div className="mt-4 grid gap-3 md:grid-cols-2"><button onClick={()=>setTab("queue")} className={`rounded-2xl border p-4 text-left ${tab === "queue" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95"}`}><b>Verification Queue</b><p className="text-xs font-bold text-[#667267]">Waiting for a real admin decision.</p></button><button onClick={()=>setTab("verified")} className={`rounded-2xl border p-4 text-left ${tab === "verified" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95"}`}><b>Verified Accounts</b><p className="text-xs font-bold text-[#667267]">Approved customers and caretakers.</p></button></div>
     <div className="mt-4 grid gap-4 xl:grid-cols-[300px_minmax(520px,1fr)_340px]">
       <section className={`${cardClass} min-h-[620px]`}><div className="flex items-center justify-between"><h2 className="text-lg font-black">{tab === "queue" ? "Accounts On Queue" : "Verified Type"}</h2><Badge tone={tab === "queue" ? "warn" : "good"}>{activeRows.length}</Badge></div><div className="mt-3 grid grid-cols-2 gap-2"><button onClick={()=>setMode("customer")} className={`rounded-xl px-3 py-3 text-sm font-black ${mode === "customer" ? "bg-[#1f6b45] text-white" : "bg-[#f6f3e8]"}`}>Customers</button><button onClick={()=>setMode("caretaker")} className={`rounded-xl px-3 py-3 text-sm font-black ${mode === "caretaker" ? "bg-[#1f6b45] text-white" : "bg-[#f6f3e8]"}`}>Caretakers</button></div><div className="mt-4 max-h-[500px] space-y-3 overflow-y-auto pr-2">{activeRows.map(row=><button key={row.id} onClick={()=>setSelectedId(row.id)} className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left ${selected?.id === row.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]"}`}><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#1f6b45] font-black text-white">{initials(row.name)}</span><span className="min-w-0 flex-1"><b className="block truncate">{row.name}</b><span className="block truncate text-xs font-bold text-[#667267]">{row.submitted}</span></span><Badge tone={tab === "verified" ? "good" : row.risk === "High" ? "bad" : row.risk === "Medium" ? "warn" : "neutral"}>{tab === "verified" ? "Approved" : row.risk}</Badge></button>)}{loading && <p className="rounded-xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">Loading live records...</p>}{!loading && activeRows.length === 0 && <p className="rounded-xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">{tab === "queue" ? "No account waiting in this queue." : "No approved account in this list yet."}</p>}</div></section>
-      <section className={`${cardClass} min-h-[620px]`}>{selected ? <><p className="text-xs font-black uppercase text-[#667267]">{tab === "queue" ? "Submitted Account Details" : "Verified Account Details"}</p><h2 className="mt-1 text-3xl font-black">{selected.name}</h2><div className="mt-4 grid gap-3 md:grid-cols-2"><Info label="Role" value={selected.source === "customer" ? "Customer" : "Caretaker"} /><Info label="Status" value={selected.status.replaceAll("_", " ")} /><Info label="Email" value={selected.email} /><Info label="Phone" value={selected.phone} /><Info label="Submitted" value={selected.submitted} /><Info label="Details" value={selected.details} /></div><div className="mt-4 grid gap-3 md:grid-cols-2">{selected.files.map((file,index)=><button key={`${file.label}-${index}`} onClick={()=>openFile(file)} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Open {file.label}</button>)}{selected.files.length === 0 && <p className="rounded-xl bg-amber-50 p-4 text-sm font-bold text-amber-900 md:col-span-2">No document row is connected to this submission.</p>}</div></> : <div className="grid min-h-[500px] place-items-center text-center"><div><h2 className="text-2xl font-black">No selected record</h2><p className="mt-2 text-sm font-bold text-[#667267]">Choose another type or wait for a submission.</p></div></div>}</section>
+      <section className={`${cardClass} min-h-[620px]`}>{selected ? <><p className="text-xs font-black uppercase text-[#667267]">{tab === "queue" ? "Submitted Account Details" : "Verified Account Details"}</p><h2 className="mt-1 text-3xl font-black">{selected.name}</h2><div className="mt-4 grid gap-3 md:grid-cols-2"><Info label="Legal Name" value={selected.legalName} /><Info label="Birthdate" value={selected.birthdate} /><Info label="Role" value={selected.source === "customer" ? "Customer" : "Caretaker"} /><Info label="Status" value={selected.status.replaceAll("_", " ")} /><Info label="Email" value={selected.email} /><Info label="Phone" value={selected.phone} /><Info label="Submitted" value={selected.submitted} /><Info label="Details" value={selected.details} /></div><div className="mt-4 grid gap-3 md:grid-cols-2">{selected.files.map((file,index)=><button key={`${file.label}-${index}`} onClick={()=>openFile(file)} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">Open {file.label}</button>)}{selected.files.length === 0 && <p className="rounded-xl bg-amber-50 p-4 text-sm font-bold text-amber-900 md:col-span-2">No document row is connected to this submission.</p>}</div></> : <div className="grid min-h-[500px] place-items-center text-center"><div><h2 className="text-2xl font-black">No selected record</h2><p className="mt-2 text-sm font-bold text-[#667267]">Choose another type or wait for a submission.</p></div></div>}</section>
       <section className={`${cardClass} min-h-[620px]`}>{tab === "queue" && selected ? <><p className="text-xs font-black uppercase text-[#667267]">Admin Verification</p><h2 className="mt-1 text-2xl font-black">Approve or Reject</h2><Badge tone="warn">{selected.status.replaceAll("_", " ")}</Badge><label className="mt-4 block text-sm font-black">Admin Notes</label><textarea value={adminNote} onChange={event=>setAdminNote(event.target.value)} placeholder="Required for rejection; recommended for approval." className="mt-2 min-h-40 w-full rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-4 text-sm font-bold" /><div className="mt-4 grid grid-cols-2 gap-3"><button disabled={saving} onClick={()=>decide("approved")} className="rounded-2xl bg-[#1f6b45] px-4 py-7 font-black text-white disabled:opacity-60">{saving ? "Saving..." : "Approve"}</button><button disabled={saving} onClick={()=>decide("rejected")} className="rounded-2xl bg-red-600 px-4 py-7 font-black text-white disabled:opacity-60">Reject</button></div><p className="mt-4 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold leading-6 text-[#667267]">The real review RPC updates status, access, and evidence logs. Approved/rejected records are then removed from this queue.</p></> : <><p className="text-xs font-black uppercase text-[#667267]">Total Verified</p><h2 className="mt-2 text-5xl font-black text-[#1f6b45]">{activeRows.length}</h2><p className="mt-2 text-sm font-bold text-[#667267]">{mode === "customer" ? "verified customers" : "verified caretakers"}</p></>}</section>
     </div>
     {viewer && <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4"><div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-start justify-between"><div><p className="text-xs font-black uppercase text-[#667267]">Private Evidence</p><h2 className="mt-1 text-2xl font-black">{viewer.title}</h2></div><button onClick={()=>setViewer(null)} className="rounded-xl bg-[#eee8d9] px-4 py-2 text-sm font-black">Close</button></div>{viewer.error ? <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm font-bold leading-6 text-amber-900">{viewer.error}</p> : !viewer.url ? <p className="mt-5 rounded-2xl bg-[#f6f3e8] p-5 text-sm font-bold text-[#667267]">Creating a short-lived secure link...</p> : <div className="mt-5"><a href={viewer.url} target="_blank" rel="noreferrer" className="inline-block rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">Open Secure File</a>{viewer.kind === "image" && <img src={viewer.url} alt={viewer.title} className="mt-4 max-h-[65vh] w-full rounded-2xl object-contain" />}</div>}</div></div>}
@@ -343,7 +356,7 @@ export function SecureCaretakerSignupPage() {
   const update = (key:keyof CaretakerForm,value:string) => setForm(current=>({...current,[key]:value}));
 
   async function submit() {
-    if (!form.fullName || !form.email || !form.phone || !avatarFile || !resumeFile || !form.password) { setMessage("Complete name, email, phone, selfie, resume, and password."); return; }
+    if (!form.fullName || !form.birthdate || !form.email || !form.phone || !avatarFile || !resumeFile || !form.password) { setMessage("Complete legal name, birthdate, email, phone, selfie, resume, and password."); return; }
     if (form.password !== form.confirmPassword) { setMessage("Password and confirmation do not match."); return; }
     const resumeTypes=["image/jpeg","image/png","image/webp","application/pdf","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
     if (!resumeTypes.includes(resumeFile.type) || resumeFile.size > 10*1024*1024) { setMessage("Resume must be PDF, DOC, DOCX, JPG, PNG, or WebP and no larger than 10 MB."); return; }
@@ -353,7 +366,7 @@ export function SecureCaretakerSignupPage() {
     try {
       const normalizedEmail=form.email.trim().toLowerCase();
       const applicantClient=createIsolatedSupabaseClient();
-      let auth=await applicantClient.auth.signUp({ email:normalizedEmail, password:form.password, options:{ data:{ full_name:form.fullName, display_name:form.displayName, phone:form.phone, role:"caretaker_applicant" } } });
+      let auth=await applicantClient.auth.signUp({ email:normalizedEmail, password:form.password, options:{ data:{ full_name:form.fullName, display_name:form.displayName, birthdate:form.birthdate, phone:form.phone, role:"caretaker_applicant" } } });
       if (auth.error) {
         const text=auth.error.message.toLowerCase();
         if (!text.includes("already") && !text.includes("registered") && !text.includes("exists")) throw auth.error;
