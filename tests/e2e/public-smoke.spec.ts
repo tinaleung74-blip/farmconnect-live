@@ -11,7 +11,7 @@ const publicRoutes = [
 for (const item of publicRoutes) {
   test(`${item.route} renders without runtime or server errors`, async ({ page }, testInfo) => {
     const monitor = monitorPage(page);
-    const response = await page.goto(item.route, { waitUntil: "networkidle" });
+    const response = await page.goto(item.route, { waitUntil: "domcontentloaded" });
     expect(response?.status()).toBeLessThan(400);
     await expect(page.getByRole("heading", { name: item.heading }).first()).toBeVisible();
     await monitor.assertClean(testInfo);

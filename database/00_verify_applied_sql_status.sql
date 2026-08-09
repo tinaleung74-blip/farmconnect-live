@@ -152,6 +152,8 @@ with expected(migration, kind, object_name) as (
     ,('045_operational_workflow_guard.sql','function','admin_review_rooster_sale_guarded')
     ,('045_operational_workflow_guard.sql','function','admin_review_caretaker_application_guarded')
     ,('045_operational_workflow_guard.sql','function','admin_review_customer_kyc_guarded')
+    ,('046_payment_correction_and_video_evidence.sql','function','payment_correction_video_evidence_version')
+    ,('047_rooster_sale_assignment_qr_fix.sql','function','rooster_sale_assignment_qr_fix_version')
 ),
 object_status as (
   select

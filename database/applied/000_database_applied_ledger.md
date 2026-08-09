@@ -662,3 +662,30 @@ Purpose:
 Expected success output:
 
 - `farmbuy_common_gamefowl_bloodlines_ready = 12`
+
+## 046_payment_correction_and_video_evidence.sql
+
+Status: **APPLIED** (verified through KaFarm SQL gateway on 2026-08-09; audit `9491ddfb-f809-4701-954d-8b9339b8624d`)
+
+Purpose:
+
+- Route rejected Farm Buy and care payments to the exact customer correction page.
+- Preserve the original payment request, admin reason, evidence, and customer resubmission link.
+- Allow private caretaker task evidence to include supported image and video files.
+
+Expected success output:
+
+- `payment_correction_video_evidence_ready = 1`
+
+## 047_rooster_sale_assignment_qr_fix.sql
+
+Status: **APPLIED** (verified through KaFarm SQL gateway on 2026-08-09; audit `2c2a0be2-5783-45e9-aec1-c1422dd8ccdf`)
+
+Purpose:
+
+- Repair sale task assignment by reading `qr_payload` from `animal_qr_identities` instead of `customer_animals`.
+- Preserve the existing rooster identity while preparing the caretaker sale task.
+
+Expected success output:
+
+- `rooster_sale_assignment_qr_fix_ready = 1`

@@ -44,6 +44,10 @@ async function one(query, label) {
 
 async function cleanup(service, profileId, caretakerId) {
   if (!profileId) return;
+  const saleRows = await service.from("rooster_sale_requests").select("id").eq("profile_id", profileId);
+  const saleIds = (saleRows.data || []).map(row => row.id);
+  if (saleIds.length) await service.from("rooster_sale_events").delete().in("sale_request_id", saleIds);
+  await service.from("rooster_sale_requests").delete().eq("profile_id", profileId);
   if (caretakerId) await service.from("task_proofs").delete().eq("caretaker_id", caretakerId);
   await service.from("task_proofs").delete().eq("profile_id", profileId);
   await service.from("caretaker_tasks").delete().eq("profile_id", profileId);
@@ -122,8 +126,9 @@ async function main() {
       p_idempotency_key: `e2e-reject-${Date.now()}`,
     });
     await rpc(admin, "admin_review_manual_payment_guarded", { p_payment_request_id: rejectedResult.id, p_decision: "rejected", p_admin_note: "Receipt needs correction" });
-    const rejectionNotice = await one(customer.from("inbox_items").select("id,title").eq("profile_id", profileId).eq("title", "Payment Rejected").order("created_at", { ascending: false }).limit(1).maybeSingle(), "payment rejection notice");
-    if (rejectionNotice.title !== "Payment Rejected") fail("rejection notice was not delivered");
+    const rejectionNotice = await one(customer.from("inbox_items").select("id,title,body").eq("profile_id", profileId).ilike("title", "%Payment Rejected%").order("created_at", { ascending: false }).limit(1).maybeSingle(), "payment rejection notice");
+    if (!rejectionNotice.title?.includes("Payment Rejected")) fail("rejection notice was not delivered");
+    if (!rejectionNotice.body?.includes(`Payment Request: ${rejectedResult.id}`)) fail("rejection notice is not linked to the exact payment request");
     const resubmitted = await rpc(customer, "customer_submit_manual_payment_guarded", {
       p_source_type: "farm_buy", p_source_ref: "e2e-rejection-contract", p_amount_expected: 1,
       p_summary: { source: "E2E corrected Farm Buy", lines: [] }, p_payment_method: "E2E",
@@ -156,6 +161,23 @@ async function main() {
     const proofVisible = await one(customer.from("task_proofs").select("id,admin_review_status").eq("id", proofId).single(), "customer proof visibility");
     if (proofVisible.admin_review_status !== "approved") fail("customer did not receive approved proof state");
     checks.push("Caretaker proof, admin approval, and customer care update");
+
+    const saleRequestId = await rpc(customer, "customer_request_rooster_sale_price", {
+      p_customer_animal_id: animal.id,
+      p_customer_note: "E2E sale price inspection",
+    });
+    const saleRequest = await one(service.from("rooster_sale_requests").select("id,price_care_request_id,status").eq("id", saleRequestId).single(), "sale price request");
+    if (!saleRequest.price_care_request_id || saleRequest.status !== "price_requested") fail("sale price request did not create its assignment-ready care request");
+    const saleTaskId = await rpc(admin, "admin_assign_care_request", {
+      p_care_request_id: saleRequest.price_care_request_id,
+      p_caretaker_id: caretakerId,
+      p_admin_note: "E2E sale price assignment",
+    });
+    const saleTask = await one(service.from("caretaker_tasks").select("id,status,workflow_type,care_request_id").eq("id", saleTaskId).single(), "sale price caretaker task");
+    if (saleTask.status !== "active" || saleTask.workflow_type !== "sale_price_inspection") fail(`sale assignment produced ${saleTask.status}/${saleTask.workflow_type}`);
+    const assignedSale = await one(service.from("rooster_sale_requests").select("status,price_task_id").eq("id", saleRequestId).single(), "assigned sale request");
+    if (assignedSale.status !== "price_assigned" || assignedSale.price_task_id !== saleTaskId) fail("sale assignment did not update the linked sale request");
+    checks.push("Rooster sale price request reaches selected caretaker exactly once");
 
     await service.from("profiles").update({ wallet_balance: 500, wallet_on_hold: 0, verification_status: "approved", kyc_status: "approved" }).eq("id", profileId);
     const withdrawalOperationKey = `e2e-withdrawal-${Date.now()}`;

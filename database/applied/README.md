@@ -22,7 +22,12 @@ Current confirmed areas:
 - KaFarm support messages have a DB function: `kafarm_support_send_message`.
 - App still has direct DB calls for KYC, wallet PIN, profile contact, farm cart, caretaker task proof, care logs, and inbox.
 
-Latest applied migration:
+Latest applied migrations:
+
+- `047_rooster_sale_assignment_qr_fix.sql` repairs sale task assignment by reading the QR payload from `animal_qr_identities`, its actual source of truth.
+- `046_payment_correction_and_video_evidence.sql` connects rejected Farm Buy/care payments to an exact customer correction page and allows caretaker task videos in the private proof bucket.
+
+Both version checks and the caretaker video bucket configuration passed against the live FarmConnect database on 2026-08-09.
 
 - `045_operational_workflow_guard.sql` expands retry protection and reconciliation to the remaining sensitive workflows.
 - Applied through the temporary service-only executor on 2026-08-09 after a successful production build.

@@ -26,6 +26,20 @@ export async function getCurrentProfile() {
   return data;
 }
 
+export async function getCurrentCaretakerProfile() {
+  const profile = await getCurrentProfile();
+  if (!profile) return null;
+
+  const { data, error } = await supabase
+    .from("caretakers")
+    .select("id,profile_id,full_name,display_name,email,phone,farm_role,status,avatar_url,resume_url,resume_review_status")
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? { ...data, profile } : { profile };
+}
+
 export async function getFarmProducts() {
   const { data, error } = await supabase
     .from("farm_products")

@@ -11,7 +11,7 @@ const securityPath = path.join(resultDir, "kafarm", "security-contract.json");
 const dependencyPath = path.join(resultDir, "kafarm", "dependency-contract.json");
 const recoveryPath = path.join(resultDir, "kafarm", "recovery-contract.json");
 const workflowPath = path.join(resultDir, "kafarm", "workflow-reconciliation.json");
-const browserPath = path.join(resultDir, "playwright", "results.json");
+const browserDir = path.join(resultDir, "playwright");
 const outputPath = path.join(resultDir, "kafarm", "production-readiness.md");
 
 function readJson(file) {
@@ -35,12 +35,15 @@ const security = readJson(securityPath);
 const dependency = readJson(dependencyPath);
 const recovery = readJson(recoveryPath);
 const workflow = readJson(workflowPath);
-const browser = readJson(browserPath);
-const specs = collectSpecs(browser?.suites || []);
+const browserFiles = fs.existsSync(browserDir)
+  ? fs.readdirSync(browserDir).filter(file => /^results(?:-.+)?\.json$/.test(file))
+  : [];
+const browsers = browserFiles.map(file => readJson(path.join(browserDir, file))).filter(Boolean);
+const specs = browsers.flatMap(browser => collectSpecs(browser?.suites || []));
 const tests = specs.flatMap(spec => spec.tests || []);
 const failedTests = tests.filter(item => item.status !== "expected");
 const skippedTests = tests.filter(item => item.status === "skipped");
-const browserPassed = Boolean(browser) && failedTests.length === 0 && skippedTests.length === 0;
+const browserPassed = browsers.length === 3 && failedTests.length === 0 && skippedTests.length === 0;
 const databasePassed = database?.passed === true;
 const buildPassed = build?.passed === true;
 const businessPassed = business?.passed === true;

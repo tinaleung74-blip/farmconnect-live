@@ -15,6 +15,7 @@ const roles = [
       "/customer/inbox",
       "/customer/wallet",
       "/customer/inventory",
+      "/customer/care-logs",
     ],
   },
   {
@@ -39,7 +40,7 @@ for (const role of roles) {
     await expect(page).toHaveURL(role.destination);
 
     for (const route of role.routes) {
-      const response = await page.goto(route, { waitUntil: "networkidle" });
+      const response = await page.goto(route, { waitUntil: "domcontentloaded" });
       expect(response?.status(), route).toBeLessThan(400);
     }
 

@@ -13,6 +13,7 @@ if (fs.existsSync(credentialsFile)) {
 
 const port = Number(process.env.E2E_PORT || 3100);
 const baseURL = process.env.E2E_BASE_URL || `http://127.0.0.1:${port}`;
+const reportSuffix = process.env.E2E_REPORT_SUFFIX || "results";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -25,7 +26,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   reporter: [
     ["line"],
-    ["json", { outputFile: "test-results/playwright/results.json" }],
+    ["json", { outputFile: `test-results/playwright/${reportSuffix}.json` }],
     ["html", { outputFolder: "playwright-report", open: "never" }],
   ],
   use: {

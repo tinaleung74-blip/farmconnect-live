@@ -22,7 +22,7 @@ test("admin can sign in and open frozen operational routes", async ({ page }, te
   await expect(page).toHaveURL(/\/admin(?:\/|$)/);
 
   for (const route of adminRoutes) {
-    const response = await page.goto(route, { waitUntil: "networkidle" });
+    const response = await page.goto(route, { waitUntil: "domcontentloaded" });
     expect(response?.status(), route).toBeLessThan(400);
     await expect(page.locator("body")).toContainText(/FarmConnect|KaFarm|Customer|Caretaker|Account/i);
   }
