@@ -21,6 +21,25 @@ const peso = (value: number) =>
 const fcCoin = (value: number) => value.toLocaleString("en-PH", { maximumFractionDigits: 0 });
 
 function readableAppError(error: unknown) {
+  const friendlyMessages: Record<string, string> = {
+    KYC_REQUIRED: "KYC approval is required before withdrawal.",
+    MINIMUM_WITHDRAWAL_100: "Minimum withdrawal is FC 100.",
+    INSUFFICIENT_WALLET_BALANCE: "The withdrawal amount is higher than the available wallet balance.",
+    PAYOUT_DETAILS_REQUIRED: "Complete the payout method, account holder, and account number.",
+    LOGIN_REQUIRED: "Login again before continuing.",
+  };
+  const raw = error instanceof Error
+    ? error.message
+    : error && typeof error === "object"
+      ? [
+          (error as { message?: unknown }).message,
+          (error as { details?: unknown }).details,
+          (error as { hint?: unknown }).hint,
+          (error as { code?: unknown }).code,
+        ].filter(item => typeof item === "string" && item.trim()).join(" | ")
+      : typeof error === "string" ? error : "";
+  const knownCode = Object.keys(friendlyMessages).find(code => raw.includes(code));
+  if (knownCode) return friendlyMessages[knownCode];
   if (error instanceof Error) return error.message;
   if (error && typeof error === "object") {
     const value = error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown };
@@ -1441,6 +1460,7 @@ export function WithdrawPageV2() {
   const [note,setNote]=useState("Loading your payout methods and withdrawal history...");
   const [problemId,setProblemId]=useState("");
   const [problemNote,setProblemNote]=useState("");
+  const [withdrawalAccess,setWithdrawalAccess]=useState({kycReady:false,available:0});
   const withdrawalAttemptKey=useRef("");
   const selected=accounts.find(row=>row.id===selectedId)||accounts[0]||null;
   const amountValue=Number(amount||0);
@@ -1448,11 +1468,18 @@ export function WithdrawPageV2() {
   async function loadWithdrawalData(){
     try{
       setLoading(true);
-      const [methodRows,requestRows]=await Promise.all([getCustomerPayoutMethods(),getCustomerWithdrawalRequests()]);
+      const [profile,methodRows,requestRows]=await Promise.all([getCurrentProfile(),getCustomerPayoutMethods(),getCustomerWithdrawalRequests()]);
+      const kycStatus=String(profile?.kyc_status||profile?.verification_status||"").toLowerCase();
+      const access={kycReady:["approved","verified","passed"].includes(kycStatus),available:Number(profile?.wallet_balance||0)};
+      setWithdrawalAccess(access);
       setAccounts(methodRows as LivePayoutAccount[]);
       setRequests(requestRows);
       setSelectedId(current=>(methodRows as LivePayoutAccount[]).some(row=>row.id===current)?current:(methodRows as LivePayoutAccount[])[0]?.id||"");
-      setNote(methodRows.length?"Choose a payout method and amount. Submitted funds are held until the payout is confirmed.":"Add a payout method before requesting a withdrawal.");
+      setNote(!access.kycReady
+        ? "Withdrawal is locked until your KYC is approved. Open Settings and complete verification first."
+        : methodRows.length
+          ? `Choose a payout method and amount. Available balance: FC ${fcCoin(access.available)}.`
+          : "Add a payout method before requesting a withdrawal.");
     }catch(error){
       setNote(`Withdrawal records could not load: ${error instanceof Error?error.message:"Check login and SQL 040."}`);
     }finally{setLoading(false);}
@@ -1462,7 +1489,9 @@ export function WithdrawPageV2() {
 
   async function sendWithdrawal(){
     if(!selected){setNote("Add or select a payout method first.");return;}
+    if(!withdrawalAccess.kycReady){setNote("Withdrawal is locked until your KYC is approved.");return;}
     if(amountValue<100){setNote("Minimum withdrawal is FC 100.");return;}
+    if(amountValue>withdrawalAccess.available){setNote(`Available wallet balance is only FC ${fcCoin(withdrawalAccess.available)}.`);return;}
     try{
       setSaving(true);
       if(!withdrawalAttemptKey.current){
@@ -1528,9 +1557,10 @@ export function WithdrawPageV2() {
         </Card>
         <Card>
           <h2 className="text-xl font-black">Withdrawal Amount</h2>
+          {!withdrawalAccess.kycReady&&<div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">KYC approval is required before withdrawal. Complete verification in <Link href="/customer/settings" className="font-black underline">Settings</Link>.</div>}
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
             <input value={amount} onChange={event=>setAmount(event.target.value.replace(/\D/g,""))} inputMode="numeric" placeholder="Minimum FC 100" className="rounded-2xl border border-[#ded8c9] px-4 py-4 text-2xl font-black" />
-            <button type="button" disabled={!selected||amountValue<100||saving} onClick={()=>setPinOpen(true)} className="rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">Request Withdrawal</button>
+            <button type="button" disabled={!selected||!withdrawalAccess.kycReady||amountValue<100||amountValue>withdrawalAccess.available||saving} onClick={()=>setPinOpen(true)} className="rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">Request Withdrawal</button>
           </div>
           <p className="mt-3 text-sm font-bold text-[#667267]">The amount is deducted from available balance and placed on hold immediately. A rejected request is refunded automatically.</p>
         </Card>
@@ -4344,4 +4374,3 @@ export function CaretakerSignupPage() {
     </AuthShell>
   );
 }
-

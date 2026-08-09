@@ -65,8 +65,13 @@ export default function KaFarmWholeAppReaderPage() {
     setConfidence("all");
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (sessionError || !token) throw new Error("MISSING_ADMIN_SESSION");
+      if (sessionError || !sessionData.session) throw new Error("MISSING_ADMIN_SESSION");
+
+      // Refresh before calling the protected reader so an expired access token
+      // is handled locally instead of being recorded as an application outage.
+      const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession(sessionData.session);
+      const token = refreshedData.session?.access_token;
+      if (refreshError || !token) throw new Error("INVALID_ADMIN_SESSION");
 
       const response = await fetch(`/api/kafarm/whole-app-reader?scope=${encodeURIComponent(scope)}`, {
         method: "GET",

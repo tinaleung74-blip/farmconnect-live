@@ -496,7 +496,11 @@ export function KaFarmClientMonitor() {
           const isExpectedLoginFailure = url.includes("/auth/v1/token") && response.status === 400;
           const isExpectedSignupValidation = url.includes("/auth/v1/signup") && (response.status === 400 || response.status === 422);
           const isLocalRscRequest = url.includes("localhost:3000") && url.includes("_rsc=");
-          if (isMonitorRpc || isExpectedLoginFailure || isExpectedSignupValidation || isLocalRscRequest) return response;
+          const responseBody = await response.clone().json().catch(() => null) as { message?: unknown } | null;
+          const responseMessage = String(responseBody?.message || "");
+          const isExpectedWithdrawalRule = url.includes("/rest/v1/rpc/customer_submit_withdrawal_request_guarded")
+            && /KYC_REQUIRED|MINIMUM_WITHDRAWAL_100|INSUFFICIENT_WALLET_BALANCE|PAYOUT_DETAILS_REQUIRED/.test(responseMessage);
+          if (isMonitorRpc || isExpectedLoginFailure || isExpectedSignupValidation || isLocalRscRequest || isExpectedWithdrawalRule) return response;
           saveIncident({
             title: "Failed API request captured",
             category: "API",
