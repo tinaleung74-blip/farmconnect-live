@@ -717,3 +717,17 @@ Purpose:
 Expected success condition:
 
 - The live `customer_submit_kyc` definition contains a schema-qualified `digest()` call.
+
+## 050_kyc_system_checks_digest_schema_fix.sql
+
+Status: **APPLIED** (verified through the service-only audited executor on 2026-08-09; audit `f95e6df7-97e2-4bd4-84d7-605a5bcfd209`)
+
+Purpose:
+
+- Preserve the live `run_kyc_system_checks` function and its existing signature.
+- Qualify every remaining `digest()` call with the actual `pgcrypto` extension schema.
+- Complete the KYC submission repair without changing customer, KYC, or review rows.
+
+Expected success condition:
+
+- Both `customer_submit_kyc` and `run_kyc_system_checks` report `qualified=yes` in the live definition check.

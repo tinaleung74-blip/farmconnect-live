@@ -24,6 +24,7 @@ Current confirmed areas:
 
 Latest applied migrations:
 
+- `050_kyc_system_checks_digest_schema_fix.sql` repairs the remaining `pgcrypto.digest()` call inside the KYC system-check helper. Applied and verified on 2026-08-09 through audit `f95e6df7-97e2-4bd4-84d7-605a5bcfd209`.
 - `049_customer_kyc_digest_schema_fix.sql` preserves the live KYC function while schema-qualifying its `pgcrypto.digest()` call. Applied and verified on 2026-08-09 through audit `b2db9940-6281-466f-9eaf-715ef68e2feb`.
 - `048_task_proof_sale_type_constraint_fix.sql` keeps caretaker sale-price and final-release proofs compatible with the live `task_proofs` validation constraint. Applied and verified on 2026-08-09 through audit `ed558916-4534-4d37-a9d4-d1be4b6889ba`.
 - `047_rooster_sale_assignment_qr_fix.sql` repairs sale task assignment by reading the QR payload from `animal_qr_identities`, its actual source of truth.
