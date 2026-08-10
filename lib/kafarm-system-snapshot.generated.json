@@ -1,15 +1,11 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-09T12:20:54.107Z",
-  "sourceFingerprint": "37596a19f9626fdd302b4d3f6f426be9becbcb5d0fff6c1c3b497e5b8eb8e28c",
+  "generatedAt": "2026-08-10T06:43:38.034Z",
+  "sourceFingerprint": "2d967779f8255f5c85bc2143ba7a5c32ec98bb1ab13b57a6163d7dc9d9e75bf6",
   "git": {
-    "commit": "ed325065a77cdb12c31908e1479aaa78b54af4ad",
-    "branch": "master",
-    "dirtyFiles": [
-      "lib/farmconnect-v1.tsx",
-      "-Filter",
-      ".vscode/"
-    ]
+    "commit": null,
+    "branch": null,
+    "dirtyFiles": []
   },
   "safety": {
     "mode": "read-only-static-analysis",
@@ -771,7 +767,7 @@
       "kind": "button",
       "label": "Logout",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 147,
+      "line": 153,
       "role": "system",
       "route": "lib/farmconnect-unified-account-verification.tsx",
       "exportName": null,
@@ -782,7 +778,7 @@
       "kind": "button",
       "label": "Check Again",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 318,
+      "line": 339,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -793,7 +789,7 @@
       "kind": "button",
       "label": "Verification Queue Waiting for a real admin decision.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 327,
+      "line": 348,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -804,7 +800,7 @@
       "kind": "button",
       "label": "Verified Accounts Approved customers and caretakers.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 327,
+      "line": 348,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -815,7 +811,7 @@
       "kind": "button",
       "label": "Customers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 329,
+      "line": 350,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -826,7 +822,7 @@
       "kind": "button",
       "label": "Caretakers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 329,
+      "line": 350,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -837,7 +833,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 329,
+      "line": 350,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -848,7 +844,7 @@
       "kind": "button",
       "label": "Open",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 330,
+      "line": 351,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -859,7 +855,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 331,
+      "line": 352,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -870,7 +866,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 331,
+      "line": 352,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -881,7 +877,7 @@
       "kind": "button",
       "label": "Close",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 333,
+      "line": 354,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -892,7 +888,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 405,
+      "line": 426,
       "role": "caretaker",
       "route": "/caretaker/signup",
       "exportName": "SecureCaretakerSignupPage",
@@ -1585,7 +1581,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1596,7 +1592,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1607,7 +1603,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1618,7 +1614,7 @@
       "kind": "button",
       "label": "ID Front chooseKycPhoto(\"front\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1629,7 +1625,7 @@
       "kind": "button",
       "label": "ID Back chooseKycPhoto(\"back\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1640,7 +1636,7 @@
       "kind": "button",
       "label": "Selfie chooseKycPhoto(\"selfie\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1651,7 +1647,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1662,7 +1658,7 @@
       "kind": "button",
       "label": "Verify Current PIN and Save",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1673,7 +1669,7 @@
       "kind": "button",
       "label": "Change Password",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1684,7 +1680,7 @@
       "kind": "button",
       "label": "Save Contact Details",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2283,
+      "line": 2293,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage",
@@ -1695,7 +1691,7 @@
       "kind": "button",
       "label": "/",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2637,
+      "line": 2647,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1706,7 +1702,7 @@
       "kind": "button",
       "label": "Download QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2654,
+      "line": 2664,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1717,7 +1713,7 @@
       "kind": "button",
       "label": "Print Tag",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2654,
+      "line": 2664,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1728,7 +1724,7 @@
       "kind": "button",
       "label": "Add Evidence",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2659,
+      "line": 2669,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1739,7 +1735,7 @@
       "kind": "button",
       "label": "x",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2660,
+      "line": 2670,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1750,7 +1746,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2662,
+      "line": 2672,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1761,7 +1757,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2665,
+      "line": 2675,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1772,7 +1768,7 @@
       "kind": "button",
       "label": "Verify QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2665,
+      "line": 2675,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1783,7 +1779,7 @@
       "kind": "button",
       "label": "Skip QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2665,
+      "line": 2675,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1794,7 +1790,7 @@
       "kind": "button",
       "label": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2665,
+      "line": 2675,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1805,7 +1801,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2667,
+      "line": 2677,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1816,7 +1812,7 @@
       "kind": "button",
       "label": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2667,
+      "line": 2677,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -1827,7 +1823,7 @@
       "kind": "button",
       "label": "Escalate to Admin",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2765,
+      "line": 2775,
       "role": "caretaker",
       "route": "/caretaker/chat, /caretaker/mortality, /caretaker/notes",
       "exportName": "CaretakerChat",
@@ -1838,7 +1834,7 @@
       "kind": "button",
       "label": "Send",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2765,
+      "line": 2775,
       "role": "caretaker",
       "route": "/caretaker/chat, /caretaker/mortality, /caretaker/notes",
       "exportName": "CaretakerChat",
@@ -1849,7 +1845,7 @@
       "kind": "button",
       "label": "-",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2812,
+      "line": 2822,
       "role": "caretaker",
       "route": "/caretaker/dashboard",
       "exportName": "CaretakerOperationChecker",
@@ -1860,7 +1856,7 @@
       "kind": "button",
       "label": "Refresh Database Queue",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2927,
+      "line": 2937,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1871,7 +1867,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2927,
+      "line": 2937,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1882,7 +1878,7 @@
       "kind": "button",
       "label": "Send",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2927,
+      "line": 2937,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1893,7 +1889,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2927,
+      "line": 2937,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1904,7 +1900,7 @@
       "kind": "button",
       "label": "End Chat",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2927,
+      "line": 2937,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1915,7 +1911,7 @@
       "kind": "button",
       "label": "Complete Chat",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2927,
+      "line": 2937,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1926,7 +1922,7 @@
       "kind": "button",
       "label": "{section.id===\"sell\" ? liveSellCount : customerRequestJobs.filter(job=>job.queue===section.id && !hi",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3061,
+      "line": 3071,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1937,7 +1933,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3069,
+      "line": 3079,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1948,7 +1944,7 @@
       "kind": "button",
       "label": "View Payout Proof",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3070,
+      "line": 3080,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1959,7 +1955,7 @@
       "kind": "button",
       "label": "View Receipt",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3070,
+      "line": 3080,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1970,7 +1966,7 @@
       "kind": "button",
       "label": "/",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3071,
+      "line": 3081,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1981,7 +1977,7 @@
       "kind": "button",
       "label": "Assign Task",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3071,
+      "line": 3081,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -1992,7 +1988,7 @@
       "kind": "button",
       "label": "Approve",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3071,
+      "line": 3081,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2003,7 +1999,7 @@
       "kind": "button",
       "label": "Reject",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3071,
+      "line": 3081,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2014,7 +2010,7 @@
       "kind": "button",
       "label": "View Invoice",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3071,
+      "line": 3081,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2025,7 +2021,7 @@
       "kind": "button",
       "label": "Submit Decision",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3071,
+      "line": 3081,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2036,7 +2032,7 @@
       "kind": "button",
       "label": "Close",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3073,
+      "line": 3083,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2047,7 +2043,7 @@
       "kind": "button",
       "label": "/",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3127,
+      "line": 3137,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2058,7 +2054,7 @@
       "kind": "button",
       "label": "Approve for Final Release",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3129,
+      "line": 3139,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2069,7 +2065,7 @@
       "kind": "button",
       "label": "Reject with Note",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3129,
+      "line": 3139,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2080,7 +2076,7 @@
       "kind": "button",
       "label": "/ Ref",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3202,
+      "line": 3212,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2091,7 +2087,7 @@
       "kind": "button",
       "label": "View Receipt",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3203,
+      "line": 3213,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2102,7 +2098,7 @@
       "kind": "button",
       "label": "View Invoice",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3204,
+      "line": 3214,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2113,7 +2109,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3204,
+      "line": 3214,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2124,7 +2120,7 @@
       "kind": "button",
       "label": "Close",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3206,
+      "line": 3216,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2135,7 +2131,7 @@
       "kind": "button",
       "label": "-",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3254,
+      "line": 3264,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2146,7 +2142,7 @@
       "kind": "button",
       "label": "Approve",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3299,
+      "line": 3309,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2157,7 +2153,7 @@
       "kind": "button",
       "label": "Needs Info",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3300,
+      "line": 3310,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2168,7 +2164,7 @@
       "kind": "button",
       "label": "Reject",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3301,
+      "line": 3311,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2179,7 +2175,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4302,
+      "line": 4312,
       "role": "system",
       "route": "/signup",
       "exportName": "FarmerSignupPage",
@@ -2930,7 +2926,7 @@
       "kind": "rpc",
       "name": "admin_session_guard_status",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 100,
+      "line": 106,
       "role": "system",
       "route": "lib/farmconnect-unified-account-verification.tsx",
       "exportName": null
@@ -2939,7 +2935,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2235,
+      "line": 2245,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage"
@@ -2948,7 +2944,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4179,
+      "line": 4189,
       "role": "system",
       "route": "lib/farmconnect-v1.tsx",
       "exportName": "UnifiedLoginPage"
@@ -2957,7 +2953,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4260,
+      "line": 4270,
       "role": "system",
       "route": "/signup",
       "exportName": "FarmerSignupPage"
@@ -2966,7 +2962,7 @@
       "kind": "rpc",
       "name": "customer_record_kyc_consent",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2203,
+      "line": 2213,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage"
@@ -2975,7 +2971,7 @@
       "kind": "rpc",
       "name": "customer_submit_kyc",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2205,
+      "line": 2215,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage"
@@ -2984,7 +2980,7 @@
       "kind": "rpc",
       "name": "change_wallet_pin",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2226,
+      "line": 2236,
       "role": "customer",
       "route": "/customer/settings",
       "exportName": "SettingsPage"
@@ -3105,7 +3101,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 139,
+      "line": 145,
       "ownerRoute": "lib/farmconnect-unified-account-verification.tsx",
       "target": "/admin/login",
       "exists": true,
@@ -3113,7 +3109,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 145,
+      "line": 151,
       "ownerRoute": "lib/farmconnect-unified-account-verification.tsx",
       "target": "/admin",
       "exists": true,
@@ -3121,7 +3117,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 147,
+      "line": 153,
       "ownerRoute": "lib/farmconnect-unified-account-verification.tsx",
       "target": "/admin/kafarm",
       "exists": true,
@@ -3129,7 +3125,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 318,
+      "line": 339,
       "ownerRoute": "/admin/account-verification",
       "target": "/admin/login",
       "exists": true,
@@ -3137,7 +3133,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 405,
+      "line": 426,
       "ownerRoute": "/caretaker/signup",
       "target": "/login",
       "exists": true,
@@ -3497,7 +3493,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2662,
+      "line": 2672,
       "ownerRoute": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "target": "/caretaker/chat",
       "exists": true,
@@ -3505,7 +3501,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2812,
+      "line": 2822,
       "ownerRoute": "/caretaker/dashboard",
       "target": "/caretaker/tasks",
       "exists": true,
@@ -3513,7 +3509,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2812,
+      "line": 2822,
       "ownerRoute": "/caretaker/dashboard",
       "target": "/caretaker/chat",
       "exists": true,
@@ -3521,7 +3517,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2927,
+      "line": 2937,
       "ownerRoute": "/admin, /admin/analytics",
       "target": "/admin/evidence",
       "exists": true,
@@ -3529,7 +3525,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 3822,
+      "line": 3832,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/account-verification",
       "exists": true,
@@ -3537,7 +3533,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4091,
+      "line": 4101,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/evidence",
       "exists": true,
@@ -3545,7 +3541,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4093,
+      "line": 4103,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/evidence",
       "exists": true,
@@ -3553,7 +3549,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4093,
+      "line": 4103,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/customer-requests/resolved",
       "exists": true,
@@ -3561,7 +3557,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4217,
+      "line": 4227,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/register",
       "exists": true,
@@ -3569,7 +3565,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4218,
+      "line": 4228,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/caretaker/signup",
       "exists": true,
@@ -3577,7 +3573,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4219,
+      "line": 4229,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/",
       "exists": true,
@@ -3585,7 +3581,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4275,
+      "line": 4285,
       "ownerRoute": "/signup",
       "target": "/customer/dashboard",
       "exists": true,
@@ -3593,7 +3589,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4303,
+      "line": 4313,
       "ownerRoute": "/signup",
       "target": "/login",
       "exists": true,
@@ -3601,7 +3597,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4449,
+      "line": 4459,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/login",
       "exists": true,
@@ -3704,7 +3700,7 @@
       "operation": "setItem",
       "key": "farmconnect_latest_kyc_review",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2208,
+      "line": 2218,
       "role": "customer",
       "route": "/customer/settings"
     },
@@ -3713,7 +3709,7 @@
       "operation": "getItem",
       "key": "farmconnect_customer_inbox",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2208,
+      "line": 2218,
       "role": "customer",
       "route": "/customer/settings"
     },
@@ -3722,7 +3718,7 @@
       "operation": "setItem",
       "key": "farmconnect_customer_inbox",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2208,
+      "line": 2218,
       "role": "customer",
       "route": "/customer/settings"
     }
@@ -4110,475 +4106,475 @@
   "activeManifest": [
     {
       "file": "app/_components/KaFarmClientMonitor.tsx",
-      "sha256": "104aa6847eaa2ba48e039bd37d0822b696d8abba150085c605ad2b63d5c01032"
+      "sha256": "1dc9083d2037501e9525a6a3576a8817f55c7285755475dee0d52da74b72b062"
     },
     {
       "file": "app/admin/account-verification/page.tsx",
-      "sha256": "dac218b759a27855c23bc133338d00ac9a7aabaeee3ac966e50b1ee563c5917c"
+      "sha256": "c63dcd9176532a971922221a3653f3e70ab4e952486a5400f63f7d1df4bb6330"
     },
     {
       "file": "app/admin/analytics/page.tsx",
-      "sha256": "ad13d78a8f4228759069afd1798f3526610e574820fc95ea5b37399703676839"
+      "sha256": "4a97b3d7f53eb0ff691a3a9031ad141a365875fc784a69a26737c54d2d83b559"
     },
     {
       "file": "app/admin/audit-logs/page.tsx",
-      "sha256": "e17e09bf4a92408deda61bc35b5104d1cd114c2f1f57aaa7c4a12012497070dd"
+      "sha256": "e714540df6a9c69437959f59f5534b63e383f5c3d1225571aa8dcf58d15f0609"
     },
     {
       "file": "app/admin/caretaker-hires/page.tsx",
-      "sha256": "6e84d74d0bde6d47ebe785dfc7138b52166c95c0856d7c9cefd7ae97c2fb5bd9"
+      "sha256": "e070bc5c600652b1fb52ed32b3cf05a175c6a6843b321228013ef546ef6f6490"
     },
     {
       "file": "app/admin/caretaker-management/page.tsx",
-      "sha256": "885a55716d29b8bbd6b154dfb661926cc43218adc09750b4341348fea26b3351"
+      "sha256": "3fa3979940a0d7073f37a86dd6c60a1e6889bddca6082e0e14ae82ed6d177391"
     },
     {
       "file": "app/admin/caretaker-registration/page.tsx",
-      "sha256": "7681f9ca2f6ec1023d48adf1c5a0cc958dfae5e72ab8cd9e96d3e610337b98f4"
+      "sha256": "24fbb6efd6ac5038847fd9bb92318cc3de2bbe4cfaed9c83b81bc89321e223f4"
     },
     {
       "file": "app/admin/caretakers/[id]/page.tsx",
-      "sha256": "6e84d74d0bde6d47ebe785dfc7138b52166c95c0856d7c9cefd7ae97c2fb5bd9"
+      "sha256": "e070bc5c600652b1fb52ed32b3cf05a175c6a6843b321228013ef546ef6f6490"
     },
     {
       "file": "app/admin/caretakers/page.tsx",
-      "sha256": "6e84d74d0bde6d47ebe785dfc7138b52166c95c0856d7c9cefd7ae97c2fb5bd9"
+      "sha256": "e070bc5c600652b1fb52ed32b3cf05a175c6a6843b321228013ef546ef6f6490"
     },
     {
       "file": "app/admin/customer-requests/care/page.tsx",
-      "sha256": "d5b4b4ae1cf2f4c9a2b19281f5547be1331aece077fd0e33b8f8393729051cdc"
+      "sha256": "54708ef9cdd90c860e55addf65c2218f194d31e1e011d37d13d9c60248dac69e"
     },
     {
       "file": "app/admin/customer-requests/kyc/page.tsx",
-      "sha256": "6c7f116df5b6baaafc94647f2b390d881247a9f513be3f99ca557f594695dee6"
+      "sha256": "11020490c70d5718b242f2fe21a0ab774a936f94051e6bcd0885be2efb2f6113"
     },
     {
       "file": "app/admin/customer-requests/page.tsx",
-      "sha256": "e42ffab4ca6b0b7694d67fe66a148dfa6ed413e54dc97eafa44ec6366082b01d"
+      "sha256": "92aefd043f7374b62359db4dc7ee5f0c861765656bee032f69642a4d3b741613"
     },
     {
       "file": "app/admin/customer-requests/payment/page.tsx",
-      "sha256": "eff97b03060e7948945b4c99f2612003c9ca2de4eeed80a62c035705412a914a"
+      "sha256": "505345d5a8e7840c9fbf2ef295fc257d689d113bcdc4f2da942120674f880705"
     },
     {
       "file": "app/admin/customer-requests/resolved/page.tsx",
-      "sha256": "a1726e8d970582c28efac959ec686fcdde503a20754f5310580afa4b6e1aa518"
+      "sha256": "8cc01f07279a18054a3eebaf6618b83d46cf561e9a4251c456a90fd25e383e0e"
     },
     {
       "file": "app/admin/customer-requests/security/page.tsx",
-      "sha256": "6c7f116df5b6baaafc94647f2b390d881247a9f513be3f99ca557f594695dee6"
+      "sha256": "11020490c70d5718b242f2fe21a0ab774a936f94051e6bcd0885be2efb2f6113"
     },
     {
       "file": "app/admin/customer-requests/sell/page.tsx",
-      "sha256": "bd69a2c5be555006236570e415d429bce0177a4179e174594feb37e465a0a9f5"
+      "sha256": "07b7e0f0d79f5905b88619f3c38dfa47697c296a246b5454f977d48aeb0702b1"
     },
     {
       "file": "app/admin/customer-requests/task/page.tsx",
-      "sha256": "ebbb4616482a6c253a162e97a9e52c791b21e0478657986b32eb20aa424206d4"
+      "sha256": "d4ed5810408334d1762498029df70ca36c48441ea34833f923760eeb15ed7912"
     },
     {
       "file": "app/admin/customer-requests/wallet/page.tsx",
-      "sha256": "1c2791d62bdb1532ba278fe4995854cb0b789deb570e3b326521f9bbb6443976"
+      "sha256": "3ef023306166fe10b65a2587e8973a1c51ce7ca01868eb5543c43ab1867fffe4"
     },
     {
       "file": "app/admin/customer-requests/withdraw/page.tsx",
-      "sha256": "23ee3882f4474e6aecd8ae8d842b9e3475b2fb5e995bc353b6926585df51fa9d"
+      "sha256": "74f5a502431b15283d70497d7907edb61e077f8b47f9401a916bd587d34e835d"
     },
     {
       "file": "app/admin/customers/[id]/page.tsx",
-      "sha256": "820c41419edc837e94ed0cfe5d7f9e1fce8846f8e5c000b66a910855f4085277"
+      "sha256": "f0ef2542ab1a8ae978f278625260ccb989a49625b5f86d402363f1705a387f8c"
     },
     {
       "file": "app/admin/customers/page.tsx",
-      "sha256": "820c41419edc837e94ed0cfe5d7f9e1fce8846f8e5c000b66a910855f4085277"
+      "sha256": "f0ef2542ab1a8ae978f278625260ccb989a49625b5f86d402363f1705a387f8c"
     },
     {
       "file": "app/admin/evidence/page.tsx",
-      "sha256": "e17e09bf4a92408deda61bc35b5104d1cd114c2f1f57aaa7c4a12012497070dd"
+      "sha256": "e714540df6a9c69437959f59f5534b63e383f5c3d1225571aa8dcf58d15f0609"
     },
     {
       "file": "app/admin/farm-operations/page.tsx",
-      "sha256": "8e9cecde364656c0f94c45b085bfa6d679b1bd9a7e3618549a449ce81b898d86"
+      "sha256": "c6dabe2d48c625628325daea66be19f6e439dc4fb7d5f394509d37a57d3b5587"
     },
     {
       "file": "app/admin/harvest/page.tsx",
-      "sha256": "8e9cecde364656c0f94c45b085bfa6d679b1bd9a7e3618549a449ce81b898d86"
+      "sha256": "c6dabe2d48c625628325daea66be19f6e439dc4fb7d5f394509d37a57d3b5587"
     },
     {
       "file": "app/admin/issue-management/page.tsx",
-      "sha256": "dbefdb9dc7396f7656a54c88b5d6a7cdb72d475725cc7aee3a9b9b015c5916d3"
+      "sha256": "560e864038724ed14357fe758fc37cc0ab849590aafe8a13d09d50343c340c1f"
     },
     {
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "sha256": "ea2185752d41c6def9d1f51a0d72abebe33788efd9294a516614579b1cdc9d1e"
+      "sha256": "cf70a77086bb822b84d8f15cfaf2107985cb142914a0dafc1a2c2ed5172ffaab"
     },
     {
       "file": "app/admin/kafarm/approvals/page.tsx",
-      "sha256": "501918560d5c5922c4fd118dd13cc0327504598ee993b1ecf65e8bb8357dc1cd"
+      "sha256": "ed6c47b873935b40cc9e54693e3e48b952ccc43540afe48bef29c4e053494b11"
     },
     {
       "file": "app/admin/kafarm/ask/page.tsx",
-      "sha256": "71beab95f395c8707695f9d78ba7e59557c05462dd5e4feabc8ec31f2d604f60"
+      "sha256": "e255ac596db52f34bdbb9f5ba2c36b14df02d5980b2759a1909e9b2cd178c3ee"
     },
     {
       "file": "app/admin/kafarm/auto-fixed-logs/page.tsx",
-      "sha256": "8df86dbb6281c3ef0f90a6912383c8b2e560dd73d78ce61337b9bdf370eff872"
+      "sha256": "5cb10d18876e1e85726d40611c19eec8cd4b6f3f6b7839793aba4ccc00a12b4d"
     },
     {
       "file": "app/admin/kafarm/buddy-reports/page.tsx",
-      "sha256": "d510c01b64c702e3453f39bc684ffffc8c5a20365eadd9f4b61814098f3b10ad"
+      "sha256": "843530a9bbc233f228e39e43655c7c2405010760d69fda678e9ae895c5a1f58c"
     },
     {
       "file": "app/admin/kafarm/daily-briefing/page.tsx",
-      "sha256": "a832befbbe68c1ee5a348d270b6425b4c82f873e8cf18cd22a9415bfacc1d75b"
+      "sha256": "5ea1aeb305f28875e97b70f83f0caccaf5409bb9d2055cfea60326824f9d0d70"
     },
     {
       "file": "app/admin/kafarm/database-health/page.tsx",
-      "sha256": "efbe2ccde8e6eea9057be0af302f5b863ce0fb1b35e8608f06c3fb3503b5174e"
+      "sha256": "b052df6ccba639387b365ea57407a365981f1fa0c5e9682493826a073b7ba89d"
     },
     {
       "file": "app/admin/kafarm/escalated-chats/page.tsx",
-      "sha256": "9d2084c6340f6a31e9556928bf7de04328a7a994f226444bf55afafc30edf1b0"
+      "sha256": "2dc1eff7bd80d997ee3630dd593ee5e79d19d1ae552f6320d0d5aa87ac2028bb"
     },
     {
       "file": "app/admin/kafarm/evidence-finder/page.tsx",
-      "sha256": "170b11c2d47fd8c26fd2237b12a409ba4ef35fa5c52b626fe05a09b6db76cff5"
+      "sha256": "e3b48c7a56478fcca293f9b69c58743fbabe1dfddcc926003f97dc2ba23a92f8"
     },
     {
       "file": "app/admin/kafarm/page.tsx",
-      "sha256": "707e834b57a4397b2445584c9170d1e7e77ec03b6c535cbdb97ce93fbbcd5520"
+      "sha256": "5c2cb5abde45cd55554a67a7957edfcac548c55a0000ed345f508791ac633556"
     },
     {
       "file": "app/admin/kafarm/qa-test-lab/page.tsx",
-      "sha256": "bd82ef1384d64e8e42b8b38e50e613a3b4cd668e79621b4cd40efb9ad9051ce5"
+      "sha256": "4319f3c381c6f4b8b95b73744a7d0a3ed86e76bcc2d7358f20fb2fdc4fcf9254"
     },
     {
       "file": "app/admin/kafarm/system-health/page.tsx",
-      "sha256": "3d42958bc96a60ded03f4842eecf6030071c797a0d7a37585f006566402a42be"
+      "sha256": "c66b034ecd11b7cf5a57927cab390c067631ac7e1faa806f599fa93c9aa6042d"
     },
     {
       "file": "app/admin/kafarm/whole-app-reader/page.tsx",
-      "sha256": "62d62d9b992efd13b6e2144fca748338f1e4e542076bc70ab9aa6c63ac1cc74a"
+      "sha256": "76e9ed8a4e686cf9e11414a8fafc2d60afcbbe4a77330f5fa1ddb43b39f58b12"
     },
     {
       "file": "app/admin/live-chat/page.tsx",
-      "sha256": "73ddb937d60612f8e67f03cf64159a8de379ffcae06317eaa05adc264cec054a"
+      "sha256": "f74ecd6c2eaa185bd86857eb1c224ab375f7e02d98a9ef205dfc29dc209e698d"
     },
     {
       "file": "app/admin/login/page.tsx",
-      "sha256": "de061fcfdb56349e27009864b9448226dd37f226feebdd086678ecb4bc01a7de"
+      "sha256": "5c6d6f80bd382b9d7853925ba6de4321c015cf0b9557e57d7f140d5c76a79546"
     },
     {
       "file": "app/admin/memberships/page.tsx",
-      "sha256": "820c41419edc837e94ed0cfe5d7f9e1fce8846f8e5c000b66a910855f4085277"
+      "sha256": "f0ef2542ab1a8ae978f278625260ccb989a49625b5f86d402363f1705a387f8c"
     },
     {
       "file": "app/admin/operations/page.tsx",
-      "sha256": "8e9cecde364656c0f94c45b085bfa6d679b1bd9a7e3618549a449ce81b898d86"
+      "sha256": "c6dabe2d48c625628325daea66be19f6e439dc4fb7d5f394509d37a57d3b5587"
     },
     {
       "file": "app/admin/page.tsx",
-      "sha256": "ad13d78a8f4228759069afd1798f3526610e574820fc95ea5b37399703676839"
+      "sha256": "4a97b3d7f53eb0ff691a3a9031ad141a365875fc784a69a26737c54d2d83b559"
     },
     {
       "file": "app/admin/reports/page.tsx",
-      "sha256": "e17e09bf4a92408deda61bc35b5104d1cd114c2f1f57aaa7c4a12012497070dd"
+      "sha256": "e714540df6a9c69437959f59f5534b63e383f5c3d1225571aa8dcf58d15f0609"
     },
     {
       "file": "app/admin/risk-management/page.tsx",
-      "sha256": "e17e09bf4a92408deda61bc35b5104d1cd114c2f1f57aaa7c4a12012497070dd"
+      "sha256": "e714540df6a9c69437959f59f5534b63e383f5c3d1225571aa8dcf58d15f0609"
     },
     {
       "file": "app/admin/sell-price/page.tsx",
-      "sha256": "8e9cecde364656c0f94c45b085bfa6d679b1bd9a7e3618549a449ce81b898d86"
+      "sha256": "c6dabe2d48c625628325daea66be19f6e439dc4fb7d5f394509d37a57d3b5587"
     },
     {
       "file": "app/admin/sell-pricetag/page.tsx",
-      "sha256": "8e9cecde364656c0f94c45b085bfa6d679b1bd9a7e3618549a449ce81b898d86"
+      "sha256": "c6dabe2d48c625628325daea66be19f6e439dc4fb7d5f394509d37a57d3b5587"
     },
     {
       "file": "app/admin/sell-requests/page.tsx",
-      "sha256": "a250a769a4d2fbe2d41384b7109fe62a10f01718d7f0c068456885f123099ca4"
+      "sha256": "7e9976c052af6043869ab3e9108db713e70d457750a63d17377affea5ef21dc6"
     },
     {
       "file": "app/admin/transactions/cashin/page.tsx",
-      "sha256": "2a5aa28d499fbf9e8a99039158fc38659cc83b922161fb13cc93db4f17c9b9a2"
+      "sha256": "7d14979dbaf0d5a9b58c06e06e30d987a83cac4686d3e7f73fd4fe9ef5f10b5e"
     },
     {
       "file": "app/admin/transactions/cashout/page.tsx",
-      "sha256": "84f1ee52fb336b948bab2d203dddd62690af718d82fcdbc9cb15fc2eb95b0bcd"
+      "sha256": "f55ac32e3b10a43b88cd2c36888586ca1dd954e283c5d575babd969674da964a"
     },
     {
       "file": "app/admin/transactions/page.tsx",
-      "sha256": "2a5aa28d499fbf9e8a99039158fc38659cc83b922161fb13cc93db4f17c9b9a2"
+      "sha256": "7d14979dbaf0d5a9b58c06e06e30d987a83cac4686d3e7f73fd4fe9ef5f10b5e"
     },
     {
       "file": "app/admin/treasury/page.tsx",
-      "sha256": "2a5aa28d499fbf9e8a99039158fc38659cc83b922161fb13cc93db4f17c9b9a2"
+      "sha256": "7d14979dbaf0d5a9b58c06e06e30d987a83cac4686d3e7f73fd4fe9ef5f10b5e"
     },
     {
       "file": "app/admin/wallet/page.tsx",
-      "sha256": "2a5aa28d499fbf9e8a99039158fc38659cc83b922161fb13cc93db4f17c9b9a2"
+      "sha256": "7d14979dbaf0d5a9b58c06e06e30d987a83cac4686d3e7f73fd4fe9ef5f10b5e"
     },
     {
       "file": "app/api/kafarm/whole-app-reader/route.ts",
-      "sha256": "57556a8399acb8d052915b7b14b709117427c9bd14fa474b71ecf492c5a220cf"
+      "sha256": "bbf29e915bcf51d10e727c8653762de1a3d5fa939409ff52c2268855ff40f0f0"
     },
     {
       "file": "app/caretaker/chat/page.tsx",
-      "sha256": "0439f18bf80ee1cf6f6744ef99040037d5be8fd64b4be057664f6b925eebec11"
+      "sha256": "e5f792d043d2c2c8db3f0218a02a2ade8137fc477b61ed0787d6b8bfaca05ea5"
     },
     {
       "file": "app/caretaker/completed/page.tsx",
-      "sha256": "3f69153b3f23cee91e04a6a3a80bf0533e683685a3b723a69340cb9466477e59"
+      "sha256": "4cf9c57766911f537d16ee11c2c5537480177ade58a6897c91a2054b48201c97"
     },
     {
       "file": "app/caretaker/dashboard/page.tsx",
-      "sha256": "50bd3471de4c65102536c68dab222ae6950336b0b82203046050667c89f77863"
+      "sha256": "97da03d01b062bad2afd8b61ae0e5a3190bcd4bf5c8c4bb442b49054df378012"
     },
     {
       "file": "app/caretaker/feeding/page.tsx",
-      "sha256": "ffb7b1525efeebf2ac0cc2a033b2d141c676a30a7fb1b199ef44f3e45c49f9de"
+      "sha256": "1dd03d1f0f6dee2e451d0f15c45d6c092d1be4f9b16fd409d3ebdb5115a3dacb"
     },
     {
       "file": "app/caretaker/login/page.tsx",
-      "sha256": "65965ec0411aa19fcbfc283ebf606c2707aed673bfdea2b3a9a75723e96928c5"
+      "sha256": "9097a30b6db8289931701406b0aff3bd42f7e1da94ed5eac89d63c7efdcd7ba9"
     },
     {
       "file": "app/caretaker/mortality/page.tsx",
-      "sha256": "0439f18bf80ee1cf6f6744ef99040037d5be8fd64b4be057664f6b925eebec11"
+      "sha256": "e5f792d043d2c2c8db3f0218a02a2ade8137fc477b61ed0787d6b8bfaca05ea5"
     },
     {
       "file": "app/caretaker/notes/page.tsx",
-      "sha256": "0439f18bf80ee1cf6f6744ef99040037d5be8fd64b4be057664f6b925eebec11"
+      "sha256": "e5f792d043d2c2c8db3f0218a02a2ade8137fc477b61ed0787d6b8bfaca05ea5"
     },
     {
       "file": "app/caretaker/page.tsx",
-      "sha256": "6ae9254e60c7d060d41aee422f693aa0671792e9c14abff2f46a8f58ba3db271"
+      "sha256": "dd08e70987a2ee01e6473023341292130a598fa042ac9548837d7a75341615b8"
     },
     {
       "file": "app/caretaker/photos/page.tsx",
-      "sha256": "ffb7b1525efeebf2ac0cc2a033b2d141c676a30a7fb1b199ef44f3e45c49f9de"
+      "sha256": "1dd03d1f0f6dee2e451d0f15c45d6c092d1be4f9b16fd409d3ebdb5115a3dacb"
     },
     {
       "file": "app/caretaker/profile/page.tsx",
-      "sha256": "621d6caf0a8bcbb25744b574135451f31fdab4bc5138589021d9cc75c4e2e6f2"
+      "sha256": "3dd09b0e6fcd9f618f796d48a907c01907c83dd7352e6517c18d3418dc23b941"
     },
     {
       "file": "app/caretaker/signup/page.tsx",
-      "sha256": "e3b83a79aacf5186778fcbb2479ad08b8b72f2563718005689e9a5835fb86f5f"
+      "sha256": "fcb3f738bf4644d3912974417de2fb22d3f1254328dab97d583fcaff138410e6"
     },
     {
       "file": "app/caretaker/tasks/page.tsx",
-      "sha256": "ffb7b1525efeebf2ac0cc2a033b2d141c676a30a7fb1b199ef44f3e45c49f9de"
+      "sha256": "1dd03d1f0f6dee2e451d0f15c45d6c092d1be4f9b16fd409d3ebdb5115a3dacb"
     },
     {
       "file": "app/caretaker/weight/page.tsx",
-      "sha256": "ffb7b1525efeebf2ac0cc2a033b2d141c676a30a7fb1b199ef44f3e45c49f9de"
+      "sha256": "1dd03d1f0f6dee2e451d0f15c45d6c092d1be4f9b16fd409d3ebdb5115a3dacb"
     },
     {
       "file": "app/customer/care-logs/page.tsx",
-      "sha256": "fe533d779f174a771043ec3a40460966292c508e2939e8f02eb2c0a68c3c9b6e"
+      "sha256": "0f59d8e8acbb0d7b993650f6161d50ecfc74ceb62164377b6d1512e720beb0e7"
     },
     {
       "file": "app/customer/caretakers/dashboard/page.tsx",
-      "sha256": "9b217b86d53d0c90994eab59f0042a342becc3ce94fb7e2330f36a7fc5dd9d1f"
+      "sha256": "2249329f602bf6c9ab9267afca2ef64bfae8998b4448db8631d8a49c8ce1fb16"
     },
     {
       "file": "app/customer/caretakers/page.tsx",
-      "sha256": "9b217b86d53d0c90994eab59f0042a342becc3ce94fb7e2330f36a7fc5dd9d1f"
+      "sha256": "2249329f602bf6c9ab9267afca2ef64bfae8998b4448db8631d8a49c8ce1fb16"
     },
     {
       "file": "app/customer/cashin/bpi/page.tsx",
-      "sha256": "09e1083c7576da5af176f094e72bb25ac275ffdb830c661141305c3fd4e967b2"
+      "sha256": "3196e0bf2d080410321235daf600f99a6783d38d33f6223a4f6aaaa178bce4c2"
     },
     {
       "file": "app/customer/cashin/gcash/page.tsx",
-      "sha256": "b340ae9ca688db00b8e86d5aa22d6ab0e0fcfc10a817e6858e1f2608dce99d47"
+      "sha256": "5bf5fb16154906801ac1d09ce1239ef2729809d23ae5ab77950a487d7e415b0c"
     },
     {
       "file": "app/customer/cashin/maya/page.tsx",
-      "sha256": "b28623485906c84edabf5b08cc9ba92b9217611fac1a39c79019d85c3c04a280"
+      "sha256": "2dce479c78458f0c222ef04ee1634d743b22a9e7066319f4078ed671ff934d04"
     },
     {
       "file": "app/customer/cashin/page.tsx",
-      "sha256": "f295586e65ffa089fd0de1b7768e0f74031541b32ea9277e1886cc061d4c10f5"
+      "sha256": "c5533f5764f7131652f04209ed58cc1f90f9af21cebe9a3ff052a959650008f5"
     },
     {
       "file": "app/customer/chicks/page.tsx",
-      "sha256": "9b217b86d53d0c90994eab59f0042a342becc3ce94fb7e2330f36a7fc5dd9d1f"
+      "sha256": "2249329f602bf6c9ab9267afca2ef64bfae8998b4448db8631d8a49c8ce1fb16"
     },
     {
       "file": "app/customer/customer-service/page.tsx",
-      "sha256": "891645a1e940116f8cfbce95a88e6a0792af0b79eeff0b3d056482883c874fa8"
+      "sha256": "03dba72960e30e1510adbe0fa52dea0d5ee79798c382644ea5fa06f0e2038d97"
     },
     {
       "file": "app/customer/dashboard/page.tsx",
-      "sha256": "8c0707bc7fad888671d0a987cd4866eafe1af3c3decdfb78812bb80b0e732d0a"
+      "sha256": "07513d47491c2dfd41c6507958b32ece0df4a0cae768ed86b01290e840273630"
     },
     {
       "file": "app/customer/farm-buy/page.tsx",
-      "sha256": "0b8f9de37b9af5b6ce79d58128c22d317bd38bbf488cdf9dbda56f34473fd4f9"
+      "sha256": "cf18b1a9babc768cb21560accdaa97614e2763907c0826e14ffb7f0c73a5030e"
     },
     {
       "file": "app/customer/farm-requests/page.tsx",
-      "sha256": "5037ed0bdb8980dff7dd00c4bceebfd714bc8b48c6160484c9072519002136ce"
+      "sha256": "c8ca35f294773c3e6dca718fa71a220c66a0253da01f5481b5d656d2d17b8366"
     },
     {
       "file": "app/customer/inbox/invoice/care-request/page.tsx",
-      "sha256": "1dbbce4cb09494b7704f8426ba82a47a3ce18f7ec31c5b1aa29f1e727c8e7b9e"
+      "sha256": "a194f507c32fc85b5e8f6059eef21ea3cc391058d84fbff236f51283cc8b72b8"
     },
     {
       "file": "app/customer/inbox/invoice/cashin/page.tsx",
-      "sha256": "9fc39d01d7846a4233e647e718718d70d996afbc86e1e653d5fd00a8fc771a59"
+      "sha256": "9055d04afc9ce9c8c6f342bb50fdec2f88aad2c28587016c1dea5c43f6873d31"
     },
     {
       "file": "app/customer/inbox/invoice/farm-buy/page.tsx",
-      "sha256": "0305ebadbc1fe35069a7164ced74f154f8ed19b1fd61c8434c6447dbd203dd93"
+      "sha256": "751ab5a51e1d97cb45b346e4ece35a34dbbeb782c871e8ce99728d60eeffa71f"
     },
     {
       "file": "app/customer/inbox/page.tsx",
-      "sha256": "ff0b7d42d71e9100d1aeb15a545fe8dbfcbda4f0dd48d5b49d357c032f8030ef"
+      "sha256": "822e7cc3b98c672eeab496fd7040794271c9e26b057fb74464bb723f4b5c7ba4"
     },
     {
       "file": "app/customer/inventory/page.tsx",
-      "sha256": "6b09eeffdb4c8449479fa54af496c960ac72ee4f1ef7857707125c668d3b0054"
+      "sha256": "ed8b37038ffead2a5b4fb833498eedbf604bc0abd8aa0544b4ed9c60a274da98"
     },
     {
       "file": "app/customer/layout.tsx",
-      "sha256": "9c7a1c3f626ff5e73217f0e1af45ea9e2172db80e4f8163a7ebe5cd22b8201fd"
+      "sha256": "c6c94b8dc733dcb9f728c744f0c7a91d741a92be9a7b3d7848057bd8de7badc4"
     },
     {
       "file": "app/customer/live-camera/page.tsx",
-      "sha256": "5037ed0bdb8980dff7dd00c4bceebfd714bc8b48c6160484c9072519002136ce"
+      "sha256": "c8ca35f294773c3e6dca718fa71a220c66a0253da01f5481b5d656d2d17b8366"
     },
     {
       "file": "app/customer/login/page.tsx",
-      "sha256": "2f0e24dfdfda1b4cf89cae325aeec3a11d3632702f1c62b3ce2fb2f4a96b8f11"
+      "sha256": "af741c8ad227a61ab05e4cca4dab0c091941a93f28462656634283ae4da8e2c2"
     },
     {
       "file": "app/customer/marketplace/dashboard/page.tsx",
-      "sha256": "0b8f9de37b9af5b6ce79d58128c22d317bd38bbf488cdf9dbda56f34473fd4f9"
+      "sha256": "cf18b1a9babc768cb21560accdaa97614e2763907c0826e14ffb7f0c73a5030e"
     },
     {
       "file": "app/customer/marketplace/page.tsx",
-      "sha256": "0b8f9de37b9af5b6ce79d58128c22d317bd38bbf488cdf9dbda56f34473fd4f9"
+      "sha256": "cf18b1a9babc768cb21560accdaa97614e2763907c0826e14ffb7f0c73a5030e"
     },
     {
       "file": "app/customer/membership/page.tsx",
-      "sha256": "b5005be937741dfc4535e530cc12a874b9e4a9f020c1d057120316d4b283002f"
+      "sha256": "aa26b71771c5993fbd051dd8c721d31cfc7a5c64945c80b69c50ca8440916cf1"
     },
     {
       "file": "app/customer/notifications/page.tsx",
-      "sha256": "ff0b7d42d71e9100d1aeb15a545fe8dbfcbda4f0dd48d5b49d357c032f8030ef"
+      "sha256": "822e7cc3b98c672eeab496fd7040794271c9e26b057fb74464bb723f4b5c7ba4"
     },
     {
       "file": "app/customer/page.tsx",
-      "sha256": "8c0707bc7fad888671d0a987cd4866eafe1af3c3decdfb78812bb80b0e732d0a"
+      "sha256": "07513d47491c2dfd41c6507958b32ece0df4a0cae768ed86b01290e840273630"
     },
     {
       "file": "app/customer/payment/page.tsx",
-      "sha256": "35759dcfb59cfb3042f461dcd68fd5466c59ad6700268c79f3388754e7a1d9a4"
+      "sha256": "ae24af2128c7910db2182c076a1657c11e03209b7e54f5dc9915e74af4767542"
     },
     {
       "file": "app/customer/photo-updates/page.tsx",
-      "sha256": "5037ed0bdb8980dff7dd00c4bceebfd714bc8b48c6160484c9072519002136ce"
+      "sha256": "c8ca35f294773c3e6dca718fa71a220c66a0253da01f5481b5d656d2d17b8366"
     },
     {
       "file": "app/customer/register/page.tsx",
-      "sha256": "3554471d521c5516d2f4542ddd97663d5c44621fbe1e15ad63919c4b2893d36d"
+      "sha256": "a40e4a51e349c13ae2b8d947b2b091354930d20f315f471e40d3dd95ced74d6c"
     },
     {
       "file": "app/customer/roosters/page.tsx",
-      "sha256": "53b078342288c01759249130d7a4b4eb833828f11f46721860f14c80cb1ad62e"
+      "sha256": "050bf5029b3614d8945dcac393f9a96388094fd8d2d3d64ecac95b561d7c81d1"
     },
     {
       "file": "app/customer/sell-chicken/page.tsx",
-      "sha256": "b32902404d73409e10aeaffc8b41db77c9e75f1121248f5de1e3e8b34db63e80"
+      "sha256": "6d6469fbc1544d22538793728cfa41cc6d2c125ac9dd5849bf667da45dabf63a"
     },
     {
       "file": "app/customer/sell-rooster/page.tsx",
-      "sha256": "cd0688322eb2b875efe302fe0fe2dd0dc8624f6287702c5a4d655cd05be6ed39"
+      "sha256": "fee019fbc3cbf9b5d8f0f8b1c7add3e2e8127b0369eb29d3ca54ee02495ec1c4"
     },
     {
       "file": "app/customer/settings/page.tsx",
-      "sha256": "b5364c75073c6a7e0990740483791dabe2fb031a8d2bc48b7a3f420dbadb0ef8"
+      "sha256": "e8a9e8970c98255c76ac3552707be40dcbd0580bc117c619df56bdbc1cba03e8"
     },
     {
       "file": "app/customer/store/page.tsx",
-      "sha256": "0b8f9de37b9af5b6ce79d58128c22d317bd38bbf488cdf9dbda56f34473fd4f9"
+      "sha256": "cf18b1a9babc768cb21560accdaa97614e2763907c0826e14ffb7f0c73a5030e"
     },
     {
       "file": "app/customer/support/page.tsx",
-      "sha256": "891645a1e940116f8cfbce95a88e6a0792af0b79eeff0b3d056482883c874fa8"
+      "sha256": "03dba72960e30e1510adbe0fa52dea0d5ee79798c382644ea5fa06f0e2038d97"
     },
     {
       "file": "app/customer/wallet/page.tsx",
-      "sha256": "b5005be937741dfc4535e530cc12a874b9e4a9f020c1d057120316d4b283002f"
+      "sha256": "aa26b71771c5993fbd051dd8c721d31cfc7a5c64945c80b69c50ca8440916cf1"
     },
     {
       "file": "app/customer/weight-updates/page.tsx",
-      "sha256": "5037ed0bdb8980dff7dd00c4bceebfd714bc8b48c6160484c9072519002136ce"
+      "sha256": "c8ca35f294773c3e6dca718fa71a220c66a0253da01f5481b5d656d2d17b8366"
     },
     {
       "file": "app/customer/withdraw/add-payout/page.tsx",
-      "sha256": "622e9ce11996a899cb61252fd4395d7edf65ada2fb124c753fafa54c0cbc4fe0"
+      "sha256": "04db38677c45ff847e8a298d7079d262d86ad1cb77021044449a92f8f5621ff2"
     },
     {
       "file": "app/customer/withdraw/page.tsx",
-      "sha256": "9a338dc0d0c81f4dee590685f3265054d9d7bc8896e5c9f39d7d190f6889cdd3"
+      "sha256": "ad7fee00080b5cd9a7acd4749c239452f896569c091fcd9b7812fe1c58930c0e"
     },
     {
       "file": "app/forgot-password/page.tsx",
-      "sha256": "6860f79d30039efffa5fb881615e64f6b4d88167762d59d3af876447dcaadfad"
+      "sha256": "749d16bc9fceeb3acccf3a94c75cf8bc7766e448cae76b775ed9dda03bdcfc70"
     },
     {
       "file": "app/layout.tsx",
-      "sha256": "069daff857a1d030b0b2189997da7b15cbf7cb211fa9240aeba4a1fb9ea92183"
+      "sha256": "6af513eb57f3475fec2cb420276c3dbe042c36fe1d0335af0660fbcfa15f54a4"
     },
     {
       "file": "app/login/page.tsx",
-      "sha256": "8511cdbd926b519608b9be54601f2fc470d30a3795eab6f12cfccb1de957d861"
+      "sha256": "8e3bbb83ef37e4a1566ee9290732da62717931d8944dae234adeb7f507098aff"
     },
     {
       "file": "app/page.tsx",
-      "sha256": "e7c96134975d8d6a5ed2a4118581f8d61b236a137402b148c1bee48d5c2e584e"
+      "sha256": "035fa1a2d828454a8c0fb388c0a82fbc821ff1a881781d3c69ebd8f4c397fd44"
     },
     {
       "file": "app/signup/page.tsx",
-      "sha256": "b1ce6202f6ddc94b9eec10ea3d0113cbe5cbaa8246ccc77f0c169ea15ad1c791"
+      "sha256": "b308c5371a10aa37187c64aaed22bcd89aaa26d4c3b30b6e83c50c9fc147fa71"
     },
     {
       "file": "app/view-farm/page.tsx",
-      "sha256": "c39e976a2d55055abbde58b84a0c975c4288acfa794f9cd50b4d44ad87a125e0"
+      "sha256": "4c43a7dda2f555c45dc3ff61f9b101b220dbb3106b4d86f8f25a68504b890a20"
     },
     {
       "file": "lib/backend/support-chat.ts",
-      "sha256": "a820adf862d3963d8092a52199eb5a08f501735b4febd1b00ee352e05d932ab7"
+      "sha256": "be36df00bbc86a361f535ef420c93ed6274f1eae72bfaf7fb2745673d254a217"
     },
     {
       "file": "lib/farmconnect-data.ts",
-      "sha256": "22ad89ef0bcb0cc73e26630f0a776d82a3c7536cb66bf5a54991360bcf9473c4"
+      "sha256": "70fc09178daed08e3db56b357ca2a6a8e0427a9621fa6a2d97dd223ef7ab39bf"
     },
     {
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "sha256": "ddcceba9fd2e9dcf661b5fd2acc0330a6b40579571bb9e4cbe56463fa7903e17"
+      "sha256": "29468ba38afb5901f3e8f4ce5774ba6e0fdc60c081b44b9e1091bb8f329c2391"
     },
     {
       "file": "lib/farmconnect-v1.tsx",
-      "sha256": "50c9739c5fccb2348782fccaeff91387bb2efa321bf700f25a98a14622dc0944"
+      "sha256": "c2b7ff8bd681e764e391753364e96b892a4ca1eeaea5b91d52d14d469f3ea5da"
     },
     {
       "file": "lib/kafarm-brain.ts",
-      "sha256": "91e4a88137581f363aacb45d4b0ab04a59697db0e6173b74a57642eba6adf0fb"
+      "sha256": "d69928d5e5d214121e1a16a1731a43dba895ffeb6b127da4c9bd42a02ccdba9c"
     },
     {
       "file": "lib/kafarm-whole-app-reader.ts",
-      "sha256": "59e0c4b16ce0e58863b8ad3410ce4f96812a17c1ba34f7639b1798a9a5037ce4"
+      "sha256": "59fa453e2554d76ecc83a5451ea4c5da047a2e9f09c5bbd544764eb04375cb30"
     },
     {
       "file": "lib/supabase.ts",
-      "sha256": "8cbfcc5363c151d5c56ccf1c7f3c4df2c4ab6286b73eb009bfa4047ad5dd49a0"
+      "sha256": "d8777aca416ad92ab6e20bd6b8eab1bac18fbe7f949fa424915edba8dbbb3fb7"
     }
   ],
   "unreachableFiles": [

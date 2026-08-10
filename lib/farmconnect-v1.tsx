@@ -1549,7 +1549,7 @@ export function WithdrawPageV2() {
             <Link href="/customer/withdraw/add-payout" className="rounded-xl bg-[#0f6fb8] px-4 py-3 font-black text-white">Add Method</Link>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {accounts.map(row=><button key={row.id} type="button" onClick={()=>setSelectedId(row.id)} className={"rounded-2xl border p-4 text-left transition "+(selected?.id===row.id?"border-[#1f6b45] bg-emerald-50 ring-2 ring-emerald-100":"border-[#e3ded0] bg-[#fffdf7]")}>
+            {accounts.map((row,index)=><button key={`${row.id}-${row.provider}-${row.account_number}-${index}`} type="button" onClick={()=>setSelectedId(row.id)} className={"rounded-2xl border p-4 text-left transition "+(selected?.id===row.id?"border-[#1f6b45] bg-emerald-50 ring-2 ring-emerald-100":"border-[#e3ded0] bg-[#fffdf7]")}>
               <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase text-[#667267]">{row.provider}</p><h3 className="mt-1 text-lg font-black">{row.account_holder}</h3><p className="mt-2 text-sm font-bold text-[#667267]">{row.account_number}</p></div>{row.is_default&&<Badge tone="good">Default</Badge>}</div>
             </button>)}
             {!loading&&!accounts.length&&<div className="rounded-2xl border-2 border-dashed border-[#d8cfbd] bg-[#f9f6ec] p-5 text-sm font-bold text-[#667267]">No payout method yet. Add GCash, Maya, or bank details first.</div>}
@@ -1570,7 +1570,7 @@ export function WithdrawPageV2() {
         <p className="mt-2 rounded-xl bg-[#f4efe4] p-3 text-sm font-bold leading-6 text-[#667267]">{note}</p>
         <p className="mt-2 text-xs font-bold text-[#667267]">After admin sends proof: confirm payout or report incorrect payout.</p>
         <div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto pr-2">
-          {requests.map(row=><article key={row.id} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4">
+          {requests.map((row,index)=><article key={`${row.id}-${row.status}-${row.created_at||"no-date"}-${index}`} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4">
             <div className="flex items-start justify-between gap-3"><div><b className="text-lg">{peso(Number(row.amount||0))}</b><p className="mt-1 text-sm font-bold text-[#667267]">{row.payout_method} / {row.payout_account}</p></div><Badge tone={row.status==="completed"?"good":row.status==="rejected"?"bad":"warn"}>{String(row.status||"pending").replaceAll("_"," ")}</Badge></div>
             {row.admin_reference_number&&<div className="mt-3 grid gap-2 rounded-xl bg-[#f4efe4] p-3 text-sm font-bold"><span>Reference: {row.admin_reference_number}</span><span>Receipt: {row.admin_receipt_file_name||"Attached by admin"}</span><button type="button" onClick={()=>void openPayoutProof(row)} className="rounded-lg bg-white px-3 py-2 text-left font-black text-[#1f6b45]">View Uploaded Receipt</button></div>}
             {row.admin_note&&<p className="mt-3 text-sm font-bold leading-6 text-[#667267]">Admin note: {row.admin_note}</p>}
@@ -2120,7 +2120,7 @@ export function SettingsPage() {
   }, []);
   useEffect(() => {
     let mounted = true;
-    getCurrentCustomerKycSubmission()
+    const refreshKycFlow = () => getCurrentCustomerKycSubmission()
       .then(submission => {
         if (!mounted) return;
         if (!submission) {
@@ -2138,7 +2138,17 @@ export function SettingsPage() {
       .catch(() => {
         if (mounted) setKycFlow({ state:"error", note:"KYC status could not be checked. Login again before sending another submission.", submittedAt:null });
       });
-    return () => { mounted = false; };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshKycFlow();
+    };
+    void refreshKycFlow();
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      mounted = false;
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, []);
   const settingCards: Array<{ key?: SettingsPanel; title: string; text: string; icon: IconName; action: string; tone?: "green" | "amber" | "blue"; href?: string }> = [
     { key: kycFlow.state === "approved" ? undefined : "kyc", title: "KYC Verification", text: kycFlow.state === "approved" ? "Approved and locked." : kycFlow.state === "pending" ? "Submitted and under admin review." : kycFlow.state === "rejected" ? "Rejected. Open to review the reason and resubmit." : "Upload ID and selfie before withdrawals.", icon: "shield", action: kycFlow.state === "approved" ? "Verified" : "Open KYC", tone: "amber" },

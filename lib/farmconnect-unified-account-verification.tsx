@@ -49,6 +49,12 @@ type VerificationRow = {
 type UnknownRow = Record<string, unknown>;
 
 const cardClass = "rounded-2xl border border-[#e3ded0] bg-white p-4 shadow-sm";
+const customerQueueStatuses = new Set(["pending", "submitted", "for_review", "ready_for_review", "needs_info"]);
+const customerApprovedStatuses = new Set(["approved", "verified", "accepted"]);
+
+function normalizedVerificationStatus(value: unknown, fallback = "draft") {
+  return valueText(value, fallback).toLowerCase().replaceAll(" ", "_");
+}
 
 function valueText(value: unknown, fallback = "Not recorded") {
   if (typeof value === "string" && value.trim()) return value.trim();
@@ -170,7 +176,9 @@ function mapCustomerRows(rows: UnknownRow[]): VerificationRow[] {
       email: valueText(recordValue(profile, "email"), "No email"),
       phone: valueText(recordValue(profile, "phone"), "No phone"),
       submitted: displayDate(recordValue(row, "submitted_at") || recordValue(row, "updated_at") || recordValue(row, "created_at")),
-      status: valueText(recordValue(row, "status"), "draft"),
+      status: normalizedVerificationStatus(
+        recordValue(row, "status") || recordValue(row, "verification_status") || recordValue(row, "review_status"),
+      ),
       details: `${valueText(recordValue(row, "id_type"), "ID not set")} / ${valueText(recordValue(row, "city"), "City not set")}, ${valueText(recordValue(row, "province"), "Province not set")}`,
       files: documents.map(document => ({
         label: valueText(recordValue(document, "document_type"), "KYC document").replaceAll("_", " "),
@@ -251,9 +259,11 @@ export function UnifiedAccountVerificationPage() {
   useEffect(()=>{ initialize(); }, []);
 
   const queueRows = useMemo(() => mode === "customer"
-    ? customers.filter(row => !["draft", "approved", "rejected"].includes(row.status))
+    ? customers.filter(row => customerQueueStatuses.has(row.status))
     : caretakers.filter(row => ["pending_approval", "needs_info"].includes(row.status)), [mode, customers, caretakers]);
-  const verifiedRows = useMemo(() => (mode === "customer" ? customers : caretakers).filter(row => row.status === "approved"), [mode, customers, caretakers]);
+  const verifiedRows = useMemo(() => (mode === "customer"
+    ? customers.filter(row => customerApprovedStatuses.has(row.status))
+    : caretakers.filter(row => row.status === "approved")), [mode, customers, caretakers]);
   const activeRows = tab === "queue" ? queueRows : verifiedRows;
   const selected = activeRows.find(row=>row.id === selectedId) || activeRows[0] || null;
 
@@ -277,6 +287,11 @@ export function UnifiedAccountVerificationPage() {
       if (selected.source === "customer") await adminReviewCustomerKyc(selected.id, decision, adminNote, selected.risk.toLowerCase() as "low" | "medium" | "high");
       else await adminReviewCaretakerApplication(selected.id, decision, adminNote);
       setAdminNote("");
+      if (selected.source === "customer") {
+        setCustomers(current => current.map(row => row.id === selected.id ? { ...row, status: decision } : row));
+      } else {
+        setCaretakers(current => current.map(row => row.id === selected.id ? { ...row, status: decision } : row));
+      }
       await load();
       setVerificationNote(selected.source === "customer" && decision === "rejected"
         ? `${selected.name} rejected for resubmission. The customer can now read the reason in Settings and upload corrected KYC evidence.`
@@ -285,7 +300,13 @@ export function UnifiedAccountVerificationPage() {
           : `${selected.name} ${decision}. Database records/logs refreshed and the item left the queue.`);
     } catch (error: unknown) {
       const source = error as { message?: string; details?: string; hint?: string };
-      setVerificationNote(`Decision failed: ${source.message || source.details || source.hint || "Unknown verification error"}`);
+      const message = source.message || source.details || source.hint || "Unknown verification error";
+      if (message.includes("KYC_ALREADY_REVIEWED")) {
+        await load();
+        setVerificationNote("This KYC was already reviewed in another session. Live records refreshed and the item was removed from the queue.");
+      } else {
+        setVerificationNote(`Decision failed: ${message}`);
+      }
     } finally {
       setSaving(false);
     }
