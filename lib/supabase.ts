@@ -11,12 +11,17 @@ export const supabase = createClient(
   supabaseAnonKey
 );
 
-export function createIsolatedSupabaseClient() {
+let isolatedClientSequence = 0;
+
+export function createIsolatedSupabaseClient(scope = "isolated") {
+  isolatedClientSequence += 1;
+  const safeScope = scope.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "isolated";
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+      storageKey: `farmconnect-${safeScope}-${Date.now()}-${isolatedClientSequence}`,
     },
   });
 }

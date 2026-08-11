@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/customer-signup";
+import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { supabase } from "@/lib/supabase";
 
 type Role = "customer" | "caretaker" | "admin";
@@ -21,6 +23,7 @@ export default function HomePage() {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [signupForm, setSignupForm] = useState({ firstName: "", lastName: "", birthdate: "", phone: "", email: "", password: "", consent: false });
   const [message, setMessage] = useState("Ka-Farm checks your email role and opens the correct workspace.");
+  const [signupError, setSignupError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function signIn() {
@@ -63,38 +66,45 @@ export default function HomePage() {
 
   async function signUp() {
     const fullName = `${signupForm.firstName} ${signupForm.lastName}`.trim();
+    const normalizedEmail = signupForm.email.trim().toLowerCase();
     if (!fullName || !signupForm.birthdate || !signupForm.phone || !signupForm.email || !signupForm.password) {
-      setMessage("Complete legal name, birthdate, phone, email, and password first.");
+      const text = "Complete legal name, birthdate, phone, email, and password first.";
+      setMessage(text);
+      setSignupError(text);
       return;
     }
     if (!signupForm.consent) {
-      setMessage("Please accept the terms before creating the account.");
+      const text = "Please accept the terms before creating the account.";
+      setMessage(text);
+      setSignupError(text);
+      return;
+    }
+    if (hasReservedSignupEmailDomain(normalizedEmail)) {
+      const text = reservedSignupEmailMessage;
+      setMessage(text);
+      setSignupError(text);
       return;
     }
     setLoading(true);
+    setSignupError("");
     setMessage("Creating customer account...");
     try {
       const { data, error } = await supabase.auth.signUp({
-        email: signupForm.email,
+        email: normalizedEmail,
         password: signupForm.password,
         options: { data: { full_name: fullName, birthdate: signupForm.birthdate, phone: signupForm.phone, role: "customer" } },
       });
       if (error) throw error;
-
-      if (data.user) {
-        const { error: profileError } = await supabase.from("profiles").insert({
-          auth_user_id: data.user.id,
-          email: signupForm.email,
+      if (!isFreshSupabaseSignup(data.user)) throw new Error("An account already exists for this email. Sign in or reset the password instead.");
+      if (!data.user) throw new Error("Account creation did not return a user record. Please try again.");
+      if (data.session) {
+        await ensureCustomerSignupProfile(data.user.id, {
+          email: normalizedEmail,
           phone: signupForm.phone,
-          full_name: fullName,
-          display_name: fullName,
+          fullName,
+          displayName: fullName,
           birthdate: signupForm.birthdate,
-          role: "customer",
-          account_status: "active",
-          verification_status: "pending",
-          membership_status: "inactive",
         });
-        if (profileError && !profileError.message.toLowerCase().includes("duplicate")) throw profileError;
       }
 
       if (data.session) {
@@ -104,7 +114,9 @@ export default function HomePage() {
         setMessage("Account created. Please sign in to continue.");
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not create account.");
+      const text = signupFailureMessage(error);
+      setMessage(text);
+      setSignupError(text);
     } finally {
       setLoading(false);
     }
@@ -208,7 +220,7 @@ export default function HomePage() {
                 </div>
                 <Field label="Birthdate"><input value={signupForm.birthdate} onChange={e=>setSignupForm({...signupForm,birthdate:e.target.value})} type="date" autoComplete="bday" className={inputClass} /></Field>
                 <Field label="Mobile number"><input value={signupForm.phone} onChange={e=>setSignupForm({...signupForm,phone:e.target.value})} type="tel" autoComplete="tel" placeholder="09XX XXX XXXX" className={inputClass} /></Field>
-                <Field label="Email address"><input value={signupForm.email} onChange={e=>setSignupForm({...signupForm,email:e.target.value})} type="email" autoComplete="email" placeholder="name@example.com" className={inputClass} /></Field>
+                <Field label="Email address"><input value={signupForm.email} onChange={e=>{setSignupForm({...signupForm,email:e.target.value});setSignupError("");}} type="email" autoComplete="email" placeholder="name@domain.com" className={inputClass} /></Field>
                 <Field label="Create password">
                   <div className="relative">
                     <input value={signupForm.password} onChange={e=>setSignupForm({...signupForm,password:e.target.value})} type={showSignupPassword ? "text" : "password"} autoComplete="new-password" placeholder="At least 8 characters" className={inputClass + " pr-[72px]"} />
@@ -220,6 +232,8 @@ export default function HomePage() {
                   <input checked={signupForm.consent} onChange={e=>setSignupForm({...signupForm,consent:e.target.checked})} type="checkbox" className="mt-0.5 accent-[#075f48]" />
                   <span>I agree to the <b className="text-[#075f48]">Terms of Use</b> and <b className="text-[#075f48]">Privacy Policy</b>.</span>
                 </label>
+
+                {signupError && <p role="alert" aria-live="assertive" className="mt-3 rounded-[12px] border border-[#efb7ad] bg-[#fff3f0] px-3 py-2 text-[11px] font-bold leading-[1.45] text-[#9d2d20]">{signupError}</p>}
 
                 <button type="button" onClick={signUp} disabled={loading} className="mt-[21px] grid h-[52px] w-full place-items-center rounded-[14px] bg-[linear-gradient(105deg,#075f48,#078065)] font-black text-white shadow-[0_11px_25px_rgba(7,95,72,.20)] transition hover:-translate-y-px hover:shadow-[0_14px_28px_rgba(7,95,72,.26)] disabled:opacity-60">{loading ? "Creating..." : "Create Account"}</button>
                 <p className="mt-5 text-center text-xs text-[#6b7872]">Already have an account?

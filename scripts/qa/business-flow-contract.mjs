@@ -203,10 +203,17 @@ async function main() {
     checks.push("Customer sell confirmation reaches admin and creates final release assignment");
 
     await service.from("profiles").update({ wallet_balance: 500, wallet_on_hold: 0, verification_status: "approved", kyc_status: "approved" }).eq("id", profileId);
+    const withdrawalPin = "246810";
+    const pinSetup = await rpc(customer, "change_wallet_pin", { p_current_pin: null, p_new_pin: withdrawalPin });
+    if (pinSetup !== true) fail("first-time Wallet PIN setup failed");
     const withdrawalOperationKey = `e2e-withdrawal-${Date.now()}`;
-    const withdrawalResult = await rpc(customer, "customer_submit_withdrawal_request_guarded", { p_amount: 100, p_payout_method: "GCash", p_payout_holder: "E2E Customer", p_payout_account: "09000000001", p_customer_note: "E2E withdrawal", p_idempotency_key: withdrawalOperationKey });
+    const wrongPinResult = await rpc(customer, "customer_submit_withdrawal_request_guarded", { p_amount: 100, p_payout_method: "GCash", p_payout_holder: "E2E Customer", p_payout_account: "09000000001", p_customer_note: "E2E wrong PIN", p_idempotency_key: `${withdrawalOperationKey}-wrong`, p_wallet_pin: "000000" });
+    if (wrongPinResult.error !== "WALLET_PIN_INVALID") fail("wrong Wallet PIN was not rejected by the server");
+    const untouched = await one(service.from("profiles").select("wallet_balance,wallet_on_hold,wallet_pin_failed_attempts").eq("id", profileId).single(), "wrong PIN wallet safety");
+    if (Number(untouched.wallet_balance) !== 500 || Number(untouched.wallet_on_hold) !== 0 || Number(untouched.wallet_pin_failed_attempts) !== 1) fail("wrong Wallet PIN changed funds or did not persist the failed attempt");
+    const withdrawalResult = await rpc(customer, "customer_submit_withdrawal_request_guarded", { p_amount: 100, p_payout_method: "GCash", p_payout_holder: "E2E Customer", p_payout_account: "09000000001", p_customer_note: "E2E withdrawal", p_idempotency_key: withdrawalOperationKey, p_wallet_pin: withdrawalPin });
     const withdrawalId = withdrawalResult.id;
-    const duplicateWithdrawal = await rpc(customer, "customer_submit_withdrawal_request_guarded", { p_amount: 100, p_payout_method: "GCash", p_payout_holder: "E2E Customer", p_payout_account: "09000000001", p_customer_note: "E2E repeated withdrawal", p_idempotency_key: withdrawalOperationKey });
+    const duplicateWithdrawal = await rpc(customer, "customer_submit_withdrawal_request_guarded", { p_amount: 100, p_payout_method: "GCash", p_payout_holder: "E2E Customer", p_payout_account: "09000000001", p_customer_note: "E2E repeated withdrawal", p_idempotency_key: withdrawalOperationKey, p_wallet_pin: withdrawalPin });
     if (!duplicateWithdrawal.duplicate || duplicateWithdrawal.id !== withdrawalId) fail("withdrawal retry created a duplicate wallet hold");
     const held = await one(service.from("profiles").select("wallet_balance,wallet_on_hold").eq("id", profileId).single(), "withdrawal hold");
     if (Number(held.wallet_balance) !== 400 || Number(held.wallet_on_hold) !== 100) fail("withdrawal did not reserve wallet funds exactly once");
@@ -215,7 +222,7 @@ async function main() {
     if (!duplicateWithdrawalReview.duplicate) fail("repeated withdrawal rejection was not handled idempotently");
     const refunded = await one(service.from("profiles").select("wallet_balance,wallet_on_hold").eq("id", profileId).single(), "withdrawal refund");
     if (Number(refunded.wallet_balance) !== 500 || Number(refunded.wallet_on_hold) !== 0) fail("rejected withdrawal did not refund held funds");
-    checks.push("Withdrawal retry, hold, decision retry, and rejection refund are balanced");
+    checks.push("Server-verified Wallet PIN, withdrawal retry, hold, decision retry, and rejection refund are balanced");
 
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(reportPath, `${JSON.stringify({ generatedAt: new Date().toISOString(), passed: true, checks }, null, 2)}\n`);

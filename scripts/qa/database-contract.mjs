@@ -67,6 +67,8 @@ const requiredDefinerFunctions = [
   "admin_review_rooster_sale_guarded",
   "admin_review_caretaker_application_guarded",
   "admin_review_customer_kyc_guarded",
+  "customer_ensure_signup_profile",
+  "withdrawal_wallet_pin_guard_version",
 ];
 
 function fail(message) {

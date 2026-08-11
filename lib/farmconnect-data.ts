@@ -717,6 +717,7 @@ type GuardedWorkflowResult = {
   duplicate: boolean;
   status: string;
   workflow_id?: string | null;
+  error?: string | null;
 };
 
 export async function submitManualPaymentRequest(payload: ManualPaymentPayload) {
@@ -799,6 +800,7 @@ export type WithdrawalRequestPayload = {
   payoutAccount: string;
   customerNote?: string | null;
   idempotencyKey: string;
+  walletPin: string;
 };
 
 export type CustomerPayoutMethodPayload = {
@@ -844,10 +846,12 @@ export async function submitWithdrawalRequest(payload: WithdrawalRequestPayload)
     p_payout_account: payload.payoutAccount,
     p_customer_note: payload.customerNote || null,
     p_idempotency_key: payload.idempotencyKey,
+    p_wallet_pin: payload.walletPin,
   });
 
   if (error) throw error;
   const result = data as GuardedWorkflowResult;
+  if (result?.error) throw new Error(result.error);
   if (!result?.id) throw new Error("WORKFLOW_RESULT_MISSING");
   return result;
 }
@@ -1145,15 +1149,23 @@ export async function uploadPrivateEvidenceFile(options: PrivateEvidenceUploadOp
     .join("/");
   const fileName = `${safeStorageSegment(options.kind)}.${storageExtension(options.file)}`;
   const path = [authData.user.id, folder, fileName].filter(Boolean).join("/");
-  const { error } = await client.storage
-    .from(options.bucket)
-    .upload(path, options.file, {
-      cacheControl: "3600",
-      contentType: options.file.type,
-      upsert: options.upsert ?? true,
-    });
+  const upload = () => client.storage.from(options.bucket).upload(path, options.file, {
+    cacheControl: "3600",
+    contentType: options.file.type,
+    upsert: options.upsert ?? true,
+  });
 
-  if (error) throw error;
+  let result;
+  try {
+    result = await upload();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || "");
+    if (!/failed to fetch|network|load failed/i.test(message)) throw error;
+    await new Promise(resolve => window.setTimeout(resolve, 350));
+    result = await upload();
+  }
+
+  if (result.error) throw result.error;
   return path;
 }
 

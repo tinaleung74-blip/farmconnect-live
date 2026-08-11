@@ -12,6 +12,7 @@ import {
   submitCaretakerApplication,
   uploadPrivateEvidenceFile,
 } from "@/lib/farmconnect-data";
+import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { createIsolatedSupabaseClient, supabase } from "@/lib/supabase";
 
 type VerificationMode = "customer" | "caretaker";
@@ -373,6 +374,7 @@ type CaretakerForm = {
 };
 
 export function SecureCaretakerSignupPage() {
+  const applicantClient=useMemo(()=>createIsolatedSupabaseClient("caretaker-signup"),[]);
   const [form,setForm]=useState<CaretakerForm>({ fullName:"", displayName:"", email:"", phone:"", birthdate:"", addressLine:"", farmRole:"", paymentMethod:"GCash", paymentAccountName:"", paymentAccountNumber:"", emergencyContactName:"", emergencyContactPhone:"", password:"", confirmPassword:"" });
   const [avatarFile,setAvatarFile]=useState<File | null>(null);
   const [resumeFile,setResumeFile]=useState<File | null>(null);
@@ -383,6 +385,7 @@ export function SecureCaretakerSignupPage() {
   async function submit() {
     if (!form.fullName || !form.birthdate || !form.email || !form.phone || !avatarFile || !resumeFile || !form.password) { setMessage("Complete legal name, birthdate, email, phone, selfie, resume, and password."); return; }
     if (form.password !== form.confirmPassword) { setMessage("Password and confirmation do not match."); return; }
+    if (hasReservedSignupEmailDomain(form.email)) { setMessage(reservedSignupEmailMessage); return; }
     const resumeTypes=["image/jpeg","image/png","image/webp","application/pdf","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
     if (!resumeTypes.includes(resumeFile.type) || resumeFile.size > 10*1024*1024) { setMessage("Resume must be PDF, DOC, DOCX, JPG, PNG, or WebP and no larger than 10 MB."); return; }
     if (avatarFile && (!['image/jpeg','image/png','image/webp'].includes(avatarFile.type) || avatarFile.size > 5*1024*1024)) { setMessage("Selfie must be JPG, PNG, or WebP and no larger than 5 MB."); return; }
@@ -390,7 +393,6 @@ export function SecureCaretakerSignupPage() {
     setMessage("Creating login and preparing secure evidence upload...");
     try {
       const normalizedEmail=form.email.trim().toLowerCase();
-      const applicantClient=createIsolatedSupabaseClient();
       let auth=await applicantClient.auth.signUp({ email:normalizedEmail, password:form.password, options:{ data:{ full_name:form.fullName, display_name:form.displayName, birthdate:form.birthdate, phone:form.phone, role:"caretaker_applicant" } } });
       if (auth.error) {
         const text=auth.error.message.toLowerCase();
@@ -402,18 +404,19 @@ export function SecureCaretakerSignupPage() {
         throw new Error("Confirm the applicant email first, then return to Login and reopen the caretaker registration link to submit the application.");
       }
       setMessage("Login ready. Uploading private selfie and resume...");
-      const [resumePath,avatarPath]=await Promise.all([
-        uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"resume", file:resumeFile, maxBytes:10*1024*1024, allowedMimeTypes:resumeTypes }, applicantClient),
-        uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"avatar", file:avatarFile, maxBytes:5*1024*1024, allowedMimeTypes:["image/jpeg","image/png","image/webp"] }, applicantClient),
-      ]);
+      const resumePath=await uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"resume", file:resumeFile, maxBytes:10*1024*1024, allowedMimeTypes:resumeTypes }, applicantClient);
+      const avatarPath=await uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"avatar", file:avatarFile, maxBytes:5*1024*1024, allowedMimeTypes:["image/jpeg","image/png","image/webp"] }, applicantClient);
       await submitCaretakerApplication({ fullName:form.fullName, displayName:form.displayName, phone:form.phone, birthdate:form.birthdate || null, addressLine:form.addressLine, avatarUrl:avatarPath, resumeUrl:resumePath, farmRole:form.farmRole, paymentMethod:form.paymentMethod, paymentAccountName:form.paymentAccountName, paymentAccountNumber:form.paymentAccountNumber, emergencyContactName:form.emergencyContactName, emergencyContactPhone:form.emergencyContactPhone, workPinSet:false }, applicantClient);
       setMessage("Application submitted with private evidence. Admin will review it in Account Verification.");
     } catch (error:unknown) {
       const source=error as { message?:string; details?:string; hint?:string };
       const rawMessage=source.message || source.details || source.hint || "Unknown application error";
       const normalizedMessage=rawMessage.toLowerCase();
+      const signupMessage=signupFailureMessage(error);
       setMessage(
-        normalizedMessage.includes("already") || normalizedMessage.includes("registered") || normalizedMessage.includes("exists")
+        signupMessage === reservedSignupEmailMessage
+          ? signupMessage
+          : normalizedMessage.includes("already") || normalizedMessage.includes("registered") || normalizedMessage.includes("exists")
           ? "This email already has an account. Use the correct existing password or return to Login. No duplicate application was created."
           : normalizedMessage.includes("password") && (normalizedMessage.includes("short") || normalizedMessage.includes("weak") || normalizedMessage.includes("characters"))
             ? "Use a stronger password that meets the required minimum length, then submit again."

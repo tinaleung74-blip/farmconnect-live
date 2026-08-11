@@ -761,3 +761,51 @@ Purpose:
 Expected success output:
 
 - `customer_kyc_review_status_guard_ready = 1`
+
+## 053_customer_kyc_approved_state_reconciliation.sql
+
+Status: **APPLIED / OWNER VERIFIED**
+
+Purpose:
+
+- Keep repeat KYC decisions idempotent and reconcile already-approved KYC rows with the customer profile.
+
+## 054_customer_kyc_profile_approval_sync.sql
+
+Status: **APPLIED / OWNER VERIFIED**
+
+Purpose:
+
+- Synchronize approved KYC state to both `profiles.kyc_status` and `profiles.verification_status`.
+- Unlock customer withdrawal only after the approved profile state is visible.
+
+## 055_customer_signup_profile_guard.sql
+
+Status: **APPLIED / OWNER VERIFIED 2026-08-11**
+
+Purpose:
+
+- Create customer profiles transactionally from new `auth.users` records.
+- Keep every self-service signup fixed to the customer role.
+- Provide an idempotent authenticated recovery RPC for interrupted profile creation.
+
+Expected success output:
+
+- `signup_trigger = true`
+- `ensure_rpc = true`
+
+## 056_withdrawal_wallet_pin_guard.sql
+
+Status: **APPLIED / OWNER VERIFIED 2026-08-11**
+
+Purpose:
+
+- Keep payout-method setup available before KYC approval.
+- Require KYC and a server-verified Wallet PIN only when a withdrawal is submitted.
+- Remove the legacy withdrawal RPC signature that could submit without a PIN.
+- Persist failed PIN attempts and temporarily lock verification after five failures.
+
+Expected success output:
+
+- `guarded_signature = true`
+- `legacy_signature_removed = true`

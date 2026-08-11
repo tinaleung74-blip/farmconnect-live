@@ -1,6 +1,6 @@
 # FarmConnect Backend Wiring Status
 
-Last updated: 2026-07-31
+Last updated: 2026-08-11
 
 ## Rule
 
@@ -27,6 +27,20 @@ FarmConnect is not considered working when a page only changes UI state. A flow 
 
 - Wallet PIN:
   - `change_wallet_pin`
+  - server verification in `customer_submit_withdrawal_request_guarded`
+  - failed-attempt counter and temporary lock
+
+- Customer signup:
+  - `trg_create_customer_profile_after_auth_signup`
+  - `customer_ensure_signup_profile`
+  - customer-only role enforcement
+
+- Withdrawal:
+  - `customer_payout_methods`
+  - `withdrawal_requests`
+  - `customer_submit_withdrawal_request_guarded`
+  - KYC + Wallet PIN checked before wallet hold
+  - admin payout proof and customer confirmation
 
 - Farm Buy backend target:
   - `farm_products`
@@ -61,10 +75,6 @@ FarmConnect is not considered working when a page only changes UI state. A flow 
 - Cash-In:
   - UI/tutorial exists
   - needs real upload, OCR/check result, duplicate reference handling, admin queue
-
-- Withdraw:
-  - UI exists
-  - needs payout accounts table, withdrawal request table, admin release function, receipt upload
 
 - Savings / Locked FC:
   - UI exists
