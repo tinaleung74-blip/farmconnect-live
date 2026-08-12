@@ -759,6 +759,7 @@ export async function getAdminManualPaymentRequests() {
   const { data, error } = await supabase
     .from("manual_payment_requests")
     .select("*")
+    .in("status", ["for_review", "needs_info"])
     .order("created_at", { ascending: false })
     .limit(80);
 

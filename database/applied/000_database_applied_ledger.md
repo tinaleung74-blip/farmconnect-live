@@ -809,3 +809,18 @@ Expected success output:
 
 - `guarded_signature = true`
 - `legacy_signature_removed = true`
+
+## 057_withdrawal_completion_inbox_sync.sql
+
+Status: **APPLIED / OWNER VERIFIED 2026-08-12**
+
+Purpose:
+
+- Replace the actionable payout-confirmation Inbox card after the customer responds.
+- Show an explicit `Withdrawal Completed` notification after payout receipt confirmation.
+- Return payout problem reports to Admin without leaving stale confirmation instructions.
+- Reconcile the latest stale confirmation card for already-completed withdrawals without changing money or withdrawal state.
+
+Expected success output:
+
+- `completed_with_stale_confirmation_notice = 0`

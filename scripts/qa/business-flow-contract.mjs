@@ -224,6 +224,40 @@ async function main() {
     if (Number(refunded.wallet_balance) !== 500 || Number(refunded.wallet_on_hold) !== 0) fail("rejected withdrawal did not refund held funds");
     checks.push("Server-verified Wallet PIN, withdrawal retry, hold, decision retry, and rejection refund are balanced");
 
+    const completionReference = `E2E-WITHDRAWAL-COMPLETE-${Date.now()}`;
+    const completionWithdrawal = await rpc(customer, "customer_submit_withdrawal_request_guarded", {
+      p_amount: 100,
+      p_payout_method: "GCash",
+      p_payout_holder: "E2E Customer",
+      p_payout_account: "09000000001",
+      p_customer_note: "E2E completion notification",
+      p_idempotency_key: `e2e-withdrawal-complete-${Date.now()}`,
+      p_wallet_pin: withdrawalPin,
+    });
+    await rpc(admin, "admin_review_withdrawal_request_guarded", {
+      p_withdrawal_request_id: completionWithdrawal.id,
+      p_decision: "approved",
+      p_admin_note: "E2E payout sent",
+      p_admin_reference_number: completionReference,
+      p_admin_receipt_url: "e2e://withdrawal-payout-proof.png",
+      p_admin_receipt_file_name: "e2e-withdrawal-payout-proof.png",
+    });
+    await rpc(customer, "customer_confirm_withdrawal_result", {
+      p_withdrawal_request_id: completionWithdrawal.id,
+      p_received: true,
+      p_customer_note: "E2E customer confirmed payout received.",
+    });
+    const completedWithdrawal = await one(service.from("withdrawal_requests").select("status,customer_confirmed_at").eq("id", completionWithdrawal.id).single(), "completed withdrawal");
+    if (completedWithdrawal.status !== "completed" || !completedWithdrawal.customer_confirmed_at) fail("customer payout confirmation did not complete the withdrawal");
+    const completedWallet = await one(service.from("profiles").select("wallet_balance,wallet_on_hold").eq("id", profileId).single(), "completed withdrawal wallet");
+    if (Number(completedWallet.wallet_balance) !== 400 || Number(completedWallet.wallet_on_hold) !== 0) fail("completed withdrawal did not release the wallet hold correctly");
+    const completionNotice = await one(customer.from("inbox_items").select("id,title,body,is_read").eq("profile_id", profileId).eq("title", "Withdrawal Completed").order("created_at", { ascending: false }).limit(1).maybeSingle(), "withdrawal completion notice");
+    if (!completionNotice.body?.includes(completionReference) || completionNotice.is_read) fail("withdrawal completion notice is missing its reference or unread state");
+    const staleConfirmation = await customer.from("inbox_items").select("id").eq("profile_id", profileId).eq("title", "Confirm Withdrawal Payout").limit(1);
+    if (staleConfirmation.error) fail(`stale withdrawal notice check: ${staleConfirmation.error.message}`);
+    if ((staleConfirmation.data || []).length) fail("completed withdrawal left an actionable confirmation notice in Inbox");
+    checks.push("Withdrawal completion releases the hold and replaces the Inbox confirmation notice");
+
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(reportPath, `${JSON.stringify({ generatedAt: new Date().toISOString(), passed: true, checks }, null, 2)}\n`);
     console.log(`[KaFarm Business Flow] PASS (${checks.length} contracts)`);

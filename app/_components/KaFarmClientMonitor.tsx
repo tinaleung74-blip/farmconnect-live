@@ -538,6 +538,10 @@ export function KaFarmClientMonitor() {
         const clicked = (event.target as Element | null)?.closest<HTMLElement>("button, a, [role='button']");
         if (!clicked) return;
         if (clicked.closest("[data-kafarm-monitor-ignore='true']")) return;
+        // Opening the browser/OS file chooser does not change the route or DOM
+        // until a file is selected. Treat that native picker as the visible
+        // action instead of recording a false silent-click incident.
+        if (clicked.querySelector("input[type='file']")) return;
         const label = getElementLabel(clicked);
         if (!label || /close|back|cancel/i.test(label)) return;
         const pageContext = getPageContext();
