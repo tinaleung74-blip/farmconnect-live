@@ -26,6 +26,10 @@ export default function HomePage() {
   const [signupError, setSignupError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function syncSignupBirthdate(value: string) {
+    setSignupForm(current => ({ ...current, birthdate: value }));
+  }
+
   async function signIn() {
     if (!loginForm.email || !loginForm.password) {
       setMessage("Enter email and password first.");
@@ -215,21 +219,21 @@ export default function HomePage() {
                 <p className="mb-6 mt-2 text-[13px] leading-[1.5] text-[#6b7872]">{message}</p>
 
                 <div className="grid gap-0 min-[480px]:grid-cols-2 min-[480px]:gap-3">
-                  <Field label="First name"><input value={signupForm.firstName} onChange={e=>setSignupForm({...signupForm,firstName:e.target.value})} placeholder="First name" className={inputClass} /></Field>
-                  <Field label="Last name"><input value={signupForm.lastName} onChange={e=>setSignupForm({...signupForm,lastName:e.target.value})} placeholder="Last name" className={inputClass} /></Field>
+                  <Field label="First name"><input value={signupForm.firstName} onChange={e=>setSignupForm(current=>({...current,firstName:e.target.value}))} placeholder="First name" className={inputClass} /></Field>
+                  <Field label="Last name"><input value={signupForm.lastName} onChange={e=>setSignupForm(current=>({...current,lastName:e.target.value}))} placeholder="Last name" className={inputClass} /></Field>
                 </div>
-                <Field label="Birthdate"><input value={signupForm.birthdate} onChange={e=>setSignupForm({...signupForm,birthdate:e.target.value})} type="date" autoComplete="bday" className={inputClass} /></Field>
-                <Field label="Mobile number"><input value={signupForm.phone} onChange={e=>setSignupForm({...signupForm,phone:e.target.value})} type="tel" autoComplete="tel" placeholder="09XX XXX XXXX" className={inputClass} /></Field>
-                <Field label="Email address"><input value={signupForm.email} onChange={e=>{setSignupForm({...signupForm,email:e.target.value});setSignupError("");}} type="email" autoComplete="email" placeholder="name@domain.com" className={inputClass} /></Field>
+                <Field label="Birthdate"><input value={signupForm.birthdate} onChange={e=>syncSignupBirthdate(e.currentTarget.value)} onInput={e=>syncSignupBirthdate(e.currentTarget.value)} onBlur={e=>syncSignupBirthdate(e.currentTarget.value)} type="date" autoComplete="bday" className={inputClass} /></Field>
+                <Field label="Mobile number"><input value={signupForm.phone} onChange={e=>setSignupForm(current=>({...current,phone:e.target.value}))} type="tel" autoComplete="tel" placeholder="09XX XXX XXXX" className={inputClass} /></Field>
+                <Field label="Email address"><input value={signupForm.email} onChange={e=>{setSignupForm(current=>({...current,email:e.target.value}));setSignupError("");}} type="email" autoComplete="email" placeholder="name@domain.com" className={inputClass} /></Field>
                 <Field label="Create password">
                   <div className="relative">
-                    <input value={signupForm.password} onChange={e=>setSignupForm({...signupForm,password:e.target.value})} type={showSignupPassword ? "text" : "password"} autoComplete="new-password" placeholder="At least 8 characters" className={inputClass + " pr-[72px]"} />
+                    <input value={signupForm.password} onChange={e=>setSignupForm(current=>({...current,password:e.target.value}))} type={showSignupPassword ? "text" : "password"} autoComplete="new-password" placeholder="At least 8 characters" className={inputClass + " pr-[72px]"} />
                     <button type="button" onClick={() => setShowSignupPassword(value => !value)} className="absolute right-2 top-2 grid h-[35px] place-items-center rounded-[9px] bg-[#edf7f2] px-[9px] text-[10px] font-black text-[#075f48]">{showSignupPassword ? "Hide" : "Show"}</button>
                   </div>
                 </Field>
 
                 <label className="mt-[14px] flex items-start gap-2 text-[10px] leading-[1.45] text-[#63736c]">
-                  <input checked={signupForm.consent} onChange={e=>setSignupForm({...signupForm,consent:e.target.checked})} type="checkbox" className="mt-0.5 accent-[#075f48]" />
+                  <input checked={signupForm.consent} onChange={e=>setSignupForm(current=>({...current,consent:e.target.checked}))} type="checkbox" className="mt-0.5 accent-[#075f48]" />
                   <span>I agree to the <b className="text-[#075f48]">Terms of Use</b> and <b className="text-[#075f48]">Privacy Policy</b>.</span>
                 </label>
 

@@ -1,19 +1,13 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-12T03:20:32.907Z",
-  "sourceFingerprint": "42a0368c5acb34e5c055f2b61de05fcf915067e771e11690563df36abbfebd4f",
+  "generatedAt": "2026-08-12T04:10:39.911Z",
+  "sourceFingerprint": "aa87a77ee3689cde4f47823791f4175eb2bc871a3ea5e493cf0833c4b821ce36",
   "git": {
-    "commit": "883611db9b7c1cda7841e0bd46f58e446c3b5ad4",
+    "commit": "6be228becbcb5f18163916dc0723e3028088ea91",
     "branch": "agent/kyc-withdrawal-sync",
     "dirtyFiles": [
-      "app/_components/KaFarmClientMonitor.tsx",
-      "database/00_verify_applied_sql_status.sql",
-      "database/applied/000_database_applied_ledger.md",
-      "lib/farmconnect-data.ts",
-      "lib/farmconnect-v1.tsx",
+      "app/page.tsx",
       "lib/kafarm-system-snapshot.generated.json",
-      "scripts/qa/business-flow-contract.mjs",
-      "database/applied/057_withdrawal_completion_inbox_sync.sql",
       "database/applied/image.png"
     ]
   },
@@ -711,7 +705,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/page.tsx",
-      "line": 184,
+      "line": 188,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -722,7 +716,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/page.tsx",
-      "line": 193,
+      "line": 197,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -733,7 +727,7 @@
       "kind": "button",
       "label": "Sign Up",
       "file": "app/page.tsx",
-      "line": 196,
+      "line": 200,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -744,7 +738,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/page.tsx",
-      "line": 227,
+      "line": 231,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -755,7 +749,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/page.tsx",
-      "line": 238,
+      "line": 242,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -766,7 +760,7 @@
       "kind": "button",
       "label": "Sign In",
       "file": "app/page.tsx",
-      "line": 240,
+      "line": 244,
       "role": "system",
       "route": "/",
       "exportName": "HomePage",
@@ -2306,7 +2300,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "app/page.tsx",
-      "line": 45,
+      "line": 49,
       "role": "system",
       "route": "/",
       "exportName": "HomePage"
@@ -3063,7 +3057,7 @@
     },
     {
       "source": "app/page.tsx",
-      "line": 111,
+      "line": 115,
       "ownerRoute": "/",
       "target": "/customer/dashboard",
       "exists": true,
@@ -3071,7 +3065,7 @@
     },
     {
       "source": "app/page.tsx",
-      "line": 190,
+      "line": 194,
       "ownerRoute": "/",
       "target": "/forgot-password",
       "exists": true,
@@ -3079,7 +3073,7 @@
     },
     {
       "source": "app/page.tsx",
-      "line": 200,
+      "line": 204,
       "ownerRoute": "/",
       "target": "/view-farm",
       "exists": true,
@@ -4548,7 +4542,7 @@
     },
     {
       "file": "app/page.tsx",
-      "sha256": "4ffd1350242bc85d493818179b13834667eb23567bd707fe133a181e302ffff3"
+      "sha256": "8712197474275adfd8ec7e31293970e402d3d1db16906a3134963c3db06a7b2f"
     },
     {
       "file": "app/signup/page.tsx",
