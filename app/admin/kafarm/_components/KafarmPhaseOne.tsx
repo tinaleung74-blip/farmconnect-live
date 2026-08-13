@@ -645,11 +645,13 @@ export function KafarmCommandCenter() {
   const inventoryValidationReport = useMemo(() => databaseSnapshot ? [
     "KAFARM CODE ↔ SUPABASE PREDICTION AND VALIDATION",
     `Run at: ${new Date().toISOString()}`,
-    `Verdict: ${confirmedInventoryModules.length ? "CONFIRMED ISSUE" : predictedInventoryModules.length ? "PREDICTED — TEST TO VERIFY" : "CLEAR"}`,
+    `Verdict: ${confirmedInventoryModules.length ? "CONFIRMED ISSUE — NEWER EVIDENCE OVERRIDES LOCK" : "PASSED — LOCKED LIVE-TEST EVIDENCE"}`,
     `Code modules compared: ${inventoryComparison.length}`,
     `Predicted modules: ${predictedInventoryModules.length}`,
     `Confirmed modules: ${confirmedInventoryModules.length}`,
-    "Testing rule: Findings never disable an action. Run the normal workflow; runtime/API evidence confirms or clears the prediction.",
+    confirmedInventoryModules.length
+      ? "Testing rule: Investigate the new confirmed evidence. Do not repeat sensitive production transactions automatically."
+      : "Testing rule: No repeat production transaction is required. Predictions are inventory notes only because the covered end-to-end workflows already passed the locked live test.",
     "",
     ...inventoryComparison.flatMap((item) => [
       `[${item.status}] ${item.module}`,
@@ -657,7 +659,7 @@ export function KafarmCommandCenter() {
       `Predicted/unverified: ${item.predictedObjects.length ? item.predictedObjects.join(", ") : "None"}`,
       `Confirmed missing: ${item.confirmedMissingObjects.length ? item.confirmedMissingObjects.join(", ") : "None"}`,
       `Runtime confirmation: ${item.activeErrors.length ? item.activeErrors.map((error) => `${error.status ? `HTTP ${error.status} ` : ""}${error.title} @ ${error.route}`).join(" | ") : "None"}`,
-      item.status === "CONFIRMED" ? "Result: Exact live metadata or runtime evidence confirmed the issue; testing remains available." : item.status === "PREDICTED" ? "Result: Possible issue only; run the affected workflow to confirm or clear it." : "Result: No issue found from the current inventory and runtime evidence.",
+      item.status === "CONFIRMED" ? "Result: Exact live metadata or runtime evidence confirmed a newer issue." : item.status === "PREDICTED" ? "Result: Inventory note only. The locked live test passed the covered workflow; do not repeat production transactions unless relevant code changes or new runtime evidence appears." : "Result: No issue found from the current inventory and runtime evidence.",
       "",
     ]),
   ].join("\n") : "KAFARM CODE ↔ SUPABASE PREDICTION AND VALIDATION\nNot run yet.", [databaseSnapshot, inventoryComparison, confirmedInventoryModules, predictedInventoryModules]);
@@ -666,7 +668,7 @@ export function KafarmCommandCenter() {
     [selectedTool, databaseSnapshotFindings, incidentToolFindings],
   );
   const actionProcedure = useMemo(
-    () => `${inventoryValidationReport}\n\nLOCKED LIVE-TEST VERDICT HISTORY\nLock ID: ${lockedLiveTestVerdict.lockId}\nTested at: ${lockedLiveTestVerdict.testedAt}\nEnvironment: ${lockedLiveTestVerdict.environment}\nVerdict: ${lockedLiveTestVerdict.verdict}\nReviewer 1: ${lockedLiveTestVerdict.buddyReviewer}\nReviewer 2: ${lockedLiveTestVerdict.ownerReviewer}\nPassed workflows:\n${lockedLiveTestVerdict.workflows.map((item) => `- ${item}`).join("\n")}\nLock rule: ${lockedLiveTestVerdict.rule}\n\n${selectedToolConfig ? buildWholeAppInvestigationReport(selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote) : "Whole-app report is generated after Run."}`,
+    () => `${inventoryValidationReport}\n\nLOCKED LIVE-TEST VERDICT HISTORY\nLock ID: ${lockedLiveTestVerdict.lockId}\nTested at: ${lockedLiveTestVerdict.testedAt}\nEnvironment: ${lockedLiveTestVerdict.environment}\nVerdict: ${lockedLiveTestVerdict.verdict}\nReviewer 1: ${lockedLiveTestVerdict.buddyReviewer}\nReviewer 2: ${lockedLiveTestVerdict.ownerReviewer}\nPassed workflows:\n${lockedLiveTestVerdict.workflows.map((item) => `- ${item}`).join("\n")}\nLock rule: ${lockedLiveTestVerdict.rule}\n\nCURRENT DISPOSITION\n${confirmedInventoryModules.length ? "A newer confirmed issue exists. Send this report to Buddy for scoped investigation before relying on the affected workflow." : "GOOD: The locked production live-test baseline remains valid. No new confirmed blocker was detected, and no production transaction needs to be repeated."}`,
     [inventoryValidationReport, selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote],
   );
   const simpleExplanation = useMemo(() => {
@@ -707,7 +709,7 @@ export function KafarmCommandCenter() {
       const predictions = predictedInventoryModules.flatMap((item) => item.predictedObjects.map((name) => `${item.module}: ${name}`)).slice(0, 6);
       return [
         "QUICK EXPLANATION",
-        `May ${predictedInventoryModules.length} posibleng problema sa ${names}, pero hindi pa ito totoong error. Ituloy ang normal test sa affected workflow.`,
+        `May ${predictedInventoryModules.length} inventory note sa ${names}, pero hindi ito totoong error at walang bagong confirmed blocker. Hindi kailangang ulitin ang production transactions dahil pumasa na ang covered workflows sa locked live test.`,
         "",
         "SAVED LIVE-TEST HISTORY",
         `${lockedLiveTestVerdict.lockId}: ${lockedLiveTestVerdict.verdict}`,
@@ -715,7 +717,7 @@ export function KafarmCommandCenter() {
         "Pumasa na ang listed end-to-end workflows; ang prediction ay hindi automatic na nagpapawalang-bisa sa lock hangga't walang confirmed error.",
         "",
         "WHY KAFARM SAYS THIS",
-        "May code requirement na hindi pa sapat ang live inventory evidence para ma-verify. Prediction lang ito hangga't walang matching runtime/API failure o authoritative missing-object result.",
+        "May code requirement na hindi kayang patunayan ng kasalukuyang inventory snapshot nang mag-isa. Nanatiling valid ang PASSED baseline hangga't walang relevant code change, matching runtime/API failure, o authoritative missing-object result.",
         ...predictions.map((line) => `• Needs verification: ${line}`),
       ].join("\n");
     }
@@ -1064,14 +1066,19 @@ export function KafarmCommandCenter() {
                   <p className="text-sm font-bold text-[#637064]">Pindutin ang Run. Lalabas ang dalawang report sa ibaba.</p>
                 </div>
               </div>
-              <button
-                type="button"
-                data-kafarm-monitor-ignore="true"
-                onClick={runSelectedEngine}
-                className="rounded-2xl bg-[#f8c51c] px-8 py-4 text-base font-black text-[#14241b] shadow-lg transition hover:-translate-y-0.5"
-              >
-                Run
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  data-kafarm-monitor-ignore="true"
+                  onClick={runSelectedEngine}
+                  className="rounded-2xl bg-[#f8c51c] px-8 py-4 text-base font-black text-[#14241b] shadow-lg transition hover:-translate-y-0.5"
+                >
+                  Run
+                </button>
+                <Link href="/admin/kafarm/whole-app-reader" className="rounded-2xl bg-[#163d8f] px-5 py-4 text-xs font-black text-white shadow-md">Whole-App Reader V2</Link>
+                <Link href="/admin/kafarm/troubleshooting" className="rounded-2xl bg-[#9a6200] px-5 py-4 text-xs font-black text-white shadow-md">Troubleshooting</Link>
+                <Link href="/admin" className="rounded-2xl bg-[#0f3f2c] px-5 py-4 text-xs font-black text-white shadow-md">Admin Home</Link>
+              </div>
             </div>
             <p className="mt-4 rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] px-4 py-3 text-xs font-bold text-[#637064]">{databaseReaderStatus}</p>
           </section>

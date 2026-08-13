@@ -1,13 +1,15 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-12T04:10:39.911Z",
-  "sourceFingerprint": "aa87a77ee3689cde4f47823791f4175eb2bc871a3ea5e493cf0833c4b821ce36",
+  "generatedAt": "2026-08-13T12:59:04.511Z",
+  "sourceFingerprint": "34164c1b77d7c6fd520acebe9a7162951d1cf34172d28b1a500c1609586b46b5",
   "git": {
-    "commit": "6be228becbcb5f18163916dc0723e3028088ea91",
+    "commit": "e645c7b26ed347d192f55ff2250ef1bd915e2d4c",
     "branch": "agent/kyc-withdrawal-sync",
     "dirtyFiles": [
-      "app/page.tsx",
+      "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "lib/farmconnect-unified-account-verification.tsx",
       "lib/kafarm-system-snapshot.generated.json",
+      "app/admin/kafarm/troubleshooting/",
       "database/applied/image.png"
     ]
   },
@@ -39,13 +41,13 @@
     ]
   },
   "counts": {
-    "routes": 106,
+    "routes": 107,
     "apiEndpoints": 1,
     "clientStorageKeys": 13,
-    "activeFiles": 120,
+    "activeFiles": 121,
     "unreachableFiles": 2,
-    "actions": 145,
-    "backendReferences": 89,
+    "actions": 149,
+    "backendReferences": 93,
     "findings": 0
   },
   "routes": [
@@ -232,6 +234,11 @@
     {
       "route": "/admin/kafarm/system-health",
       "file": "app/admin/kafarm/system-health/page.tsx",
+      "role": "admin"
+    },
+    {
+      "route": "/admin/kafarm/troubleshooting",
+      "file": "app/admin/kafarm/troubleshooting/page.tsx",
       "role": "admin"
     },
     {
@@ -595,7 +602,7 @@
       "kind": "button",
       "label": "Logout / Switch Account",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 807,
+      "line": 1044,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter",
@@ -606,7 +613,7 @@
       "kind": "button",
       "label": "{incident.http_status ? HTTP : null} {incident.email ? : null}",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1738,
+      "line": 2102,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -617,7 +624,7 @@
       "kind": "button",
       "label": "Show Read-Only Checker SQL",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1801,
+      "line": 2165,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -628,7 +635,7 @@
       "kind": "button",
       "label": "Generate SQL Audit Report",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1802,
+      "line": 2166,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -639,7 +646,7 @@
       "kind": "button",
       "label": "Clear",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1803,
+      "line": 2167,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -650,7 +657,7 @@
       "kind": "button",
       "label": "Missing / unclear",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1808,
+      "line": 2172,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -661,7 +668,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1840,
+      "line": 2204,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -672,7 +679,7 @@
       "kind": "button",
       "label": "Generate Report",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1853,
+      "line": 2217,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -683,7 +690,7 @@
       "kind": "button",
       "label": "Clear",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1854,
+      "line": 2218,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -694,10 +701,54 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1938,
+      "line": 2302,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "kind": "button",
+      "label": "Unlabeled button",
+      "file": "app/admin/kafarm/troubleshooting/page.tsx",
+      "line": 92,
+      "role": "admin",
+      "route": "/admin/kafarm/troubleshooting",
+      "exportName": "TroubleshootingPage",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "kind": "button",
+      "label": "·",
+      "file": "app/admin/kafarm/troubleshooting/page.tsx",
+      "line": 97,
+      "role": "admin",
+      "route": "/admin/kafarm/troubleshooting",
+      "exportName": "TroubleshootingPage",
+      "wiring": "handled-unproven",
+      "handler": "() => { setSelectedId(row.id); setPrepared(false); }} className={`w-full rounded-2xl border p-3 text-left ${selected.id "
+    },
+    {
+      "kind": "button",
+      "label": "Prepare Safe Recovery",
+      "file": "app/admin/kafarm/troubleshooting/page.tsx",
+      "line": 101,
+      "role": "admin",
+      "route": "/admin/kafarm/troubleshooting",
+      "exportName": "TroubleshootingPage",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "kind": "button",
+      "label": "Unlabeled button",
+      "file": "app/admin/kafarm/troubleshooting/page.tsx",
+      "line": 102,
+      "role": "admin",
+      "route": "/admin/kafarm/troubleshooting",
+      "exportName": "TroubleshootingPage",
       "wiring": "handled-unproven",
       "handler": null
     },
@@ -771,7 +822,7 @@
       "kind": "button",
       "label": "Logout",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 154,
+      "line": 163,
       "role": "system",
       "route": "lib/farmconnect-unified-account-verification.tsx",
       "exportName": null,
@@ -782,7 +833,7 @@
       "kind": "button",
       "label": "Check Again",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 340,
+      "line": 349,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -793,7 +844,7 @@
       "kind": "button",
       "label": "Verification Queue Waiting for a real admin decision.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 349,
+      "line": 358,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -804,7 +855,7 @@
       "kind": "button",
       "label": "Verified Accounts Approved customers and caretakers.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 349,
+      "line": 358,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -815,7 +866,7 @@
       "kind": "button",
       "label": "Customers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 351,
+      "line": 360,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -826,7 +877,7 @@
       "kind": "button",
       "label": "Caretakers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 351,
+      "line": 360,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -837,7 +888,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 351,
+      "line": 360,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -848,7 +899,7 @@
       "kind": "button",
       "label": "Open",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 352,
+      "line": 361,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -859,7 +910,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 353,
+      "line": 362,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -870,7 +921,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 353,
+      "line": 362,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -881,7 +932,7 @@
       "kind": "button",
       "label": "Close",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 355,
+      "line": 364,
       "role": "admin",
       "route": "/admin/account-verification",
       "exportName": "UnifiedAccountVerificationPage",
@@ -892,7 +943,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 429,
+      "line": 438,
       "role": "caretaker",
       "route": "/caretaker/signup",
       "exportName": "SecureCaretakerSignupPage",
@@ -2208,9 +2259,9 @@
     },
     {
       "kind": "table",
-      "name": "profiles",
+      "name": "admin_kafarm_incident_queue",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 594,
+      "line": 768,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter"
@@ -2219,7 +2270,16 @@
       "kind": "table",
       "name": "profiles",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 680,
+      "line": 809,
+      "role": "admin",
+      "route": "/admin/kafarm",
+      "exportName": "KafarmCommandCenter"
+    },
+    {
+      "kind": "table",
+      "name": "profiles",
+      "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "line": 895,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter"
@@ -2228,7 +2288,16 @@
       "kind": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1663,
+      "line": 924,
+      "role": "admin",
+      "route": "/admin/kafarm",
+      "exportName": "KafarmCommandCenter"
+    },
+    {
+      "kind": "table",
+      "name": "admin_kafarm_incident_queue",
+      "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "line": 2027,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage"
@@ -2237,10 +2306,28 @@
       "kind": "rpc",
       "name": "kafarm_database_health_snapshot",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 706,
+      "line": 922,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter"
+    },
+    {
+      "kind": "table",
+      "name": "profiles",
+      "file": "app/admin/kafarm/troubleshooting/page.tsx",
+      "line": 77,
+      "role": "admin",
+      "route": "/admin/kafarm/troubleshooting",
+      "exportName": "TroubleshootingPage"
+    },
+    {
+      "kind": "table",
+      "name": "admin_kafarm_incident_queue",
+      "file": "app/admin/kafarm/troubleshooting/page.tsx",
+      "line": 79,
+      "role": "admin",
+      "route": "/admin/kafarm/troubleshooting",
+      "exportName": "TroubleshootingPage"
     },
     {
       "kind": "api",
@@ -2939,7 +3026,7 @@
       "kind": "rpc",
       "name": "admin_session_guard_status",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 107,
+      "line": 116,
       "role": "system",
       "route": "lib/farmconnect-unified-account-verification.tsx",
       "exportName": null
@@ -2993,7 +3080,7 @@
   "routeReferences": [
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 625,
+      "line": 840,
       "ownerRoute": "/admin/kafarm",
       "target": "/",
       "exists": true,
@@ -3001,7 +3088,7 @@
     },
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 806,
+      "line": 1043,
       "ownerRoute": "/admin/kafarm",
       "target": "/",
       "exists": true,
@@ -3009,7 +3096,7 @@
     },
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 831,
+      "line": 1078,
       "ownerRoute": "/admin/kafarm",
       "target": "/admin/kafarm/whole-app-reader",
       "exists": true,
@@ -3017,7 +3104,15 @@
     },
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 832,
+      "line": 1079,
+      "ownerRoute": "/admin/kafarm",
+      "target": "/admin/kafarm/troubleshooting",
+      "exists": true,
+      "exportName": "KafarmCommandCenter"
+    },
+    {
+      "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "line": 1080,
       "ownerRoute": "/admin/kafarm",
       "target": "/admin",
       "exists": true,
@@ -3025,11 +3120,43 @@
     },
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1695,
+      "line": 1130,
+      "ownerRoute": "/admin/kafarm",
+      "target": "/admin/kafarm/whole-app-reader",
+      "exists": true,
+      "exportName": "KafarmCommandCenter"
+    },
+    {
+      "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "line": 1131,
+      "ownerRoute": "/admin/kafarm",
+      "target": "/admin",
+      "exists": true,
+      "exportName": "KafarmCommandCenter"
+    },
+    {
+      "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "line": 2059,
       "ownerRoute": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "target": "/admin/kafarm",
       "exists": true,
       "exportName": "KafarmFocusPage"
+    },
+    {
+      "source": "app/admin/kafarm/troubleshooting/page.tsx",
+      "line": 92,
+      "ownerRoute": "/admin/kafarm/troubleshooting",
+      "target": "/admin/kafarm",
+      "exists": true,
+      "exportName": "TroubleshootingPage"
+    },
+    {
+      "source": "app/admin/kafarm/troubleshooting/page.tsx",
+      "line": 92,
+      "ownerRoute": "/admin/kafarm/troubleshooting",
+      "target": "/admin",
+      "exists": true,
+      "exportName": "TroubleshootingPage"
     },
     {
       "source": "app/admin/kafarm/whole-app-reader/page.tsx",
@@ -3105,7 +3232,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 146,
+      "line": 155,
       "ownerRoute": "lib/farmconnect-unified-account-verification.tsx",
       "target": "/admin/login",
       "exists": true,
@@ -3113,7 +3240,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 152,
+      "line": 161,
       "ownerRoute": "lib/farmconnect-unified-account-verification.tsx",
       "target": "/admin",
       "exists": true,
@@ -3121,7 +3248,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 154,
+      "line": 163,
       "ownerRoute": "lib/farmconnect-unified-account-verification.tsx",
       "target": "/admin/kafarm",
       "exists": true,
@@ -3129,7 +3256,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 340,
+      "line": 349,
       "ownerRoute": "/admin/account-verification",
       "target": "/admin/login",
       "exists": true,
@@ -3137,7 +3264,7 @@
     },
     {
       "source": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 429,
+      "line": 438,
       "ownerRoute": "/caretaker/signup",
       "target": "/login",
       "exists": true,
@@ -3614,7 +3741,7 @@
       "operation": "getItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 551,
+      "line": 745,
       "role": "admin",
       "route": "/admin/kafarm"
     },
@@ -3623,7 +3750,7 @@
       "operation": "setItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 556,
+      "line": 750,
       "role": "admin",
       "route": "/admin/kafarm"
     },
@@ -3632,7 +3759,7 @@
       "operation": "removeItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 757,
+      "line": 993,
       "role": "admin",
       "route": "/admin/kafarm"
     },
@@ -3641,7 +3768,7 @@
       "operation": "removeItem",
       "key": "farmconnect_kafarm_incident_throttle",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 758,
+      "line": 994,
       "role": "admin",
       "route": "/admin/kafarm"
     },
@@ -3650,7 +3777,7 @@
       "operation": "getItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1644,
+      "line": 2008,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health"
     },
@@ -3659,7 +3786,7 @@
       "operation": "setItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1649,
+      "line": 2013,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health"
     },
@@ -4210,7 +4337,7 @@
     },
     {
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "sha256": "cf70a77086bb822b84d8f15cfaf2107985cb142914a0dafc1a2c2ed5172ffaab"
+      "sha256": "fb014b2dc8922f0e645c3b68402f113719c86985ff1d65e7d0530246288ab9dc"
     },
     {
       "file": "app/admin/kafarm/approvals/page.tsx",
@@ -4255,6 +4382,10 @@
     {
       "file": "app/admin/kafarm/system-health/page.tsx",
       "sha256": "c66b034ecd11b7cf5a57927cab390c067631ac7e1faa806f599fa93c9aa6042d"
+    },
+    {
+      "file": "app/admin/kafarm/troubleshooting/page.tsx",
+      "sha256": "1af85c2e0b040c3e2aa0c34a6d2389b6dcdd70aab4be204d9e898bd3f449ba45"
     },
     {
       "file": "app/admin/kafarm/whole-app-reader/page.tsx",
@@ -4566,7 +4697,7 @@
     },
     {
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "sha256": "515d9c89b42058a5413920d4444a164025ebacdfc9fd902a5df4ad244822e3fb"
+      "sha256": "3cf79393a2eb8236038e3bb395f33c8bd1324e314baed0a09765fd51d453ffad"
     },
     {
       "file": "lib/farmconnect-v1.tsx",
