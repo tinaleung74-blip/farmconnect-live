@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { createClient } from "@supabase/supabase-js";
+import { assertIsolatedSupabaseUrl } from "./isolated-supabase-guard.mjs";
 
 const root = process.cwd();
 const outputDir = path.join(root, "test-results", "kafarm");
@@ -35,15 +36,36 @@ async function rpc(client, name, args = {}) {
   if (result.error) fail(`${name}: ${result.error.message}`);
   return result.data;
 }
+async function expectRpcError(client, name, args, expectedMessage) {
+  const result = await client.rpc(name, args);
+  if (!result.error) fail(`${name}: expected ${expectedMessage}, but the call succeeded`);
+  if (!String(result.error.message || "").includes(expectedMessage)) {
+    fail(`${name}: expected ${expectedMessage}, received ${result.error.message}`);
+  }
+}
 async function one(query, label) {
   const result = await query;
   if (result.error) fail(`${label}: ${result.error.message}`);
   if (!result.data) fail(`${label}: record not found`);
   return result.data;
 }
+async function noError(query, label) {
+  const result = await query;
+  if (result.error) fail(`${label}: ${result.error.message}`);
+  return result.data;
+}
 
 async function cleanup(service, profileId, caretakerId) {
   if (!profileId) return;
+  await service.from("care_plan_inventory_usage").delete().eq("profile_id", profileId);
+  const planRows = await service.from("rooster_care_plans").select("id").eq("profile_id", profileId);
+  const planIds = (planRows.data || []).map(row => row.id);
+  if (planIds.length) {
+    await service.from("care_plan_events").delete().in("care_plan_id", planIds);
+    await service.from("rooster_daily_missions").delete().in("care_plan_id", planIds);
+    await service.from("care_plan_supply_requirements").delete().in("care_plan_id", planIds);
+    await service.from("rooster_care_plans").delete().in("id", planIds);
+  }
   const saleRows = await service.from("rooster_sale_requests").select("id").eq("profile_id", profileId);
   const saleIds = (saleRows.data || []).map(row => row.id);
   if (saleIds.length) await service.from("rooster_sale_events").delete().in("sale_request_id", saleIds);
@@ -73,6 +95,7 @@ async function main() {
   if (env.E2E_ALLOW_DB_WRITES !== "true") fail("Set E2E_ALLOW_DB_WRITES=true for the isolated business-flow test.");
   if (!url || !anonKey || !serviceKey || !credentials) fail("Supabase configuration and temporary E2E credentials are required.");
   if (!env.E2E_ADMIN_EMAIL || !env.E2E_ADMIN_PASSWORD) fail("E2E admin credentials are required.");
+  assertIsolatedSupabaseUrl(url, env);
 
   const service = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const customer = appClient();
@@ -117,6 +140,196 @@ async function main() {
     if (!duplicateApproval.duplicate) fail("repeated admin approval was not handled idempotently");
     const animal = await one(customer.from("customer_animals").select("id,animal_name,animal_code,status").eq("profile_id", profileId).eq("source_product_name", "E2E Breed Chick").single(), "approved Farm Buy ownership");
     checks.push("Admin payment approval creates ownership exactly once");
+
+    const feedItem = await one(service.from("customer_inventory_items").insert({
+      profile_id: profileId,
+      product_id: `e2e-care-feed-${Date.now()}`,
+      product_name: "E2E Care Plan Feed",
+      category: "Feeds",
+      unit_label: "per kg",
+      unit_price: 80,
+      quantity: 100,
+      product_type: "feed",
+      inventory_metadata: { source: "isolated_e2e_fixture" },
+    }).select("id,quantity").single(), "Care Plan feed fixture");
+
+    const cancelledDraftPlanId = await rpc(customer, "customer_request_care_plan", {
+      p_customer_animal_id: animal.id,
+      p_duration_days: 30,
+      p_requested_start_day: 16,
+    });
+    await rpc(customer, "customer_cancel_care_plan", {
+      p_care_plan_id: cancelledDraftPlanId,
+      p_reason: "E2E unpaid cancellation",
+    });
+    const cancelledDraftPlan = await one(customer.from("rooster_care_plans").select("status,refund_due_amount").eq("id", cancelledDraftPlanId).single(), "cancelled unpaid Care Plan");
+    if (cancelledDraftPlan.status !== "cancelled" || Number(cancelledDraftPlan.refund_due_amount) !== 0) fail("unpaid Care Plan cancellation was not safe");
+
+    const expiredPlanId = await rpc(customer, "customer_request_care_plan", {
+      p_customer_animal_id: animal.id,
+      p_duration_days: 30,
+      p_requested_start_day: 16,
+    });
+    const expiredQuote = await rpc(admin, "admin_prepare_care_plan_quote_v2", {
+      p_care_plan_id: expiredPlanId,
+      p_caretaker_id: caretakerId,
+      p_feed_inventory_item_id: feedItem.id,
+      p_feed_product_id: null,
+      p_kg_per_inventory_unit: 1,
+      p_unquantified_day_feed_grams: 0,
+      p_labor_price: 1,
+      p_service_fee: 1,
+      p_quote_note: "E2E quote-expiry guard",
+    });
+    await noError(service.from("rooster_care_plans").update({ quote_expires_at: new Date(Date.now() - 60_000).toISOString() }).eq("id", expiredPlanId), "expire Care Plan quote fixture");
+    await expectRpcError(customer, "customer_submit_manual_payment_guarded", {
+      p_source_type: "care_plan",
+      p_source_ref: expiredPlanId,
+      p_amount_expected: Number(expiredQuote.package_total),
+      p_summary: { source: "Expired E2E Care Plan", care_plan_id: expiredPlanId, total: expiredQuote.package_total },
+      p_payment_method: "E2E",
+      p_receiver_account: "FarmConnect E2E",
+      p_sender_name: "E2E Customer",
+      p_reference_number: `E2E-EXPIRED-${Date.now()}`,
+      p_receipt_image_url: "e2e://expired-care-plan-payment.png",
+      p_idempotency_key: `e2e-expired-care-plan-${Date.now()}`,
+    }, "CARE_PLAN_QUOTE_EXPIRED_REQUOTE_REQUIRED");
+    await rpc(customer, "customer_cancel_care_plan", {
+      p_care_plan_id: expiredPlanId,
+      p_reason: "E2E expired quote closed without payment",
+    });
+    checks.push("Expired Care Plan quote is rejected before payment creation");
+
+    const carePlanId = await rpc(customer, "customer_request_care_plan", {
+      p_customer_animal_id: animal.id,
+      p_duration_days: 30,
+      p_requested_start_day: 16,
+    });
+    const quote = await rpc(admin, "admin_prepare_care_plan_quote_v2", {
+      p_care_plan_id: carePlanId,
+      p_caretaker_id: caretakerId,
+      p_feed_inventory_item_id: feedItem.id,
+      p_feed_product_id: null,
+      p_kg_per_inventory_unit: 1,
+      p_unquantified_day_feed_grams: 0,
+      p_labor_price: 300,
+      p_service_fee: 50,
+      p_quote_note: "E2E verified 30-day package",
+    });
+    if (Number(quote.feed_required_kg) <= 0 || Number(quote.package_total) !== 350) fail("Care Plan quote was not server-computed and locked");
+    await expectRpcError(customer, "customer_submit_manual_payment_guarded", {
+      p_source_type: "care_plan",
+      p_source_ref: carePlanId,
+      p_amount_expected: Number(quote.package_total) + 0.01,
+      p_summary: { source: "Mismatched E2E Care Plan", care_plan_id: carePlanId, total: Number(quote.package_total) + 0.01 },
+      p_payment_method: "E2E",
+      p_receiver_account: "FarmConnect E2E",
+      p_sender_name: "E2E Customer",
+      p_reference_number: `E2E-MISMATCH-${Date.now()}`,
+      p_receipt_image_url: "e2e://mismatched-care-plan-payment.png",
+      p_idempotency_key: `e2e-mismatched-care-plan-${Date.now()}`,
+    }, "CARE_PLAN_PAYMENT_AMOUNT_MISMATCH");
+    const carePayment = await rpc(customer, "customer_submit_manual_payment_guarded", {
+      p_source_type: "care_plan",
+      p_source_ref: carePlanId,
+      p_amount_expected: Number(quote.package_total),
+      p_summary: { source: "Care Plan", care_plan_id: carePlanId, duration_days: 30, feed_required_kg: quote.feed_required_kg, total: quote.package_total },
+      p_payment_method: "E2E",
+      p_receiver_account: "FarmConnect E2E",
+      p_sender_name: "E2E Customer",
+      p_reference_number: `E2E-CARE-PLAN-${Date.now()}`,
+      p_receipt_image_url: "e2e://care-plan-payment.png",
+      p_idempotency_key: `e2e-care-plan-payment-${Date.now()}`,
+    });
+    const submittedPlan = await one(customer.from("rooster_care_plans").select("status,payment_request_id").eq("id", carePlanId).single(), "submitted Care Plan payment");
+    if (submittedPlan.status !== "payment_submitted" || submittedPlan.payment_request_id !== carePayment.id) fail("Care Plan payment did not bind to the exact plan");
+    await rpc(admin, "admin_review_manual_payment_guarded", { p_payment_request_id: carePayment.id, p_decision: "approved", p_admin_note: "E2E Care Plan payment approved" });
+    const paidPlan = await one(admin.from("rooster_care_plans").select("status").eq("id", carePlanId).single(), "paid Care Plan");
+    if (paidPlan.status !== "paid_pending_setup") fail(`Care Plan payment produced ${paidPlan.status}`);
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    await rpc(admin, "admin_activate_care_plan", { p_care_plan_id: carePlanId, p_start_date: tomorrow });
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+    await noError(service.from("rooster_care_plans").update({ start_date: today, end_date: new Date(Date.now() + 29 * 86400000).toISOString().slice(0, 10) }).eq("id", carePlanId), "move Care Plan into scheduler test window");
+    const generated = await rpc(admin, "generate_due_care_plan_missions", { p_run_date: today });
+    if (Number(generated.created) !== 1) fail("Care Plan daily scheduler did not create exactly one idempotent mission");
+    const generatedAgain = await rpc(admin, "generate_due_care_plan_missions", { p_run_date: today });
+    if (Number(generatedAgain.created) !== 0) fail("Care Plan scheduler retry created a duplicate mission");
+    const missionTask = await one(caretaker.from("caretaker_tasks").select("id,daily_mission_id,task_metadata,status").eq("care_plan_id", carePlanId).single(), "caretaker daily mission visibility");
+    const template = await one(service.from("rooster_daily_missions").select("mission_template_id").eq("id", missionTask.daily_mission_id).single(), "daily mission template link");
+    const catalog = await one(service.from("care_mission_templates").select("operations_checklist,housing_checklist,supplement_checklist,vaccine_checklist,health_checklist").eq("id", template.mission_template_id).single(), "daily mission catalog record");
+    const checked = rows => (rows || []).map(label => ({ label, checked: true }));
+    const missionProofId = await rpc(caretaker, "caretaker_submit_mission_proof", {
+      p_task_id: missionTask.id,
+      p_proof_urls: ["e2e://care-plan-mission-proof.png"],
+      p_free_note: "E2E complete daily Care Plan proof",
+      p_qr_verified: false,
+      p_serial_exception: true,
+      p_health_status: "pass",
+      p_checklist_results: {
+        operations: checked(catalog.operations_checklist),
+        housing: checked(catalog.housing_checklist),
+        supplements: checked(catalog.supplement_checklist),
+        vaccines: checked(catalog.vaccine_checklist),
+        health: checked(catalog.health_checklist),
+      },
+      p_inventory_usage: [{ inventory_item_id: feedItem.id, quantity: 0.1, unit: "kg" }],
+    });
+    await rpc(admin, "admin_review_mission_proof_guarded", { p_proof_id: missionProofId, p_decision: "approved", p_admin_note: "E2E full welfare evidence approved" });
+    const missionApprovalRetry = await rpc(admin, "admin_review_mission_proof_guarded", { p_proof_id: missionProofId, p_decision: "approved", p_admin_note: "E2E duplicate review" });
+    if (!missionApprovalRetry.duplicate) fail("Care Plan proof retry was not idempotent");
+    const remainingFeed = await one(customer.from("customer_inventory_items").select("quantity").eq("id", feedItem.id).single(), "post-mission exact feed balance");
+    if (Number(remainingFeed.quantity) !== 99.9) fail(`Care Plan feed balance was ${remainingFeed.quantity}, expected 99.9`);
+
+    const tomorrowMissionDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const secondGenerated = await rpc(admin, "generate_due_care_plan_missions", { p_run_date: tomorrowMissionDate });
+    if (Number(secondGenerated.created) !== 1) fail("Care Plan scheduler did not create the next daily mission exactly once");
+    const emergencyTask = await one(caretaker.from("caretaker_tasks").select("id,daily_mission_id,status").eq("care_plan_id", carePlanId).eq("status", "active").single(), "caretaker emergency mission visibility");
+    const emergencyProofId = await rpc(caretaker, "caretaker_submit_mission_proof", {
+      p_task_id: emergencyTask.id,
+      p_proof_urls: ["e2e://care-plan-watch-proof.png"],
+      p_free_note: "E2E WATCH status escalated without hiding incomplete care work",
+      p_qr_verified: false,
+      p_serial_exception: true,
+      p_health_status: "watch",
+      p_checklist_results: { operations: [], housing: [], supplements: [], vaccines: [], health: [] },
+      p_inventory_usage: [],
+    });
+    await expectRpcError(admin, "admin_review_mission_proof_guarded", {
+      p_proof_id: emergencyProofId,
+      p_decision: "approved",
+      p_admin_note: "E2E approval must be blocked",
+    }, "HEALTH_ESCALATION_CANNOT_BE_APPROVED");
+    await rpc(admin, "admin_review_mission_proof_guarded", {
+      p_proof_id: emergencyProofId,
+      p_decision: "backjob",
+      p_admin_note: "Health WATCH requires documented follow-up before approval",
+    });
+    const emergencyMission = await one(service.from("rooster_daily_missions").select("status").eq("id", emergencyTask.daily_mission_id).single(), "health escalation mission state");
+    if (emergencyMission.status !== "backjob") fail("WATCH mission was not preserved as a backjob");
+    const feedAfterEmergency = await one(customer.from("customer_inventory_items").select("quantity").eq("id", feedItem.id).single(), "emergency proof feed balance");
+    if (Number(feedAfterEmergency.quantity) !== 99.9) fail("WATCH proof changed inventory before an approvable PASS mission");
+
+    const beforePause = await one(service.from("rooster_care_plans").select("end_date,schedule_shift_days").eq("id", carePlanId).single(), "Care Plan before pause");
+    const missionCountBeforePause = await service.from("rooster_daily_missions").select("id", { count: "exact", head: true }).eq("care_plan_id", carePlanId);
+    if (missionCountBeforePause.error) fail(`mission count before pause: ${missionCountBeforePause.error.message}`);
+    await rpc(admin, "admin_control_care_plan", { p_care_plan_id: carePlanId, p_action: "pause", p_note: "E2E controlled pause", p_new_caretaker_id: null });
+    await noError(service.from("rooster_care_plans").update({ paused_at: new Date(Date.now() - 2 * 86400000).toISOString() }).eq("id", carePlanId), "simulate two-day Care Plan pause");
+    await rpc(admin, "admin_control_care_plan", { p_care_plan_id: carePlanId, p_action: "resume", p_note: "E2E controlled resume", p_new_caretaker_id: null });
+    const afterResume = await one(service.from("rooster_care_plans").select("status,end_date,schedule_shift_days").eq("id", carePlanId).single(), "Care Plan after resume");
+    const addedShift = Number(afterResume.schedule_shift_days) - Number(beforePause.schedule_shift_days);
+    const endDateShift = Math.round((Date.parse(afterResume.end_date) - Date.parse(beforePause.end_date)) / 86400000);
+    if (afterResume.status !== "active" || addedShift < 1 || addedShift !== endDateShift) fail("pause/resume did not shift the remaining schedule by the exact paused days");
+    const missionCountAfterResume = await service.from("rooster_daily_missions").select("id", { count: "exact", head: true }).eq("care_plan_id", carePlanId);
+    if (missionCountAfterResume.error) fail(`mission count after resume: ${missionCountAfterResume.error.message}`);
+    if (missionCountAfterResume.count !== missionCountBeforePause.count) fail("pause/resume changed the purchased mission count");
+    checks.push("WATCH escalation, no premature inventory deduction, and exact pause/resume schedule shift");
+
+    const cancellation = await rpc(admin, "admin_control_care_plan", { p_care_plan_id: carePlanId, p_action: "cancel", p_note: "E2E paid cancellation and unused-service refund", p_new_caretaker_id: null });
+    if (Number(cancellation.refund_due_amount) <= 0) fail("paid Care Plan cancellation did not calculate unused service refund");
+    await rpc(admin, "admin_record_care_plan_refund", { p_care_plan_id: carePlanId, p_reference: `E2E-REFUND-${Date.now()}`, p_note: "E2E external refund completed" });
+    const closedPlan = await one(customer.from("rooster_care_plans").select("status,refund_status").eq("id", carePlanId).single(), "closed Care Plan visibility");
+    if (closedPlan.status !== "cancelled" || closedPlan.refund_status !== "completed") fail("Care Plan cancellation/refund audit did not close");
+    checks.push("Care Plan request, quote, exact payment, activation, daily scheduler, full proof, inventory deduction, cancellation, and refund");
 
     const rejectedResult = await rpc(customer, "customer_submit_manual_payment_guarded", {
       p_source_type: "farm_buy", p_source_ref: "e2e-rejection-contract", p_amount_expected: 1,

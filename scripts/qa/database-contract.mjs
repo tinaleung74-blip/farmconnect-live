@@ -40,6 +40,12 @@ const requiredTables = [
   "workflow_operation_keys",
   "workflow_chain_runs",
   "workflow_chain_events",
+  "care_mission_templates",
+  "rooster_care_plans",
+  "care_plan_supply_requirements",
+  "rooster_daily_missions",
+  "care_plan_events",
+  "care_plan_inventory_usage",
 ];
 
 const requiredDefinerFunctions = [
@@ -68,7 +74,23 @@ const requiredDefinerFunctions = [
   "admin_review_caretaker_application_guarded",
   "admin_review_customer_kyc_guarded",
   "customer_ensure_signup_profile",
+  "generate_due_care_plan_missions",
+  "customer_request_care_plan",
+  "admin_prepare_care_plan_quote_v2",
+  "fulfill_care_plan_feed",
+  "caretaker_get_task_inventory",
+  "caretaker_submit_mission_proof",
+  "admin_review_mission_proof_guarded",
+  "admin_activate_care_plan",
+  "customer_cancel_care_plan",
+  "admin_control_care_plan",
+  "admin_record_care_plan_refund",
+  "kafarm_care_plan_health_snapshot",
+];
+
+const requiredInvokerFunctions = [
   "withdrawal_wallet_pin_guard_version",
+  "care_mission_checklist_passes",
 ];
 
 function fail(message) {
@@ -111,6 +133,12 @@ async function main() {
   const functions = Array.isArray(snapshot.functions) ? snapshot.functions : [];
   const missingObjects = Array.isArray(snapshot.missing_objects) ? snapshot.missing_objects : [];
   const findings = Array.isArray(snapshot.findings) ? snapshot.findings : [];
+  const carePlanHealthResult = await client.rpc("kafarm_care_plan_health_snapshot");
+  if (carePlanHealthResult.error) fail(`Care Plan health reader failed: ${carePlanHealthResult.error.message}`);
+  const carePlanHealth = Array.isArray(carePlanHealthResult.data) ? carePlanHealthResult.data[0] : carePlanHealthResult.data;
+  const carePlanHealthOk = Number(carePlanHealth?.catalog_days || 0) === 180
+    && Number(carePlanHealth?.active_supply_conversion_missing || 0) === 0
+    && Number(carePlanHealth?.negative_inventory || 0) === 0;
 
   const tableChecks = requiredTables.map(name => {
     const table = tables.find(item => item.table_name === name);
@@ -123,13 +151,15 @@ async function main() {
     };
   });
 
-  const functionChecks = requiredDefinerFunctions.map(name => {
+  const functionChecks = [...requiredDefinerFunctions, ...requiredInvokerFunctions].map(name => {
     const entries = functions.filter(item => item.function_name === name);
+    const requiresSecurityDefiner = requiredDefinerFunctions.includes(name);
     return {
       name,
       overloads: entries.length,
       securityDefiner: entries.length > 0 && entries.every(item => item.security_definer === true),
-      ok: entries.length > 0 && entries.every(item => item.security_definer === true),
+      requiresSecurityDefiner,
+      ok: entries.length > 0 && (!requiresSecurityDefiner || entries.every(item => item.security_definer === true)),
     };
   });
 
@@ -139,13 +169,15 @@ async function main() {
     adminProfileReady: Boolean(adminReady),
     missingObjects,
     databaseFindings: findings,
+    carePlanHealth,
     tableChecks,
     functionChecks,
     passed:
       missingObjects.length === 0
       && findings.length === 0
       && tableChecks.every(check => check.ok)
-      && functionChecks.every(check => check.ok),
+      && functionChecks.every(check => check.ok)
+      && carePlanHealthOk,
   };
 
   fs.mkdirSync(outputDir, { recursive: true });

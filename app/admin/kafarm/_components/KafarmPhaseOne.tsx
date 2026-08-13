@@ -55,6 +55,18 @@ type LiveDatabaseSnapshot = {
   findings?: Array<{ severity?: string; title?: string; meaning?: string; evidence?: unknown; next_action?: string }>;
 };
 
+type CarePlanHealthSnapshot = {
+  catalog_days?: number;
+  open_plans?: number;
+  active_plans?: number;
+  overdue_missions?: number;
+  unreviewed_proofs?: number;
+  active_supply_conversion_missing?: number;
+  negative_inventory?: number;
+  pending_refunds?: number;
+  generated_at?: string;
+};
+
 type InventoryComparison = {
   module: string;
   pages: string;
@@ -918,8 +930,9 @@ export function KafarmCommandCenter() {
       return;
     }
 
-    const [snapshotResult, incidentResult] = await Promise.all([
+    const [snapshotResult, carePlanResult, incidentResult] = await Promise.all([
       supabase.rpc("kafarm_database_health_snapshot"),
+      supabase.rpc("kafarm_care_plan_health_snapshot"),
       supabase
         .from("admin_kafarm_incident_queue")
         .select("id,title,category,severity,status,app_role,route,message,http_status,request_url,email,created_at,updated_at")
@@ -946,9 +959,31 @@ export function KafarmCommandCenter() {
       setClientIncidents((current) => [incident, ...current].slice(0, 12));
       return;
     }
-    setDatabaseSnapshot(data as LiveDatabaseSnapshot);
+    const careHealth = carePlanResult.data as CarePlanHealthSnapshot | null;
+    const careFindings: NonNullable<LiveDatabaseSnapshot["findings"]> = [];
+    if (carePlanResult.error) {
+      careFindings.push({
+        severity: "High",
+        title: "Care Plan health reader unavailable",
+        meaning: carePlanResult.error.message,
+        evidence: "kafarm_care_plan_health_snapshot RPC",
+        next_action: "Apply and verify Care Plan migrations 058-062 before production use.",
+      });
+    } else if (careHealth) {
+      if (Number(careHealth.catalog_days || 0) !== 180) careFindings.push({ severity: "High", title: "Care Plan mission catalog incomplete", meaning: `${Number(careHealth.catalog_days || 0)} of 180 days are installed.`, evidence: careHealth, next_action: "Apply migration 059 and rerun the reader." });
+      if (Number(careHealth.active_supply_conversion_missing || 0) > 0) careFindings.push({ severity: "High", title: "Active Care Plan has unsafe feed conversion", meaning: "At least one active plan cannot convert inventory packs to exact kilograms.", evidence: careHealth, next_action: "Pause the affected plan and repair its verified supply requirement before another proof approval." });
+      if (Number(careHealth.negative_inventory || 0) > 0) careFindings.push({ severity: "High", title: "Negative customer inventory detected", meaning: "An inventory balance is below zero.", evidence: careHealth, next_action: "Stop the affected approval flow and reconcile its immutable usage ledger." });
+      if (Number(careHealth.overdue_missions || 0) > 0) careFindings.push({ severity: "Medium", title: "Overdue Care Plan missions need action", meaning: `${Number(careHealth.overdue_missions || 0)} mission(s) remain overdue.`, evidence: careHealth, next_action: "Open Care Plans, verify caretaker coverage, and resolve or reassign overdue work." });
+      if (Number(careHealth.unreviewed_proofs || 0) > 0) careFindings.push({ severity: "Medium", title: "Care Plan proofs await admin review", meaning: `${Number(careHealth.unreviewed_proofs || 0)} proof(s) are pending.`, evidence: careHealth, next_action: "Review the full welfare checklist and exact feed usage in Task Verification." });
+      if (Number(careHealth.pending_refunds || 0) > 0) careFindings.push({ severity: "Medium", title: "Care Plan refunds await evidence", meaning: `${Number(careHealth.pending_refunds || 0)} refund(s) are pending.`, evidence: careHealth, next_action: "Complete the external refund and record its reference on the Care Plan." });
+    }
+    const mergedSnapshot = {
+      ...(data as LiveDatabaseSnapshot),
+      findings: [...((data as LiveDatabaseSnapshot)?.findings || []), ...careFindings],
+    };
+    setDatabaseSnapshot(mergedSnapshot);
     if (!incidentResult.error) setInventoryIncidents(filterKaFarmIncidents((incidentResult.data || []) as DbIncident[]));
-    const count = Array.isArray(data?.findings) ? data.findings.length : 0;
+    const count = mergedSnapshot.findings.length;
     setDatabaseReaderStatus(count ? `Database reader found ${count} database finding(s).` : "Database reader found no database blockers.");
   }
 

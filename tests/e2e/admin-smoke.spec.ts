@@ -9,6 +9,7 @@ const adminRoutes = [
   "/admin/customer-requests/task",
   "/admin/customer-requests/withdraw",
   "/admin/caretaker-management",
+  "/admin/care-plans",
   "/admin/account-verification",
   "/admin/kafarm/whole-app-reader",
 ];

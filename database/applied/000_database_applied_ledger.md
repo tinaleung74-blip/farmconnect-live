@@ -824,3 +824,59 @@ Purpose:
 Expected success output:
 
 - `completed_with_stale_confirmation_notice = 0`
+
+## 058_care_plan_mission_engine_foundation.sql
+
+Status: **APPLIED / CONTROLLED E2E VERIFIED (2026-08-14 ASIA/MANILA)**
+
+Purpose:
+
+- Create private, RPC-only Care Plan, daily mission, supply, and event records.
+- Generate idempotent Asia/Manila caretaker missions without requiring a customer page visit.
+- Keep ordinary paid Care Request assignment idempotent and paid-only.
+
+## 059_care_mission_catalog_seed.sql
+
+Status: **APPLIED / 180-DAY CATALOG VERIFIED (2026-08-14 ASIA/MANILA)**
+
+Purpose:
+
+- Seed exactly 180 unique welfare-centered daily mission templates from the approved source file.
+- Preserve veterinarian authorization and emergency stop instructions in each daily record.
+
+## 060_care_plan_mission_proof_inventory_guard.sql
+
+Status: **APPLIED / CONTROLLED E2E VERIFIED (2026-08-14 ASIA/MANILA)**
+
+Purpose:
+
+- Require complete operations, housing, supplement, vaccine-authority, and health evidence.
+- Require every PASS label and position to match the authoritative mission catalog.
+- Require exact feed usage and deduct inventory only inside atomic admin approval.
+- Prevent duplicate proof/item deductions.
+
+## 061_care_plan_quote_payment_activation.sql
+
+Status: **APPLIED / SUPERSEDED IN PART BY 062**
+
+Purpose:
+
+- Add customer request, locked quote, payment synchronization, and paid activation lifecycle.
+- Migration 062 replaces the quote and activation safety details; both must be applied in order.
+
+## 062_care_plan_production_lifecycle.sql
+
+Status: **APPLIED / CONTROLLED E2E VERIFIED (2026-08-14 ASIA/MANILA)**
+
+Purpose:
+
+- Convert inventory packs to exact kilograms and compute required feed server-side from the catalog.
+- Bind manual payments to the owner and exact locked quote; fulfill missing feed only after payment approval and stock locking.
+- Backfill missed scheduler dates as overdue, extend paused coverage, support guarded reassignment/cancellation, and audit external refunds.
+- Complete plans only after every required mission is admin-approved and expose a read-only KaFarm health snapshot.
+
+Deployment requirements:
+
+- Configure `CRON_SECRET` and existing `SUPABASE_SERVICE_ROLE_KEY` in Vercel.
+- Keep the Vercel cron at `5 16 * * *` (12:05 AM Asia/Manila).
+- Run `database/00_verify_applied_sql_status.sql` and `kafarm_care_plan_health_snapshot()` after reviewed migration application.
