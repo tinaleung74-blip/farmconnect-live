@@ -66,6 +66,23 @@ type InventoryComparison = {
   status: "CLEAR" | "PREDICTED" | "CONFIRMED";
 };
 
+const lockedLiveTestVerdict = {
+  lockId: "LIVE-20260813-E2E-01",
+  testedAt: "2026-08-13",
+  environment: "FarmConnect production",
+  verdict: "PASSED",
+  buddyReviewer: "Buddy Pogi — PASSED",
+  ownerReviewer: "Master Pogi — PASSED",
+  workflows: [
+    "Customer signup and KYC approval",
+    "Farm Buy, payment approval, Inventory, and My Roosters",
+    "Paid Care Request, Admin assignment, Caretaker proof, and verification",
+    "Sell Request, reviewed sale price, and Wallet credit",
+    "Wallet withdrawal and completed Inbox notification",
+  ],
+  rule: "This lock records the tested baseline only. Newer confirmed runtime/API evidence overrides the historical pass and must be investigated.",
+} as const;
+
 function isIgnoredKaFarmIncident(incident: {
   title?: string;
   message?: string;
@@ -649,7 +666,7 @@ export function KafarmCommandCenter() {
     [selectedTool, databaseSnapshotFindings, incidentToolFindings],
   );
   const actionProcedure = useMemo(
-    () => `${inventoryValidationReport}\n\n${selectedToolConfig ? buildWholeAppInvestigationReport(selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote) : "Choose an investigation scope for the detailed action report."}`,
+    () => `${inventoryValidationReport}\n\nLOCKED LIVE-TEST VERDICT HISTORY\nLock ID: ${lockedLiveTestVerdict.lockId}\nTested at: ${lockedLiveTestVerdict.testedAt}\nEnvironment: ${lockedLiveTestVerdict.environment}\nVerdict: ${lockedLiveTestVerdict.verdict}\nReviewer 1: ${lockedLiveTestVerdict.buddyReviewer}\nReviewer 2: ${lockedLiveTestVerdict.ownerReviewer}\nPassed workflows:\n${lockedLiveTestVerdict.workflows.map((item) => `- ${item}`).join("\n")}\nLock rule: ${lockedLiveTestVerdict.rule}\n\n${selectedToolConfig ? buildWholeAppInvestigationReport(selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote) : "Whole-app report is generated after Run."}`,
     [inventoryValidationReport, selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote],
   );
   const simpleExplanation = useMemo(() => {
@@ -657,6 +674,11 @@ export function KafarmCommandCenter() {
       return [
         "QUICK EXPLANATION",
         "Hindi pa nababasa ni KaFarm ang app. Pindutin ang Run para magsimula.",
+        "",
+        "SAVED LIVE-TEST HISTORY",
+        `${lockedLiveTestVerdict.lockId}: ${lockedLiveTestVerdict.verdict}`,
+        `${lockedLiveTestVerdict.buddyReviewer} · ${lockedLiveTestVerdict.ownerReviewer}`,
+        "Naka-save ang dating successful end-to-end live test bilang baseline.",
         "",
         "WHY KAFARM SAYS THIS",
         "Wala pang bagong code inventory, Supabase inventory, at runtime evidence na galing sa kasalukuyang scan.",
@@ -670,7 +692,10 @@ export function KafarmCommandCenter() {
       ]).slice(0, 6);
       return [
         "QUICK EXPLANATION",
-        `May ${confirmedInventoryModules.length} kumpirmadong problema. Apektado: ${names}. I-copy ang Technical Report at ipadala kay Buddy bago gumawa ng code o SQL fix.`,
+        `May ${confirmedInventoryModules.length} bagong kumpirmadong problema. Apektado: ${names}. Mas bago ang current evidence kaysa sa dating PASSED baseline, kaya kailangan itong imbestigahan.`,
+        "",
+        "SAVED LIVE-TEST HISTORY",
+        `${lockedLiveTestVerdict.lockId}: PASSED noong ${lockedLiveTestVerdict.testedAt}, pero hindi nito tinatakpan ang bagong confirmed error.`,
         "",
         "WHY KAFARM SAYS THIS",
         "Tinawag itong confirmed dahil may eksaktong live Supabase metadata o aktuwal na runtime/API error na tumutugma sa affected module.",
@@ -684,6 +709,11 @@ export function KafarmCommandCenter() {
         "QUICK EXPLANATION",
         `May ${predictedInventoryModules.length} posibleng problema sa ${names}, pero hindi pa ito totoong error. Ituloy ang normal test sa affected workflow.`,
         "",
+        "SAVED LIVE-TEST HISTORY",
+        `${lockedLiveTestVerdict.lockId}: ${lockedLiveTestVerdict.verdict}`,
+        `${lockedLiveTestVerdict.buddyReviewer} · ${lockedLiveTestVerdict.ownerReviewer}`,
+        "Pumasa na ang listed end-to-end workflows; ang prediction ay hindi automatic na nagpapawalang-bisa sa lock hangga't walang confirmed error.",
+        "",
         "WHY KAFARM SAYS THIS",
         "May code requirement na hindi pa sapat ang live inventory evidence para ma-verify. Prediction lang ito hangga't walang matching runtime/API failure o authoritative missing-object result.",
         ...predictions.map((line) => `• Needs verification: ${line}`),
@@ -692,6 +722,11 @@ export function KafarmCommandCenter() {
     return [
       "QUICK EXPLANATION",
       "Maayos ang resulta ng kasalukuyang scan. Walang nakitang problemang kailangang ayusin ngayon.",
+      "",
+      "SAVED LIVE-TEST HISTORY",
+      `${lockedLiveTestVerdict.lockId}: ${lockedLiveTestVerdict.verdict}`,
+      `${lockedLiveTestVerdict.buddyReviewer} · ${lockedLiveTestVerdict.ownerReviewer}`,
+      "Ang current scan ay consistent sa naka-lock na successful end-to-end live-test baseline.",
       "",
       "WHY KAFARM SAYS THIS",
       `Nag-match ang code at live Supabase inventory sa ${inventoryComparison.length} module(s), at walang nakitang linked runtime/API error sa kasalukuyang evidence.`,
