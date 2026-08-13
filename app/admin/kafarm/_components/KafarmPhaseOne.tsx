@@ -599,6 +599,7 @@ export function KafarmCommandCenter() {
   const [solutionEngineRan, setSolutionEngineRan] = useState(false);
   const [panelActionNote, setPanelActionNote] = useState("Choose a tool, then run Investigation or open Findings.");
   const [copyStatus, setCopyStatus] = useState("Copy");
+  const [simpleCopyStatus, setSimpleCopyStatus] = useState("Copy");
   const [decision, setDecision] = useState<"pending" | "approved" | "rejected">("pending");
   const [adminNote, setAdminNote] = useState("Admin note or rejected reason...");
   const [adminGate, setAdminGate] = useState<AdminGateState>({ status: "checking" });  const analysis = useMemo(() => analyzeKaFarmMessage(question || selectedIncident.message, "admin"), [question, selectedIncident.message]);
@@ -651,6 +652,20 @@ export function KafarmCommandCenter() {
     () => `${inventoryValidationReport}\n\n${selectedToolConfig ? buildWholeAppInvestigationReport(selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote) : "Choose an investigation scope for the detailed action report."}`,
     [inventoryValidationReport, selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote],
   );
+  const simpleExplanation = useMemo(() => {
+    if (!databaseSnapshot) {
+      return "Hindi pa nababasa ni KaFarm ang app. Pindutin ang Run para magsimula.";
+    }
+    if (confirmedInventoryModules.length) {
+      const names = confirmedInventoryModules.map((item) => item.module).join(", ");
+      return `May ${confirmedInventoryModules.length} kumpirmadong problema. Apektado: ${names}. I-copy ang Buddy Technical Report at ipadala kay Buddy bago mag-code o SQL fix.`;
+    }
+    if (predictedInventoryModules.length) {
+      const names = predictedInventoryModules.map((item) => item.module).join(", ");
+      return `May ${predictedInventoryModules.length} posibleng problema sa ${names}, pero hindi pa ito kumpirmadong error. Normal testing lang ang kailangan para patunayan kung totoong may problema.`;
+    }
+    return "Maayos ang resulta ng kasalukuyang scan. Walang nakitang mismatch o aktuwal na runtime/API error sa nabasang evidence.";
+  }, [databaseSnapshot, confirmedInventoryModules, predictedInventoryModules]);
   const [thread, setThread] = useState<Array<{ id: string; role: "admin" | "kafarm"; body: string; risk?: string }>>([
     { id: "hello-admin", role: "admin", body: "Good morning KaFarm." },
     { id: "hello-kafarm", role: "kafarm", body: "Good morning boss. Ready ako. Sabihin mo lang kung gusto mo daily status, bug check, payment queue, caretaker tasks, or Buddy report.", risk: "low" },
@@ -870,12 +885,13 @@ export function KafarmCommandCenter() {
   }
 
   const runSelectedEngine = async () => {
-    if (!selectedTool) return;
+    const effectiveTool: KaFarmToolKey = selectedTool || "production";
+    if (!selectedTool) setSelectedTool(effectiveTool);
     await runDatabaseReader();
     if (issueFilter === "problems") {
       setProblemEngineRan(true);
       setSolutionEngineRan(false);
-      setPanelActionNote(`Investigation ran for ${selectedToolConfig?.title || "selected scope"}.`);
+      setPanelActionNote(`Whole-app scan completed. Reports are ready below.`);
       return;
     }
     setProblemEngineRan(true);
@@ -891,6 +907,17 @@ export function KafarmCommandCenter() {
     } catch {
       setCopyStatus("Copy failed");
       window.setTimeout(() => setCopyStatus("Copy"), 1200);
+    }
+  };
+
+  const copySimpleExplanation = async () => {
+    try {
+      await navigator.clipboard.writeText(simpleExplanation);
+      setSimpleCopyStatus("Copied");
+      window.setTimeout(() => setSimpleCopyStatus("Copy"), 1200);
+    } catch {
+      setSimpleCopyStatus("Copy failed");
+      window.setTimeout(() => setSimpleCopyStatus("Copy"), 1200);
     }
   };
 
@@ -1100,7 +1127,7 @@ export function KafarmCommandCenter() {
                 >
                   Findings
                 </button>
-                <button data-kafarm-monitor-ignore="true" onClick={runSelectedEngine} disabled={!selectedTool} className="rounded-xl bg-[#f8c51c] px-3 py-2 text-xs font-black text-[#14241b] disabled:cursor-not-allowed disabled:opacity-45">Run</button>
+                <button data-kafarm-monitor-ignore="true" onClick={runSelectedEngine} className="rounded-xl bg-[#f8c51c] px-5 py-2 text-xs font-black text-[#14241b]">Run Whole App</button>
               </div>
             </div>
 
@@ -1121,7 +1148,7 @@ export function KafarmCommandCenter() {
               <div className="mt-4 flex h-[360px] items-center justify-center rounded-2xl border border-dashed border-[#cfdcc9] bg-[#fbfbf6] p-6 text-center">
                 <div>
                   <p className="text-lg font-black text-[#0f3f2c]">Blank muna</p>
-                  <p className="mt-2 text-sm font-bold leading-6 text-[#637064]">Pumili ng scope sa taas. Pag-click mo ng Run, iche-check ni KaFarm kung may kulang bago pa tumama sa user.</p>
+                  <p className="mt-2 text-sm font-bold leading-6 text-[#637064]">Pindutin ang Run Whole App. Babasahin ni KaFarm ang app at Supabase, tapos ilalagay ang dalawang output sa Report Boxes sa ibaba.</p>
                 </div>
               </div>
             ) : selectedTool === "production" ? (
@@ -1233,35 +1260,30 @@ export function KafarmCommandCenter() {
           </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="grid gap-4 xl:grid-cols-2">
           <div className="rounded-[28px] border border-white bg-white/85 p-4 shadow-xl shadow-[#163d8f]/10 backdrop-blur-xl">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-black text-[#0f3f2c]">3. Copy Investigation Report</h2>
-                <p className="text-xs font-bold text-[#637064]">One-click copy para ma-send kay Buddy kung may kailangang code/SQL fix.</p>
+                <h2 className="text-xl font-black text-[#0f3f2c]">3A. Buddy Technical Report</h2>
+                <p className="text-xs font-bold text-[#637064]">Kumpletong technical output. I-copy at ipadala kay Buddy.</p>
               </div>
               <div className="flex gap-2">
                 <button data-kafarm-monitor-ignore="true" onClick={copyProcedure} className="rounded-2xl bg-[#163d8f] px-4 py-3 text-xs font-black text-white">{copyStatus}</button>
                 <button data-kafarm-monitor-ignore="true" onClick={clearCapturedLogs} className="rounded-2xl bg-[#f4f1e6] px-4 py-3 text-xs font-black text-[#14241b]">Clear Logs</button>
-                <button data-kafarm-monitor-ignore="true" onClick={() => setDecision("approved")} className="rounded-2xl bg-[#1d7a45] px-4 py-3 text-xs font-black text-white">Approve</button>
-                <button data-kafarm-monitor-ignore="true" onClick={() => setDecision("rejected")} className="rounded-2xl bg-[#e32932] px-4 py-3 text-xs font-black text-white">Reject</button>
               </div>
             </div>
             <textarea readOnly value={actionProcedure} className="mt-4 h-80 w-full rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-4 font-mono text-xs leading-5 text-[#14241b] outline-none" />
           </div>
 
           <div className="rounded-[28px] border border-white bg-white/85 p-4 shadow-lg shadow-[#1d7a45]/10 backdrop-blur-xl">
-            <h3 className="text-lg font-black text-[#0f3f2c]">Admin Note</h3>
-            <p className="mt-1 text-xs font-bold text-[#637064]">Use this if approve/reject needs reason.</p>
-            <textarea
-              value={adminNote}
-              onChange={(event) => setAdminNote(event.target.value)}
-              className="mt-3 h-32 w-full rounded-2xl border border-[#e4d7b8] bg-white/80 p-3 text-sm font-bold text-[#14241b] outline-none"
-            />
-            <div className="mt-4 rounded-2xl bg-[#fbfbf6] p-4">
-              <p className="text-[10px] font-black uppercase text-[#637064]">Decision</p>
-              <p className="mt-1 text-lg font-black text-[#14241b]">{selectedStatus}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-black text-[#0f3f2c]">3B. Simple Explanation</h3>
+                <p className="mt-1 text-xs font-bold text-[#637064]">Madaling basahin: ano ang nakita at ano ang susunod na gagawin.</p>
+              </div>
+              <button data-kafarm-monitor-ignore="true" onClick={copySimpleExplanation} className="rounded-2xl bg-[#1d7a45] px-4 py-3 text-xs font-black text-white">{simpleCopyStatus}</button>
             </div>
+            <textarea readOnly value={simpleExplanation} className="mt-4 h-80 w-full rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-4 text-base font-bold leading-7 text-[#14241b] outline-none" />
           </div>
         </section>
       </div>
