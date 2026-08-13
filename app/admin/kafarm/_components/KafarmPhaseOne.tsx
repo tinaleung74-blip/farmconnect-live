@@ -45,6 +45,27 @@ type LocalIncident = {
   synced?: boolean;
 };
 
+type LiveDatabaseSnapshot = {
+  generated_at?: string;
+  expected_objects?: Array<{ kind?: string; object_name?: string; exists?: boolean }>;
+  missing_objects?: Array<{ kind?: string; object_name?: string }>;
+  tables?: Array<{ table_name?: string; rls_enabled?: boolean; columns?: number; policies?: number }>;
+  functions?: Array<{ function_name?: string }>;
+  policies?: Array<{ table_name?: string; policy_name?: string }>;
+  findings?: Array<{ severity?: string; title?: string; meaning?: string; evidence?: unknown; next_action?: string }>;
+};
+
+type InventoryComparison = {
+  module: string;
+  pages: string;
+  codeObjects: string[];
+  liveObjects: string[];
+  predictedObjects: string[];
+  confirmedMissingObjects: string[];
+  activeErrors: Array<{ title: string; status: number | null; route: string; message: string }>;
+  status: "CLEAR" | "PREDICTED" | "CONFIRMED";
+};
+
 function isIgnoredKaFarmIncident(incident: {
   title?: string;
   message?: string;
@@ -295,6 +316,64 @@ const sqlAuditModules: SqlAuditModule[] = [
   { module: "KaFarm Monitor", pages: "/admin/kafarm/system-health, /admin/kafarm/database-health", tables: ["kafarm_incidents"], functions: ["kafarm_record_incident", "admin_kafarm_update_incident_status"], views: ["admin_kafarm_incident_queue"], policies: ["kafarm incidents admin read all", "kafarm incidents owner read own"] },
 ];
 
+function normalizeInventoryName(value: string) {
+  return value.replace(/^profiles\./, "profiles").trim().toLowerCase();
+}
+
+function compareCodeAndSupabaseInventory(snapshot: LiveDatabaseSnapshot | null, incidents: DbIncident[]): InventoryComparison[] {
+  if (!snapshot) return [];
+  const liveNames = new Set<string>();
+  (snapshot.tables || []).forEach((item) => item.table_name && liveNames.add(normalizeInventoryName(item.table_name)));
+  (snapshot.functions || []).forEach((item) => item.function_name && liveNames.add(normalizeInventoryName(item.function_name)));
+  (snapshot.policies || []).forEach((item) => item.policy_name && liveNames.add(normalizeInventoryName(item.policy_name)));
+  (snapshot.expected_objects || []).filter((item) => item.exists).forEach((item) => item.object_name && liveNames.add(normalizeInventoryName(item.object_name)));
+  const explicitlyMissing = new Set(
+    (snapshot.missing_objects || []).flatMap((item) => item.object_name ? [normalizeInventoryName(item.object_name)] : []),
+  );
+
+  return sqlAuditModules.map((module) => {
+    const codeObjects = getSqlAuditExpected(module);
+    const unmatchedObjects = codeObjects.filter((name) => {
+      const normalized = normalizeInventoryName(name);
+      if (module.policies.includes(name)) {
+        return !Array.from(liveNames).some((live) => live.includes(normalized) || normalized.includes(live));
+      }
+      return !liveNames.has(normalized);
+    });
+    const moduleText = `${module.module} ${module.pages} ${codeObjects.join(" ")}`.toLowerCase();
+    const activeErrors = incidents.filter((incident) => {
+      const status = String(incident.status || "").toLowerCase();
+      if (["resolved", "ignored", "completed"].includes(status)) return false;
+      const incidentText = `${incident.title} ${incident.message} ${incident.route || ""} ${incident.request_url || ""}`.toLowerCase();
+      return codeObjects.some((name) => incidentText.includes(normalizeInventoryName(name)))
+        || module.pages.split(",").some((page) => incidentText.includes(page.trim().toLowerCase()))
+        || (moduleText.includes("database") && Boolean(incident.http_status && incident.http_status >= 400));
+    }).map((incident) => ({
+      title: incident.title,
+      status: incident.http_status,
+      route: incident.route || "unknown route",
+      message: incident.message,
+    }));
+    const confirmedMissingObjects = unmatchedObjects.filter((name) => explicitlyMissing.has(normalizeInventoryName(name)));
+    const predictedObjects = unmatchedObjects.filter((name) => !explicitlyMissing.has(normalizeInventoryName(name)));
+    const status: InventoryComparison["status"] = activeErrors.length || confirmedMissingObjects.length
+      ? "CONFIRMED"
+      : predictedObjects.length
+        ? "PREDICTED"
+        : "CLEAR";
+    return {
+      module: module.module,
+      pages: module.pages,
+      codeObjects,
+      liveObjects: codeObjects.filter((name) => !unmatchedObjects.includes(name)),
+      predictedObjects,
+      confirmedMissingObjects,
+      activeErrors,
+      status,
+    };
+  });
+}
+
 const sqlAuditCheckerSql = `-- FarmConnect read-only SQL audit checker. Safe to run; no data changes.
 with expected_objects(kind, object_name) as (
   values
@@ -512,7 +591,8 @@ export function KafarmCommandCenter() {
   const incidentQueue = useMemo(() => [...clientIncidents, ...monitoringIncidents], [clientIncidents]);
   const [selectedIncident, setSelectedIncident] = useState<KaFarmIncident>(monitoringIncidents[0]);
   const [selectedTool, setSelectedTool] = useState<KaFarmToolKey | null>(null);
-  const [databaseSnapshot, setDatabaseSnapshot] = useState<any>(null);
+  const [databaseSnapshot, setDatabaseSnapshot] = useState<LiveDatabaseSnapshot | null>(null);
+  const [inventoryIncidents, setInventoryIncidents] = useState<DbIncident[]>([]);
   const [databaseReaderStatus, setDatabaseReaderStatus] = useState("Database reader not run yet.");
   const [issueFilter, setIssueFilter] = useState<"problems" | "solutions">("problems");
   const [problemEngineRan, setProblemEngineRan] = useState(false);
@@ -532,13 +612,44 @@ export function KafarmCommandCenter() {
     () => selectedTool === "database" && databaseSnapshot ? getKaFarmDatabaseSnapshotFindings(databaseSnapshot) : [],
     [selectedTool, databaseSnapshot],
   );
+  const inventoryComparison = useMemo(
+    () => compareCodeAndSupabaseInventory(databaseSnapshot, inventoryIncidents),
+    [databaseSnapshot, inventoryIncidents],
+  );
+  const confirmedInventoryModules = useMemo(
+    () => inventoryComparison.filter((item) => item.status === "CONFIRMED"),
+    [inventoryComparison],
+  );
+  const predictedInventoryModules = useMemo(
+    () => inventoryComparison.filter((item) => item.status === "PREDICTED"),
+    [inventoryComparison],
+  );
+  const inventoryValidationReport = useMemo(() => databaseSnapshot ? [
+    "KAFARM CODE ↔ SUPABASE PREDICTION AND VALIDATION",
+    `Run at: ${new Date().toISOString()}`,
+    `Verdict: ${confirmedInventoryModules.length ? "CONFIRMED ISSUE" : predictedInventoryModules.length ? "PREDICTED — TEST TO VERIFY" : "CLEAR"}`,
+    `Code modules compared: ${inventoryComparison.length}`,
+    `Predicted modules: ${predictedInventoryModules.length}`,
+    `Confirmed modules: ${confirmedInventoryModules.length}`,
+    "Testing rule: Findings never disable an action. Run the normal workflow; runtime/API evidence confirms or clears the prediction.",
+    "",
+    ...inventoryComparison.flatMap((item) => [
+      `[${item.status}] ${item.module}`,
+      `Affected pages/actions: ${item.pages}`,
+      `Predicted/unverified: ${item.predictedObjects.length ? item.predictedObjects.join(", ") : "None"}`,
+      `Confirmed missing: ${item.confirmedMissingObjects.length ? item.confirmedMissingObjects.join(", ") : "None"}`,
+      `Runtime confirmation: ${item.activeErrors.length ? item.activeErrors.map((error) => `${error.status ? `HTTP ${error.status} ` : ""}${error.title} @ ${error.route}`).join(" | ") : "None"}`,
+      item.status === "CONFIRMED" ? "Result: Exact live metadata or runtime evidence confirmed the issue; testing remains available." : item.status === "PREDICTED" ? "Result: Possible issue only; run the affected workflow to confirm or clear it." : "Result: No issue found from the current inventory and runtime evidence.",
+      "",
+    ]),
+  ].join("\n") : "KAFARM CODE ↔ SUPABASE PREDICTION AND VALIDATION\nNot run yet.", [databaseSnapshot, inventoryComparison, confirmedInventoryModules, predictedInventoryModules]);
   const toolFindings = useMemo(
     () => selectedTool === "database" ? [...databaseSnapshotFindings, ...incidentToolFindings] : incidentToolFindings,
     [selectedTool, databaseSnapshotFindings, incidentToolFindings],
   );
   const actionProcedure = useMemo(
-    () => selectedToolConfig ? buildWholeAppInvestigationReport(selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote) : "",
-    [selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote],
+    () => `${inventoryValidationReport}\n\n${selectedToolConfig ? buildWholeAppInvestigationReport(selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote) : "Choose an investigation scope for the detailed action report."}`,
+    [inventoryValidationReport, selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote],
   );
   const [thread, setThread] = useState<Array<{ id: string; role: "admin" | "kafarm"; body: string; risk?: string }>>([
     { id: "hello-admin", role: "admin", body: "Good morning KaFarm." },
@@ -565,6 +676,27 @@ export function KafarmCommandCenter() {
     window.addEventListener("kafarm-incident", loadIncidents);
     return () => window.removeEventListener("kafarm-incident", loadIncidents);
   }, []);
+
+  useEffect(() => {
+    if (adminGate.status !== "allowed") return;
+    let active = true;
+    const refresh = async () => {
+      const { data, error } = await supabase
+        .from("admin_kafarm_incident_queue")
+        .select("id,title,category,severity,status,app_role,route,message,http_status,request_url,email,created_at,updated_at")
+        .order("created_at", { ascending: false })
+        .limit(80);
+      if (active && !error) setInventoryIncidents(filterKaFarmIncidents((data || []) as DbIncident[]));
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener("kafarm-incident", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("kafarm-incident", refresh);
+    };
+  }, [adminGate.status]);
 
   useEffect(() => {
     let active = true;
@@ -703,7 +835,15 @@ export function KafarmCommandCenter() {
       return;
     }
 
-    const { data, error } = await supabase.rpc("kafarm_database_health_snapshot");
+    const [snapshotResult, incidentResult] = await Promise.all([
+      supabase.rpc("kafarm_database_health_snapshot"),
+      supabase
+        .from("admin_kafarm_incident_queue")
+        .select("id,title,category,severity,status,app_role,route,message,http_status,request_url,email,created_at,updated_at")
+        .order("created_at", { ascending: false })
+        .limit(80),
+    ]);
+    const { data, error } = snapshotResult;
     if (error) {
       const message = [error.message, error.details, error.hint, error.code].filter(Boolean).join(" | ");
       const incident = {
@@ -723,14 +863,15 @@ export function KafarmCommandCenter() {
       setClientIncidents((current) => [incident, ...current].slice(0, 12));
       return;
     }
-    setDatabaseSnapshot(data);
+    setDatabaseSnapshot(data as LiveDatabaseSnapshot);
+    if (!incidentResult.error) setInventoryIncidents(filterKaFarmIncidents((incidentResult.data || []) as DbIncident[]));
     const count = Array.isArray(data?.findings) ? data.findings.length : 0;
     setDatabaseReaderStatus(count ? `Database reader found ${count} database finding(s).` : "Database reader found no database blockers.");
   }
 
   const runSelectedEngine = async () => {
     if (!selectedTool) return;
-    if (selectedTool === "database") await runDatabaseReader();
+    await runDatabaseReader();
     if (issueFilter === "problems") {
       setProblemEngineRan(true);
       setSolutionEngineRan(false);
@@ -761,6 +902,7 @@ export function KafarmCommandCenter() {
       .forEach((key) => window.sessionStorage.removeItem(key));
     setClientIncidents([]);
     setDatabaseSnapshot(null);
+    setInventoryIncidents([]);
     setDatabaseReaderStatus("Database reader not run yet.");
     setPanelActionNote("Captured logs cleared. Choose a tool, then run Investigation again.");
     setSelectedIncident(monitoringIncidents[0]);
@@ -833,6 +975,76 @@ export function KafarmCommandCenter() {
             </div>
           </div>
         </header>
+
+        <section className={`rounded-[28px] border p-5 shadow-xl backdrop-blur-xl ${!databaseSnapshot ? "border-slate-200 bg-white/90" : confirmedInventoryModules.length ? "border-red-300 bg-red-50/95 shadow-red-900/10" : predictedInventoryModules.length ? "border-amber-300 bg-amber-50/95" : "border-emerald-300 bg-emerald-50/95 shadow-emerald-900/10"}`}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#163d8f]">Predict, test, then confirm</p>
+              <h2 className="mt-1 text-2xl font-black text-[#14241b]">Code Inventory ↔ Supabase Inventory</h2>
+              <p className="mt-2 max-w-4xl text-sm font-bold leading-6 text-[#637064]">
+                Kino-compare ang code requirements at live Supabase inventory para magbigay ng prediction. Hindi nito bina-block ang action: ituloy ang normal test, at magiging CONFIRMED lamang kapag may eksaktong live metadata o runtime/API evidence.
+              </p>
+            </div>
+            <button
+              type="button"
+              data-kafarm-monitor-ignore="true"
+              onClick={runDatabaseReader}
+              className="rounded-2xl bg-[#163d8f] px-5 py-3 text-xs font-black text-white shadow-md"
+            >
+              Refresh Comparison
+            </button>
+          </div>
+
+          {!databaseSnapshot ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/70 p-4 text-sm font-bold text-slate-600">
+              Not checked yet. Click Refresh Comparison or run any investigation scope.
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl bg-white/80 p-4"><p className="text-[10px] font-black uppercase text-slate-500">Code modules</p><p className="mt-1 text-2xl font-black">{inventoryComparison.length}</p></div>
+                <div className="rounded-2xl bg-white/80 p-4"><p className="text-[10px] font-black uppercase text-slate-500">Live objects matched</p><p className="mt-1 text-2xl font-black">{inventoryComparison.reduce((sum, item) => sum + item.liveObjects.length, 0)}</p></div>
+                <div className="rounded-2xl bg-white/80 p-4"><p className="text-[10px] font-black uppercase text-slate-500">Predicted / test needed</p><p className="mt-1 text-2xl font-black text-amber-700">{inventoryComparison.reduce((sum, item) => sum + item.predictedObjects.length, 0)}</p></div>
+                <div className="rounded-2xl bg-white/80 p-4"><p className="text-[10px] font-black uppercase text-slate-500">Confirmed evidence</p><p className="mt-1 text-2xl font-black text-red-700">{inventoryComparison.reduce((sum, item) => sum + item.confirmedMissingObjects.length + item.activeErrors.length, 0)}</p></div>
+              </div>
+
+              <div className={`mt-4 rounded-2xl border p-4 ${confirmedInventoryModules.length ? "border-red-300 bg-red-100 text-red-950" : predictedInventoryModules.length ? "border-amber-300 bg-amber-100 text-amber-950" : "border-emerald-300 bg-emerald-100 text-emerald-950"}`}>
+                <p className="text-lg font-black">
+                  {confirmedInventoryModules.length
+                    ? `CONFIRMED: ${confirmedInventoryModules.length} module(s) have exact supporting evidence.`
+                    : predictedInventoryModules.length
+                      ? `PREDICTED: Test ${predictedInventoryModules.length} affected module(s) to confirm or clear.`
+                      : "CLEAR: No mismatch or runtime problem found in the current evidence."}
+                </p>
+                <p className="mt-1 text-xs font-bold">
+                  Actions remain usable. KaFarm watches the actual test and only confirms an issue when the runtime/API result or authoritative live metadata supports it. Live snapshot: {databaseSnapshot.generated_at || "current admin read"}
+                </p>
+              </div>
+
+              <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                {inventoryComparison.map((item) => (
+                  <details key={item.module} open={item.status !== "CLEAR"} className={`rounded-2xl border bg-white/85 p-4 ${item.status === "CONFIRMED" ? "border-red-300" : item.status === "PREDICTED" ? "border-amber-300" : "border-emerald-200"}`}>
+                    <summary className="cursor-pointer list-none text-sm font-black text-[#14241b]">
+                      <span className={`mr-2 rounded-full px-2 py-1 text-[10px] ${item.status === "CONFIRMED" ? "bg-red-700 text-white" : item.status === "PREDICTED" ? "bg-amber-500 text-amber-950" : "bg-emerald-700 text-white"}`}>{item.status}</span>
+                      {item.module}
+                    </summary>
+                    <p className="mt-3 text-xs font-bold text-[#637064]">Affected pages/actions: {item.pages}</p>
+                    {item.predictedObjects.length ? <p className="mt-2 text-xs font-black text-amber-800">Prediction only — test required: {item.predictedObjects.join(", ")}</p> : null}
+                    {item.confirmedMissingObjects.length ? <p className="mt-2 text-xs font-black text-red-800">Confirmed missing by live metadata: {item.confirmedMissingObjects.join(", ")}</p> : null}
+                    {item.activeErrors.map((error, index) => (
+                      <div key={`${error.title}-${index}`} className="mt-2 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-900">
+                        <p>Runtime confirmed: {error.status ? `HTTP ${error.status} — ` : ""}{error.title}</p>
+                        <p className="mt-1">Route: {error.route}</p>
+                        <p className="mt-1 break-words">{error.message}</p>
+                      </div>
+                    ))}
+                    {!item.predictedObjects.length && !item.confirmedMissingObjects.length && !item.activeErrors.length ? <p className="mt-2 text-xs font-bold text-emerald-800">No mismatch or runtime problem found from the current evidence.</p> : null}
+                  </details>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
 
         <section className="rounded-[28px] border border-white bg-white/85 p-4 shadow-xl shadow-[#1d7a45]/10 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
