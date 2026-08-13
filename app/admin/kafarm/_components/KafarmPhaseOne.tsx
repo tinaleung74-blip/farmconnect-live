@@ -654,18 +654,49 @@ export function KafarmCommandCenter() {
   );
   const simpleExplanation = useMemo(() => {
     if (!databaseSnapshot) {
-      return "Hindi pa nababasa ni KaFarm ang app. Pindutin ang Run para magsimula.";
+      return [
+        "QUICK EXPLANATION",
+        "Hindi pa nababasa ni KaFarm ang app. Pindutin ang Run para magsimula.",
+        "",
+        "WHY KAFARM SAYS THIS",
+        "Wala pang bagong code inventory, Supabase inventory, at runtime evidence na galing sa kasalukuyang scan.",
+      ].join("\n");
     }
     if (confirmedInventoryModules.length) {
       const names = confirmedInventoryModules.map((item) => item.module).join(", ");
-      return `May ${confirmedInventoryModules.length} kumpirmadong problema. Apektado: ${names}. I-copy ang Buddy Technical Report at ipadala kay Buddy bago mag-code o SQL fix.`;
+      const evidence = confirmedInventoryModules.flatMap((item) => [
+        ...item.confirmedMissingObjects.map((name) => `${item.module}: missing ${name}`),
+        ...item.activeErrors.map((error) => `${item.module}: ${error.status ? `HTTP ${error.status} ` : ""}${error.title}`),
+      ]).slice(0, 6);
+      return [
+        "QUICK EXPLANATION",
+        `May ${confirmedInventoryModules.length} kumpirmadong problema. Apektado: ${names}. I-copy ang Technical Report at ipadala kay Buddy bago gumawa ng code o SQL fix.`,
+        "",
+        "WHY KAFARM SAYS THIS",
+        "Tinawag itong confirmed dahil may eksaktong live Supabase metadata o aktuwal na runtime/API error na tumutugma sa affected module.",
+        ...(evidence.length ? evidence.map((line) => `• ${line}`) : ["• May linked runtime evidence sa Technical Report."]),
+      ].join("\n");
     }
     if (predictedInventoryModules.length) {
       const names = predictedInventoryModules.map((item) => item.module).join(", ");
-      return `May ${predictedInventoryModules.length} posibleng problema sa ${names}, pero hindi pa ito kumpirmadong error. Normal testing lang ang kailangan para patunayan kung totoong may problema.`;
+      const predictions = predictedInventoryModules.flatMap((item) => item.predictedObjects.map((name) => `${item.module}: ${name}`)).slice(0, 6);
+      return [
+        "QUICK EXPLANATION",
+        `May ${predictedInventoryModules.length} posibleng problema sa ${names}, pero hindi pa ito totoong error. Ituloy ang normal test sa affected workflow.`,
+        "",
+        "WHY KAFARM SAYS THIS",
+        "May code requirement na hindi pa sapat ang live inventory evidence para ma-verify. Prediction lang ito hangga't walang matching runtime/API failure o authoritative missing-object result.",
+        ...predictions.map((line) => `• Needs verification: ${line}`),
+      ].join("\n");
     }
-    return "Maayos ang resulta ng kasalukuyang scan. Walang nakitang mismatch o aktuwal na runtime/API error sa nabasang evidence.";
-  }, [databaseSnapshot, confirmedInventoryModules, predictedInventoryModules]);
+    return [
+      "QUICK EXPLANATION",
+      "Maayos ang resulta ng kasalukuyang scan. Walang nakitang problemang kailangang ayusin ngayon.",
+      "",
+      "WHY KAFARM SAYS THIS",
+      `Nag-match ang code at live Supabase inventory sa ${inventoryComparison.length} module(s), at walang nakitang linked runtime/API error sa kasalukuyang evidence.`,
+    ].join("\n");
+  }, [databaseSnapshot, confirmedInventoryModules, predictedInventoryModules, inventoryComparison.length]);
   const [thread, setThread] = useState<Array<{ id: string; role: "admin" | "kafarm"; body: string; risk?: string }>>([
     { id: "hello-admin", role: "admin", body: "Good morning KaFarm." },
     { id: "hello-kafarm", role: "kafarm", body: "Good morning boss. Ready ako. Sabihin mo lang kung gusto mo daily status, bug check, payment queue, caretaker tasks, or Buddy report.", risk: "low" },
@@ -974,6 +1005,63 @@ export function KafarmCommandCenter() {
             <div className="mt-5 flex flex-wrap gap-3">
               <Link href="/" className="rounded-2xl bg-[#1d7a45] px-5 py-3 text-sm font-black text-white">Go To Login</Link>
               {!isChecking && <button onClick={logoutToHome} className="rounded-2xl bg-[#eee8d8] px-5 py-3 text-sm font-black text-[#14241b]">Logout / Switch Account</button>}
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  const simpleReportView = true;
+  if (simpleReportView) {
+    return (
+      <main className="min-h-screen bg-[linear-gradient(135deg,#eef8ec_0%,#f8f4df_52%,#e4f4ff_100%)] p-4 text-[#14241b]">
+        <div className="mx-auto max-w-7xl space-y-4">
+          <section className="rounded-[28px] border border-white bg-white/90 p-5 shadow-xl shadow-[#163d8f]/10 backdrop-blur-xl">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-16 w-16 overflow-hidden rounded-3xl bg-[#eef8df] ring-4 ring-white">
+                  <img src={KAFARM_MASCOT} alt="KaFarm" className="h-full w-full object-contain" />
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-[#1d7a45]">FarmConnect whole-app reader</p>
+                  <h1 className="text-3xl font-black text-[#0f3f2c]">KaFarm Report</h1>
+                  <p className="text-sm font-bold text-[#637064]">Pindutin ang Run. Lalabas ang dalawang report sa ibaba.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                data-kafarm-monitor-ignore="true"
+                onClick={runSelectedEngine}
+                className="rounded-2xl bg-[#f8c51c] px-8 py-4 text-base font-black text-[#14241b] shadow-lg transition hover:-translate-y-0.5"
+              >
+                Run
+              </button>
+            </div>
+            <p className="mt-4 rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] px-4 py-3 text-xs font-bold text-[#637064]">{databaseReaderStatus}</p>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-[28px] border border-white bg-white/90 p-5 shadow-xl shadow-[#163d8f]/10 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black text-[#0f3f2c]">Technical Report</h2>
+                  <p className="text-xs font-bold text-[#637064]">I-copy at ipadala kay Buddy.</p>
+                </div>
+                <button type="button" data-kafarm-monitor-ignore="true" onClick={copyProcedure} className="rounded-2xl bg-[#163d8f] px-4 py-3 text-xs font-black text-white">{copyStatus}</button>
+              </div>
+              <textarea readOnly value={actionProcedure} className="mt-4 h-[62vh] min-h-96 w-full resize-none rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-4 font-mono text-xs leading-5 text-[#14241b] outline-none" />
+            </div>
+
+            <div className="rounded-[28px] border border-white bg-white/90 p-5 shadow-xl shadow-[#1d7a45]/10 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black text-[#0f3f2c]">Simple Explanation</h2>
+                  <p className="text-xs font-bold text-[#637064]">Quick explanation + teacher-style evidence justification.</p>
+                </div>
+                <button type="button" data-kafarm-monitor-ignore="true" onClick={copySimpleExplanation} className="rounded-2xl bg-[#1d7a45] px-4 py-3 text-xs font-black text-white">{simpleCopyStatus}</button>
+              </div>
+              <textarea readOnly value={simpleExplanation} className="mt-4 h-[62vh] min-h-96 w-full resize-none rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-5 text-base font-bold leading-8 text-[#14241b] outline-none" />
             </div>
           </section>
         </div>
