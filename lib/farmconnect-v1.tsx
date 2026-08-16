@@ -7,9 +7,10 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAdminEscalatedChats, getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, runAdminSupportAction, saveKaFarmSupportMessage, sendSupportMessage } from "@/lib/backend/support-chat";
 import { getEscalationNotice, getKaFarmReply, shouldEscalateToAdmin } from "@/lib/kafarm-brain";
-import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterCareOverviews, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, requestCustomerCarePlan, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerManualMissionProof, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem, type CustomerRoosterCareOverview } from "@/lib/farmconnect-data";
+import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, assignAdminCarePlan, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterCareOverviews, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, requestCustomerCarePlan, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerManualMissionProof, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem, type CustomerRoosterCareOverview } from "@/lib/farmconnect-data";
 import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/customer-signup";
 import { adminReviewManualMissionProof } from "@/lib/farmconnect-data";
+import { prepareCustomerCarePlanPayment } from "@/lib/farmconnect-data";
 import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { supabase } from "@/lib/supabase";
 
@@ -192,7 +193,6 @@ const nav = {
     ["Customer Requests", "/admin/customer-requests", "clipboard"],
     ["Caretaker Management", "/admin/caretaker-management", "user"],
     ["Farm Operations", "/admin/farm-operations", "rooster"],
-    ["Care Plans", "/admin/care-plans", "clipboard"],
     ["Issue Management", "/admin/issue-management", "alert"],
     ["Account Verification", "/admin/account-verification", "shield"],
     ["Evidence Logs", "/admin/evidence", "file"],
@@ -326,9 +326,9 @@ const services = [
   {
     name: "Care Plan (30 Days)",
     category: "Care Plan",
-    price: 0,
-    proof: "Automatic daily premium missions",
-    eta: "Admin verified package",
+    price: 5000,
+    proof: "Complete 30-day standard package + automatic daily premium missions",
+    eta: "Payment approval, then one caretaker assignment",
   },
   {
     name: "Today's Standard Care",
@@ -2712,11 +2712,31 @@ export function FarmRequests() {
     try {
       const overview = careOverviews.find((row) => row.customerAnimalId === rooster.id);
       if (service.name === "Care Plan (30 Days)") {
-        await requestCustomerCarePlan(rooster.id, 30, overview?.catalogDay || 1);
+        const carePlanId = await requestCustomerCarePlan(rooster.id, 30, overview?.catalogDay || 1);
+        const prepared = await prepareCustomerCarePlanPayment(carePlanId);
+        window.localStorage.setItem(
+          "farmconnect_payment_context",
+          JSON.stringify({
+            sourceType: "care_plan",
+            sourceRef: carePlanId,
+            amountExpected: 5000,
+            summary: {
+              source: "30-Day Care Plan",
+              care_plan_id: carePlanId,
+              rooster: { id: rooster.id, name: rooster.name, tag: rooster.tag, breed: rooster.breed },
+              duration_days: 30,
+              requested_start_day: overview?.catalogDay || 1,
+              feed_required_kg: Number(prepared.feed_required_kg || 0),
+              package_total: 5000,
+              customer_note: note,
+            },
+          }),
+        );
         const [plans, overviews] = await Promise.all([getCustomerCarePlans(), getCustomerRoosterCareOverviews()]);
         setCarePlans(plans);
         setCareOverviews(overviews);
-        setRequestNote(`30-day Care Plan requested for ${rooster.name}. Admin will verify the mission range, caretaker, inventory, and locked package before payment.`);
+        setRequestNote(`30-day Care Plan prepared for ${rooster.name}. Continue to the ₱5,000 payment page; Admin approval moves it to Task Management.`);
+        router.push("/customer/payment?type=care_plan");
         return;
       }
       if (overview?.paid) {
@@ -2769,6 +2789,36 @@ export function FarmRequests() {
       setSubmitting(false);
     }
   }
+  async function continueCarePlanPayment(plan: any) {
+    if (submitting) return;
+    try {
+      setSubmitting(true);
+      const prepared = await prepareCustomerCarePlanPayment(plan.id);
+      const animal = Array.isArray(plan.customer_animals) ? plan.customer_animals[0] : plan.customer_animals;
+      window.localStorage.setItem(
+        "farmconnect_payment_context",
+        JSON.stringify({
+          sourceType: "care_plan",
+          sourceRef: plan.id,
+          amountExpected: 5000,
+          summary: {
+            source: "30-Day Care Plan",
+            care_plan_id: plan.id,
+            rooster: { id: plan.customer_animal_id, name: animal?.animal_name || rooster?.name || "Selected rooster", tag: animal?.animal_code || rooster?.tag || "" },
+            duration_days: Number(plan.duration_days || 30),
+            requested_start_day: Number(plan.requested_start_day || 1),
+            feed_required_kg: Number(prepared.feed_required_kg || plan.feed_required_kg || 0),
+            package_total: 5000,
+          },
+        }),
+      );
+      router.push("/customer/payment?type=care_plan");
+    } catch (error) {
+      setRequestNote(`Care Plan payment could not continue: ${readableAppError(error)}`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
   return (
     <Shell role="customer" title="Farm Requests">
       <PageTitle title="Farm Requests" text="Choose a rooster, choose a service, add a note, then Pay or Send Request." icon="clipboard" />
@@ -2807,7 +2857,7 @@ export function FarmRequests() {
           <label className="mt-4 block text-sm font-black">Customer Instruction</label>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tell the farm what you want..." className="mt-2 min-h-24 w-full rounded-xl border border-[#ded8c9] p-3" />
           <button onClick={submitRequest} className="mt-3 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
-            {submitting ? "Saving..." : service.name === "Care Plan (30 Days)" ? "Request Verified Plan" : service.price > 0 ? "Pay" : "Send Request"}
+            {submitting ? "Saving..." : service.name === "Care Plan (30 Days)" ? "Pay ₱5,000 Care Plan" : service.price > 0 ? "Pay" : "Send Request"}
           </button>
           {service.name === "Care Plan (30 Days)" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-900">One request starts a verified 30-day package. After payment and one caretaker assignment, the Mission Engine creates the daily tasks automatically.</p> : service.price > 0 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-[#7a4b00]">Inventory is checked and reserved before payment. Admin approves before the task goes to caretaker.</p>}
         </Card>
@@ -2830,7 +2880,15 @@ export function FarmRequests() {
               <div key={`plan-${plan.id}`} className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
                 <b>Care Plan · {plan.duration_days} days</b>
                 <p className="text-sm font-bold text-[#667267]">{String(plan.status || "draft").replaceAll("_", " ")}</p>
-                <Link href="/customer/care-plans" className="mt-2 inline-flex rounded-lg bg-white px-3 py-2 text-sm font-black">Review Plan</Link>
+                {["draft", "payment_for_review", "payment_submitted"].includes(String(plan.status || "")) ? (
+                  <button type="button" onClick={() => void continueCarePlanPayment(plan)} className="mt-2 rounded-lg bg-white px-3 py-2 text-sm font-black">
+                    Continue ₱5,000 Payment
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setRequestNote(`Care Plan status: ${String(plan.status || "").replaceAll("_", " ")}.`)} className="mt-2 rounded-lg bg-white px-3 py-2 text-sm font-black">
+                    View Status
+                  </button>
+                )}
               </div>
             ))}
             {careRows.length === 0 && carePlans.length === 0 && <p className="rounded-xl bg-[#f6f3e8] p-3 text-sm font-bold text-[#667267]">No care request records yet.</p>}
@@ -6729,6 +6787,24 @@ export function CaretakerTasks() {
                           </ul>
                         </div>
                       </div>
+                      {Array.isArray(selected.taskMetadata.package_items) && selected.taskMetadata.package_items.length > 0 && (
+                        <div className="rounded-2xl border-2 border-[#1f6b45] bg-white p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <b>Complete 30-Day Package Readiness</b>
+                            <Badge tone="warn">Day 1 gate</Badge>
+                          </div>
+                          <p className="mt-2 text-xs font-bold leading-5 text-[#667267]">Count and inspect every item before normal care. Missing, damaged, expired, or unsafe supplies must be stopped and reported—not marked ready.</p>
+                          <div className="mt-3 grid gap-2 md:grid-cols-2">
+                            {selected.taskMetadata.package_items.map((item: any, index: number) => (
+                              <div key={`${String(item.item_kind || "item")}-${index}`} className="rounded-xl bg-[#f6f3e8] p-3 text-sm">
+                                <b>{String(item.item_name || "Package item")}</b>
+                                <p className="mt-1 font-black text-[#1f6b45]">{Number(item.required_quantity || 0).toFixed(3)} {String(item.unit || "unit")}</p>
+                                <p className="mt-1 text-xs font-bold leading-5 text-[#667267]">{String(item.use_rule || "")}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
                         <b>Emergency Stop Rule</b>
                         <p className="mt-2 text-sm font-bold leading-6 text-amber-950">{String(selected.taskMetadata.emergency_stop_rule || "Stop normal work and contact admin for any serious health concern.")}</p>
@@ -7925,11 +8001,11 @@ const customerDeskSections = [
   },
   {
     id: "care",
-    title: "Care & Care Plans",
+    title: "Care Request",
     icon: "rooster" as IconName,
     tone: "warn" as const,
     count: 2,
-    text: "Review one-time care requests and new Care Plan packages. Care Plans continue to verified quote, payment, activation, and daily task assignment.",
+    text: "Review customer care and paid Care Plan requests. Approved items move to Task Management for one caretaker assignment.",
     href: "/admin/customer-requests/care",
   },
   {
@@ -8145,15 +8221,12 @@ function AdminCustomerRequestsPage() {
           <Card>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase text-[#1f6b45]">Care Plan Queue</p>
-                <h2 className="mt-1 text-2xl font-black">New and Active Care Plans</h2>
-                <p className="mt-1 text-sm font-bold text-[#667267]">A submitted 30-day plan appears here immediately. Open Care Plan Operations to verify its package, caretaker, inventory, quote, payment, and activation.</p>
+                <p className="text-xs font-black uppercase text-[#1f6b45]">Care Request Queue</p>
+                <h2 className="mt-1 text-2xl font-black">Care Plan Requests</h2>
+                <p className="mt-1 text-sm font-bold text-[#667267]">Review happens here. After the paid request is approved, it moves to Task Management for one caretaker assignment; daily tasks are automatic after that.</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge tone={openCarePlans.length ? "warn" : "good"}>{openCarePlans.length} open</Badge>
-                <Link href="/admin/care-plans" className="rounded-xl bg-[#1f6b45] px-4 py-3 text-sm font-black text-white">
-                  Open Care Plan Operations
-                </Link>
               </div>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -8161,7 +8234,7 @@ function AdminCustomerRequestsPage() {
                 const animal = Array.isArray(plan.customer_animals) ? plan.customer_animals[0] : plan.customer_animals;
                 const customer = Array.isArray(plan.customer) ? plan.customer[0] : plan.customer;
                 return (
-                  <Link key={plan.id} href="/admin/care-plans" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 transition hover:border-[#1f6b45] hover:shadow-sm">
+                  <div key={plan.id} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="text-[10px] font-black uppercase text-[#667267]">{plan.duration_days || 30}-day Care Plan</p>
@@ -8170,8 +8243,8 @@ function AdminCustomerRequestsPage() {
                       <Badge tone="warn">{String(plan.status || "draft").replaceAll("_", " ")}</Badge>
                     </div>
                     <p className="mt-2 text-xs font-bold text-[#667267]">{customer?.display_name || customer?.full_name || customer?.email || "Customer"}</p>
-                    <p className="mt-2 text-xs font-black text-[#1f6b45]">Requested mission Day {plan.requested_start_day || 1} → Review package</p>
-                  </Link>
+                    <p className="mt-2 text-xs font-black text-[#1f6b45]">{["paid_pending_setup", "ready"].includes(String(plan.status)) ? "Approved → Ready for Task Management" : ["active", "paused"].includes(String(plan.status)) ? "Assigned → Daily missions automatic" : `Requested mission Day ${plan.requested_start_day || 1} → Care Request review`}</p>
+                  </div>
                 );
               })}
               {!openCarePlans.length && <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-4 text-sm font-bold text-[#667267]">No open Care Plan request right now.</div>}
@@ -8180,6 +8253,10 @@ function AdminCustomerRequestsPage() {
           <div>
             <h2 className="mb-3 text-xl font-black">One-Time Care Payment Queue</h2>
             <AdminManualPaymentQueue sourceType="care_request" />
+          </div>
+          <div>
+            <h2 className="mb-3 text-xl font-black">Care Plan Payment Review</h2>
+            <AdminManualPaymentQueue sourceType="care_plan" />
           </div>
         </div>
       )}
@@ -8523,8 +8600,18 @@ export function AdminCustomerRequestsSection({ section }: { section: string }) {
   if (section === "care") {
     return (
       <Shell role="admin" title="Care Request">
-        <PageTitle title="Care Request" text="Approve or reject customer care-request payment proof. Approved payments move to Task Management." icon="rooster" />
-        <AdminManualPaymentQueue sourceType="care_request" />
+        <PageTitle title="Care Request" text="Review Care Plan and one-time care requests here. Paid approvals move to Task Management." icon="rooster" />
+        <div className="grid gap-5">
+          <AdminLiveCarePlanRequestQueue />
+          <div>
+            <h2 className="mb-3 text-xl font-black">Care Plan Payment Review</h2>
+            <AdminManualPaymentQueue sourceType="care_plan" />
+          </div>
+          <div>
+            <h2 className="mb-3 text-xl font-black">One-Time Care Payment Review</h2>
+            <AdminManualPaymentQueue sourceType="care_request" />
+          </div>
+        </div>
       </Shell>
     );
   }
@@ -8553,6 +8640,57 @@ export function AdminCustomerRequestsSection({ section }: { section: string }) {
     );
   }
   return <AdminCustomerRequestsPage />;
+}
+
+function AdminLiveCarePlanRequestQueue() {
+  const [plans, setPlans] = useState<any[]>([]);
+  const [note, setNote] = useState("Loading Care Plan requests...");
+  useEffect(() => {
+    getAdminCarePlans()
+      .then((rows) => {
+        const open = (rows || []).filter((plan: any) => !["completed", "cancelled", "expired"].includes(String(plan.status || "")));
+        setPlans(open);
+        setNote(open.length ? "Care Plan requests are visible here; paid approvals automatically become assignable in Task Management." : "No open Care Plan request right now.");
+      })
+      .catch((error) => {
+        setPlans([]);
+        setNote(`Care Plan requests could not load: ${readableAppError(error)}`);
+      });
+  }, []);
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase text-[#1f6b45]">Care Plan Queue</p>
+          <h2 className="mt-1 text-2xl font-black">Submitted Care Plans</h2>
+          <p className="mt-1 text-sm font-bold text-[#667267]">No separate Operations page: Care Request review stays here, then Task Management handles the one-time caretaker assignment.</p>
+        </div>
+        <Badge tone={plans.length ? "warn" : "good"}>{plans.length}</Badge>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {plans.map((plan: any) => {
+          const animal = Array.isArray(plan.customer_animals) ? plan.customer_animals[0] : plan.customer_animals;
+          const customer = Array.isArray(plan.customer) ? plan.customer[0] : plan.customer;
+          const status = String(plan.status || "draft");
+          return (
+            <div key={plan.id} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-[#667267]">{Number(plan.duration_days || 30)}-Day Care Plan</p>
+                  <h3 className="mt-1 text-lg font-black">{animal?.animal_name || "Customer rooster"}</h3>
+                </div>
+                <Badge tone={["paid_pending_setup", "ready"].includes(status) ? "good" : "warn"}>{status.replaceAll("_", " ")}</Badge>
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#667267]">{customer?.display_name || customer?.full_name || customer?.email || "Customer"}</p>
+              <p className="mt-2 text-xs font-black text-[#1f6b45]">{["paid_pending_setup", "ready"].includes(status) ? "Approved → now in Task Management" : ["active", "paused"].includes(status) ? "Assigned → daily missions automatic" : status === "draft" ? "Submitted → waiting for Care Request review" : "Payment review in progress"}</p>
+            </div>
+          );
+        })}
+        {!plans.length && <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-5 text-sm font-bold text-[#667267]">No submitted Care Plan request.</div>}
+      </div>
+      <p role="status" className="mt-4 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{note}</p>
+    </Card>
+  );
 }
 
 function AdminRoosterSaleQueue() {
@@ -9660,27 +9798,50 @@ function AdminWithdrawalReviewQueue() {
 
 function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } = {}) {
   const [rows, setRows] = useState<any[]>([]);
+  const [carePlans, setCarePlans] = useState<any[]>([]);
   const [caretakers, setCaretakers] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [selectedCaretakerId, setSelectedCaretakerId] = useState("");
   const [note, setNote] = useState("Loading live care requests...");
   const [assigning, setAssigning] = useState(false);
-  const visibleRows = rows.filter((row) => {
+  const visibleRequests = rows.filter((row) => {
     const status = String(row.status || "");
     if (mode === "task") return status === "paid_pending_assignment" || status === "pending_assignment";
     return !["completed", "approved", "rejected", "cancelled"].includes(status);
   });
+  const assignablePlans = mode === "task"
+    ? carePlans.filter((plan) => String(plan.status || "") === "paid_pending_setup" || (String(plan.status || "") === "ready" && !plan.assigned_caretaker_id)).map((plan) => {
+        const animal = Array.isArray(plan.customer_animals) ? plan.customer_animals[0] : plan.customer_animals;
+        const customer = Array.isArray(plan.customer) ? plan.customer[0] : plan.customer;
+        return {
+          ...plan,
+          queue_type: "care_plan",
+          customer_name: customer?.display_name || customer?.full_name || customer?.email || "Customer",
+          rooster_name: animal?.animal_name || "Customer rooster",
+          rooster_serial: animal?.animal_code || "Verify in caretaker app",
+          service_name: `${Number(plan.duration_days || 30)}-Day Care Plan`,
+          service_price: Number(plan.package_total || 0),
+          required_proof: "Daily mission checklist, health status, actual inventory usage, and time-stamped evidence.",
+          customer_note: "Paid automatic Care Plan. Assign one caretaker once; the Mission Engine creates each daily task.",
+        };
+      })
+    : [];
+  const visibleRows = [...visibleRequests, ...assignablePlans];
   const selected = visibleRows.find((row) => row.id === selectedId) || visibleRows[0] || null;
   async function load() {
     try {
-      const [data, activeCaretakers] = await Promise.all([getAdminCareRequests(), getActiveCaretakersForAssignment()]);
+      const [data, planRows, activeCaretakers] = await Promise.all([getAdminCareRequests(), getAdminCarePlans(), getActiveCaretakersForAssignment()]);
       setRows(data);
+      setCarePlans(planRows);
       setCaretakers(activeCaretakers);
-      const nextVisible = data.filter((row: any) => (mode === "task" ? ["paid_pending_assignment", "pending_assignment"].includes(String(row.status || "")) : !["completed", "approved", "rejected", "cancelled"].includes(String(row.status || ""))));
+      const nextRequests = data.filter((row: any) => (mode === "task" ? ["paid_pending_assignment", "pending_assignment"].includes(String(row.status || "")) : !["completed", "approved", "rejected", "cancelled"].includes(String(row.status || ""))));
+      const nextPlans = mode === "task" ? planRows.filter((plan: any) => String(plan.status || "") === "paid_pending_setup" || (String(plan.status || "") === "ready" && !plan.assigned_caretaker_id)).map((plan: any) => ({ ...plan, queue_type: "care_plan" })) : [];
+      const nextVisible = [...nextRequests, ...nextPlans];
       setSelectedId((current) => (nextVisible.some((row: any) => row.id === current) ? current : nextVisible[0]?.id || ""));
-      setNote(data.length ? "Only approved and paid care requests are ready for caretaker assignment." : "No live care requests yet.");
+      setNote(nextVisible.length ? "Approved and paid Care Requests are ready for one-time caretaker assignment." : "No approved Care Request is waiting for assignment.");
     } catch {
       setRows([]);
+      setCarePlans([]);
       setCaretakers([]);
       setNote("Task assignment queue could not load. Check admin login, active caretakers, and SQL 011.");
     }
@@ -9695,10 +9856,14 @@ function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } =
     }
     try {
       setAssigning(true);
-      await adminAssignCareRequest(selected.id, selectedCaretakerId, "Assigned from Customer Requests Task Management.");
+      if (selected.queue_type === "care_plan") {
+        await assignAdminCarePlan(selected.id, selectedCaretakerId, "Assigned once from Task Management. Daily missions continue automatically.");
+      } else {
+        await adminAssignCareRequest(selected.id, selectedCaretakerId, "Assigned from Customer Requests Task Management.");
+      }
       await load();
       setSelectedCaretakerId("");
-      setNote(`Assigned ${selected.service_name} for ${selected.rooster_name}. It now appears in the caretaker's Active Tasks.`);
+      setNote(selected.queue_type === "care_plan" ? `Assigned ${selected.service_name} for ${selected.rooster_name}. Today's task was created; the next daily tasks are automatic.` : `Assigned ${selected.service_name} for ${selected.rooster_name}. It now appears in the caretaker's Active Tasks.`);
     } catch (error) {
       setNote(`Assign failed: ${readableAppError(error) || "Check admin login, active caretaker, or assignment SQL."}`);
     } finally {
@@ -9711,7 +9876,7 @@ function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } =
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-black">Customer Queue</h2>
-            <p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Paid and approved care requests waiting for assignment.</p>
+            <p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Approved one-time requests and paid Care Plans waiting for one assignment.</p>
           </div>
           <Badge tone="warn">{visibleRows.length}</Badge>
         </div>
@@ -9733,7 +9898,7 @@ function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } =
               <p className="mt-2 text-xs font-black text-[#1f6b45]">{row.created_at ? new Date(row.created_at).toLocaleString() : "Ready to assign"}</p>
             </button>
           ))}
-          {!visibleRows.length && <div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold text-[#667267]">No paid care request waiting for caretaker assignment.</div>}
+          {!visibleRows.length && <div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold text-[#667267]">No approved Care Request waiting for caretaker assignment.</div>}
         </div>
       </Card>
       <Card className="min-h-[620px]">
@@ -9752,6 +9917,7 @@ function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } =
               <Info label="QR / Serial" value={selected.rooster_serial || selected.animal_serial || "Verify in caretaker app"} />
               <Info label="Service" value={selected.service_name || "Care request"} />
               <Info label="Paid Amount" value={peso(Number(selected.service_price || 0))} />
+              {selected.queue_type === "care_plan" && <Info label="Automation" value="One assignment · daily tasks automatic" />}
             </div>
             <div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4">
               <p className="text-xs font-black uppercase text-[#667267]">Customer Instruction</p>
@@ -9772,7 +9938,7 @@ function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } =
       </Card>
       <Card className="min-h-[620px]">
         <h2 className="text-lg font-black">Assign Caretaker</h2>
-        <p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Choose one active caretaker. Assignment is the only action on this page.</p>
+        <p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Choose one active caretaker once. Paid Care Plans generate each daily task automatically after assignment.</p>
         <div className="mt-4 max-h-[430px] space-y-2 overflow-y-auto pr-2">
           {caretakers.map((caretaker) => (
             <button key={caretaker.id} type="button" disabled={!selected} onClick={() => setSelectedCaretakerId(caretaker.id)} className={"w-full rounded-2xl border p-3 text-left transition disabled:opacity-40 " + (selectedCaretakerId === caretaker.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}>

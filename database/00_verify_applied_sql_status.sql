@@ -192,6 +192,10 @@ with expected(migration, kind, object_name) as (
     ,('063_unified_care_plan_manual_mission_inventory_guard.sql','table','manual_care_inventory_usage')
     ,('063_unified_care_plan_manual_mission_inventory_guard.sql','function','caretaker_submit_manual_mission_proof')
     ,('063_unified_care_plan_manual_mission_inventory_guard.sql','function','admin_review_manual_mission_proof_guarded')
+    ,('064_care_plan_task_management_assignment.sql','function','admin_assign_care_plan')
+    ,('065_fixed_5000_care_plan_package_day1_readiness.sql','table','care_plan_package_items')
+    ,('065_fixed_5000_care_plan_package_day1_readiness.sql','function','customer_prepare_fixed_care_plan_payment')
+    ,('065_fixed_5000_care_plan_package_day1_readiness.sql','function','sync_care_plan_day1_readiness')
 ),
 object_status as (
   select

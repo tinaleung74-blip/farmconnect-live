@@ -44,6 +44,18 @@ const unifiedCarePath = path.join(
   "applied",
   "063_unified_care_plan_manual_mission_inventory_guard.sql",
 );
+const taskAssignmentPath = path.join(
+  root,
+  "database",
+  "applied",
+  "064_care_plan_task_management_assignment.sql",
+);
+const fixedPackagePath = path.join(
+  root,
+  "database",
+  "applied",
+  "065_fixed_5000_care_plan_package_day1_readiness.sql",
+);
 const appSourcePath = path.join(root, "lib", "farmconnect-v1.tsx");
 const customerRoutePath = path.join(
   root,
@@ -79,6 +91,8 @@ for (const filePath of [
   quotePath,
   lifecyclePath,
   unifiedCarePath,
+  taskAssignmentPath,
+  fixedPackagePath,
   appSourcePath,
   customerRoutePath,
   adminRoutePath,
@@ -97,6 +111,8 @@ const proof = fs.readFileSync(proofPath, "utf8");
 const quote = fs.readFileSync(quotePath, "utf8");
 const lifecycle = fs.readFileSync(lifecyclePath, "utf8");
 const unifiedCare = fs.readFileSync(unifiedCarePath, "utf8");
+const taskAssignment = fs.readFileSync(taskAssignmentPath, "utf8");
+const fixedPackage = fs.readFileSync(fixedPackagePath, "utf8");
 const appSource = fs.readFileSync(appSourcePath, "utf8");
 const cronRoute = fs.readFileSync(cronRoutePath, "utf8");
 const businessFlow = fs.readFileSync(businessFlowPath, "utf8");
@@ -355,6 +371,58 @@ const assertions = [
     !/\["Care Plans", "\/customer\/care-plans"/.test(appSource) &&
       /label="Care Plan"/.test(appSource),
     "Customer Care Plan navigation was not consolidated into Farm Requests and My Roosters",
+  ],
+  [
+    /CARE_PLAN_NOT_READY_FOR_TASK_ASSIGNMENT/i.test(taskAssignment) &&
+      /APPROVED_EXACT_PAYMENT_REQUIRED/i.test(taskAssignment) &&
+      /ACTIVE_CARETAKER_REQUIRED/i.test(taskAssignment),
+    "Care Plan Task Management assignment lacks payment, status, or caretaker guards",
+  ],
+  [
+    /perform public\.fulfill_care_plan_feed\(v_plan\.id\)/i.test(taskAssignment) &&
+      /CARE_PLAN_SUPPLIES_INCOMPLETE/i.test(taskAssignment),
+    "Care Plan assignment can activate without guarded feed reservation",
+  ],
+  [
+    /v_generation:=public\.generate_due_care_plan_missions\(v_today\)/i.test(taskAssignment) &&
+      /plan_assigned_and_activated/i.test(taskAssignment),
+    "One-time Care Plan assignment does not start automatic daily missions",
+  ],
+  [
+    /assignAdminCarePlan/.test(appSource) &&
+      !/\["Care Plans", "\/admin\/care-plans"/.test(appSource) &&
+      !/Open Care Plan Operations/.test(appSource),
+    "Admin normal flow still exposes the separate Care Plan Operations step",
+  ],
+  [
+    /round\(v_plan\.package_total,2\)<>5000/i.test(fixedPackage) &&
+      /amountExpected: 5000/.test(appSource) &&
+      /Pay ₱5,000 Care Plan/.test(appSource),
+    "The 30-day Care Plan is not locked to PHP 5,000 across database and customer UI",
+  ],
+  [
+    /round\(sum\(coalesce\(feed_grams_max,30\)\)\/1000,3\)/i.test(fixedPackage) &&
+      /CARE_PLAN_COMPLETE_FEED_PACKAGE_UNAVAILABLE/i.test(fixedPackage),
+    "The fixed package does not calculate and stock-check exact 30-day feed",
+  ],
+  [
+    /care_plan_package_items/i.test(fixedPackage) &&
+      /Biosecurity and sanitation kit/i.test(fixedPackage) &&
+      /Electrolyte and vitamin reserve/i.test(fixedPackage) &&
+      /Rooster ID and evidence kit/i.test(fixedPackage),
+    "The complete standard 30-day package catalog is missing",
+  ],
+  [
+    /care_plan_preparation_required/i.test(fixedPackage) &&
+      /Care Plan Ready \+ Day 1/i.test(fixedPackage) &&
+      /trg_sync_care_plan_day1_readiness/i.test(fixedPackage),
+    "Day 1 does not combine package readiness, initial care, and the later-mission gate",
+  ],
+  [
+    /status='ready'/i.test(fixedPackage) &&
+      /new\.status='approved'/i.test(fixedPackage) &&
+      /schedule_shift_days=v_shift/i.test(fixedPackage),
+    "Later daily missions can start before Day 1 preparation is verified",
   ],
 ];
 

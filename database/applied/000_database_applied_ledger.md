@@ -901,3 +901,26 @@ Purpose:
 - Give manual caretaker tasks the same procedures, safety protocols, checklists, evidence, and stop-and-report rule.
 - Deduct actual manual-care inventory exactly once and only after admin proof approval; release reservations on rejection.
 - Consolidate customer entry under Farm Requests and the sixth Care Plan box in My Roosters.
+
+## 064_care_plan_task_management_assignment.sql
+
+Status: **PENDING REVIEWED APPLICATION**
+
+Purpose:
+
+- Put paid and approved Care Plans directly in Admin Task Management.
+- Assign one active caretaker once, activate the plan, and create the first due mission in one guarded RPC.
+- Keep exact-payment, mission-catalog, feed reservation, active-caretaker, and idempotency protections.
+- Remove the separate Care Plan Operations page from the normal Admin workflow; subsequent daily tasks remain server-generated.
+
+## 065_fixed_5000_care_plan_package_day1_readiness.sql
+
+Status: **PENDING REVIEWED APPLICATION**
+
+Purpose:
+
+- Lock the only available Care Plan at 30 days and PHP 5,000.
+- Prepare the payment context and exact age-based feed requirement immediately from Farm Requests.
+- Reserve a complete six-part standard package; medicine and emergency treatment remain separately authorized.
+- Make the first caretaker task combine package readiness with the real Day 1 mission.
+- Hold later automatic missions until Admin approves the caretaker's Day 1 readiness proof.

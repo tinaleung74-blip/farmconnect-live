@@ -1,5 +1,5 @@
-import { AdminCarePlansPage } from "@/lib/farmconnect-v1";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <AdminCarePlansPage />;
+  redirect("/admin/customer-requests/task");
 }

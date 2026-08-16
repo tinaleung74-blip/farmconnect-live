@@ -246,7 +246,7 @@ export async function getCaretakerActiveTasks() {
 export async function getCustomerCarePlans() {
   const profile = await getCurrentProfile();
   if (!profile) return [];
-  const { data, error } = await supabase.from("rooster_care_plans").select("*, customer_animals(animal_name,animal_code,breed_snapshot), care_plan_supply_requirements(*)").eq("profile_id", profile.id).order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("rooster_care_plans").select("*, customer_animals(animal_name,animal_code,breed_snapshot), care_plan_supply_requirements(*), care_plan_package_items(*)").eq("profile_id", profile.id).order("created_at", { ascending: false });
   if (error) throw error;
   return data || [];
 }
@@ -291,7 +291,7 @@ export async function getCustomerRoosterCareOverviews(): Promise<CustomerRooster
     let planDay: number | null = null;
     let catalogDay = Number(plan?.requested_start_day || plan?.start_day_number || ownershipDay);
     if (plan?.start_date && ["active", "paused"].includes(String(plan.status))) {
-      planDay = Math.min(Number(plan.duration_days || 1), Math.max(1, today - manilaDayNumber(plan.start_date) + 1));
+      planDay = Math.min(Number(plan.duration_days || 1), Math.max(1, today - manilaDayNumber(plan.start_date) - Number(plan.schedule_shift_days || 0) + 1));
       catalogDay = Number(plan.start_day_number || 1) + planDay - 1;
     }
     return {
@@ -336,8 +336,21 @@ export async function requestCustomerCarePlan(customerAnimalId: string, duration
   return data as string;
 }
 
+export async function prepareCustomerCarePlanPayment(carePlanId: string) {
+  const { data, error } = await supabase.rpc("customer_prepare_fixed_care_plan_payment", {
+    p_care_plan_id: carePlanId,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult & {
+    package_total: number;
+    feed_required_kg: number;
+    duration_days: number;
+    requested_start_day: number;
+  };
+}
+
 export async function getAdminCarePlans() {
-  const { data, error } = await supabase.from("rooster_care_plans").select("*, customer:profiles!rooster_care_plans_profile_id_fkey(full_name,display_name,email), customer_animals(animal_name,animal_code,breed_snapshot), assigned_caretaker:caretakers!rooster_care_plans_assigned_caretaker_id_fkey(full_name,display_name), care_plan_supply_requirements(*)").order("created_at", { ascending: false }).limit(100);
+  const { data, error } = await supabase.from("rooster_care_plans").select("*, customer:profiles!rooster_care_plans_profile_id_fkey(full_name,display_name,email), customer_animals(animal_name,animal_code,breed_snapshot), assigned_caretaker:caretakers!rooster_care_plans_assigned_caretaker_id_fkey(full_name,display_name), care_plan_supply_requirements(*), care_plan_package_items(*)").order("created_at", { ascending: false }).limit(100);
   if (error) throw error;
   return data || [];
 }
@@ -385,6 +398,20 @@ export async function activateAdminCarePlan(carePlanId: string, startDate: strin
   });
   if (error) throw error;
   return data as GuardedWorkflowResult;
+}
+
+export async function assignAdminCarePlan(carePlanId: string, caretakerId: string, adminNote?: string | null) {
+  const { data, error } = await supabase.rpc("admin_assign_care_plan", {
+    p_care_plan_id: carePlanId,
+    p_caretaker_id: caretakerId,
+    p_admin_note: adminNote || null,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult & {
+    created_missions?: number;
+    start_date?: string;
+    end_date?: string;
+  };
 }
 
 export async function cancelCustomerCarePlan(carePlanId: string, reason: string) {
