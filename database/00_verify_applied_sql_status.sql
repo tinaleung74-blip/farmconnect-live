@@ -188,6 +188,10 @@ with expected(migration, kind, object_name) as (
     ,('062_care_plan_production_lifecycle.sql','function','admin_control_care_plan')
     ,('062_care_plan_production_lifecycle.sql','function','admin_record_care_plan_refund')
     ,('062_care_plan_production_lifecycle.sql','function','kafarm_care_plan_health_snapshot')
+    ,('063_unified_care_plan_manual_mission_inventory_guard.sql','table','manual_care_inventory_reservations')
+    ,('063_unified_care_plan_manual_mission_inventory_guard.sql','table','manual_care_inventory_usage')
+    ,('063_unified_care_plan_manual_mission_inventory_guard.sql','function','caretaker_submit_manual_mission_proof')
+    ,('063_unified_care_plan_manual_mission_inventory_guard.sql','function','admin_review_manual_mission_proof_guarded')
 ),
 object_status as (
   select

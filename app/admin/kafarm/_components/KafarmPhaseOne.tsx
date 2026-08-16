@@ -64,6 +64,11 @@ type CarePlanHealthSnapshot = {
   active_supply_conversion_missing?: number;
   negative_inventory?: number;
   pending_refunds?: number;
+  manual_expired_reservations?: number;
+  manual_unreviewed_proofs?: number;
+  manual_consumed_without_usage?: number;
+  manual_approved_with_active_reservation?: number;
+  paid_manual_open_conflicts?: number;
   generated_at?: string;
 };
 
@@ -976,6 +981,11 @@ export function KafarmCommandCenter() {
       if (Number(careHealth.overdue_missions || 0) > 0) careFindings.push({ severity: "Medium", title: "Overdue Care Plan missions need action", meaning: `${Number(careHealth.overdue_missions || 0)} mission(s) remain overdue.`, evidence: careHealth, next_action: "Open Care Plans, verify caretaker coverage, and resolve or reassign overdue work." });
       if (Number(careHealth.unreviewed_proofs || 0) > 0) careFindings.push({ severity: "Medium", title: "Care Plan proofs await admin review", meaning: `${Number(careHealth.unreviewed_proofs || 0)} proof(s) are pending.`, evidence: careHealth, next_action: "Review the full welfare checklist and exact feed usage in Task Verification." });
       if (Number(careHealth.pending_refunds || 0) > 0) careFindings.push({ severity: "Medium", title: "Care Plan refunds await evidence", meaning: `${Number(careHealth.pending_refunds || 0)} refund(s) are pending.`, evidence: careHealth, next_action: "Complete the external refund and record its reference on the Care Plan." });
+      if (Number(careHealth.manual_expired_reservations || 0) > 0) careFindings.push({ severity: "Medium", title: "Manual-care inventory reservation expired", meaning: `${Number(careHealth.manual_expired_reservations || 0)} premium manual request(s) were not assigned before their stock hold expired.`, evidence: careHealth, next_action: "Ask the customer to submit a fresh request so current inventory can be checked and reserved again." });
+      if (Number(careHealth.manual_unreviewed_proofs || 0) > 0) careFindings.push({ severity: "Medium", title: "Manual premium-care proofs await review", meaning: `${Number(careHealth.manual_unreviewed_proofs || 0)} caretaker proof(s) are pending.`, evidence: careHealth, next_action: "Review the same mission checklist, safety result, and actual inventory usage used by the paid Care Plan flow." });
+      if (Number(careHealth.manual_consumed_without_usage || 0) > 0) careFindings.push({ severity: "High", title: "Manual-care deduction ledger mismatch", meaning: "A reservation is marked consumed without its immutable usage record.", evidence: careHealth, next_action: "Stop further approval for the affected request and reconcile its proof, reservation, and inventory ledger." });
+      if (Number(careHealth.manual_approved_with_active_reservation || 0) > 0) careFindings.push({ severity: "High", title: "Approved manual-care proof did not close inventory reservation", meaning: "A proof is approved but its reserved stock is still active.", evidence: careHealth, next_action: "Inspect the guarded manual proof review RPC and reconcile the exact inventory equation before another approval." });
+      if (Number(careHealth.paid_manual_open_conflicts || 0) > 0) careFindings.push({ severity: "High", title: "Paid and manual care overlap detected", meaning: "The same rooster has an open manual request while a paid automated Care Plan is active.", evidence: careHealth, next_action: "Do not assign duplicate work. Resolve the manual request and preserve only the paid automated mission path." });
     }
     const mergedSnapshot = {
       ...(data as LiveDatabaseSnapshot),

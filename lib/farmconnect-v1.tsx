@@ -7,8 +7,9 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAdminEscalatedChats, getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, runAdminSupportAction, saveKaFarmSupportMessage, sendSupportMessage } from "@/lib/backend/support-chat";
 import { getEscalationNotice, getKaFarmReply, shouldEscalateToAdmin } from "@/lib/kafarm-brain";
-import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, requestCustomerCarePlan, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem } from "@/lib/farmconnect-data";
+import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterCareOverviews, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, requestCustomerCarePlan, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerManualMissionProof, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem, type CustomerRoosterCareOverview } from "@/lib/farmconnect-data";
 import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/customer-signup";
+import { adminReviewManualMissionProof } from "@/lib/farmconnect-data";
 import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { supabase } from "@/lib/supabase";
 
@@ -178,7 +179,6 @@ const nav = {
     ["My Roosters", "/customer/roosters", "rooster"],
     ["Farm Buy", "/customer/farm-buy", "bag"],
     ["Farm Requests", "/customer/farm-requests", "clipboard"],
-    ["Care Plans", "/customer/care-plans", "clipboard"],
     ["Wallet", "/customer/wallet", "wallet"],
   ],
   caretaker: [
@@ -310,9 +310,33 @@ type RoosterCard = {
   saleStatus?: string;
   approvedSalePrice?: number | null;
   ownershipMetadata?: Record<string, unknown>;
+  careOverview?: CustomerRoosterCareOverview | null;
 };
 
+function carePlanBox(overview?: CustomerRoosterCareOverview | null) {
+  if (!overview) return { title: "Premium guide", detail: "Mission loading" };
+  if (overview.planStatus === "active") return { title: "Paid · Active", detail: `Day ${overview.planDay || 1} of ${overview.durationDays || 30}` };
+  if (overview.planStatus === "paused") return { title: "Paid · Paused", detail: `Day ${overview.planDay || 1} of ${overview.durationDays || 30}` };
+  if (["paid_pending_setup", "ready"].includes(String(overview.planStatus))) return { title: "Paid · Preparing", detail: `${overview.durationDays || 30}-day automation` };
+  if (["draft", "payment_for_review", "payment_submitted"].includes(String(overview.planStatus))) return { title: "Plan requested", detail: String(overview.planStatus).replaceAll("_", " ") };
+  return { title: `Today · Day ${overview.catalogDay}`, detail: overview.missionTitle };
+}
+
 const services = [
+  {
+    name: "Care Plan (30 Days)",
+    category: "Care Plan",
+    price: 0,
+    proof: "Automatic daily premium missions",
+    eta: "Admin verified package",
+  },
+  {
+    name: "Today's Standard Care",
+    category: "Care",
+    price: 160,
+    proof: "Daily procedure + safety checklist + care proof",
+    eta: "Today",
+  },
   {
     name: "Photo Update",
     category: "Update",
@@ -900,6 +924,7 @@ type CustomerDashboardState = {
   transactions: CustomerDashboardTransaction[];
   inbox: CustomerDashboardInbox[];
   careLogs: CareLogRecord[];
+  careOverviews: CustomerRoosterCareOverview[];
 };
 type CustomerDashboardIconName = "bird" | "feather" | "shopping-cart" | "triangle-alert" | "camera" | "wallet-cards" | "clipboard-list" | "image" | "activity" | "bell";
 const customerDashboardIconPath: Record<CustomerDashboardIconName, string> = {
@@ -947,6 +972,7 @@ export function CustomerHome() {
     transactions: [],
     inbox: [],
     careLogs: [],
+    careOverviews: [],
   });
 
   useEffect(() => {
@@ -958,7 +984,7 @@ export function CustomerHome() {
       try {
         const profile = await getCurrentProfile();
         if (!profile || !mounted) return;
-        const results = await Promise.allSettled([getCustomerOwnedRoosters(), getCustomerInventoryItems(), getCustomerCareRequests(), getCustomerManualPaymentRequests(), getWalletTransactions(profile.id), getInboxItems(profile.id), getCareLogRecords()]);
+        const results = await Promise.allSettled([getCustomerOwnedRoosters(), getCustomerInventoryItems(), getCustomerCareRequests(), getCustomerManualPaymentRequests(), getWalletTransactions(profile.id), getInboxItems(profile.id), getCareLogRecords(), getCustomerRoosterCareOverviews()]);
         if (!mounted) return;
         const rows = <T,>(index: number) => (results[index].status === "fulfilled" ? (results[index].value as T[]) : []);
         setDashboard({
@@ -971,6 +997,7 @@ export function CustomerHome() {
           transactions: rows<CustomerDashboardTransaction>(4),
           inbox: rows<CustomerDashboardInbox>(5),
           careLogs: rows<CareLogRecord>(6),
+          careOverviews: rows<CustomerRoosterCareOverview>(7),
         });
         const failed = results.filter((result) => result.status === "rejected").length;
         setLoadNote(failed ? `${failed} record source${failed === 1 ? "" : "s"} need refresh` : "Live records updated");
@@ -993,6 +1020,7 @@ export function CustomerHome() {
   const featureMeta = (featured?.ownership_metadata || {}) as Record<string, string | number | null | undefined>;
   const careLogs = dashboard.careLogs || [];
   const careRequests = dashboard.careRequests || [];
+  const careOverviews = dashboard.careOverviews || [];
   const payments = dashboard.payments || [];
   const transactions = dashboard.transactions || [];
   const inbox = dashboard.inbox || [];
@@ -1002,9 +1030,8 @@ export function CustomerHome() {
   const completedStatuses = ["completed", "released", "fulfilled", "done"];
   const allRequests = [...careRequests, ...payments];
   const requestCount = (statuses: string[]) => allRequests.filter((row) => statuses.includes(normalizedStatus(row))).length;
-  const attentionCount = allRequests.filter((row) => ["rejected", "needs_info", "backjob", "failed"].includes(normalizedStatus(row))).length;
-  const growingCount = ownedRoosters.filter((row) => /chick|starter|young|growing/i.test(`${row.source_product_name || ""} ${String(row.ownership_metadata?.stage || "")}`)).length;
-  const readyForSale = ownedRoosters.filter((row) => Number(row.approved_sale_price || 0) > 0 || /price_ready|approved_for_sale/i.test(String(row.sale_status || ""))).length;
+  const paidCarePlans = careOverviews.filter((overview) => overview.paid).length;
+  const selfGuidedRoosters = careOverviews.filter((overview) => !overview.paid).length;
   const availableBalance = Number(profile.wallet_balance || 0);
   const approvedEarnings = transactions.reduce((sum: number, row) => {
     const status = normalizedStatus(row);
@@ -1018,7 +1045,15 @@ export function CustomerHome() {
   const ageDays = acquiredAt && dashboard.loadedAt && !Number.isNaN(acquiredAt.getTime()) ? Math.max(0, Math.floor((dashboard.loadedAt - acquiredAt.getTime()) / 86400000)) : null;
   const featureLogs = featured ? careLogs.filter((log) => log.rooster === featured.animal_name) : [];
   const featuredPhoto = String(featureMeta.image_url || featureLogs.find((log) => /^https?:\/\//i.test(log.image))?.image || (featured ? "/farmconnect/roosters/fc-stage-1-chick-base.jpg" : ""));
-  const careProgress = featured ? Math.min(100, featureLogs.length * 20) : 0;
+  const growthDay = featured ? Math.min(180, Math.max(1, ageDays ?? 1)) : 0;
+  const growthProgress = featured ? Number(((growthDay / 180) * 100).toFixed(2)) : 0;
+  const insightOverview = careOverviews.find((overview) => !overview.paid) || careOverviews[0] || null;
+  const insightRooster = insightOverview ? ownedRoosters.find((row) => row.id === insightOverview.customerAnimalId) : null;
+  const insightText = insightOverview
+    ? `${insightRooster?.animal_name || "Your rooster"}: Day ${insightOverview.catalogDay} — ${insightOverview.missionTitle}. ${insightOverview.paid ? "Its assigned caretaker handles today's automatic mission." : "Open Farm Requests if you want the farm to perform today's care."}`
+    : ownedRoosters.length
+      ? "Today's premium care mission is still loading."
+      : "Your first approved rooster will unlock a daily KaFarm care mission.";
   const recentActivity = [
     ...inbox.map((row) => ({
       id: `inbox-${row.id}`,
@@ -1059,9 +1094,9 @@ export function CustomerHome() {
         <div className="grid grid-cols-2 gap-2">
           {[
             ["bird", "Total Roosters", ownedRoosters.length, "Owned assets"],
-            ["feather", "Growing", growingCount, "Active care"],
-            ["shopping-cart", "Ready for Sale", readyForSale, readyForSale ? "Price approved" : "None yet"],
-            ["triangle-alert", "Needs Attention", attentionCount, attentionCount ? "Open requests" : "All clear"],
+            ["activity", "Today's Missions", careOverviews.length, "One per rooster"],
+            ["clipboard-list", "Paid Care Plans", paidCarePlans, "Caretaker automated"],
+            ["bell", "Self-Guided", selfGuidedRoosters, "KaFarm daily guide"],
           ].map(([icon, label, value, note]) => (
             <div key={String(label)} className="min-h-[96px] rounded-[20px] border border-white/80 bg-white/94 p-3 text-[#163c2d] shadow-lg backdrop-blur">
               <div className="flex items-start gap-3">
@@ -1114,11 +1149,11 @@ export function CustomerHome() {
               </div>
               <div className="mt-3">
                 <div className="flex justify-between text-[10px] font-black">
-                  <span>Care progress</span>
-                  <span>{careProgress}%</span>
+                  <span>180-Day Growth Progress</span>
+                  <span>Day {growthDay} of 180 · {growthProgress}%</span>
                 </div>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#dfe8e1]">
-                  <div className="h-full rounded-full bg-[#1d7650]" style={{ width: `${careProgress}%` }} />
+                  <div className="h-full rounded-full bg-[#1d7650]" style={{ width: `${growthProgress}%` }} />
                 </div>
               </div>
               <Link href="/customer/roosters" className="mt-4 flex min-h-11 items-center justify-between rounded-xl bg-[#145f3e] px-4 text-sm font-black text-white">
@@ -1208,7 +1243,7 @@ export function CustomerHome() {
             <img src="/farmconnect/icons/my-rooster.png" alt="KaFarm" className="h-12 w-12 rounded-xl bg-white object-contain" />
             <div className="min-w-0">
               <p className="text-[10px] font-black uppercase text-[#25724d]">KaFarm Insight</p>
-              <p className="mt-1 text-xs font-bold text-[#708078]">{attentionCount ? `${attentionCount} request${attentionCount === 1 ? "" : "s"} need your attention.` : ownedRoosters.length ? "No customer request currently needs your response." : "Your first approved rooster will unlock farm insights."}</p>
+              <p className="mt-1 text-xs font-bold text-[#708078]">{insightText}</p>
             </div>
           </section>
           <section className="rounded-[22px] bg-white/96 p-4 text-[#163c2d] shadow-lg">
@@ -1273,9 +1308,9 @@ export function CustomerHome() {
         <div className="fc-customer-summary-grid grid grid-cols-2 gap-2 lg:grid-cols-4">
           {[
             ["bird", "Total Roosters", ownedRoosters.length],
-            ["feather", "Growing", growingCount],
-            ["shopping-cart", "Ready for Sale", readyForSale],
-            ["triangle-alert", "Needs Attention", attentionCount],
+            ["activity", "Today's Missions", careOverviews.length],
+            ["clipboard-list", "Paid Care Plans", paidCarePlans],
+            ["bell", "Self-Guided", selfGuidedRoosters],
           ].map(([icon, label, value]) => (
             <div key={String(label)} className={`${panel} flex min-h-20 items-center gap-3 p-3 sm:p-4`}>
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-amber-300/40 text-amber-200">
@@ -1332,11 +1367,11 @@ export function CustomerHome() {
                     </div>
                     <div className="mt-4">
                       <div className="flex justify-between text-xs font-bold text-white/70">
-                        <span>Care progress</span>
-                        <span>{careProgress}%</span>
+                        <span>180-Day Growth Progress</span>
+                        <span>Day {growthDay} of 180 · {growthProgress}%</span>
                       </div>
                       <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15">
-                        <div className="h-full rounded-full bg-amber-300" style={{ width: `${careProgress}%` }} />
+                        <div className="h-full rounded-full bg-amber-300" style={{ width: `${growthProgress}%` }} />
                       </div>
                     </div>
                     <Link href="/customer/roosters" className={`${linkButton} mt-4 ml-auto max-w-44`}>
@@ -1461,7 +1496,7 @@ export function CustomerHome() {
               <img src="/farmconnect/icons/my-rooster.png" alt="KaFarm" className="h-12 w-12 rounded-xl bg-white object-contain" />
               <div className="min-w-0">
                 <h2 className="text-lg font-black">KaFarm Insight</h2>
-                <p className="mt-1 text-sm text-white/65">{attentionCount ? `${attentionCount} request${attentionCount === 1 ? "" : "s"} need your attention.` : ownedRoosters.length ? "No customer request currently needs your response." : "Your first approved rooster will unlock farm insights."}</p>
+                <p className="mt-1 text-sm text-white/65">{insightText}</p>
               </div>
             </section>
 
@@ -1502,9 +1537,10 @@ export function CustomerRoostersResponsive() {
 
   useEffect(() => {
     let active = true;
-    getCustomerOwnedRoosters()
-      .then((items) => {
+    Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews()])
+      .then(([items, careOverviews]) => {
         if (!active) return;
+        const careByAnimal = new Map(careOverviews.map((overview) => [overview.customerAnimalId, overview]));
         const mapped = items.filter(isRealOwnedAnimal).map((row, index) => {
           const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Bloodline";
           return {
@@ -1522,6 +1558,7 @@ export function CustomerRoostersResponsive() {
             saleStatus: row.sale_status || "not_listed",
             approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price),
             ownershipMetadata: row.ownership_metadata || {},
+            careOverview: careByAnimal.get(row.id) || null,
           } as RoosterCard;
         });
         setRows(mapped);
@@ -1657,7 +1694,9 @@ export function CustomerRoostersResponsive() {
               <Info label="Health" value="New & Healthy" />
               <Info label="Est. Value" value={selected.value} />
               <Info label="Bloodline" value={selected.breed} />
-              <Info label="Pen & Caretaker" value={selected.caretaker} />
+              <Info label="Pen" value={selected.pen} />
+              <Info label="Caretaker" value={selected.caretaker} />
+              <Info label="Care Plan" value={`${carePlanBox(selected.careOverview).title} · ${carePlanBox(selected.careOverview).detail}`} />
             </div>
             <div className="mt-3 rounded-2xl bg-[#f5f5ef] p-3">
               <p className="text-[9px] font-black uppercase text-[#25724d]">Latest Care Update</p>
@@ -1689,9 +1728,10 @@ export function CustomerRoosters() {
 
   useEffect(() => {
     let mounted = true;
-    getCustomerOwnedRoosters()
-      .then((rows) => {
+    Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews()])
+      .then(([rows, careOverviews]) => {
         if (!mounted) return;
+        const careByAnimal = new Map(careOverviews.map((overview) => [overview.customerAnimalId, overview]));
         const mapped: RoosterCard[] = rows.filter(isRealOwnedAnimal).map((row, index) => {
           const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Bloodline";
           return {
@@ -1709,6 +1749,7 @@ export function CustomerRoosters() {
             saleStatus: row.sale_status || "not_listed",
             approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price),
             ownershipMetadata: row.ownership_metadata || {},
+            careOverview: careByAnimal.get(row.id) || null,
           };
         });
         setOwnedRoosters(mapped);
@@ -1786,6 +1827,7 @@ export function CustomerRoosters() {
                   <Info label="Health" value={selected.health} />
                   <Info label="Pen" value={selected.pen} />
                   <Info label="Caretaker" value={selected.caretaker} />
+                  <Info label="Care Plan" value={`${carePlanBox(selected.careOverview).title} · ${carePlanBox(selected.careOverview).detail}`} />
                 </div>
                 <div className="mt-5 rounded-2xl border border-[#e3ded0] bg-[#fffdf7] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2621,6 +2663,8 @@ export function FarmRequests() {
   const [note, setNote] = useState("");
   const [requestNote, setRequestNote] = useState("Choose a rooster, choose a service, add a note, then submit. Paid services create an invoice automatically.");
   const [careRows, setCareRows] = useState<any[]>([]);
+  const [carePlans, setCarePlans] = useState<any[]>([]);
+  const [careOverviews, setCareOverviews] = useState<CustomerRoosterCareOverview[]>([]);
   const [ownedRoosters, setOwnedRoosters] = useState<RoosterCard[]>([]);
   const [submitting, setSubmitting] = useState(false);
   useEffect(() => {
@@ -2645,9 +2689,13 @@ export function FarmRequests() {
         setRooster(mapped[0] || null);
       })
       .catch(() => setRequestNote("Owned rooster records could not load yet. Buy a rooster first and wait for admin approval."));
-    getCustomerCareRequests()
-      .then((rows) => {
-        if (mounted) setCareRows(rows);
+    Promise.all([getCustomerCareRequests(), getCustomerCarePlans(), getCustomerRoosterCareOverviews()])
+      .then(([rows, plans, overviews]) => {
+        if (mounted) {
+          setCareRows(rows);
+          setCarePlans(plans);
+          setCareOverviews(overviews);
+        }
       })
       .catch(() => setRequestNote("Care request database is not ready yet. Run SQL 011 before live testing."));
     return () => {
@@ -2662,8 +2710,21 @@ export function FarmRequests() {
     }
     setSubmitting(true);
     try {
+      const overview = careOverviews.find((row) => row.customerAnimalId === rooster.id);
+      if (service.name === "Care Plan (30 Days)") {
+        await requestCustomerCarePlan(rooster.id, 30, overview?.catalogDay || 1);
+        const [plans, overviews] = await Promise.all([getCustomerCarePlans(), getCustomerRoosterCareOverviews()]);
+        setCarePlans(plans);
+        setCareOverviews(overviews);
+        setRequestNote(`30-day Care Plan requested for ${rooster.name}. Admin will verify the mission range, caretaker, inventory, and locked package before payment.`);
+        return;
+      }
+      if (overview?.paid) {
+        setRequestNote(`${rooster.name} already has paid Care Plan automation. Its daily mission goes directly to the assigned caretaker; a duplicate manual care request was not created.`);
+        return;
+      }
       const careRequestId = await createCareRequest({
-        customerAnimalId: rooster.id.startsWith("live-") ? rooster.id.replace(/^live-/, "") : null,
+        customerAnimalId: rooster.id,
         roosterName: rooster.name,
         roosterTag: rooster.tag,
         serviceName: service.name,
@@ -2701,8 +2762,9 @@ export function FarmRequests() {
       setRequestNote(`Request sent for ${rooster.name}. Admin will assign this to a caretaker; your note is included.`);
       const rows = await getCustomerCareRequests();
       setCareRows(rows);
-    } catch {
-      setRequestNote("Could not save request to database. Please login and make sure SQL 011 is run.");
+    } catch (error) {
+      const message = readableAppError(error);
+      setRequestNote(/CARE_INVENTORY_ITEM_REQUIRED/i.test(message) ? "This care request needs customer-owned supplies that are not in Inventory yet. Buy the required item in Farm Buy, then try again." : /CARE_INVENTORY_INSUFFICIENT/i.test(message) ? `Inventory is not enough for this mission. ${message.replace(/^.*CARE_INVENTORY_INSUFFICIENT[:|]?/i, "").replaceAll("|", " · ")}` : /PAID_CARE_PLAN_ALREADY_AUTOMATES_ROOSTER/i.test(message) ? "This rooster already has paid Care Plan automation, so a duplicate manual request is not allowed." : `Request failed: ${message || "Check login and Care Plan SQL."}`);
     } finally {
       setSubmitting(false);
     }
@@ -2745,9 +2807,9 @@ export function FarmRequests() {
           <label className="mt-4 block text-sm font-black">Customer Instruction</label>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tell the farm what you want..." className="mt-2 min-h-24 w-full rounded-xl border border-[#ded8c9] p-3" />
           <button onClick={submitRequest} className="mt-3 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
-            {submitting ? "Saving..." : service.price > 0 ? "Pay" : "Send Request"}
+            {submitting ? "Saving..." : service.name === "Care Plan (30 Days)" ? "Request Verified Plan" : service.price > 0 ? "Pay" : "Send Request"}
           </button>
-          {service.price > 0 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-[#7a4b00]">Manual external payment. Admin approves before the task goes to caretaker.</p>}
+          {service.name === "Care Plan (30 Days)" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-900">One request starts a verified 30-day package. After payment and one caretaker assignment, the Mission Engine creates the daily tasks automatically.</p> : service.price > 0 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-[#7a4b00]">Inventory is checked and reserved before payment. Admin approves before the task goes to caretaker.</p>}
         </Card>
         <Card>
           <h2 className="text-lg font-black xl:text-xl">3. Request Logs</h2>
@@ -2764,7 +2826,14 @@ export function FarmRequests() {
                 </button>
               </div>
             ))}
-            {careRows.length === 0 && <p className="rounded-xl bg-[#f6f3e8] p-3 text-sm font-bold text-[#667267]">No care request records yet.</p>}
+            {carePlans.map((plan) => (
+              <div key={`plan-${plan.id}`} className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                <b>Care Plan · {plan.duration_days} days</b>
+                <p className="text-sm font-bold text-[#667267]">{String(plan.status || "draft").replaceAll("_", " ")}</p>
+                <Link href="/customer/care-plans" className="mt-2 inline-flex rounded-lg bg-white px-3 py-2 text-sm font-black">Review Plan</Link>
+              </div>
+            ))}
+            {careRows.length === 0 && carePlans.length === 0 && <p className="rounded-xl bg-[#f6f3e8] p-3 text-sm font-bold text-[#667267]">No care request records yet.</p>}
           </div>
         </Card>
       </div>
@@ -4714,7 +4783,7 @@ export function CustomerPaymentPage() {
               <Link href="/customer/inbox" className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">
                 Open Inbox
               </Link>
-              <Link href={context.sourceType === "farm_buy" ? "/customer/farm-buy" : context.sourceType === "care_plan" ? "/customer/care-plans" : "/customer/farm-requests"} className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">
+              <Link href={context.sourceType === "farm_buy" ? "/customer/farm-buy" : "/customer/farm-requests"} className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">
                 Back
               </Link>
             </div>
@@ -6144,7 +6213,10 @@ export function CaretakerTasks() {
   const needsVideoProof = selected ? /video/i.test(selected.task + " " + selected.proof) : false;
   const isSalePriceTask = selected?.workflowType === "sale_price_inspection";
   const isSaleReleaseTask = selected?.workflowType === "sale_release_confirmation";
-  const isMissionTask = selected?.workflowType === "care_plan_daily_mission";
+  const isPaidMissionTask = selected?.workflowType === "care_plan_daily_mission";
+  const isManualMissionTask = selected?.workflowType === "manual_standard_mission";
+  const isMissionTask = isPaidMissionTask || isManualMissionTask;
+  const selectedMissionInventory = missionInventory.find((item) => item.id === inventoryItemId);
   const missionList = (key: string) => (Array.isArray(selected?.taskMetadata?.[key]) ? (selected?.taskMetadata?.[key] as unknown[]).map(String) : []);
   const missionSchedule = Array.isArray(selected?.taskMetadata?.time_schedule)
     ? (selected.taskMetadata.time_schedule as Array<{
@@ -6201,7 +6273,7 @@ export function CaretakerTasks() {
   }
 
   useEffect(() => {
-    if (!selected || selected.workflowType !== "care_plan_daily_mission") return;
+    if (!selected || !["care_plan_daily_mission", "manual_standard_mission"].includes(selected.workflowType)) return;
     let active = true;
     getCaretakerTaskInventory(selected.id)
       .then((items) => {
@@ -6342,9 +6414,9 @@ export function CaretakerTasks() {
       setTaskNote("A PASS mission must record the reserved feed and actual positive kilograms used.");
       return;
     }
-    const selectedMissionInventory = missionInventory.find((item) => item.id === inventoryItemId);
-    if (isMissionTask && inventoryQuantity && Number(inventoryQuantity) > Number(selectedMissionInventory?.reserved_kg || 0)) {
-      setTaskNote("The entered kilograms exceed the remaining feed reserved for this Care Plan.");
+    const reservedLimit = selectedMissionInventory?.usage_unit === "kg" ? Number(selectedMissionInventory?.reserved_kg || 0) : Number(selectedMissionInventory?.reserved_inventory_units || 0);
+    if (isMissionTask && inventoryQuantity && Number(inventoryQuantity) > reservedLimit) {
+      setTaskNote("The entered quantity exceeds the inventory reserved for this care task.");
       return;
     }
     if (isSaleReleaseTask || selected.workflowType === "qr_tagging" || !selected.qrScanRequired) {
@@ -6487,14 +6559,7 @@ export function CaretakerTasks() {
           serialException: isSaleReleaseTask ? false : qrSkipped,
         });
       } else if (isMissionTask) {
-        await submitCaretakerMissionProof({
-          taskId: selected.id,
-          proofUrls,
-          freeNote: documentation.trim(),
-          qrVerified: !qrSkipped,
-          serialException: qrSkipped,
-          healthStatus,
-          checklistResults: {
+        const checklistResults = {
             operations: missionList("operations_checklist").map((label, index) => ({
               label,
               checked: Boolean(operationChecks[index]),
@@ -6515,18 +6580,27 @@ export function CaretakerTasks() {
               label,
               checked: Boolean(healthChecks[index]),
             })),
-          },
-          inventoryUsage:
-            inventoryQuantity && inventoryItemId
-              ? [
-                  {
-                    inventory_item_id: inventoryItemId,
-                    quantity: Number(inventoryQuantity),
-                    unit: "kg" as const,
-                  },
-                ]
-              : [],
-        });
+          };
+        const missionBase = {
+          taskId: selected.id,
+          proofUrls,
+          freeNote: documentation.trim(),
+          qrVerified: !qrSkipped,
+          serialException: qrSkipped,
+          healthStatus,
+          checklistResults,
+        };
+        if (isPaidMissionTask) {
+          await submitCaretakerMissionProof({
+            ...missionBase,
+            inventoryUsage: inventoryQuantity && inventoryItemId ? [{ inventory_item_id: inventoryItemId, quantity: Number(inventoryQuantity), unit: "kg" }] : [],
+          });
+        } else {
+          await submitCaretakerManualMissionProof({
+            ...missionBase,
+            inventoryUsage: inventoryQuantity && inventoryItemId ? [{ inventory_item_id: inventoryItemId, quantity: Number(inventoryQuantity), unit: selectedMissionInventory?.usage_unit === "kg" ? "kg" : "inventory_unit" }] : [],
+          });
+        }
       } else {
         await submitCaretakerTaskProof({
           taskId: selected.id,
@@ -6625,11 +6699,14 @@ export function CaretakerTasks() {
                     <div className="space-y-4 rounded-3xl border-2 border-emerald-300 bg-emerald-50/70 p-5">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-black uppercase text-[#1f6b45]">Daily Care Plan Mission</p>
+                          <p className="text-xs font-black uppercase text-[#1f6b45]">{isPaidMissionTask ? "Automatic Paid Care Plan" : "Manual Premium Care Request"}</p>
                           <h3 className="mt-1 text-2xl font-black">{String(selected.taskMetadata.primary_mission || selected.task)}</h3>
                           <p className="mt-1 text-sm font-bold text-[#667267]">{String(selected.taskMetadata.life_stage || "Recorded life stage")}</p>
                         </div>
-                        <Badge tone="good">Day {String(selected.taskMetadata.catalog_day || selected.task.match(/Day (\d+)/)?.[1] || "-")}</Badge>
+                        <Badge tone="good">{isPaidMissionTask ? "Automatic" : "Manual"} · Day {String(selected.taskMetadata.catalog_day || selected.task.match(/Day (\d+)/)?.[1] || "-")}</Badge>
+                      </div>
+                      <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm font-bold leading-6 text-sky-950">
+                        <b>Professional judgment rule:</b> This procedure is the farm standard and working guide. Inspect the actual rooster and site first. Never follow a step blindly; if the condition is unsafe, stop that step, protect the rooster, document what you found, and report it to Admin.
                       </div>
                       <div className="grid gap-3 lg:grid-cols-2">
                         <div className="rounded-2xl bg-white p-4">
@@ -6709,21 +6786,21 @@ export function CaretakerTasks() {
                       </label>
                       <div className="grid gap-3 rounded-2xl bg-white p-4 md:grid-cols-[1fr_180px]">
                         <label className="text-sm font-black">
-                          Inventory Used (optional)
+                          Reserved Inventory Used
                           <select value={inventoryItemId} onChange={(event) => setInventoryItemId(event.target.value)} className="mt-2 w-full rounded-xl border p-3">
                             <option value="">No inventory used</option>
                             {missionInventory.map((item) => (
                               <option key={item.id} value={item.id}>
-                                {item.product_name} — {Number(item.reserved_kg || 0).toFixed(3)} kg reserved
+                                {item.product_name} — {item.usage_unit === "kg" ? `${Number(item.reserved_kg || 0).toFixed(3)} kg` : `${Number(item.reserved_inventory_units || 0).toFixed(3)} ${item.unit_label || "inventory unit"}`} reserved
                               </option>
                             ))}
                           </select>
                         </label>
                         <label className="text-sm font-black">
-                          Actual Used (kg)
+                          Actual Used ({selectedMissionInventory?.usage_unit === "kg" ? "kg" : selectedMissionInventory?.unit_label || "inventory unit"})
                           <input value={inventoryQuantity} onChange={(event) => setInventoryQuantity(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.000" className="mt-2 w-full rounded-xl border p-3" />
                         </label>
-                        <p className="md:col-span-2 text-xs font-bold leading-5 text-[#667267]">Enter kilograms only. FarmConnect converts the value to the selected inventory unit using the admin-verified pack weight and deducts it only after admin approval.</p>
+                        <p className="md:col-span-2 text-xs font-bold leading-5 text-[#667267]">Use the displayed unit and record the actual amount only. FarmConnect deducts it once, after admin approves the proof; unused reserved stock is not charged.</p>
                       </div>
                       <div className="rounded-2xl bg-white p-4">
                         <b>Completion Gate</b>
@@ -7848,11 +7925,11 @@ const customerDeskSections = [
   },
   {
     id: "care",
-    title: "Care Request",
+    title: "Care & Care Plans",
     icon: "rooster" as IconName,
     tone: "warn" as const,
     count: 2,
-    text: "Review customer rooster, service, notes, and payment status. Approved requests move to task assignment.",
+    text: "Review one-time care requests and new Care Plan packages. Care Plans continue to verified quote, payment, activation, and daily task assignment.",
     href: "/admin/customer-requests/care",
   },
   {
@@ -7890,6 +7967,7 @@ function AdminCustomerRequestsPage() {
   const [activeSection, setActiveSection] = useState("payment");
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const [liveWithdrawals, setLiveWithdrawals] = useState<any[]>([]);
+  const [liveCarePlans, setLiveCarePlans] = useState<any[]>([]);
   const [liveSellCount, setLiveSellCount] = useState(0);
   const [adminStatus, setAdminStatus] = useState("");
   const liveWithdrawalJobs = liveWithdrawals.map((row: any) => ({
@@ -7925,6 +8003,7 @@ function AdminCustomerRequestsPage() {
   const [payoutReceiptPreview, setPayoutReceiptPreview] = useState("");
   const [payoutReference, setPayoutReference] = useState("");
   const activeSectionInfo = customerDeskSections.find((section) => section.id === activeSection) || customerDeskSections[0];
+  const openCarePlans = liveCarePlans.filter((plan: any) => !["completed", "cancelled", "expired"].includes(String(plan.status || "").toLowerCase()));
   const selectedKey = `${selected.queue}-${selected.id}-${selected.problem}`;
   const orderItems =
     selected.queue === "payment" && selected.problem.includes("Farm Buy")
@@ -7990,6 +8069,13 @@ function AdminCustomerRequestsPage() {
       .catch(() => {
         if (mounted) setLiveSellCount(0);
       });
+    getAdminCarePlans()
+      .then((rows) => {
+        if (mounted) setLiveCarePlans(rows || []);
+      })
+      .catch(() => {
+        if (mounted) setLiveCarePlans([]);
+      });
     return () => {
       mounted = false;
     };
@@ -8036,7 +8122,13 @@ function AdminCustomerRequestsPage() {
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#f6f3e8]">
                 <Icon name={section.icon} />
               </span>
-              <Badge tone={section.tone}>{section.id === "sell" ? liveSellCount : customerRequestJobs.filter((job) => job.queue === section.id && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`)).length}</Badge>
+              <Badge tone={section.tone}>
+                {section.id === "sell"
+                  ? liveSellCount
+                  : section.id === "care"
+                    ? openCarePlans.length + customerRequestJobs.filter((job) => job.queue === section.id && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`)).length
+                    : customerRequestJobs.filter((job) => job.queue === section.id && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`)).length}
+              </Badge>
             </div>
             <h2 className="mt-3 text-lg font-black">{section.title}</h2>
             <p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-[#667267]">{section.text}</p>
@@ -8049,8 +8141,46 @@ function AdminCustomerRequestsPage() {
         </div>
       )}
       {activeSection === "care" && (
-        <div className="mt-5">
-          <AdminManualPaymentQueue sourceType="care_request" />
+        <div className="mt-5 space-y-4">
+          <Card>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase text-[#1f6b45]">Care Plan Queue</p>
+                <h2 className="mt-1 text-2xl font-black">New and Active Care Plans</h2>
+                <p className="mt-1 text-sm font-bold text-[#667267]">A submitted 30-day plan appears here immediately. Open Care Plan Operations to verify its package, caretaker, inventory, quote, payment, and activation.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge tone={openCarePlans.length ? "warn" : "good"}>{openCarePlans.length} open</Badge>
+                <Link href="/admin/care-plans" className="rounded-xl bg-[#1f6b45] px-4 py-3 text-sm font-black text-white">
+                  Open Care Plan Operations
+                </Link>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {openCarePlans.slice(0, 9).map((plan: any) => {
+                const animal = Array.isArray(plan.customer_animals) ? plan.customer_animals[0] : plan.customer_animals;
+                const customer = Array.isArray(plan.customer) ? plan.customer[0] : plan.customer;
+                return (
+                  <Link key={plan.id} href="/admin/care-plans" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 transition hover:border-[#1f6b45] hover:shadow-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-[#667267]">{plan.duration_days || 30}-day Care Plan</p>
+                        <h3 className="mt-1 text-lg font-black">{animal?.animal_name || "Customer rooster"}</h3>
+                      </div>
+                      <Badge tone="warn">{String(plan.status || "draft").replaceAll("_", " ")}</Badge>
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-[#667267]">{customer?.display_name || customer?.full_name || customer?.email || "Customer"}</p>
+                    <p className="mt-2 text-xs font-black text-[#1f6b45]">Requested mission Day {plan.requested_start_day || 1} → Review package</p>
+                  </Link>
+                );
+              })}
+              {!openCarePlans.length && <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-4 text-sm font-bold text-[#667267]">No open Care Plan request right now.</div>}
+            </div>
+          </Card>
+          <div>
+            <h2 className="mb-3 text-xl font-black">One-Time Care Payment Queue</h2>
+            <AdminManualPaymentQueue sourceType="care_request" />
+          </div>
         </div>
       )}
       {activeSection === "sell" && (
@@ -9713,6 +9843,8 @@ function AdminLiveTaskProofQueue() {
     try {
       if (row.caretaker_tasks?.workflow_type === "care_plan_daily_mission") {
         await adminReviewMissionProof(row.id, decision, adminNote.trim() || "Daily mission evidence and inventory usage verified by admin.");
+      } else if (row.caretaker_tasks?.workflow_type === "manual_standard_mission") {
+        await adminReviewManualMissionProof(row.id, decision, adminNote.trim() || "Manual premium mission evidence and inventory usage verified by admin.");
       } else {
         await adminReviewTaskProof(row.id, decision, adminNote.trim() || "Proof approved by admin.");
       }
@@ -9813,11 +9945,11 @@ function AdminLiveTaskProofQueue() {
               <p className="text-xs font-black uppercase text-[#667267]">Caretaker Documentation</p>
               <p className="mt-2 whitespace-pre-wrap text-sm font-bold leading-6">{selected.free_note || selected.preset_note || "No documentation submitted."}</p>
             </div>
-            {task?.workflow_type === "care_plan_daily_mission" && (
+            {["care_plan_daily_mission", "manual_standard_mission"].includes(String(task?.workflow_type || "")) && (
               <div className="mt-4 space-y-3 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-black uppercase text-[#1f6b45]">Care Plan Mission Review</p>
+                    <p className="text-xs font-black uppercase text-[#1f6b45]">{task?.workflow_type === "care_plan_daily_mission" ? "Automatic Paid Care Plan Review" : "Manual Premium Care Review"}</p>
                     <h3 className="text-xl font-black">{String(task.task_metadata?.primary_mission || task.task_type)}</h3>
                   </div>
                   <Badge tone={selected.health_status === "pass" ? "good" : "bad"}>{String(selected.health_status || "missing").replaceAll("_", " ")}</Badge>
@@ -9861,7 +9993,7 @@ function AdminLiveTaskProofQueue() {
         <h2 className="text-lg font-black">Admin Decision</h2>
         <p className="mt-1 text-xs font-bold leading-5 text-[#667267]">{isSalePriceProof ? "Approve only after checking the photo, QR and entered price." : isSaleReleaseProof ? "Approve only after confirming the caretaker acknowledged final physical release." : "Review the photo and documentation first."}</p>
         <textarea value={adminNote} onChange={(event) => setAdminNote(event.target.value)} disabled={!selected || reviewing} placeholder="Approval note or clear correction instruction..." className="mt-4 h-44 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold disabled:opacity-50" />
-        <button type="button" onClick={() => selected && review(selected, "approved")} disabled={!selected || reviewing || (task?.workflow_type === "care_plan_daily_mission" && selected.health_status !== "pass")} className="mt-4 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">
+        <button type="button" onClick={() => selected && review(selected, "approved")} disabled={!selected || reviewing || (["care_plan_daily_mission", "manual_standard_mission"].includes(String(task?.workflow_type || "")) && selected.health_status !== "pass")} className="mt-4 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">
           {reviewing ? "Saving..." : "Approve Task"}
         </button>
         <button type="button" onClick={() => selected && review(selected, "backjob")} disabled={!selected || reviewing} className="mt-3 w-full rounded-2xl bg-red-600 px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">

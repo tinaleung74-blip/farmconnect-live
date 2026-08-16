@@ -38,6 +38,13 @@ const lifecyclePath = path.join(
   "applied",
   "062_care_plan_production_lifecycle.sql",
 );
+const unifiedCarePath = path.join(
+  root,
+  "database",
+  "applied",
+  "063_unified_care_plan_manual_mission_inventory_guard.sql",
+);
+const appSourcePath = path.join(root, "lib", "farmconnect-v1.tsx");
 const customerRoutePath = path.join(
   root,
   "app",
@@ -71,6 +78,8 @@ for (const filePath of [
   proofPath,
   quotePath,
   lifecyclePath,
+  unifiedCarePath,
+  appSourcePath,
   customerRoutePath,
   adminRoutePath,
   cronRoutePath,
@@ -87,6 +96,8 @@ const seed = fs.readFileSync(seedPath, "utf8");
 const proof = fs.readFileSync(proofPath, "utf8");
 const quote = fs.readFileSync(quotePath, "utf8");
 const lifecycle = fs.readFileSync(lifecyclePath, "utf8");
+const unifiedCare = fs.readFileSync(unifiedCarePath, "utf8");
+const appSource = fs.readFileSync(appSourcePath, "utf8");
 const cronRoute = fs.readFileSync(cronRoutePath, "utf8");
 const businessFlow = fs.readFileSync(businessFlowPath, "utf8");
 const isolatedTargetGuard = fs.readFileSync(isolatedTargetGuardPath, "utf8");
@@ -308,6 +319,42 @@ const assertions = [
       quote,
     ),
     "Approved Care Plan payments do not advance setup status",
+  ],
+  [
+    /PAID_CARE_PLAN_ALREADY_AUTOMATES_ROOSTER/i.test(unifiedCare),
+    "Paid Care Plans do not block duplicate manual care requests",
+  ],
+  [
+    /manual_care_inventory_reservations/i.test(unifiedCare) &&
+      /CARE_INVENTORY_INSUFFICIENT/i.test(unifiedCare),
+    "Manual premium care lacks atomic inventory preflight and reservation",
+  ],
+  [
+    /manual_expired_reservations/i.test(unifiedCare) &&
+      /manual_approved_with_active_reservation/i.test(unifiedCare) &&
+      /paid_manual_open_conflicts/i.test(unifiedCare),
+    "KaFarm does not monitor unified paid/manual care invariants",
+  ],
+  [
+    /workflow_type='manual_standard_mission'/i.test(unifiedCare) &&
+      /caretaker_submit_manual_mission_proof/i.test(unifiedCare),
+    "Unpaid/manual care does not receive the authoritative mission procedure",
+  ],
+  [
+    /admin_review_manual_mission_proof_guarded/i.test(unifiedCare) &&
+      /quantity=quantity-v_deduct_units/i.test(unifiedCare) &&
+      /Actual mission use:/i.test(unifiedCare),
+    "Manual care inventory is not deducted atomically after admin approval",
+  ],
+  [
+    /Care Plan \(30 Days\)/.test(appSource) &&
+      /Today.*Standard Care/.test(appSource),
+    "Farm Requests does not expose paid automation and manual premium care",
+  ],
+  [
+    !/\["Care Plans", "\/customer\/care-plans"/.test(appSource) &&
+      /label="Care Plan"/.test(appSource),
+    "Customer Care Plan navigation was not consolidated into Farm Requests and My Roosters",
   ],
 ];
 

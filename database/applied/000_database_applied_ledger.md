@@ -880,3 +880,24 @@ Deployment requirements:
 - Configure `CRON_SECRET` and existing `SUPABASE_SERVICE_ROLE_KEY` in Vercel.
 - Keep the Vercel cron at `5 16 * * *` (12:05 AM Asia/Manila).
 - Run `database/00_verify_applied_sql_status.sql` and `kafarm_care_plan_health_snapshot()` after reviewed migration application.
+
+## 063_unified_care_plan_manual_mission_inventory_guard.sql
+
+Status: **APPLIED AND VERIFIED — 2026-08-14**
+
+Verification result:
+
+- `manual_care_inventory_reservations`: present
+- `manual_care_inventory_usage`: present
+- `caretaker_submit_manual_mission_proof`: present
+- `admin_review_manual_mission_proof_guarded`: present
+- `kafarm_care_plan_health_snapshot`: unified paid/manual reader present
+
+Purpose:
+
+- Keep paid Care Plans automatic while exposing the same 180-day premium mission standard through manual Care Requests.
+- Block duplicate manual care when a rooster already has paid automation.
+- Check and reserve the exact customer-owned inventory required before a manual request is accepted.
+- Give manual caretaker tasks the same procedures, safety protocols, checklists, evidence, and stop-and-report rule.
+- Deduct actual manual-care inventory exactly once and only after admin proof approval; release reservations on rejection.
+- Consolidate customer entry under Farm Requests and the sixth Care Plan box in My Roosters.

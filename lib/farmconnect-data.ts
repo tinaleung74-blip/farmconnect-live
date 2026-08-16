@@ -251,6 +251,81 @@ export async function getCustomerCarePlans() {
   return data || [];
 }
 
+export type CustomerRoosterCareOverview = {
+  customerAnimalId: string;
+  planId: string | null;
+  planStatus: string | null;
+  paid: boolean;
+  durationDays: number | null;
+  planDay: number | null;
+  catalogDay: number;
+  missionTitle: string;
+  lifeStage: string;
+  feedGramsMax: number | null;
+};
+
+function manilaDayNumber(value: string | Date) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+  }
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((entry) => entry.type === type)?.value || 0);
+  return Math.floor(Date.UTC(part("year"), part("month") - 1, part("day")) / 86400000);
+}
+
+export async function getCustomerRoosterCareOverviews(): Promise<CustomerRoosterCareOverview[]> {
+  const [animals, plans] = await Promise.all([getCustomerOwnedRoosters(), getCustomerCarePlans()]);
+  const today = manilaDayNumber(new Date());
+  const liveStatuses = new Set(["draft", "payment_for_review", "payment_submitted", "paid_pending_setup", "ready", "active", "paused"]);
+  const paidStatuses = new Set(["paid_pending_setup", "ready", "active", "paused"]);
+  const draftRows = animals.map((animal: any) => {
+    const plan = plans.find((row: any) => row.customer_animal_id === animal.id && liveStatuses.has(String(row.status))) || null;
+    const acquiredDay = animal.acquired_at ? manilaDayNumber(animal.acquired_at) : today;
+    const ownershipDay = Math.min(180, Math.max(1, today - acquiredDay + 1));
+    let planDay: number | null = null;
+    let catalogDay = Number(plan?.requested_start_day || plan?.start_day_number || ownershipDay);
+    if (plan?.start_date && ["active", "paused"].includes(String(plan.status))) {
+      planDay = Math.min(Number(plan.duration_days || 1), Math.max(1, today - manilaDayNumber(plan.start_date) + 1));
+      catalogDay = Number(plan.start_day_number || 1) + planDay - 1;
+    }
+    return {
+      animal,
+      plan,
+      planDay,
+      catalogDay: Math.min(180, Math.max(1, catalogDay)),
+    };
+  });
+  const days = Array.from(new Set(draftRows.map((row) => row.catalogDay)));
+  const { data: templates, error } = await supabase
+    .from("care_mission_templates")
+    .select("day_number,life_stage,primary_mission,feed_grams_max")
+    .eq("catalog_version", "farmconnect-premium-rooster-180-v1")
+    .in("day_number", days);
+  if (error) throw error;
+  const templateByDay = new Map((templates || []).map((row: any) => [Number(row.day_number), row]));
+  return draftRows.map(({ animal, plan, planDay, catalogDay }) => {
+    const template: any = templateByDay.get(catalogDay);
+    return {
+      customerAnimalId: animal.id,
+      planId: plan?.id || null,
+      planStatus: plan?.status || null,
+      paid: paidStatuses.has(String(plan?.status || "")),
+      durationDays: plan ? Number(plan.duration_days || 0) : null,
+      planDay,
+      catalogDay,
+      missionTitle: template?.primary_mission || "Review today’s standard care procedure",
+      lifeStage: template?.life_stage || "Standard rooster care",
+      feedGramsMax: template?.feed_grams_max == null ? null : Number(template.feed_grams_max),
+    };
+  });
+}
+
 export async function requestCustomerCarePlan(customerAnimalId: string, durationDays: 30 | 60 | 90 | 180, requestedStartDay: number) {
   const { data, error } = await supabase.rpc("customer_request_care_plan", {
     p_customer_animal_id: customerAnimalId,
@@ -377,6 +452,7 @@ export type CareTaskInventoryItem = {
   kg_per_inventory_unit?: number | null;
   reserved_inventory_units?: number | null;
   reserved_kg?: number | null;
+  usage_unit?: "kg" | "inventory_unit" | null;
 };
 
 export async function getCaretakerTaskInventory(taskId: string): Promise<CareTaskInventoryItem[]> {
@@ -419,6 +495,50 @@ export async function submitCaretakerMissionProof(payload: {
   });
   if (error) throw error;
   return data as string;
+}
+
+export async function submitCaretakerManualMissionProof(payload: {
+  taskId: string;
+  proofUrls: string[];
+  freeNote: string;
+  qrVerified: boolean;
+  serialException: boolean;
+  healthStatus: "pass" | "watch" | "isolate_and_escalate";
+  checklistResults: {
+    operations: Array<{ label: string; checked: boolean }>;
+    housing: Array<{ label: string; checked: boolean }>;
+    supplements: Array<{ label: string; checked: boolean }>;
+    vaccines: Array<{ label: string; checked: boolean }>;
+    health: Array<{ label: string; checked: boolean }>;
+  };
+  inventoryUsage: Array<{
+    inventory_item_id: string;
+    quantity: number;
+    unit: "kg" | "inventory_unit";
+  }>;
+}) {
+  const { data, error } = await supabase.rpc("caretaker_submit_manual_mission_proof", {
+    p_task_id: payload.taskId,
+    p_proof_urls: payload.proofUrls,
+    p_free_note: payload.freeNote,
+    p_qr_verified: payload.qrVerified,
+    p_serial_exception: payload.serialException,
+    p_health_status: payload.healthStatus,
+    p_checklist_results: payload.checklistResults,
+    p_inventory_usage: payload.inventoryUsage,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function adminReviewManualMissionProof(proofId: string, decision: "approved" | "rejected" | "backjob", note?: string | null) {
+  const { data, error } = await supabase.rpc("admin_review_manual_mission_proof_guarded", {
+    p_proof_id: proofId,
+    p_decision: decision,
+    p_admin_note: note || null,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult;
 }
 
 export async function submitCaretakerTaskProof(payload: { taskId: string; proofUrl?: string | null; proofUrls?: string[]; presetNote?: string | null; freeNote?: string | null; qrVerified?: boolean; serialException?: boolean; feedQuantityUsed?: number | null; feedUnit?: string | null }) {

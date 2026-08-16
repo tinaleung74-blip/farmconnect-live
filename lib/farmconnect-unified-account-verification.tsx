@@ -50,7 +50,16 @@ type VerificationRow = {
 type UnknownRow = Record<string, unknown>;
 
 const cardClass = "rounded-2xl border border-[#e3ded0] bg-white p-4 shadow-sm";
-const customerQueueStatuses = new Set(["pending", "submitted", "for_review", "ready_for_review", "needs_info"]);
+const customerQueueStatuses = new Set([
+  "pending",
+  "submitted",
+  "for_review",
+  "ready_for_review",
+  "pending_review",
+  "needs_review",
+  "awaiting_review",
+  "needs_info",
+]);
 const customerApprovedStatuses = new Set(["approved", "verified", "accepted"]);
 
 function normalizedVerificationStatus(value: unknown, fallback = "draft") {
