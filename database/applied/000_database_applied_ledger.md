@@ -824,3 +824,103 @@ Purpose:
 Expected success output:
 
 - `completed_with_stale_confirmation_notice = 0`
+
+## 058_care_plan_mission_engine_foundation.sql
+
+Status: **APPLIED / CONTROLLED E2E VERIFIED (2026-08-14 ASIA/MANILA)**
+
+Purpose:
+
+- Create private, RPC-only Care Plan, daily mission, supply, and event records.
+- Generate idempotent Asia/Manila caretaker missions without requiring a customer page visit.
+- Keep ordinary paid Care Request assignment idempotent and paid-only.
+
+## 059_care_mission_catalog_seed.sql
+
+Status: **APPLIED / 180-DAY CATALOG VERIFIED (2026-08-14 ASIA/MANILA)**
+
+Purpose:
+
+- Seed exactly 180 unique welfare-centered daily mission templates from the approved source file.
+- Preserve veterinarian authorization and emergency stop instructions in each daily record.
+
+## 060_care_plan_mission_proof_inventory_guard.sql
+
+Status: **APPLIED / CONTROLLED E2E VERIFIED (2026-08-14 ASIA/MANILA)**
+
+Purpose:
+
+- Require complete operations, housing, supplement, vaccine-authority, and health evidence.
+- Require every PASS label and position to match the authoritative mission catalog.
+- Require exact feed usage and deduct inventory only inside atomic admin approval.
+- Prevent duplicate proof/item deductions.
+
+## 061_care_plan_quote_payment_activation.sql
+
+Status: **APPLIED / SUPERSEDED IN PART BY 062**
+
+Purpose:
+
+- Add customer request, locked quote, payment synchronization, and paid activation lifecycle.
+- Migration 062 replaces the quote and activation safety details; both must be applied in order.
+
+## 062_care_plan_production_lifecycle.sql
+
+Status: **APPLIED / CONTROLLED E2E VERIFIED (2026-08-14 ASIA/MANILA)**
+
+Purpose:
+
+- Convert inventory packs to exact kilograms and compute required feed server-side from the catalog.
+- Bind manual payments to the owner and exact locked quote; fulfill missing feed only after payment approval and stock locking.
+- Backfill missed scheduler dates as overdue, extend paused coverage, support guarded reassignment/cancellation, and audit external refunds.
+- Complete plans only after every required mission is admin-approved and expose a read-only KaFarm health snapshot.
+
+Deployment requirements:
+
+- Configure `CRON_SECRET` and existing `SUPABASE_SERVICE_ROLE_KEY` in Vercel.
+- Keep the Vercel cron at `5 16 * * *` (12:05 AM Asia/Manila).
+- Run `database/00_verify_applied_sql_status.sql` and `kafarm_care_plan_health_snapshot()` after reviewed migration application.
+
+## 063_unified_care_plan_manual_mission_inventory_guard.sql
+
+Status: **APPLIED AND VERIFIED — 2026-08-14**
+
+Verification result:
+
+- `manual_care_inventory_reservations`: present
+- `manual_care_inventory_usage`: present
+- `caretaker_submit_manual_mission_proof`: present
+- `admin_review_manual_mission_proof_guarded`: present
+- `kafarm_care_plan_health_snapshot`: unified paid/manual reader present
+
+Purpose:
+
+- Keep paid Care Plans automatic while exposing the same 180-day premium mission standard through manual Care Requests.
+- Block duplicate manual care when a rooster already has paid automation.
+- Check and reserve the exact customer-owned inventory required before a manual request is accepted.
+- Give manual caretaker tasks the same procedures, safety protocols, checklists, evidence, and stop-and-report rule.
+- Deduct actual manual-care inventory exactly once and only after admin proof approval; release reservations on rejection.
+- Consolidate customer entry under Farm Requests and the sixth Care Plan box in My Roosters.
+
+## 064_care_plan_task_management_assignment.sql
+
+Status: **PENDING REVIEWED APPLICATION**
+
+Purpose:
+
+- Put paid and approved Care Plans directly in Admin Task Management.
+- Assign one active caretaker once, activate the plan, and create the first due mission in one guarded RPC.
+- Keep exact-payment, mission-catalog, feed reservation, active-caretaker, and idempotency protections.
+- Remove the separate Care Plan Operations page from the normal Admin workflow; subsequent daily tasks remain server-generated.
+
+## 065_fixed_5000_care_plan_package_day1_readiness.sql
+
+Status: **PENDING REVIEWED APPLICATION**
+
+Purpose:
+
+- Lock the only available Care Plan at 30 days and PHP 5,000.
+- Prepare the payment context and exact age-based feed requirement immediately from Farm Requests.
+- Reserve a complete six-part standard package; medicine and emergency treatment remain separately authorized.
+- Make the first caretaker task combine package readiness with the real Day 1 mission.
+- Hold later automatic missions until Admin approves the caretaker's Day 1 readiness proof.

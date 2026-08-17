@@ -28,9 +28,12 @@ try {
   run("test:lint-critical");
   run("test:security");
   run("test:dependencies");
+  run("test:care-plan");
   run("test:recovery");
   run("test:db");
   run("test:workflow");
+  run("test:e2e-target");
+  run("test:local-care-plan-preflight");
   run("test:accounts:create");
   accountsCreated = true;
   run("test:business");

@@ -16,11 +16,7 @@ export async function getCurrentProfile() {
     user = authData.user;
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
+  const { data, error } = await supabase.from("profiles").select("*").eq("auth_user_id", user.id).maybeSingle();
 
   if (error) throw error;
   return data;
@@ -30,23 +26,14 @@ export async function getCurrentCaretakerProfile() {
   const profile = await getCurrentProfile();
   if (!profile) return null;
 
-  const { data, error } = await supabase
-    .from("caretakers")
-    .select("id,profile_id,full_name,display_name,email,phone,farm_role,status,avatar_url,resume_url,resume_review_status")
-    .eq("profile_id", profile.id)
-    .maybeSingle();
+  const { data, error } = await supabase.from("caretakers").select("id,profile_id,full_name,display_name,email,phone,farm_role,status,avatar_url,resume_url,resume_review_status").eq("profile_id", profile.id).maybeSingle();
 
   if (error) throw error;
   return data ? { ...data, profile } : { profile };
 }
 
 export async function getFarmProducts() {
-  const { data, error } = await supabase
-    .from("farm_products")
-    .select("id,name,category,unit_label,unit_price,image_url,description,stock_quantity,status,product_type,stage,bloodline,breed,product_metadata")
-    .eq("status", "available")
-    .order("category", { ascending: true })
-    .order("name", { ascending: true });
+  const { data, error } = await supabase.from("farm_products").select("id,name,category,unit_label,unit_price,image_url,description,stock_quantity,status,product_type,stage,bloodline,breed,product_metadata").eq("status", "available").order("category", { ascending: true }).order("name", { ascending: true });
 
   if (error) throw error;
   return data || [];
@@ -83,19 +70,11 @@ export async function saveCartItem(productId: string, quantity: number, unitPric
     product_name_snapshot: context?.productName || null,
   };
 
-  const { data: existing, error: findError } = await supabase
-    .from("farm_cart_items")
-    .select("id")
-    .eq("profile_id", profile.id)
-    .eq("product_id", productId)
-    .eq("status", "active")
-    .maybeSingle();
+  const { data: existing, error: findError } = await supabase.from("farm_cart_items").select("id").eq("profile_id", profile.id).eq("product_id", productId).eq("status", "active").maybeSingle();
 
   if (findError && !/multiple|no rows/i.test(findError.message)) throw findError;
 
-  const query = existing?.id
-    ? supabase.from("farm_cart_items").update(payload).eq("id", existing.id)
-    : supabase.from("farm_cart_items").insert(payload);
+  const query = existing?.id ? supabase.from("farm_cart_items").update(payload).eq("id", existing.id) : supabase.from("farm_cart_items").insert(payload);
 
   const { error } = await query;
 
@@ -107,9 +86,7 @@ export async function saveCartItem(productId: string, quantity: number, unitPric
       unit_price: unitPrice,
       status: "active",
     };
-    const fallbackQuery = existing?.id
-      ? supabase.from("farm_cart_items").update(fallbackPayload).eq("id", existing.id)
-      : supabase.from("farm_cart_items").insert(fallbackPayload);
+    const fallbackQuery = existing?.id ? supabase.from("farm_cart_items").update(fallbackPayload).eq("id", existing.id) : supabase.from("farm_cart_items").insert(fallbackPayload);
     const { error: fallbackError } = await fallbackQuery;
     if (fallbackError) throw fallbackError;
     return;
@@ -125,27 +102,17 @@ export async function checkoutFarmCart() {
 }
 
 export async function getCustomerRoosters(profileId: string) {
-  const { data, error } = await supabase
-    .from("animals")
-    .select("*")
-    .eq("profile_id", profileId)
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("animals").select("*").eq("profile_id", profileId).order("created_at", { ascending: false });
 
   if (error) throw error;
   return data || [];
 }
 
-
 export async function getCustomerOwnedRoosters() {
   const profile = await getCurrentProfile();
   if (!profile) return [];
 
-  const { data, error } = await supabase
-    .from("customer_animals")
-    .select("id,animal_name,animal_code,status,acquired_from,acquired_at,source_product_id,source_product_name,bloodline_snapshot,breed_snapshot,ownership_metadata,sale_status,approved_sale_price,sold_at")
-    .eq("profile_id", profile.id)
-    .neq("status", "sold")
-    .order("acquired_at", { ascending: false });
+  const { data, error } = await supabase.from("customer_animals").select("id,animal_name,animal_code,status,acquired_from,acquired_at,source_product_id,source_product_name,bloodline_snapshot,breed_snapshot,ownership_metadata,sale_status,approved_sale_price,sold_at").eq("profile_id", profile.id).neq("status", "sold").order("acquired_at", { ascending: false });
 
   if (error) throw error;
   return data || [];
@@ -155,11 +122,7 @@ export async function getCustomerInventoryItems() {
   const profile = await getCurrentProfile();
   if (!profile) return [];
 
-  const { data, error } = await supabase
-    .from("customer_inventory_items")
-    .select("id,product_id,product_name,category,unit_label,unit_price,image_url,quantity,product_type,bloodline,breed,updated_at")
-    .eq("profile_id", profile.id)
-    .order("updated_at", { ascending: false });
+  const { data, error } = await supabase.from("customer_inventory_items").select("id,product_id,product_name,category,unit_label,unit_price,image_url,quantity,product_type,bloodline,breed,updated_at").eq("profile_id", profile.id).order("updated_at", { ascending: false });
 
   if (error) throw error;
   return data || [];
@@ -196,35 +159,20 @@ export async function getCustomerCareRequests() {
   const profile = await getCurrentProfile();
   if (!profile) return [];
 
-  const { data, error } = await supabase
-    .from("farm_care_requests")
-    .select("*")
-    .eq("profile_id", profile.id)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const { data, error } = await supabase.from("farm_care_requests").select("*").eq("profile_id", profile.id).order("created_at", { ascending: false }).limit(50);
 
   if (error) throw error;
   return data || [];
 }
 
 export async function getAdminCareRequests() {
-  const { data, error } = await supabase
-    .from("farm_care_requests")
-    .select("*, profiles(full_name,email,display_name), caretakers(full_name,display_name)")
-    .order("created_at", { ascending: false })
-    .limit(80);
+  const { data, error } = await supabase.from("farm_care_requests").select("*, profiles(full_name,email,display_name), caretakers(full_name,display_name)").order("created_at", { ascending: false }).limit(80);
 
   if (error) throw error;
   return (data || []).map((row: any) => {
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
     const storedName = String(row.customer_name || "").trim();
-    const customerName =
-      profile?.display_name ||
-      profile?.full_name ||
-      profile?.email ||
-      (storedName.toLowerCase() !== "customer" ? storedName : "") ||
-      row.customer_email ||
-      "Customer";
+    const customerName = profile?.display_name || profile?.full_name || profile?.email || (storedName.toLowerCase() !== "customer" ? storedName : "") || row.customer_email || "Customer";
 
     return {
       ...row,
@@ -246,61 +194,42 @@ export async function adminAssignCareRequest(careRequestId: string, caretakerId?
 }
 
 export async function getActiveCaretakersForAssignment() {
-  const { data, error } = await supabase
-    .from("caretakers")
-    .select("id,full_name,display_name,farm_role,status")
-    .in("status", ["active", "approved", "on_duty"])
-    .order("full_name", { ascending: true })
-    .limit(100);
+  const { data, error } = await supabase.from("caretakers").select("id,full_name,display_name,farm_role,status").in("status", ["active", "approved", "on_duty"]).order("full_name", { ascending: true }).limit(100);
 
   if (error) throw error;
   return data || [];
 }
 
 export async function getAdminCaretakerDirectory() {
-  const { data, error } = await supabase
-    .from("caretakers")
-    .select("*")
-    .order("full_name", { ascending: true })
-    .limit(200);
+  const { data, error } = await supabase.from("caretakers").select("*").order("full_name", { ascending: true }).limit(200);
 
   if (error) throw error;
   return data || [];
 }
 
 export async function getAdminCaretakerTasks() {
-  const { data: tasks, error } = await supabase
-    .from("caretaker_tasks")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const { data: tasks, error } = await supabase.from("caretaker_tasks").select("*").order("created_at", { ascending: false }).limit(200);
 
   if (error) throw error;
   const rows = tasks || [];
-  const profileIds = Array.from(new Set(rows.map(row => row.profile_id).filter(Boolean)));
-  const caretakerIds = Array.from(new Set(rows.map(row => row.caretaker_id).filter(Boolean)));
+  const profileIds = Array.from(new Set(rows.map((row) => row.profile_id).filter(Boolean)));
+  const caretakerIds = Array.from(new Set(rows.map((row) => row.caretaker_id).filter(Boolean)));
   const profileMap = new Map<string, any>();
   const caretakerMap = new Map<string, any>();
 
   if (profileIds.length) {
-    const { data: profiles, error: profileError } = await supabase
-      .from("profiles")
-      .select("id,full_name,display_name,email")
-      .in("id", profileIds);
+    const { data: profiles, error: profileError } = await supabase.from("profiles").select("id,full_name,display_name,email").in("id", profileIds);
     if (profileError) throw profileError;
     for (const profile of profiles || []) profileMap.set(profile.id, profile);
   }
 
   if (caretakerIds.length) {
-    const { data: caretakers, error: caretakerError } = await supabase
-      .from("caretakers")
-      .select("id,full_name,display_name,email")
-      .in("id", caretakerIds);
+    const { data: caretakers, error: caretakerError } = await supabase.from("caretakers").select("id,full_name,display_name,email").in("id", caretakerIds);
     if (caretakerError) throw caretakerError;
     for (const caretaker of caretakers || []) caretakerMap.set(caretaker.id, caretaker);
   }
 
-  return rows.map(row => ({
+  return rows.map((row) => ({
     ...row,
     profiles: profileMap.get(row.profile_id) || null,
     caretakers: caretakerMap.get(row.caretaker_id) || null,
@@ -308,28 +237,338 @@ export async function getAdminCaretakerTasks() {
 }
 
 export async function getCaretakerActiveTasks() {
-  const { data, error } = await supabase
-    .from("caretaker_tasks")
-    .select("*")
-    .in("status", ["active", "in_progress", "backjob"])
-    .order("due_at", { ascending: true })
-    .limit(80);
+  const { data, error } = await supabase.from("caretaker_tasks").select("*").in("status", ["active", "in_progress", "backjob"]).order("due_at", { ascending: true }).limit(80);
 
   if (error) throw error;
   return data || [];
 }
 
-export async function submitCaretakerTaskProof(payload: {
+export async function getCustomerCarePlans() {
+  const profile = await getCurrentProfile();
+  if (!profile) return [];
+  const { data, error } = await supabase.from("rooster_care_plans").select("*, customer_animals(animal_name,animal_code,breed_snapshot), care_plan_supply_requirements(*), care_plan_package_items(*)").eq("profile_id", profile.id).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export type CustomerRoosterCareOverview = {
+  customerAnimalId: string;
+  planId: string | null;
+  planStatus: string | null;
+  paid: boolean;
+  durationDays: number | null;
+  planDay: number | null;
+  catalogDay: number;
+  missionTitle: string;
+  lifeStage: string;
+  feedGramsMax: number | null;
+};
+
+function manilaDayNumber(value: string | Date) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+  }
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((entry) => entry.type === type)?.value || 0);
+  return Math.floor(Date.UTC(part("year"), part("month") - 1, part("day")) / 86400000);
+}
+
+export async function getCustomerRoosterCareOverviews(): Promise<CustomerRoosterCareOverview[]> {
+  const [animals, plans] = await Promise.all([getCustomerOwnedRoosters(), getCustomerCarePlans()]);
+  const today = manilaDayNumber(new Date());
+  const liveStatuses = new Set(["draft", "payment_for_review", "payment_submitted", "paid_pending_setup", "ready", "active", "paused"]);
+  const paidStatuses = new Set(["paid_pending_setup", "ready", "active", "paused"]);
+  const draftRows = animals.map((animal: any) => {
+    const plan = plans.find((row: any) => row.customer_animal_id === animal.id && liveStatuses.has(String(row.status))) || null;
+    const acquiredDay = animal.acquired_at ? manilaDayNumber(animal.acquired_at) : today;
+    const ownershipDay = Math.min(180, Math.max(1, today - acquiredDay + 1));
+    let planDay: number | null = null;
+    let catalogDay = Number(plan?.requested_start_day || plan?.start_day_number || ownershipDay);
+    if (plan?.start_date && ["active", "paused"].includes(String(plan.status))) {
+      planDay = Math.min(Number(plan.duration_days || 1), Math.max(1, today - manilaDayNumber(plan.start_date) - Number(plan.schedule_shift_days || 0) + 1));
+      catalogDay = Number(plan.start_day_number || 1) + planDay - 1;
+    }
+    return {
+      animal,
+      plan,
+      planDay,
+      catalogDay: Math.min(180, Math.max(1, catalogDay)),
+    };
+  });
+  const days = Array.from(new Set(draftRows.map((row) => row.catalogDay)));
+  const { data: templates, error } = await supabase
+    .from("care_mission_templates")
+    .select("day_number,life_stage,primary_mission,feed_grams_max")
+    .eq("catalog_version", "farmconnect-premium-rooster-180-v1")
+    .in("day_number", days);
+  if (error) throw error;
+  const templateByDay = new Map((templates || []).map((row: any) => [Number(row.day_number), row]));
+  return draftRows.map(({ animal, plan, planDay, catalogDay }) => {
+    const template: any = templateByDay.get(catalogDay);
+    return {
+      customerAnimalId: animal.id,
+      planId: plan?.id || null,
+      planStatus: plan?.status || null,
+      paid: paidStatuses.has(String(plan?.status || "")),
+      durationDays: plan ? Number(plan.duration_days || 0) : null,
+      planDay,
+      catalogDay,
+      missionTitle: template?.primary_mission || "Review today’s standard care procedure",
+      lifeStage: template?.life_stage || "Standard rooster care",
+      feedGramsMax: template?.feed_grams_max == null ? null : Number(template.feed_grams_max),
+    };
+  });
+}
+
+export async function requestCustomerCarePlan(customerAnimalId: string, durationDays: 30 | 60 | 90 | 180, requestedStartDay: number) {
+  const { data, error } = await supabase.rpc("customer_request_care_plan", {
+    p_customer_animal_id: customerAnimalId,
+    p_duration_days: durationDays,
+    p_requested_start_day: requestedStartDay,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function prepareCustomerCarePlanPayment(carePlanId: string) {
+  const { data, error } = await supabase.rpc("customer_prepare_fixed_care_plan_payment", {
+    p_care_plan_id: carePlanId,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult & {
+    package_total: number;
+    feed_required_kg: number;
+    duration_days: number;
+    requested_start_day: number;
+  };
+}
+
+export async function getAdminCarePlans() {
+  const { data, error } = await supabase.from("rooster_care_plans").select("*, customer:profiles!rooster_care_plans_profile_id_fkey(full_name,display_name,email), customer_animals(animal_name,animal_code,breed_snapshot), assigned_caretaker:caretakers!rooster_care_plans_assigned_caretaker_id_fkey(full_name,display_name), care_plan_supply_requirements(*), care_plan_package_items(*)").order("created_at", { ascending: false }).limit(100);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getAdminCustomerInventory(profileId: string) {
+  const { data, error } = await supabase.from("customer_inventory_items").select("id,product_name,category,unit_label,unit_price,quantity,product_type").eq("profile_id", profileId).or("category.ilike.%feed%,product_type.eq.feed").gt("quantity", 0).order("product_name");
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getAvailableFarmFeedProducts() {
+  const { data, error } = await supabase.from("farm_products").select("id,name,category,unit_label,unit_price,stock_quantity,product_type").eq("status", "available").or("category.ilike.%feed%,product_type.eq.feed").gt("stock_quantity", 0).order("name");
+  if (error) throw error;
+  return data || [];
+}
+
+export async function prepareAdminCarePlanQuote(payload: { carePlanId: string; caretakerId: string; feedInventoryItemId?: string | null; feedProductId?: string | null; kgPerInventoryUnit: number; unquantifiedDayFeedGrams: number; laborPrice: number; serviceFee: number; quoteNote?: string | null }) {
+  const { data, error } = await supabase.rpc("admin_prepare_care_plan_quote_v2", {
+    p_care_plan_id: payload.carePlanId,
+    p_caretaker_id: payload.caretakerId,
+    p_feed_inventory_item_id: payload.feedInventoryItemId || null,
+    p_feed_product_id: payload.feedProductId || null,
+    p_kg_per_inventory_unit: payload.kgPerInventoryUnit,
+    p_unquantified_day_feed_grams: payload.unquantifiedDayFeedGrams,
+    p_labor_price: payload.laborPrice,
+    p_service_fee: payload.serviceFee,
+    p_quote_note: payload.quoteNote || null,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult & {
+    package_total?: number;
+    feed_required_kg?: number;
+    required_inventory_units?: number;
+    reserved_inventory_units?: number;
+    purchase_inventory_units?: number;
+    supply_price?: number;
+    unquantified_days?: number;
+  };
+}
+
+export async function activateAdminCarePlan(carePlanId: string, startDate: string) {
+  const { data, error } = await supabase.rpc("admin_activate_care_plan", {
+    p_care_plan_id: carePlanId,
+    p_start_date: startDate,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult;
+}
+
+export async function assignAdminCarePlan(carePlanId: string, caretakerId: string, adminNote?: string | null) {
+  const { data, error } = await supabase.rpc("admin_assign_care_plan", {
+    p_care_plan_id: carePlanId,
+    p_caretaker_id: caretakerId,
+    p_admin_note: adminNote || null,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult & {
+    created_missions?: number;
+    start_date?: string;
+    end_date?: string;
+  };
+}
+
+export async function cancelCustomerCarePlan(carePlanId: string, reason: string) {
+  const { data, error } = await supabase.rpc("customer_cancel_care_plan", {
+    p_care_plan_id: carePlanId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult & { refund_due_amount?: number };
+}
+
+export async function controlAdminCarePlan(payload: { carePlanId: string; action: "pause" | "resume" | "reassign" | "cancel"; note: string; newCaretakerId?: string | null }) {
+  const { data, error } = await supabase.rpc("admin_control_care_plan", {
+    p_care_plan_id: payload.carePlanId,
+    p_action: payload.action,
+    p_note: payload.note,
+    p_new_caretaker_id: payload.newCaretakerId || null,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult & { refund_due_amount?: number };
+}
+
+export async function recordAdminCarePlanRefund(carePlanId: string, reference: string, note?: string | null) {
+  const { data, error } = await supabase.rpc("admin_record_care_plan_refund", {
+    p_care_plan_id: carePlanId,
+    p_reference: reference,
+    p_note: note || null,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult & {
+    amount?: number;
+    reference?: string;
+  };
+}
+
+export async function generateTodayCarePlanMissions() {
+  const { data, error } = await supabase.rpc("generate_due_care_plan_missions");
+  if (error) throw error;
+  return data as { run_date?: string; created?: number; timezone?: string };
+}
+
+export async function getKaFarmCarePlanHealth() {
+  const { data, error } = await supabase.rpc("kafarm_care_plan_health_snapshot");
+  if (error) throw error;
+  return data as {
+    catalog_days: number;
+    open_plans: number;
+    active_plans: number;
+    overdue_missions: number;
+    unreviewed_proofs: number;
+    active_supply_conversion_missing: number;
+    negative_inventory: number;
+    pending_refunds: number;
+    generated_at: string;
+  };
+}
+
+export type CareTaskInventoryItem = {
+  id: string;
+  product_name: string;
+  category?: string | null;
+  unit_label?: string | null;
+  quantity: number;
+  product_type?: string | null;
+  kg_per_inventory_unit?: number | null;
+  reserved_inventory_units?: number | null;
+  reserved_kg?: number | null;
+  usage_unit?: "kg" | "inventory_unit" | null;
+};
+
+export async function getCaretakerTaskInventory(taskId: string): Promise<CareTaskInventoryItem[]> {
+  const { data, error } = await supabase.rpc("caretaker_get_task_inventory", {
+    p_task_id: taskId,
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? (data as CareTaskInventoryItem[]) : [];
+}
+
+export async function submitCaretakerMissionProof(payload: {
   taskId: string;
-  proofUrl?: string | null;
-  proofUrls?: string[];
-  presetNote?: string | null;
-  freeNote?: string | null;
-  qrVerified?: boolean;
-  serialException?: boolean;
-  feedQuantityUsed?: number | null;
-  feedUnit?: string | null;
+  proofUrls: string[];
+  freeNote: string;
+  qrVerified: boolean;
+  serialException: boolean;
+  healthStatus: "pass" | "watch" | "isolate_and_escalate";
+  checklistResults: {
+    operations: Array<{ label: string; checked: boolean }>;
+    housing: Array<{ label: string; checked: boolean }>;
+    supplements: Array<{ label: string; checked: boolean }>;
+    vaccines: Array<{ label: string; checked: boolean }>;
+    health: Array<{ label: string; checked: boolean }>;
+  };
+  inventoryUsage: Array<{
+    inventory_item_id: string;
+    quantity: number;
+    unit: "kg";
+  }>;
 }) {
+  const { data, error } = await supabase.rpc("caretaker_submit_mission_proof", {
+    p_task_id: payload.taskId,
+    p_proof_urls: payload.proofUrls,
+    p_free_note: payload.freeNote,
+    p_qr_verified: payload.qrVerified,
+    p_serial_exception: payload.serialException,
+    p_health_status: payload.healthStatus,
+    p_checklist_results: payload.checklistResults,
+    p_inventory_usage: payload.inventoryUsage,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function submitCaretakerManualMissionProof(payload: {
+  taskId: string;
+  proofUrls: string[];
+  freeNote: string;
+  qrVerified: boolean;
+  serialException: boolean;
+  healthStatus: "pass" | "watch" | "isolate_and_escalate";
+  checklistResults: {
+    operations: Array<{ label: string; checked: boolean }>;
+    housing: Array<{ label: string; checked: boolean }>;
+    supplements: Array<{ label: string; checked: boolean }>;
+    vaccines: Array<{ label: string; checked: boolean }>;
+    health: Array<{ label: string; checked: boolean }>;
+  };
+  inventoryUsage: Array<{
+    inventory_item_id: string;
+    quantity: number;
+    unit: "kg" | "inventory_unit";
+  }>;
+}) {
+  const { data, error } = await supabase.rpc("caretaker_submit_manual_mission_proof", {
+    p_task_id: payload.taskId,
+    p_proof_urls: payload.proofUrls,
+    p_free_note: payload.freeNote,
+    p_qr_verified: payload.qrVerified,
+    p_serial_exception: payload.serialException,
+    p_health_status: payload.healthStatus,
+    p_checklist_results: payload.checklistResults,
+    p_inventory_usage: payload.inventoryUsage,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function adminReviewManualMissionProof(proofId: string, decision: "approved" | "rejected" | "backjob", note?: string | null) {
+  const { data, error } = await supabase.rpc("admin_review_manual_mission_proof_guarded", {
+    p_proof_id: proofId,
+    p_decision: decision,
+    p_admin_note: note || null,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult;
+}
+
+export async function submitCaretakerTaskProof(payload: { taskId: string; proofUrl?: string | null; proofUrls?: string[]; presetNote?: string | null; freeNote?: string | null; qrVerified?: boolean; serialException?: boolean; feedQuantityUsed?: number | null; feedUnit?: string | null }) {
   const proofUrls = (payload.proofUrls || [payload.proofUrl]).filter((value): value is string => Boolean(value));
   const { data, error } = await supabase.rpc("caretaker_submit_task_proof_v3", {
     p_task_id: payload.taskId,
@@ -347,49 +586,42 @@ export async function submitCaretakerTaskProof(payload: {
 }
 
 export async function getAdminTaskProofs() {
-  const { data: proofs, error } = await supabase
-    .from("task_proofs")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(80);
+  const { data: proofs, error } = await supabase.from("task_proofs").select("*").order("created_at", { ascending: false }).limit(80);
 
   if (error) throw error;
   const rows = proofs || [];
-  const taskIds = Array.from(new Set(rows.map(row => row.caretaker_task_id || row.task_id).filter(Boolean)));
-  const caretakerIds = Array.from(new Set(rows.map(row => row.caretaker_id).filter(Boolean)));
+  const taskIds = Array.from(new Set(rows.map((row) => row.caretaker_task_id || row.task_id).filter(Boolean)));
+  const caretakerIds = Array.from(new Set(rows.map((row) => row.caretaker_id).filter(Boolean)));
 
   const taskMap = new Map<string, any>();
   if (taskIds.length) {
-    const { data: tasks, error: taskError } = await supabase
-      .from("caretaker_tasks")
-      .select("id,profile_id,task_type,rooster_name,rooster_tag,status,workflow_type,qr_scan_required,qr_payload,task_metadata,reviewed_at")
-      .in("id", taskIds);
+    const { data: tasks, error: taskError } = await supabase.from("caretaker_tasks").select("id,profile_id,task_type,rooster_name,rooster_tag,status,workflow_type,qr_scan_required,qr_payload,task_metadata,reviewed_at").in("id", taskIds);
     if (taskError) throw taskError;
     for (const task of tasks || []) taskMap.set(task.id, task);
   }
 
   const caretakerMap = new Map<string, any>();
   if (caretakerIds.length) {
-    const { data: caretakers, error: caretakerError } = await supabase
-      .from("caretakers")
-      .select("id,full_name,display_name")
-      .in("id", caretakerIds);
+    const { data: caretakers, error: caretakerError } = await supabase.from("caretakers").select("id,full_name,display_name").in("id", caretakerIds);
     if (caretakerError) throw caretakerError;
     for (const caretaker of caretakers || []) caretakerMap.set(caretaker.id, caretaker);
   }
 
-  const profileIds = Array.from(new Set(Array.from(taskMap.values()).map(task => task.profile_id).filter(Boolean)));
+  const profileIds = Array.from(
+    new Set(
+      Array.from(taskMap.values())
+        .map((task) => task.profile_id)
+        .filter(Boolean),
+    ),
+  );
   const profileMap = new Map<string, any>();
   if (profileIds.length) {
-    const { data: profiles, error: profileError } = await supabase
-      .from("profiles")
-      .select("id,full_name,display_name,email")
-      .in("id", profileIds);
+    const { data: profiles, error: profileError } = await supabase.from("profiles").select("id,full_name,display_name,email").in("id", profileIds);
     if (profileError) throw profileError;
     for (const profile of profiles || []) profileMap.set(profile.id, profile);
   }
 
-  return rows.map(row => ({
+  return rows.map((row) => ({
     ...row,
     caretaker_tasks: taskMap.get(row.caretaker_task_id || row.task_id) || null,
     caretakers: caretakerMap.get(row.caretaker_id) || null,
@@ -408,15 +640,18 @@ export async function adminReviewTaskProof(proofId: string, decision: "approved"
   return data as GuardedWorkflowResult;
 }
 
+export async function adminReviewMissionProof(proofId: string, decision: "approved" | "rejected" | "backjob", note?: string | null) {
+  const { data, error } = await supabase.rpc("admin_review_mission_proof_guarded", {
+    p_proof_id: proofId,
+    p_decision: decision,
+    p_admin_note: note || null,
+  });
+  if (error) throw error;
+  return data as GuardedWorkflowResult;
+}
+
 export async function getCustomerRoosterSaleRequest(customerAnimalId: string) {
-  const { data, error } = await supabase
-    .from("rooster_sale_requests")
-    .select("*")
-    .eq("customer_animal_id", customerAnimalId)
-    .not("status", "in", "(completed,cancelled)")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await supabase.from("rooster_sale_requests").select("*").eq("customer_animal_id", customerAnimalId).not("status", "in", "(completed,cancelled)").order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -440,11 +675,7 @@ export async function confirmRoosterSale(saleRequestId: string, note?: string | 
 }
 
 export async function getAdminRoosterSaleRequests() {
-  const { data, error } = await supabase
-    .from("rooster_sale_requests")
-    .select("*, customer_animals(animal_name,animal_code,breed_snapshot,bloodline_snapshot,ownership_metadata), profiles!rooster_sale_requests_profile_id_fkey(full_name,display_name,email)")
-    .in("status", ["sale_requested", "sale_rejected", "release_pending_assignment", "release_assigned", "release_submitted"])
-    .order("created_at", { ascending: true });
+  const { data, error } = await supabase.from("rooster_sale_requests").select("*, customer_animals(animal_name,animal_code,breed_snapshot,bloodline_snapshot,ownership_metadata), profiles!rooster_sale_requests_profile_id_fkey(full_name,display_name,email)").in("status", ["sale_requested", "sale_rejected", "release_pending_assignment", "release_assigned", "release_submitted"]).order("created_at", { ascending: true });
   if (error) throw error;
   return data || [];
 }
@@ -459,14 +690,7 @@ export async function adminReviewRoosterSale(saleRequestId: string, decision: "a
   return data as GuardedWorkflowResult;
 }
 
-export async function submitCaretakerRoosterSaleTask(payload: {
-  taskId: string;
-  declaredAmount?: number | null;
-  proofUrls?: string[];
-  freeNote: string;
-  qrVerified?: boolean;
-  serialException?: boolean;
-}) {
+export async function submitCaretakerRoosterSaleTask(payload: { taskId: string; declaredAmount?: number | null; proofUrls?: string[]; freeNote: string; qrVerified?: boolean; serialException?: boolean }) {
   const { data, error } = await supabase.rpc("caretaker_submit_rooster_sale_task", {
     p_task_id: payload.taskId,
     p_declared_amount: payload.declaredAmount ?? null,
@@ -479,24 +703,14 @@ export async function submitCaretakerRoosterSaleTask(payload: {
   return data as string;
 }
 export async function getWalletTransactions(profileId: string) {
-  const { data, error } = await supabase
-    .from("wallet_transactions")
-    .select("*")
-    .eq("profile_id", profileId)
-    .order("created_at", { ascending: false })
-    .limit(30);
+  const { data, error } = await supabase.from("wallet_transactions").select("*").eq("profile_id", profileId).order("created_at", { ascending: false }).limit(30);
 
   if (error) throw error;
   return data || [];
 }
 
 export async function getInboxItems(profileId: string) {
-  const { data, error } = await supabase
-    .from("inbox_items")
-    .select("*")
-    .eq("profile_id", profileId)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const { data, error } = await supabase.from("inbox_items").select("*").eq("profile_id", profileId).order("created_at", { ascending: false }).limit(50);
 
   if (error) throw error;
   return data || [];
@@ -534,14 +748,21 @@ function formatDateTime(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return { uploaded: "Today", time: "" };
   return {
-    uploaded: date.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }),
-    time: date.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" }),
+    uploaded: date.toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }),
+    time: date.toLocaleTimeString("en-PH", {
+      hour: "numeric",
+      minute: "2-digit",
+    }),
   };
 }
 
 function prettyStatus(status?: string | null) {
   const raw = String(status || "pending").replaceAll("_", " ");
-  return raw.replace(/\b\w/g, char => char.toUpperCase());
+  return raw.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export async function getCareLogRecords(): Promise<CareLogRecord[]> {
@@ -551,7 +772,8 @@ export async function getCareLogRecords(): Promise<CareLogRecord[]> {
 
   const { data: usageRows, error: usageError } = await supabase
     .from("inventory_usage_logs")
-    .select(`
+    .select(
+      `
       id,
       quantity_used,
       unit,
@@ -560,7 +782,8 @@ export async function getCareLogRecords(): Promise<CareLogRecord[]> {
       farm_products(name, unit_price, unit_label, image_url),
       animals(name, code, pen_location),
       caretakers(full_name, display_name)
-    `)
+    `,
+    )
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -594,36 +817,24 @@ export async function getCareLogRecords(): Promise<CareLogRecord[]> {
     });
   }
 
-  const { data: proofRows, error: proofError } = await supabase
-    .from("task_proofs")
-    .select("id,caretaker_task_id,task_id,caretaker_id,profile_id,proof_type,proof_url,thumbnail_url,proof_file_urls,preset_note,free_note,captured_at,admin_review_status,proof_check_status,created_at")
-    .eq("profile_id", profile.id)
-    .eq("admin_review_status", "approved")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const { data: proofRows, error: proofError } = await supabase.from("task_proofs").select("id,caretaker_task_id,task_id,caretaker_id,profile_id,proof_type,proof_url,thumbnail_url,proof_file_urls,preset_note,free_note,captured_at,admin_review_status,proof_check_status,created_at").eq("profile_id", profile.id).eq("admin_review_status", "approved").order("created_at", { ascending: false }).limit(50);
 
   if (proofError) throw proofError;
 
   const approvedProofs = proofRows || [];
-  const taskIds = Array.from(new Set(approvedProofs.map(row => row.caretaker_task_id || row.task_id).filter(Boolean)));
-  const caretakerIds = Array.from(new Set(approvedProofs.map(row => row.caretaker_id).filter(Boolean)));
+  const taskIds = Array.from(new Set(approvedProofs.map((row) => row.caretaker_task_id || row.task_id).filter(Boolean)));
+  const caretakerIds = Array.from(new Set(approvedProofs.map((row) => row.caretaker_id).filter(Boolean)));
   const taskMap = new Map<string, any>();
   const caretakerMap = new Map<string, any>();
 
   if (taskIds.length) {
-    const { data: tasks, error: taskError } = await supabase
-      .from("caretaker_tasks")
-      .select("id,task_type,rooster_name,rooster_tag,status,workflow_type")
-      .in("id", taskIds);
+    const { data: tasks, error: taskError } = await supabase.from("caretaker_tasks").select("id,task_type,rooster_name,rooster_tag,status,workflow_type").in("id", taskIds);
     if (taskError) throw taskError;
     for (const task of tasks || []) taskMap.set(task.id, task);
   }
 
   if (caretakerIds.length) {
-    const { data: caretakers, error: caretakerError } = await supabase
-      .from("caretakers")
-      .select("id,full_name,display_name")
-      .in("id", caretakerIds);
+    const { data: caretakers, error: caretakerError } = await supabase.from("caretakers").select("id,full_name,display_name").in("id", caretakerIds);
     if (caretakerError) throw caretakerError;
     for (const caretaker of caretakers || []) caretakerMap.set(caretaker.id, caretaker);
   }
@@ -669,12 +880,7 @@ export async function getCareLogRecords(): Promise<CareLogRecord[]> {
 }
 
 export async function getCaretakerTasks(caretakerId: string) {
-  const { data, error } = await supabase
-    .from("caretaker_tasks")
-    .select("*")
-    .eq("caretaker_id", caretakerId)
-    .in("status", ["active", "submitted", "needs_review"])
-    .order("due_at", { ascending: true });
+  const { data, error } = await supabase.from("caretaker_tasks").select("*").eq("caretaker_id", caretakerId).in("status", ["active", "submitted", "needs_review"]).order("due_at", { ascending: true });
 
   if (error) throw error;
   return data || [];
@@ -697,7 +903,7 @@ export async function createSupportConversation(roleScope: AppRole, issueType = 
   return data;
 }
 
-export type ManualPaymentSource = "farm_buy" | "care_request" | "cashin" | "other";
+export type ManualPaymentSource = "farm_buy" | "care_request" | "care_plan" | "cashin" | "other";
 
 export type ManualPaymentPayload = {
   sourceType: ManualPaymentSource;
@@ -744,34 +950,21 @@ export async function getCustomerManualPaymentRequests() {
   const profile = await getCurrentProfile();
   if (!profile) return [];
 
-  const { data, error } = await supabase
-    .from("manual_payment_requests")
-    .select("*")
-    .eq("profile_id", profile.id)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const { data, error } = await supabase.from("manual_payment_requests").select("*").eq("profile_id", profile.id).order("created_at", { ascending: false }).limit(50);
 
   if (error) throw error;
   return data || [];
 }
 
 export async function getAdminManualPaymentRequests() {
-  const { data, error } = await supabase
-    .from("manual_payment_requests")
-    .select("*")
-    .in("status", ["for_review", "needs_info"])
-    .order("created_at", { ascending: false })
-    .limit(80);
+  const { data, error } = await supabase.from("manual_payment_requests").select("*").in("status", ["for_review", "needs_info"]).order("created_at", { ascending: false }).limit(80);
 
   if (error) throw error;
   const rows = data || [];
   const profileIds = Array.from(new Set(rows.map((row: any) => row.profile_id).filter(Boolean)));
   if (!profileIds.length) return rows;
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id,full_name,email,display_name")
-    .in("id", profileIds);
+  const { data: profiles } = await supabase.from("profiles").select("id,full_name,email,display_name").in("id", profileIds);
 
   const profileMap = new Map((profiles || []).map((profile: any) => [profile.id, profile]));
   return rows.map((row: any) => ({
@@ -792,7 +985,6 @@ export async function adminReviewManualPayment(paymentRequestId: string, decisio
   if (!result?.id) throw new Error("WORKFLOW_RESULT_MISSING");
   return result;
 }
-
 
 export type WithdrawalRequestPayload = {
   amount: number;
@@ -815,13 +1007,7 @@ export async function getCustomerPayoutMethods() {
   const profile = await getCurrentProfile();
   if (!profile) return [];
 
-  const { data, error } = await supabase
-    .from("customer_payout_methods")
-    .select("id,provider,account_holder,account_number,status,is_default,created_at,updated_at")
-    .eq("profile_id", profile.id)
-    .eq("status", "active")
-    .order("is_default", { ascending: false })
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("customer_payout_methods").select("id,provider,account_holder,account_number,status,is_default,created_at,updated_at").eq("profile_id", profile.id).eq("status", "active").order("is_default", { ascending: false }).order("created_at", { ascending: false });
 
   if (error) throw error;
   return data || [];
@@ -861,36 +1047,20 @@ export async function getCustomerWithdrawalRequests() {
   const profile = await getCurrentProfile();
   if (!profile) return [];
 
-  const { data, error } = await supabase
-    .from("withdrawal_requests")
-    .select("*")
-    .eq("profile_id", profile.id)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const { data, error } = await supabase.from("withdrawal_requests").select("*").eq("profile_id", profile.id).order("created_at", { ascending: false }).limit(50);
 
   if (error) throw error;
   return data || [];
 }
 
 export async function getAdminWithdrawalRequests() {
-  const { data, error } = await supabase
-    .from("withdrawal_requests")
-    .select("*, profiles!withdrawal_requests_profile_id_fkey(full_name,email,display_name)")
-    .order("created_at", { ascending: false })
-    .limit(80);
+  const { data, error } = await supabase.from("withdrawal_requests").select("*, profiles!withdrawal_requests_profile_id_fkey(full_name,email,display_name)").order("created_at", { ascending: false }).limit(80);
 
   if (error) throw error;
   return data || [];
 }
 
-export async function adminReviewWithdrawalRequest(
-  withdrawalRequestId: string,
-  decision: "approved" | "rejected" | "needs_info",
-  adminNote: string,
-  adminReferenceNumber?: string | null,
-  adminReceiptUrl?: string | null,
-  adminReceiptFileName?: string | null,
-) {
+export async function adminReviewWithdrawalRequest(withdrawalRequestId: string, decision: "approved" | "rejected" | "needs_info", adminNote: string, adminReferenceNumber?: string | null, adminReceiptUrl?: string | null, adminReceiptFileName?: string | null) {
   const { data, error } = await supabase.rpc("admin_review_withdrawal_request_guarded", {
     p_withdrawal_request_id: withdrawalRequestId,
     p_decision: decision,
@@ -953,11 +1123,7 @@ export async function confirmWithdrawalResult(withdrawalRequestId: string, recei
 }
 
 export async function getCaretakerApplications(statuses?: string[]) {
-  let query = supabase
-    .from("caretaker_applications")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(80);
+  let query = supabase.from("caretaker_applications").select("*").order("created_at", { ascending: false }).limit(80);
 
   if (statuses?.length) query = query.in("status", statuses);
 
@@ -995,17 +1161,15 @@ export async function getCurrentCustomerKycSubmission(): Promise<CustomerKycSubm
   const profile = await getCurrentProfile();
   if (!profile?.id) return null;
 
-  const { data, error } = await supabase
-    .from("customer_kyc_profiles")
-    .select("*")
-    .eq("profile_id", profile.id)
-    .maybeSingle();
+  const { data, error } = await supabase.from("customer_kyc_profiles").select("*").eq("profile_id", profile.id).maybeSingle();
 
   if (error) throw error;
   if (!data) return null;
 
   const row = data as Record<string, unknown>;
-  const status = String(row.status || row.verification_status || row.review_status || "submitted").trim().toLowerCase();
+  const status = String(row.status || row.verification_status || row.review_status || "submitted")
+    .trim()
+    .toLowerCase();
   const note = row.admin_note || row.review_note || row.rejection_reason || row.decision_note;
   const submittedAt = row.submitted_at || row.updated_at || row.created_at;
   return {
@@ -1041,40 +1205,25 @@ type VerificationDocumentSummary = {
 };
 
 export async function getCustomerKycVerificationRecords() {
-  const { data: kycRows, error: kycError } = await supabase
-    .from("customer_kyc_profiles")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const { data: kycRows, error: kycError } = await supabase.from("customer_kyc_profiles").select("*").order("created_at", { ascending: false }).limit(100);
 
   if (kycError) throw kycError;
 
   const rows = (kycRows || []) as CustomerKycRecord[];
-  const profileIds = [...new Set(rows.map(row => row.profile_id).filter(Boolean))];
-  const kycIds = rows.map(row => row.id).filter(Boolean);
+  const profileIds = [...new Set(rows.map((row) => row.profile_id).filter(Boolean))];
+  const kycIds = rows.map((row) => row.id).filter(Boolean);
 
-  const profilesResult = profileIds.length
-    ? await supabase
-        .from("profiles")
-        .select("id,auth_user_id,full_name,display_name,email,phone,birthdate,verification_status,account_status,kyc_risk_level,kyc_verified_at")
-        .in("id", profileIds)
-    : { data: [], error: null };
+  const profilesResult = profileIds.length ? await supabase.from("profiles").select("id,auth_user_id,full_name,display_name,email,phone,birthdate,verification_status,account_status,kyc_risk_level,kyc_verified_at").in("id", profileIds) : { data: [], error: null };
 
   if (profilesResult.error) throw profilesResult.error;
 
-  const documentsResult = kycIds.length
-    ? await supabase
-        .from("kyc_documents")
-        .select("id,kyc_profile_id,document_type,file_url,status,quality_result,created_at")
-        .in("kyc_profile_id", kycIds)
-        .order("created_at", { ascending: false })
-    : { data: [], error: null };
+  const documentsResult = kycIds.length ? await supabase.from("kyc_documents").select("id,kyc_profile_id,document_type,file_url,status,quality_result,created_at").in("kyc_profile_id", kycIds).order("created_at", { ascending: false }) : { data: [], error: null };
 
   if (documentsResult.error) throw documentsResult.error;
 
   const profiles = (profilesResult.data || []) as VerificationProfileSummary[];
   const documents = (documentsResult.data || []) as VerificationDocumentSummary[];
-  const profileById = new Map(profiles.map(profile => [profile.id, profile]));
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
   const documentsByKycId = new Map<string, VerificationDocumentSummary[]>();
   for (const document of documents) {
     const current = documentsByKycId.get(document.kyc_profile_id) || [];
@@ -1082,19 +1231,14 @@ export async function getCustomerKycVerificationRecords() {
     documentsByKycId.set(document.kyc_profile_id, current);
   }
 
-  return rows.map(row => ({
+  return rows.map((row) => ({
     ...row,
     profile: profileById.get(row.profile_id) || null,
     documents: documentsByKycId.get(row.id) || [],
   }));
 }
 
-export async function adminReviewCustomerKyc(
-  kycProfileId: string,
-  decision: "approved" | "rejected",
-  note: string,
-  riskLevel: "low" | "medium" | "high" = "low",
-) {
+export async function adminReviewCustomerKyc(kycProfileId: string, decision: "approved" | "rejected", note: string, riskLevel: "low" | "medium" | "high" = "low") {
   const { data, error } = await supabase.rpc("admin_review_customer_kyc_guarded", {
     p_kyc_profile_id: kycProfileId,
     p_decision: decision,
@@ -1119,11 +1263,20 @@ type PrivateEvidenceUploadOptions = {
 };
 
 function safeStorageSegment(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "file";
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "file"
+  );
 }
 
 function storageExtension(file: File) {
-  const fromName = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const fromName = file.name
+    .split(".")
+    .pop()
+    ?.toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
   if (fromName && fromName !== file.name.toLowerCase()) return fromName;
   const byMime: Record<string, string> = {
     "image/jpeg": "jpg",
@@ -1143,18 +1296,15 @@ export async function uploadPrivateEvidenceFile(options: PrivateEvidenceUploadOp
   if (options.file.size > options.maxBytes) throw new Error("file_too_large");
   if (!options.allowedMimeTypes.includes(options.file.type)) throw new Error("unsupported_file_type");
 
-  const folder = options.folder
-    .split("/")
-    .filter(Boolean)
-    .map(safeStorageSegment)
-    .join("/");
+  const folder = options.folder.split("/").filter(Boolean).map(safeStorageSegment).join("/");
   const fileName = `${safeStorageSegment(options.kind)}.${storageExtension(options.file)}`;
   const path = [authData.user.id, folder, fileName].filter(Boolean).join("/");
-  const upload = () => client.storage.from(options.bucket).upload(path, options.file, {
-    cacheControl: "3600",
-    contentType: options.file.type,
-    upsert: options.upsert ?? true,
-  });
+  const upload = () =>
+    client.storage.from(options.bucket).upload(path, options.file, {
+      cacheControl: "3600",
+      contentType: options.file.type,
+      upsert: options.upsert ?? true,
+    });
 
   let result;
   try {
@@ -1162,7 +1312,7 @@ export async function uploadPrivateEvidenceFile(options: PrivateEvidenceUploadOp
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error || "");
     if (!/failed to fetch|network|load failed/i.test(message)) throw error;
-    await new Promise(resolve => window.setTimeout(resolve, 350));
+    await new Promise((resolve) => window.setTimeout(resolve, 350));
     result = await upload();
   }
 
@@ -1194,7 +1344,7 @@ export async function createPrivateEvidenceUrl(bucket: string, storedValue?: str
   if (!value.includes("/")) throw new Error("legacy_filename_only");
 
   const knownBuckets = ["caretaker-resumes", "caretaker-task-proofs", "farmconnect-customer-kyc", "withdrawal-proofs", "kyc-docs", "kyc-documents", "profile-photos"];
-  const storedBucket = knownBuckets.find(candidate => value.startsWith(`${candidate}/`));
+  const storedBucket = knownBuckets.find((candidate) => value.startsWith(`${candidate}/`));
   const resolvedBucket = storedBucket || bucket;
   const normalizedPath = storedBucket ? value.slice(storedBucket.length + 1) : value;
   const { data, error } = await supabase.storage.from(resolvedBucket).createSignedUrl(normalizedPath, 600);
@@ -1202,4 +1352,3 @@ export async function createPrivateEvidenceUrl(bucket: string, storedValue?: str
   if (!data?.signedUrl) throw new Error("signed_url_missing");
   return data.signedUrl;
 }
-

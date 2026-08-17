@@ -16,6 +16,7 @@ const roles = [
       "/customer/wallet",
       "/customer/inventory",
       "/customer/care-logs",
+      "/customer/care-plans",
     ],
   },
   {

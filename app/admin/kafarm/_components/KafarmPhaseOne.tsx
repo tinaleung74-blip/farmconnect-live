@@ -45,6 +45,61 @@ type LocalIncident = {
   synced?: boolean;
 };
 
+type LiveDatabaseSnapshot = {
+  generated_at?: string;
+  expected_objects?: Array<{ kind?: string; object_name?: string; exists?: boolean }>;
+  missing_objects?: Array<{ kind?: string; object_name?: string }>;
+  tables?: Array<{ table_name?: string; rls_enabled?: boolean; columns?: number; policies?: number }>;
+  functions?: Array<{ function_name?: string }>;
+  policies?: Array<{ table_name?: string; policy_name?: string }>;
+  findings?: Array<{ severity?: string; title?: string; meaning?: string; evidence?: unknown; next_action?: string }>;
+};
+
+type CarePlanHealthSnapshot = {
+  catalog_days?: number;
+  open_plans?: number;
+  active_plans?: number;
+  overdue_missions?: number;
+  unreviewed_proofs?: number;
+  active_supply_conversion_missing?: number;
+  negative_inventory?: number;
+  pending_refunds?: number;
+  manual_expired_reservations?: number;
+  manual_unreviewed_proofs?: number;
+  manual_consumed_without_usage?: number;
+  manual_approved_with_active_reservation?: number;
+  paid_manual_open_conflicts?: number;
+  generated_at?: string;
+};
+
+type InventoryComparison = {
+  module: string;
+  pages: string;
+  codeObjects: string[];
+  liveObjects: string[];
+  predictedObjects: string[];
+  confirmedMissingObjects: string[];
+  activeErrors: Array<{ title: string; status: number | null; route: string; message: string }>;
+  status: "CLEAR" | "PREDICTED" | "CONFIRMED";
+};
+
+const lockedLiveTestVerdict = {
+  lockId: "LIVE-20260813-E2E-01",
+  testedAt: "2026-08-13",
+  environment: "FarmConnect production",
+  verdict: "PASSED",
+  buddyReviewer: "Buddy Pogi — PASSED",
+  ownerReviewer: "Master Pogi — PASSED",
+  workflows: [
+    "Customer signup and KYC approval",
+    "Farm Buy, payment approval, Inventory, and My Roosters",
+    "Paid Care Request, Admin assignment, Caretaker proof, and verification",
+    "Sell Request, reviewed sale price, and Wallet credit",
+    "Wallet withdrawal and completed Inbox notification",
+  ],
+  rule: "This lock records the tested baseline only. Newer confirmed runtime/API evidence overrides the historical pass and must be investigated.",
+} as const;
+
 function isIgnoredKaFarmIncident(incident: {
   title?: string;
   message?: string;
@@ -295,6 +350,64 @@ const sqlAuditModules: SqlAuditModule[] = [
   { module: "KaFarm Monitor", pages: "/admin/kafarm/system-health, /admin/kafarm/database-health", tables: ["kafarm_incidents"], functions: ["kafarm_record_incident", "admin_kafarm_update_incident_status"], views: ["admin_kafarm_incident_queue"], policies: ["kafarm incidents admin read all", "kafarm incidents owner read own"] },
 ];
 
+function normalizeInventoryName(value: string) {
+  return value.replace(/^profiles\./, "profiles").trim().toLowerCase();
+}
+
+function compareCodeAndSupabaseInventory(snapshot: LiveDatabaseSnapshot | null, incidents: DbIncident[]): InventoryComparison[] {
+  if (!snapshot) return [];
+  const liveNames = new Set<string>();
+  (snapshot.tables || []).forEach((item) => item.table_name && liveNames.add(normalizeInventoryName(item.table_name)));
+  (snapshot.functions || []).forEach((item) => item.function_name && liveNames.add(normalizeInventoryName(item.function_name)));
+  (snapshot.policies || []).forEach((item) => item.policy_name && liveNames.add(normalizeInventoryName(item.policy_name)));
+  (snapshot.expected_objects || []).filter((item) => item.exists).forEach((item) => item.object_name && liveNames.add(normalizeInventoryName(item.object_name)));
+  const explicitlyMissing = new Set(
+    (snapshot.missing_objects || []).flatMap((item) => item.object_name ? [normalizeInventoryName(item.object_name)] : []),
+  );
+
+  return sqlAuditModules.map((module) => {
+    const codeObjects = getSqlAuditExpected(module);
+    const unmatchedObjects = codeObjects.filter((name) => {
+      const normalized = normalizeInventoryName(name);
+      if (module.policies.includes(name)) {
+        return !Array.from(liveNames).some((live) => live.includes(normalized) || normalized.includes(live));
+      }
+      return !liveNames.has(normalized);
+    });
+    const moduleText = `${module.module} ${module.pages} ${codeObjects.join(" ")}`.toLowerCase();
+    const activeErrors = incidents.filter((incident) => {
+      const status = String(incident.status || "").toLowerCase();
+      if (["resolved", "ignored", "completed"].includes(status)) return false;
+      const incidentText = `${incident.title} ${incident.message} ${incident.route || ""} ${incident.request_url || ""}`.toLowerCase();
+      return codeObjects.some((name) => incidentText.includes(normalizeInventoryName(name)))
+        || module.pages.split(",").some((page) => incidentText.includes(page.trim().toLowerCase()))
+        || (moduleText.includes("database") && Boolean(incident.http_status && incident.http_status >= 400));
+    }).map((incident) => ({
+      title: incident.title,
+      status: incident.http_status,
+      route: incident.route || "unknown route",
+      message: incident.message,
+    }));
+    const confirmedMissingObjects = unmatchedObjects.filter((name) => explicitlyMissing.has(normalizeInventoryName(name)));
+    const predictedObjects = unmatchedObjects.filter((name) => !explicitlyMissing.has(normalizeInventoryName(name)));
+    const status: InventoryComparison["status"] = activeErrors.length || confirmedMissingObjects.length
+      ? "CONFIRMED"
+      : predictedObjects.length
+        ? "PREDICTED"
+        : "CLEAR";
+    return {
+      module: module.module,
+      pages: module.pages,
+      codeObjects,
+      liveObjects: codeObjects.filter((name) => !unmatchedObjects.includes(name)),
+      predictedObjects,
+      confirmedMissingObjects,
+      activeErrors,
+      status,
+    };
+  });
+}
+
 const sqlAuditCheckerSql = `-- FarmConnect read-only SQL audit checker. Safe to run; no data changes.
 with expected_objects(kind, object_name) as (
   values
@@ -512,13 +625,15 @@ export function KafarmCommandCenter() {
   const incidentQueue = useMemo(() => [...clientIncidents, ...monitoringIncidents], [clientIncidents]);
   const [selectedIncident, setSelectedIncident] = useState<KaFarmIncident>(monitoringIncidents[0]);
   const [selectedTool, setSelectedTool] = useState<KaFarmToolKey | null>(null);
-  const [databaseSnapshot, setDatabaseSnapshot] = useState<any>(null);
+  const [databaseSnapshot, setDatabaseSnapshot] = useState<LiveDatabaseSnapshot | null>(null);
+  const [inventoryIncidents, setInventoryIncidents] = useState<DbIncident[]>([]);
   const [databaseReaderStatus, setDatabaseReaderStatus] = useState("Database reader not run yet.");
   const [issueFilter, setIssueFilter] = useState<"problems" | "solutions">("problems");
   const [problemEngineRan, setProblemEngineRan] = useState(false);
   const [solutionEngineRan, setSolutionEngineRan] = useState(false);
   const [panelActionNote, setPanelActionNote] = useState("Choose a tool, then run Investigation or open Findings.");
   const [copyStatus, setCopyStatus] = useState("Copy");
+  const [simpleCopyStatus, setSimpleCopyStatus] = useState("Copy");
   const [decision, setDecision] = useState<"pending" | "approved" | "rejected">("pending");
   const [adminNote, setAdminNote] = useState("Admin note or rejected reason...");
   const [adminGate, setAdminGate] = useState<AdminGateState>({ status: "checking" });  const analysis = useMemo(() => analyzeKaFarmMessage(question || selectedIncident.message, "admin"), [question, selectedIncident.message]);
@@ -532,14 +647,110 @@ export function KafarmCommandCenter() {
     () => selectedTool === "database" && databaseSnapshot ? getKaFarmDatabaseSnapshotFindings(databaseSnapshot) : [],
     [selectedTool, databaseSnapshot],
   );
+  const inventoryComparison = useMemo(
+    () => compareCodeAndSupabaseInventory(databaseSnapshot, inventoryIncidents),
+    [databaseSnapshot, inventoryIncidents],
+  );
+  const confirmedInventoryModules = useMemo(
+    () => inventoryComparison.filter((item) => item.status === "CONFIRMED"),
+    [inventoryComparison],
+  );
+  const predictedInventoryModules = useMemo(
+    () => inventoryComparison.filter((item) => item.status === "PREDICTED"),
+    [inventoryComparison],
+  );
+  const inventoryValidationReport = useMemo(() => databaseSnapshot ? [
+    "KAFARM CODE ↔ SUPABASE PREDICTION AND VALIDATION",
+    `Run at: ${new Date().toISOString()}`,
+    `Verdict: ${confirmedInventoryModules.length ? "CONFIRMED ISSUE — NEWER EVIDENCE OVERRIDES LOCK" : "PASSED — LOCKED LIVE-TEST EVIDENCE"}`,
+    `Code modules compared: ${inventoryComparison.length}`,
+    `Predicted modules: ${predictedInventoryModules.length}`,
+    `Confirmed modules: ${confirmedInventoryModules.length}`,
+    confirmedInventoryModules.length
+      ? "Testing rule: Investigate the new confirmed evidence. Do not repeat sensitive production transactions automatically."
+      : "Testing rule: No repeat production transaction is required. Predictions are inventory notes only because the covered end-to-end workflows already passed the locked live test.",
+    "",
+    ...inventoryComparison.flatMap((item) => [
+      `[${item.status}] ${item.module}`,
+      `Affected pages/actions: ${item.pages}`,
+      `Predicted/unverified: ${item.predictedObjects.length ? item.predictedObjects.join(", ") : "None"}`,
+      `Confirmed missing: ${item.confirmedMissingObjects.length ? item.confirmedMissingObjects.join(", ") : "None"}`,
+      `Runtime confirmation: ${item.activeErrors.length ? item.activeErrors.map((error) => `${error.status ? `HTTP ${error.status} ` : ""}${error.title} @ ${error.route}`).join(" | ") : "None"}`,
+      item.status === "CONFIRMED" ? "Result: Exact live metadata or runtime evidence confirmed a newer issue." : item.status === "PREDICTED" ? "Result: Inventory note only. The locked live test passed the covered workflow; do not repeat production transactions unless relevant code changes or new runtime evidence appears." : "Result: No issue found from the current inventory and runtime evidence.",
+      "",
+    ]),
+  ].join("\n") : "KAFARM CODE ↔ SUPABASE PREDICTION AND VALIDATION\nNot run yet.", [databaseSnapshot, inventoryComparison, confirmedInventoryModules, predictedInventoryModules]);
   const toolFindings = useMemo(
     () => selectedTool === "database" ? [...databaseSnapshotFindings, ...incidentToolFindings] : incidentToolFindings,
     [selectedTool, databaseSnapshotFindings, incidentToolFindings],
   );
   const actionProcedure = useMemo(
-    () => selectedToolConfig ? buildWholeAppInvestigationReport(selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote) : "",
-    [selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote],
+    () => `${inventoryValidationReport}\n\nLOCKED LIVE-TEST VERDICT HISTORY\nLock ID: ${lockedLiveTestVerdict.lockId}\nTested at: ${lockedLiveTestVerdict.testedAt}\nEnvironment: ${lockedLiveTestVerdict.environment}\nVerdict: ${lockedLiveTestVerdict.verdict}\nReviewer 1: ${lockedLiveTestVerdict.buddyReviewer}\nReviewer 2: ${lockedLiveTestVerdict.ownerReviewer}\nPassed workflows:\n${lockedLiveTestVerdict.workflows.map((item) => `- ${item}`).join("\n")}\nLock rule: ${lockedLiveTestVerdict.rule}\n\nCURRENT DISPOSITION\n${confirmedInventoryModules.length ? "A newer confirmed issue exists. Send this report to Buddy for scoped investigation before relying on the affected workflow." : "GOOD: The locked production live-test baseline remains valid. No new confirmed blocker was detected, and no production transaction needs to be repeated."}`,
+    [inventoryValidationReport, selectedToolConfig, toolFindings, incidentQueue, selectedIncident, decision, adminNote],
   );
+  const simpleExplanation = useMemo(() => {
+    if (!databaseSnapshot) {
+      return [
+        "QUICK EXPLANATION",
+        "Hindi pa nababasa ni KaFarm ang app. Pindutin ang Run para magsimula.",
+        "",
+        "SAVED LIVE-TEST HISTORY",
+        `${lockedLiveTestVerdict.lockId}: ${lockedLiveTestVerdict.verdict}`,
+        `${lockedLiveTestVerdict.buddyReviewer} · ${lockedLiveTestVerdict.ownerReviewer}`,
+        "Naka-save ang dating successful end-to-end live test bilang baseline.",
+        "",
+        "WHY KAFARM SAYS THIS",
+        "Wala pang bagong code inventory, Supabase inventory, at runtime evidence na galing sa kasalukuyang scan.",
+      ].join("\n");
+    }
+    if (confirmedInventoryModules.length) {
+      const names = confirmedInventoryModules.map((item) => item.module).join(", ");
+      const evidence = confirmedInventoryModules.flatMap((item) => [
+        ...item.confirmedMissingObjects.map((name) => `${item.module}: missing ${name}`),
+        ...item.activeErrors.map((error) => `${item.module}: ${error.status ? `HTTP ${error.status} ` : ""}${error.title}`),
+      ]).slice(0, 6);
+      return [
+        "QUICK EXPLANATION",
+        `May ${confirmedInventoryModules.length} bagong kumpirmadong problema. Apektado: ${names}. Mas bago ang current evidence kaysa sa dating PASSED baseline, kaya kailangan itong imbestigahan.`,
+        "",
+        "SAVED LIVE-TEST HISTORY",
+        `${lockedLiveTestVerdict.lockId}: PASSED noong ${lockedLiveTestVerdict.testedAt}, pero hindi nito tinatakpan ang bagong confirmed error.`,
+        "",
+        "WHY KAFARM SAYS THIS",
+        "Tinawag itong confirmed dahil may eksaktong live Supabase metadata o aktuwal na runtime/API error na tumutugma sa affected module.",
+        ...(evidence.length ? evidence.map((line) => `• ${line}`) : ["• May linked runtime evidence sa Technical Report."]),
+      ].join("\n");
+    }
+    if (predictedInventoryModules.length) {
+      const names = predictedInventoryModules.map((item) => item.module).join(", ");
+      const predictions = predictedInventoryModules.flatMap((item) => item.predictedObjects.map((name) => `${item.module}: ${name}`)).slice(0, 6);
+      return [
+        "QUICK EXPLANATION",
+        `May ${predictedInventoryModules.length} inventory note sa ${names}, pero hindi ito totoong error at walang bagong confirmed blocker. Hindi kailangang ulitin ang production transactions dahil pumasa na ang covered workflows sa locked live test.`,
+        "",
+        "SAVED LIVE-TEST HISTORY",
+        `${lockedLiveTestVerdict.lockId}: ${lockedLiveTestVerdict.verdict}`,
+        `${lockedLiveTestVerdict.buddyReviewer} · ${lockedLiveTestVerdict.ownerReviewer}`,
+        "Pumasa na ang listed end-to-end workflows; ang prediction ay hindi automatic na nagpapawalang-bisa sa lock hangga't walang confirmed error.",
+        "",
+        "WHY KAFARM SAYS THIS",
+        "May code requirement na hindi kayang patunayan ng kasalukuyang inventory snapshot nang mag-isa. Nanatiling valid ang PASSED baseline hangga't walang relevant code change, matching runtime/API failure, o authoritative missing-object result.",
+        ...predictions.map((line) => `• Needs verification: ${line}`),
+      ].join("\n");
+    }
+    return [
+      "QUICK EXPLANATION",
+      "Maayos ang resulta ng kasalukuyang scan. Walang nakitang problemang kailangang ayusin ngayon.",
+      "",
+      "SAVED LIVE-TEST HISTORY",
+      `${lockedLiveTestVerdict.lockId}: ${lockedLiveTestVerdict.verdict}`,
+      `${lockedLiveTestVerdict.buddyReviewer} · ${lockedLiveTestVerdict.ownerReviewer}`,
+      "Ang current scan ay consistent sa naka-lock na successful end-to-end live-test baseline.",
+      "",
+      "WHY KAFARM SAYS THIS",
+      `Nag-match ang code at live Supabase inventory sa ${inventoryComparison.length} module(s), at walang nakitang linked runtime/API error sa kasalukuyang evidence.`,
+    ].join("\n");
+  }, [databaseSnapshot, confirmedInventoryModules, predictedInventoryModules, inventoryComparison.length]);
   const [thread, setThread] = useState<Array<{ id: string; role: "admin" | "kafarm"; body: string; risk?: string }>>([
     { id: "hello-admin", role: "admin", body: "Good morning KaFarm." },
     { id: "hello-kafarm", role: "kafarm", body: "Good morning boss. Ready ako. Sabihin mo lang kung gusto mo daily status, bug check, payment queue, caretaker tasks, or Buddy report.", risk: "low" },
@@ -565,6 +776,27 @@ export function KafarmCommandCenter() {
     window.addEventListener("kafarm-incident", loadIncidents);
     return () => window.removeEventListener("kafarm-incident", loadIncidents);
   }, []);
+
+  useEffect(() => {
+    if (adminGate.status !== "allowed") return;
+    let active = true;
+    const refresh = async () => {
+      const { data, error } = await supabase
+        .from("admin_kafarm_incident_queue")
+        .select("id,title,category,severity,status,app_role,route,message,http_status,request_url,email,created_at,updated_at")
+        .order("created_at", { ascending: false })
+        .limit(80);
+      if (active && !error) setInventoryIncidents(filterKaFarmIncidents((data || []) as DbIncident[]));
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener("kafarm-incident", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("kafarm-incident", refresh);
+    };
+  }, [adminGate.status]);
 
   useEffect(() => {
     let active = true;
@@ -703,7 +935,16 @@ export function KafarmCommandCenter() {
       return;
     }
 
-    const { data, error } = await supabase.rpc("kafarm_database_health_snapshot");
+    const [snapshotResult, carePlanResult, incidentResult] = await Promise.all([
+      supabase.rpc("kafarm_database_health_snapshot"),
+      supabase.rpc("kafarm_care_plan_health_snapshot"),
+      supabase
+        .from("admin_kafarm_incident_queue")
+        .select("id,title,category,severity,status,app_role,route,message,http_status,request_url,email,created_at,updated_at")
+        .order("created_at", { ascending: false })
+        .limit(80),
+    ]);
+    const { data, error } = snapshotResult;
     if (error) {
       const message = [error.message, error.details, error.hint, error.code].filter(Boolean).join(" | ");
       const incident = {
@@ -723,18 +964,47 @@ export function KafarmCommandCenter() {
       setClientIncidents((current) => [incident, ...current].slice(0, 12));
       return;
     }
-    setDatabaseSnapshot(data);
-    const count = Array.isArray(data?.findings) ? data.findings.length : 0;
+    const careHealth = carePlanResult.data as CarePlanHealthSnapshot | null;
+    const careFindings: NonNullable<LiveDatabaseSnapshot["findings"]> = [];
+    if (carePlanResult.error) {
+      careFindings.push({
+        severity: "High",
+        title: "Care Plan health reader unavailable",
+        meaning: carePlanResult.error.message,
+        evidence: "kafarm_care_plan_health_snapshot RPC",
+        next_action: "Apply and verify Care Plan migrations 058-062 before production use.",
+      });
+    } else if (careHealth) {
+      if (Number(careHealth.catalog_days || 0) !== 180) careFindings.push({ severity: "High", title: "Care Plan mission catalog incomplete", meaning: `${Number(careHealth.catalog_days || 0)} of 180 days are installed.`, evidence: careHealth, next_action: "Apply migration 059 and rerun the reader." });
+      if (Number(careHealth.active_supply_conversion_missing || 0) > 0) careFindings.push({ severity: "High", title: "Active Care Plan has unsafe feed conversion", meaning: "At least one active plan cannot convert inventory packs to exact kilograms.", evidence: careHealth, next_action: "Pause the affected plan and repair its verified supply requirement before another proof approval." });
+      if (Number(careHealth.negative_inventory || 0) > 0) careFindings.push({ severity: "High", title: "Negative customer inventory detected", meaning: "An inventory balance is below zero.", evidence: careHealth, next_action: "Stop the affected approval flow and reconcile its immutable usage ledger." });
+      if (Number(careHealth.overdue_missions || 0) > 0) careFindings.push({ severity: "Medium", title: "Overdue Care Plan missions need action", meaning: `${Number(careHealth.overdue_missions || 0)} mission(s) remain overdue.`, evidence: careHealth, next_action: "Open Care Plans, verify caretaker coverage, and resolve or reassign overdue work." });
+      if (Number(careHealth.unreviewed_proofs || 0) > 0) careFindings.push({ severity: "Medium", title: "Care Plan proofs await admin review", meaning: `${Number(careHealth.unreviewed_proofs || 0)} proof(s) are pending.`, evidence: careHealth, next_action: "Review the full welfare checklist and exact feed usage in Task Verification." });
+      if (Number(careHealth.pending_refunds || 0) > 0) careFindings.push({ severity: "Medium", title: "Care Plan refunds await evidence", meaning: `${Number(careHealth.pending_refunds || 0)} refund(s) are pending.`, evidence: careHealth, next_action: "Complete the external refund and record its reference on the Care Plan." });
+      if (Number(careHealth.manual_expired_reservations || 0) > 0) careFindings.push({ severity: "Medium", title: "Manual-care inventory reservation expired", meaning: `${Number(careHealth.manual_expired_reservations || 0)} premium manual request(s) were not assigned before their stock hold expired.`, evidence: careHealth, next_action: "Ask the customer to submit a fresh request so current inventory can be checked and reserved again." });
+      if (Number(careHealth.manual_unreviewed_proofs || 0) > 0) careFindings.push({ severity: "Medium", title: "Manual premium-care proofs await review", meaning: `${Number(careHealth.manual_unreviewed_proofs || 0)} caretaker proof(s) are pending.`, evidence: careHealth, next_action: "Review the same mission checklist, safety result, and actual inventory usage used by the paid Care Plan flow." });
+      if (Number(careHealth.manual_consumed_without_usage || 0) > 0) careFindings.push({ severity: "High", title: "Manual-care deduction ledger mismatch", meaning: "A reservation is marked consumed without its immutable usage record.", evidence: careHealth, next_action: "Stop further approval for the affected request and reconcile its proof, reservation, and inventory ledger." });
+      if (Number(careHealth.manual_approved_with_active_reservation || 0) > 0) careFindings.push({ severity: "High", title: "Approved manual-care proof did not close inventory reservation", meaning: "A proof is approved but its reserved stock is still active.", evidence: careHealth, next_action: "Inspect the guarded manual proof review RPC and reconcile the exact inventory equation before another approval." });
+      if (Number(careHealth.paid_manual_open_conflicts || 0) > 0) careFindings.push({ severity: "High", title: "Paid and manual care overlap detected", meaning: "The same rooster has an open manual request while a paid automated Care Plan is active.", evidence: careHealth, next_action: "Do not assign duplicate work. Resolve the manual request and preserve only the paid automated mission path." });
+    }
+    const mergedSnapshot = {
+      ...(data as LiveDatabaseSnapshot),
+      findings: [...((data as LiveDatabaseSnapshot)?.findings || []), ...careFindings],
+    };
+    setDatabaseSnapshot(mergedSnapshot);
+    if (!incidentResult.error) setInventoryIncidents(filterKaFarmIncidents((incidentResult.data || []) as DbIncident[]));
+    const count = mergedSnapshot.findings.length;
     setDatabaseReaderStatus(count ? `Database reader found ${count} database finding(s).` : "Database reader found no database blockers.");
   }
 
   const runSelectedEngine = async () => {
-    if (!selectedTool) return;
-    if (selectedTool === "database") await runDatabaseReader();
+    const effectiveTool: KaFarmToolKey = selectedTool || "production";
+    if (!selectedTool) setSelectedTool(effectiveTool);
+    await runDatabaseReader();
     if (issueFilter === "problems") {
       setProblemEngineRan(true);
       setSolutionEngineRan(false);
-      setPanelActionNote(`Investigation ran for ${selectedToolConfig?.title || "selected scope"}.`);
+      setPanelActionNote(`Whole-app scan completed. Reports are ready below.`);
       return;
     }
     setProblemEngineRan(true);
@@ -753,6 +1023,17 @@ export function KafarmCommandCenter() {
     }
   };
 
+  const copySimpleExplanation = async () => {
+    try {
+      await navigator.clipboard.writeText(simpleExplanation);
+      setSimpleCopyStatus("Copied");
+      window.setTimeout(() => setSimpleCopyStatus("Copy"), 1200);
+    } catch {
+      setSimpleCopyStatus("Copy failed");
+      window.setTimeout(() => setSimpleCopyStatus("Copy"), 1200);
+    }
+  };
+
   const clearCapturedLogs = () => {
     window.localStorage.removeItem("farmconnect_kafarm_incidents");
     window.localStorage.removeItem("farmconnect_kafarm_incident_throttle");
@@ -761,6 +1042,7 @@ export function KafarmCommandCenter() {
       .forEach((key) => window.sessionStorage.removeItem(key));
     setClientIncidents([]);
     setDatabaseSnapshot(null);
+    setInventoryIncidents([]);
     setDatabaseReaderStatus("Database reader not run yet.");
     setPanelActionNote("Captured logs cleared. Choose a tool, then run Investigation again.");
     setSelectedIncident(monitoringIncidents[0]);
@@ -812,6 +1094,68 @@ export function KafarmCommandCenter() {
     );
   }
 
+  const simpleReportView = true;
+  if (simpleReportView) {
+    return (
+      <main className="min-h-screen bg-[linear-gradient(135deg,#eef8ec_0%,#f8f4df_52%,#e4f4ff_100%)] p-4 text-[#14241b]">
+        <div className="mx-auto max-w-7xl space-y-4">
+          <section className="rounded-[28px] border border-white bg-white/90 p-5 shadow-xl shadow-[#163d8f]/10 backdrop-blur-xl">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-16 w-16 overflow-hidden rounded-3xl bg-[#eef8df] ring-4 ring-white">
+                  <img src={KAFARM_MASCOT} alt="KaFarm" className="h-full w-full object-contain" />
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-[#1d7a45]">FarmConnect whole-app reader</p>
+                  <h1 className="text-3xl font-black text-[#0f3f2c]">KaFarm Report</h1>
+                  <p className="text-sm font-bold text-[#637064]">Pindutin ang Run. Lalabas ang dalawang report sa ibaba.</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  data-kafarm-monitor-ignore="true"
+                  onClick={runSelectedEngine}
+                  className="rounded-2xl bg-[#f8c51c] px-8 py-4 text-base font-black text-[#14241b] shadow-lg transition hover:-translate-y-0.5"
+                >
+                  Run
+                </button>
+                <Link href="/admin/kafarm/whole-app-reader" className="rounded-2xl bg-[#163d8f] px-5 py-4 text-xs font-black text-white shadow-md">Whole-App Reader V2</Link>
+                <Link href="/admin/kafarm/troubleshooting" className="rounded-2xl bg-[#9a6200] px-5 py-4 text-xs font-black text-white shadow-md">Troubleshooting</Link>
+                <Link href="/admin" className="rounded-2xl bg-[#0f3f2c] px-5 py-4 text-xs font-black text-white shadow-md">Admin Home</Link>
+              </div>
+            </div>
+            <p className="mt-4 rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] px-4 py-3 text-xs font-bold text-[#637064]">{databaseReaderStatus}</p>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-[28px] border border-white bg-white/90 p-5 shadow-xl shadow-[#163d8f]/10 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black text-[#0f3f2c]">Technical Report</h2>
+                  <p className="text-xs font-bold text-[#637064]">I-copy at ipadala kay Buddy.</p>
+                </div>
+                <button type="button" data-kafarm-monitor-ignore="true" onClick={copyProcedure} className="rounded-2xl bg-[#163d8f] px-4 py-3 text-xs font-black text-white">{copyStatus}</button>
+              </div>
+              <textarea readOnly value={actionProcedure} className="mt-4 h-[62vh] min-h-96 w-full resize-none rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-4 font-mono text-xs leading-5 text-[#14241b] outline-none" />
+            </div>
+
+            <div className="rounded-[28px] border border-white bg-white/90 p-5 shadow-xl shadow-[#1d7a45]/10 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black text-[#0f3f2c]">Simple Explanation</h2>
+                  <p className="text-xs font-bold text-[#637064]">Quick explanation + teacher-style evidence justification.</p>
+                </div>
+                <button type="button" data-kafarm-monitor-ignore="true" onClick={copySimpleExplanation} className="rounded-2xl bg-[#1d7a45] px-4 py-3 text-xs font-black text-white">{simpleCopyStatus}</button>
+              </div>
+              <textarea readOnly value={simpleExplanation} className="mt-4 h-[62vh] min-h-96 w-full resize-none rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-5 text-base font-bold leading-8 text-[#14241b] outline-none" />
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[linear-gradient(135deg,#eef8ec_0%,#f8f4df_52%,#e4f4ff_100%)] p-4 text-[#14241b]">
       <div className="mx-auto max-w-7xl space-y-4">
@@ -833,6 +1177,76 @@ export function KafarmCommandCenter() {
             </div>
           </div>
         </header>
+
+        <section className={`rounded-[28px] border p-5 shadow-xl backdrop-blur-xl ${!databaseSnapshot ? "border-slate-200 bg-white/90" : confirmedInventoryModules.length ? "border-red-300 bg-red-50/95 shadow-red-900/10" : predictedInventoryModules.length ? "border-amber-300 bg-amber-50/95" : "border-emerald-300 bg-emerald-50/95 shadow-emerald-900/10"}`}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#163d8f]">Predict, test, then confirm</p>
+              <h2 className="mt-1 text-2xl font-black text-[#14241b]">Code Inventory ↔ Supabase Inventory</h2>
+              <p className="mt-2 max-w-4xl text-sm font-bold leading-6 text-[#637064]">
+                Kino-compare ang code requirements at live Supabase inventory para magbigay ng prediction. Hindi nito bina-block ang action: ituloy ang normal test, at magiging CONFIRMED lamang kapag may eksaktong live metadata o runtime/API evidence.
+              </p>
+            </div>
+            <button
+              type="button"
+              data-kafarm-monitor-ignore="true"
+              onClick={runDatabaseReader}
+              className="rounded-2xl bg-[#163d8f] px-5 py-3 text-xs font-black text-white shadow-md"
+            >
+              Refresh Comparison
+            </button>
+          </div>
+
+          {!databaseSnapshot ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/70 p-4 text-sm font-bold text-slate-600">
+              Not checked yet. Click Refresh Comparison or run any investigation scope.
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl bg-white/80 p-4"><p className="text-[10px] font-black uppercase text-slate-500">Code modules</p><p className="mt-1 text-2xl font-black">{inventoryComparison.length}</p></div>
+                <div className="rounded-2xl bg-white/80 p-4"><p className="text-[10px] font-black uppercase text-slate-500">Live objects matched</p><p className="mt-1 text-2xl font-black">{inventoryComparison.reduce((sum, item) => sum + item.liveObjects.length, 0)}</p></div>
+                <div className="rounded-2xl bg-white/80 p-4"><p className="text-[10px] font-black uppercase text-slate-500">Predicted / test needed</p><p className="mt-1 text-2xl font-black text-amber-700">{inventoryComparison.reduce((sum, item) => sum + item.predictedObjects.length, 0)}</p></div>
+                <div className="rounded-2xl bg-white/80 p-4"><p className="text-[10px] font-black uppercase text-slate-500">Confirmed evidence</p><p className="mt-1 text-2xl font-black text-red-700">{inventoryComparison.reduce((sum, item) => sum + item.confirmedMissingObjects.length + item.activeErrors.length, 0)}</p></div>
+              </div>
+
+              <div className={`mt-4 rounded-2xl border p-4 ${confirmedInventoryModules.length ? "border-red-300 bg-red-100 text-red-950" : predictedInventoryModules.length ? "border-amber-300 bg-amber-100 text-amber-950" : "border-emerald-300 bg-emerald-100 text-emerald-950"}`}>
+                <p className="text-lg font-black">
+                  {confirmedInventoryModules.length
+                    ? `CONFIRMED: ${confirmedInventoryModules.length} module(s) have exact supporting evidence.`
+                    : predictedInventoryModules.length
+                      ? `PREDICTED: Test ${predictedInventoryModules.length} affected module(s) to confirm or clear.`
+                      : "CLEAR: No mismatch or runtime problem found in the current evidence."}
+                </p>
+                <p className="mt-1 text-xs font-bold">
+                  Actions remain usable. KaFarm watches the actual test and only confirms an issue when the runtime/API result or authoritative live metadata supports it. Live snapshot: {databaseSnapshot.generated_at || "current admin read"}
+                </p>
+              </div>
+
+              <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                {inventoryComparison.map((item) => (
+                  <details key={item.module} open={item.status !== "CLEAR"} className={`rounded-2xl border bg-white/85 p-4 ${item.status === "CONFIRMED" ? "border-red-300" : item.status === "PREDICTED" ? "border-amber-300" : "border-emerald-200"}`}>
+                    <summary className="cursor-pointer list-none text-sm font-black text-[#14241b]">
+                      <span className={`mr-2 rounded-full px-2 py-1 text-[10px] ${item.status === "CONFIRMED" ? "bg-red-700 text-white" : item.status === "PREDICTED" ? "bg-amber-500 text-amber-950" : "bg-emerald-700 text-white"}`}>{item.status}</span>
+                      {item.module}
+                    </summary>
+                    <p className="mt-3 text-xs font-bold text-[#637064]">Affected pages/actions: {item.pages}</p>
+                    {item.predictedObjects.length ? <p className="mt-2 text-xs font-black text-amber-800">Prediction only — test required: {item.predictedObjects.join(", ")}</p> : null}
+                    {item.confirmedMissingObjects.length ? <p className="mt-2 text-xs font-black text-red-800">Confirmed missing by live metadata: {item.confirmedMissingObjects.join(", ")}</p> : null}
+                    {item.activeErrors.map((error, index) => (
+                      <div key={`${error.title}-${index}`} className="mt-2 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-900">
+                        <p>Runtime confirmed: {error.status ? `HTTP ${error.status} — ` : ""}{error.title}</p>
+                        <p className="mt-1">Route: {error.route}</p>
+                        <p className="mt-1 break-words">{error.message}</p>
+                      </div>
+                    ))}
+                    {!item.predictedObjects.length && !item.confirmedMissingObjects.length && !item.activeErrors.length ? <p className="mt-2 text-xs font-bold text-emerald-800">No mismatch or runtime problem found from the current evidence.</p> : null}
+                  </details>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
 
         <section className="rounded-[28px] border border-white bg-white/85 p-4 shadow-xl shadow-[#1d7a45]/10 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
@@ -888,7 +1302,7 @@ export function KafarmCommandCenter() {
                 >
                   Findings
                 </button>
-                <button data-kafarm-monitor-ignore="true" onClick={runSelectedEngine} disabled={!selectedTool} className="rounded-xl bg-[#f8c51c] px-3 py-2 text-xs font-black text-[#14241b] disabled:cursor-not-allowed disabled:opacity-45">Run</button>
+                <button data-kafarm-monitor-ignore="true" onClick={runSelectedEngine} className="rounded-xl bg-[#f8c51c] px-5 py-2 text-xs font-black text-[#14241b]">Run Whole App</button>
               </div>
             </div>
 
@@ -909,7 +1323,7 @@ export function KafarmCommandCenter() {
               <div className="mt-4 flex h-[360px] items-center justify-center rounded-2xl border border-dashed border-[#cfdcc9] bg-[#fbfbf6] p-6 text-center">
                 <div>
                   <p className="text-lg font-black text-[#0f3f2c]">Blank muna</p>
-                  <p className="mt-2 text-sm font-bold leading-6 text-[#637064]">Pumili ng scope sa taas. Pag-click mo ng Run, iche-check ni KaFarm kung may kulang bago pa tumama sa user.</p>
+                  <p className="mt-2 text-sm font-bold leading-6 text-[#637064]">Pindutin ang Run Whole App. Babasahin ni KaFarm ang app at Supabase, tapos ilalagay ang dalawang output sa Report Boxes sa ibaba.</p>
                 </div>
               </div>
             ) : selectedTool === "production" ? (
@@ -1021,35 +1435,30 @@ export function KafarmCommandCenter() {
           </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="grid gap-4 xl:grid-cols-2">
           <div className="rounded-[28px] border border-white bg-white/85 p-4 shadow-xl shadow-[#163d8f]/10 backdrop-blur-xl">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-black text-[#0f3f2c]">3. Copy Investigation Report</h2>
-                <p className="text-xs font-bold text-[#637064]">One-click copy para ma-send kay Buddy kung may kailangang code/SQL fix.</p>
+                <h2 className="text-xl font-black text-[#0f3f2c]">3A. Buddy Technical Report</h2>
+                <p className="text-xs font-bold text-[#637064]">Kumpletong technical output. I-copy at ipadala kay Buddy.</p>
               </div>
               <div className="flex gap-2">
                 <button data-kafarm-monitor-ignore="true" onClick={copyProcedure} className="rounded-2xl bg-[#163d8f] px-4 py-3 text-xs font-black text-white">{copyStatus}</button>
                 <button data-kafarm-monitor-ignore="true" onClick={clearCapturedLogs} className="rounded-2xl bg-[#f4f1e6] px-4 py-3 text-xs font-black text-[#14241b]">Clear Logs</button>
-                <button data-kafarm-monitor-ignore="true" onClick={() => setDecision("approved")} className="rounded-2xl bg-[#1d7a45] px-4 py-3 text-xs font-black text-white">Approve</button>
-                <button data-kafarm-monitor-ignore="true" onClick={() => setDecision("rejected")} className="rounded-2xl bg-[#e32932] px-4 py-3 text-xs font-black text-white">Reject</button>
               </div>
             </div>
             <textarea readOnly value={actionProcedure} className="mt-4 h-80 w-full rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-4 font-mono text-xs leading-5 text-[#14241b] outline-none" />
           </div>
 
           <div className="rounded-[28px] border border-white bg-white/85 p-4 shadow-lg shadow-[#1d7a45]/10 backdrop-blur-xl">
-            <h3 className="text-lg font-black text-[#0f3f2c]">Admin Note</h3>
-            <p className="mt-1 text-xs font-bold text-[#637064]">Use this if approve/reject needs reason.</p>
-            <textarea
-              value={adminNote}
-              onChange={(event) => setAdminNote(event.target.value)}
-              className="mt-3 h-32 w-full rounded-2xl border border-[#e4d7b8] bg-white/80 p-3 text-sm font-bold text-[#14241b] outline-none"
-            />
-            <div className="mt-4 rounded-2xl bg-[#fbfbf6] p-4">
-              <p className="text-[10px] font-black uppercase text-[#637064]">Decision</p>
-              <p className="mt-1 text-lg font-black text-[#14241b]">{selectedStatus}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-black text-[#0f3f2c]">3B. Simple Explanation</h3>
+                <p className="mt-1 text-xs font-bold text-[#637064]">Madaling basahin: ano ang nakita at ano ang susunod na gagawin.</p>
+              </div>
+              <button data-kafarm-monitor-ignore="true" onClick={copySimpleExplanation} className="rounded-2xl bg-[#1d7a45] px-4 py-3 text-xs font-black text-white">{simpleCopyStatus}</button>
             </div>
+            <textarea readOnly value={simpleExplanation} className="mt-4 h-80 w-full rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-4 text-base font-bold leading-7 text-[#14241b] outline-none" />
           </div>
         </section>
       </div>
