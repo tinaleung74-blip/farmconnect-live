@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import type { ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAdminEscalatedChats, getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, runAdminSupportAction, saveKaFarmSupportMessage, sendSupportMessage } from "@/lib/backend/support-chat";
 import { getEscalationNotice, getKaFarmReply, shouldEscalateToAdmin } from "@/lib/kafarm-brain";
@@ -6252,12 +6252,8 @@ export function CaretakerTasks() {
   const [feedUsed, setFeedUsed] = useState("");
   const [actualRemainingFeed, setActualRemainingFeed] = useState("");
   const [saleAmount, setSaleAmount] = useState("");
-  const [operationChecks, setOperationChecks] = useState<boolean[]>([]);
-  const [housingChecks, setHousingChecks] = useState<boolean[]>([]);
-  const [supplementChecks, setSupplementChecks] = useState<boolean[]>([]);
-  const [vaccineChecks, setVaccineChecks] = useState<boolean[]>([]);
-  const [healthChecks, setHealthChecks] = useState<boolean[]>([]);
   const [healthStatus, setHealthStatus] = useState<"pass" | "watch" | "isolate_and_escalate">("pass");
+  const [submitAttempt, setSubmitAttempt] = useState(0);
   const [missionInventory, setMissionInventory] = useState<CareTaskInventoryItem[]>([]);
   const [inventoryItemId, setInventoryItemId] = useState("");
   const proofInputRef = useRef<HTMLInputElement>(null);
@@ -6318,11 +6314,6 @@ export function CaretakerTasks() {
     setQrValue("");
     setQrSkipped(false);
     setSaleAmount("");
-    setOperationChecks((Array.isArray(task.taskMetadata.operations_checklist) ? task.taskMetadata.operations_checklist : []).map(() => false));
-    setHousingChecks((Array.isArray(task.taskMetadata.housing_checklist) ? task.taskMetadata.housing_checklist : []).map(() => false));
-    setSupplementChecks((Array.isArray(task.taskMetadata.supplement_checklist) ? task.taskMetadata.supplement_checklist : []).map(() => false));
-    setVaccineChecks((Array.isArray(task.taskMetadata.vaccine_checklist) ? task.taskMetadata.vaccine_checklist : []).map(() => false));
-    setHealthChecks((Array.isArray(task.taskMetadata.health_checklist) ? task.taskMetadata.health_checklist : []).map(() => false));
     setHealthStatus("pass");
     setMissionInventory([]);
     setInventoryItemId("");
@@ -6459,18 +6450,6 @@ export function CaretakerTasks() {
     }
     if (needsFeedQty && Number(feedUsed) <= 0) {
       setTaskNote("Enter the actual feed quantity used before submitting.");
-      return;
-    }
-    const completeGroup = (key: string, checks: boolean[]) => {
-      const expected = missionList(key);
-      return checks.length === expected.length && checks.every(Boolean);
-    };
-    if (isMissionTask && healthStatus === "pass" && (!completeGroup("operations_checklist", operationChecks) || !completeGroup("housing_checklist", housingChecks) || !completeGroup("supplement_checklist", supplementChecks) || !completeGroup("vaccine_checklist", vaccineChecks))) {
-      setTaskNote("Complete Operations, Housing, Supplement, and Vaccine-authority checks before submitting this mission.");
-      return;
-    }
-    if (isMissionTask && healthStatus === "pass" && !completeGroup("health_checklist", healthChecks)) {
-      setTaskNote("A PASS result requires every health check. Choose WATCH or ISOLATE AND ESCALATE if any item failed.");
       return;
     }
     if (isMissionTask && healthStatus === "pass" && (!feedUsed || !inventoryItemId || Number(feedUsed) <= 0)) {
@@ -6627,25 +6606,25 @@ export function CaretakerTasks() {
         });
       } else if (isMissionTask) {
         const checklistResults = {
-            operations: missionList("operations_checklist").map((label, index) => ({
+            operations: missionList("operations_checklist").map((label) => ({
               label,
-              checked: Boolean(operationChecks[index]),
+              checked: true,
             })),
-            housing: missionList("housing_checklist").map((label, index) => ({
+            housing: missionList("housing_checklist").map((label) => ({
               label,
-              checked: Boolean(housingChecks[index]),
+              checked: true,
             })),
-            supplements: missionList("supplement_checklist").map((label, index) => ({
+            supplements: missionList("supplement_checklist").map((label) => ({
               label,
-              checked: Boolean(supplementChecks[index]),
+              checked: true,
             })),
-            vaccines: missionList("vaccine_checklist").map((label, index) => ({
+            vaccines: missionList("vaccine_checklist").map((label) => ({
               label,
-              checked: Boolean(vaccineChecks[index]),
+              checked: true,
             })),
-            health: missionList("health_checklist").map((label, index) => ({
+            health: missionList("health_checklist").map((label) => ({
               label,
-              checked: Boolean(healthChecks[index]),
+              checked: true,
             })),
           };
         const inventoryReconciliationNote = `Feed inventory: ${Number(feedUsed).toFixed(3)} kg used; ${Number(actualRemainingFeed).toFixed(3)} kg actual remaining; ${expectedRemainingFeedKg.toFixed(3)} kg expected remaining; ${hasInventoryDiscrepancy ? "INVENTORY DISCREPANCY - ADMIN REVIEW REQUIRED" : "balance matched"}.`;
@@ -6702,7 +6681,10 @@ export function CaretakerTasks() {
   return (
     <Shell role="caretaker" title="Active Tasks">
       <PageTitle title="Active Tasks" text="Document the work, attach photos, then verify the rooster QR before sending." icon="clipboard" />
-      <KaFarm>{taskNote}</KaFarm>
+      <div id="caretaker-task-status" role="status" aria-live="polite">
+        <KaFarm>{taskNote}</KaFarm>
+        <span className="sr-only">Submit validation attempt {submitAttempt}</span>
+      </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card>
           <div className="flex items-center justify-between gap-3">
@@ -6819,47 +6801,25 @@ export function CaretakerTasks() {
                         <b>Emergency Stop Rule</b>
                         <p className="mt-2 text-sm font-bold leading-6 text-amber-950">{String(selected.taskMetadata.emergency_stop_rule || "Stop normal work and contact admin for any serious health concern.")}</p>
                       </div>
-                      <div className="grid gap-4 lg:grid-cols-2">
-                        <fieldset className="rounded-2xl bg-white p-4">
-                          <legend className="font-black">Daily Operations</legend>
-                          <div className="mt-3 space-y-2">
-                            {missionList("operations_checklist").map((item, index) => (
-                              <label key={item} className="flex gap-3 rounded-xl bg-[#f6f3e8] p-3 text-sm font-bold">
-                                <input type="checkbox" checked={Boolean(operationChecks[index])} onChange={(event) => setOperationChecks((current) => current.map((value, itemIndex) => (itemIndex === index ? event.target.checked : value)))} />
-                                <span>{item}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </fieldset>
-                        <fieldset className="rounded-2xl bg-white p-4">
-                          <legend className="font-black">Health Pass Checks</legend>
-                          <div className="mt-3 space-y-2">
-                            {missionList("health_checklist").map((item, index) => (
-                              <label key={item} className="flex gap-3 rounded-xl bg-[#f6f3e8] p-3 text-sm font-bold">
-                                <input type="checkbox" checked={Boolean(healthChecks[index])} onChange={(event) => setHealthChecks((current) => current.map((value, itemIndex) => (itemIndex === index ? event.target.checked : value)))} />
-                                <span>{item}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </fieldset>
+                      <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm font-bold leading-6 text-sky-950">
+                        Read these procedures before working. Submitting the completed work confirms that you followed every applicable instruction and recorded any exception in Work Documentation.
                       </div>
-                      <div className="grid gap-4 lg:grid-cols-3">
+                      <div className="grid gap-4 lg:grid-cols-2">
                         {[
-                          ["Housing", "housing_checklist", housingChecks, setHousingChecks],
-                          ["Supplements", "supplement_checklist", supplementChecks, setSupplementChecks],
-                          ["Vaccines / Authority", "vaccine_checklist", vaccineChecks, setVaccineChecks],
-                        ].map(([title, key, checks, setter]) => (
-                          <fieldset key={String(key)} className="rounded-2xl bg-white p-4">
-                            <legend className="font-black">{String(title)}</legend>
-                            <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
-                              {missionList(String(key)).map((item, index) => (
-                                <label key={item} className="flex gap-3 rounded-xl bg-[#f6f3e8] p-3 text-xs font-bold leading-5">
-                                  <input type="checkbox" checked={Boolean((checks as boolean[])[index])} onChange={(event) => (setter as Dispatch<SetStateAction<boolean[]>>)((current) => current.map((value, itemIndex) => (itemIndex === index ? event.target.checked : value)))} />
-                                  <span>{item}</span>
-                                </label>
+                          ["Daily Operations", "operations_checklist"],
+                          ["Health Observation Guide", "health_checklist"],
+                          ["Housing", "housing_checklist"],
+                          ["Supplements", "supplement_checklist"],
+                          ["Vaccines / Authority", "vaccine_checklist"],
+                        ].map(([title, key]) => (
+                          <section key={String(key)} className="rounded-2xl bg-white p-4">
+                            <h4 className="font-black">{String(title)}</h4>
+                            <ol className="mt-3 max-h-72 list-decimal space-y-2 overflow-y-auto pl-5">
+                              {missionList(String(key)).map((item) => (
+                                <li key={item} className="rounded-xl bg-[#f6f3e8] p-3 text-xs font-bold leading-5">{item}</li>
                               ))}
-                            </div>
-                          </fieldset>
+                            </ol>
+                          </section>
                         ))}
                       </div>
                       <label className="block rounded-2xl bg-white p-4">
@@ -6969,7 +6929,7 @@ export function CaretakerTasks() {
                     </div>
                   )}
                   <div className="flex flex-wrap gap-3">
-                    <button type="button" onClick={openQrVerification} className="rounded-xl bg-[#1f6b45] px-6 py-3 font-black text-white">
+                    <button type="button" data-kafarm-feedback-target="caretaker-task-status" onClick={() => { setSubmitAttempt((current) => current + 1); openQrVerification(); }} className="rounded-xl bg-[#1f6b45] px-6 py-3 font-black text-white">
                       {isSaleReleaseTask || selected.workflowType === "qr_tagging" ? "Submit to Admin" : "Submit Work"}
                     </button>
                     <Link href="/caretaker/chat" className="rounded-xl bg-amber-300 px-6 py-3 font-black">
