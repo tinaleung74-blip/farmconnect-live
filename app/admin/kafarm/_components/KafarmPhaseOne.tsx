@@ -379,8 +379,13 @@ function compareCodeAndSupabaseInventory(snapshot: LiveDatabaseSnapshot | null, 
       const status = String(incident.status || "").toLowerCase();
       if (["resolved", "ignored", "completed"].includes(status)) return false;
       const incidentText = `${incident.title} ${incident.message} ${incident.route || ""} ${incident.request_url || ""}`.toLowerCase();
-      return codeObjects.some((name) => incidentText.includes(normalizeInventoryName(name)))
-        || module.pages.split(",").some((page) => incidentText.includes(page.trim().toLowerCase()))
+      const incidentRoute = String(incident.route || "").split("?")[0].toLowerCase();
+      const moduleRoutes = module.pages.split(",").map((page) => page.trim().toLowerCase()).filter((page) => page.startsWith("/"));
+      const exactRouteMatch = Boolean(incidentRoute) && moduleRoutes.some((page) => incidentRoute === page || incidentRoute.startsWith(`${page}/`));
+      const genericUiIncident = /button click produced no visible action|button\/link route did not open/i.test(String(incident.title || ""));
+      if (genericUiIncident && incidentRoute) return exactRouteMatch;
+      return exactRouteMatch
+        || codeObjects.some((name) => incidentText.includes(normalizeInventoryName(name)))
         || (moduleText.includes("database") && Boolean(incident.http_status && incident.http_status >= 400));
     }).map((incident) => ({
       title: incident.title,
