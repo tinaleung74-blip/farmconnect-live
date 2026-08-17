@@ -56,6 +56,12 @@ const fixedPackagePath = path.join(
   "applied",
   "065_fixed_5000_care_plan_package_day1_readiness.sql",
 );
+const checklistCompatibilityPath = path.join(
+  root,
+  "database",
+  "applied",
+  "066_care_plan_task_checklist_compatibility.sql",
+);
 const appSourcePath = path.join(root, "lib", "farmconnect-v1.tsx");
 const customerRoutePath = path.join(
   root,
@@ -93,6 +99,7 @@ for (const filePath of [
   unifiedCarePath,
   taskAssignmentPath,
   fixedPackagePath,
+  checklistCompatibilityPath,
   appSourcePath,
   customerRoutePath,
   adminRoutePath,
@@ -113,6 +120,7 @@ const lifecycle = fs.readFileSync(lifecyclePath, "utf8");
 const unifiedCare = fs.readFileSync(unifiedCarePath, "utf8");
 const taskAssignment = fs.readFileSync(taskAssignmentPath, "utf8");
 const fixedPackage = fs.readFileSync(fixedPackagePath, "utf8");
+const checklistCompatibility = fs.readFileSync(checklistCompatibilityPath, "utf8");
 const appSource = fs.readFileSync(appSourcePath, "utf8");
 const cronRoute = fs.readFileSync(cronRoutePath, "utf8");
 const businessFlow = fs.readFileSync(businessFlowPath, "utf8");
@@ -423,6 +431,12 @@ const assertions = [
       /new\.status='approved'/i.test(fixedPackage) &&
       /schedule_shift_days=v_shift/i.test(fixedPackage),
     "Later daily missions can start before Day 1 preparation is verified",
+  ],
+  [
+    /v_expected:=coalesce\(v_task\.task_metadata,'\{\}'::jsonb\)/i.test(checklistCompatibility) &&
+      /v_expected->'operations_checklist'/i.test(checklistCompatibility) &&
+      /care_mission_checklist_passes/i.test(checklistCompatibility),
+    "Paid Care Plan proof validation ignores the exact checklist frozen on the assigned task",
   ],
 ];
 
