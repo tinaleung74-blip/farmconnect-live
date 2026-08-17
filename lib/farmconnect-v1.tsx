@@ -6249,7 +6249,8 @@ export function CaretakerTasks() {
   const [cameraOpening, setCameraOpening] = useState(false);
   const [cameraMessage, setCameraMessage] = useState("Camera is ready to open. You can also enter the QR manually or skip verification.");
   const [phase, setPhase] = useState<"work" | "scan" | "confirm" | "sending">("work");
-  const [feedUsed, setFeedUsed] = useState("0.25");
+  const [feedUsed, setFeedUsed] = useState("");
+  const [actualRemainingFeed, setActualRemainingFeed] = useState("");
   const [saleAmount, setSaleAmount] = useState("");
   const [operationChecks, setOperationChecks] = useState<boolean[]>([]);
   const [housingChecks, setHousingChecks] = useState<boolean[]>([]);
@@ -6259,7 +6260,6 @@ export function CaretakerTasks() {
   const [healthStatus, setHealthStatus] = useState<"pass" | "watch" | "isolate_and_escalate">("pass");
   const [missionInventory, setMissionInventory] = useState<CareTaskInventoryItem[]>([]);
   const [inventoryItemId, setInventoryItemId] = useState("");
-  const [inventoryQuantity, setInventoryQuantity] = useState("");
   const proofInputRef = useRef<HTMLInputElement>(null);
   const qrTagRef = useRef<HTMLDivElement>(null);
   const qrVideoRef = useRef<HTMLVideoElement>(null);
@@ -6275,6 +6275,9 @@ export function CaretakerTasks() {
   const isManualMissionTask = selected?.workflowType === "manual_standard_mission";
   const isMissionTask = isPaidMissionTask || isManualMissionTask;
   const selectedMissionInventory = missionInventory.find((item) => item.id === inventoryItemId);
+  const reservedFeedKg = Number(selectedMissionInventory?.reserved_kg || (Number(selectedMissionInventory?.reserved_inventory_units || 0) * Number(selectedMissionInventory?.kg_per_inventory_unit || 0)));
+  const expectedRemainingFeedKg = Math.max(0, reservedFeedKg - Number(feedUsed || 0));
+  const hasInventoryDiscrepancy = Boolean(actualRemainingFeed) && Math.abs(Number(actualRemainingFeed) - expectedRemainingFeedKg) > 0.001;
   const missionList = (key: string) => (Array.isArray(selected?.taskMetadata?.[key]) ? (selected?.taskMetadata?.[key] as unknown[]).map(String) : []);
   const missionSchedule = Array.isArray(selected?.taskMetadata?.time_schedule)
     ? (selected.taskMetadata.time_schedule as Array<{
@@ -6323,7 +6326,8 @@ export function CaretakerTasks() {
     setHealthStatus("pass");
     setMissionInventory([]);
     setInventoryItemId("");
-    setInventoryQuantity("");
+    setFeedUsed("");
+    setActualRemainingFeed("");
     setCameraOpening(false);
     setCameraMessage("Camera is ready to open. You can also enter the QR manually or skip verification.");
     setPhase("work");
@@ -6337,7 +6341,8 @@ export function CaretakerTasks() {
       .then((items) => {
         if (!active) return;
         setMissionInventory(items);
-        setInventoryItemId((current) => current || items[0]?.id || "");
+        const feedItem = items.find((item) => /feed/i.test(`${item.product_name} ${item.category || ""} ${item.product_type || ""}`)) || items[0];
+        setInventoryItemId((current) => current || feedItem?.id || "");
       })
       .catch((error) => {
         if (active) setTaskNote(`Mission inventory could not load: ${readableAppError(error)}`);
@@ -6468,12 +6473,16 @@ export function CaretakerTasks() {
       setTaskNote("A PASS result requires every health check. Choose WATCH or ISOLATE AND ESCALATE if any item failed.");
       return;
     }
-    if (isMissionTask && healthStatus === "pass" && (!inventoryQuantity || !inventoryItemId || Number(inventoryQuantity) <= 0)) {
+    if (isMissionTask && healthStatus === "pass" && (!feedUsed || !inventoryItemId || Number(feedUsed) <= 0)) {
       setTaskNote("A PASS mission must record the reserved feed and actual positive kilograms used.");
       return;
     }
+    if (isMissionTask && !actualRemainingFeed) {
+      setTaskNote("Enter the actual remaining feed so Admin can compare it with the expected balance.");
+      return;
+    }
     const reservedLimit = selectedMissionInventory?.usage_unit === "kg" ? Number(selectedMissionInventory?.reserved_kg || 0) : Number(selectedMissionInventory?.reserved_inventory_units || 0);
-    if (isMissionTask && inventoryQuantity && Number(inventoryQuantity) > reservedLimit) {
+    if (isMissionTask && feedUsed && Number(feedUsed) > reservedLimit) {
       setTaskNote("The entered quantity exceeds the inventory reserved for this care task.");
       return;
     }
@@ -6639,10 +6648,11 @@ export function CaretakerTasks() {
               checked: Boolean(healthChecks[index]),
             })),
           };
+        const inventoryReconciliationNote = `Feed inventory: ${Number(feedUsed).toFixed(3)} kg used; ${Number(actualRemainingFeed).toFixed(3)} kg actual remaining; ${expectedRemainingFeedKg.toFixed(3)} kg expected remaining; ${hasInventoryDiscrepancy ? "INVENTORY DISCREPANCY - ADMIN REVIEW REQUIRED" : "balance matched"}.`;
         const missionBase = {
           taskId: selected.id,
           proofUrls,
-          freeNote: documentation.trim(),
+          freeNote: `${documentation.trim()}\n\n${inventoryReconciliationNote}`,
           qrVerified: !qrSkipped,
           serialException: qrSkipped,
           healthStatus,
@@ -6651,12 +6661,12 @@ export function CaretakerTasks() {
         if (isPaidMissionTask) {
           await submitCaretakerMissionProof({
             ...missionBase,
-            inventoryUsage: inventoryQuantity && inventoryItemId ? [{ inventory_item_id: inventoryItemId, quantity: Number(inventoryQuantity), unit: "kg" }] : [],
+            inventoryUsage: feedUsed && inventoryItemId ? [{ inventory_item_id: inventoryItemId, quantity: Number(feedUsed), unit: "kg" }] : [],
           });
         } else {
           await submitCaretakerManualMissionProof({
             ...missionBase,
-            inventoryUsage: inventoryQuantity && inventoryItemId ? [{ inventory_item_id: inventoryItemId, quantity: Number(inventoryQuantity), unit: selectedMissionInventory?.usage_unit === "kg" ? "kg" : "inventory_unit" }] : [],
+            inventoryUsage: feedUsed && inventoryItemId ? [{ inventory_item_id: inventoryItemId, quantity: Number(feedUsed), unit: "kg" }] : [],
           });
         }
       } else {
@@ -6860,24 +6870,6 @@ export function CaretakerTasks() {
                           <option value="isolate_and_escalate">ISOLATE AND ESCALATE</option>
                         </select>
                       </label>
-                      <div className="grid gap-3 rounded-2xl bg-white p-4 md:grid-cols-[1fr_180px]">
-                        <label className="text-sm font-black">
-                          Reserved Inventory Used
-                          <select value={inventoryItemId} onChange={(event) => setInventoryItemId(event.target.value)} className="mt-2 w-full rounded-xl border p-3">
-                            <option value="">No inventory used</option>
-                            {missionInventory.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {item.product_name} — {item.usage_unit === "kg" ? `${Number(item.reserved_kg || 0).toFixed(3)} kg` : `${Number(item.reserved_inventory_units || 0).toFixed(3)} ${item.unit_label || "inventory unit"}`} reserved
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="text-sm font-black">
-                          Actual Used ({selectedMissionInventory?.usage_unit === "kg" ? "kg" : selectedMissionInventory?.unit_label || "inventory unit"})
-                          <input value={inventoryQuantity} onChange={(event) => setInventoryQuantity(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.000" className="mt-2 w-full rounded-xl border p-3" />
-                        </label>
-                        <p className="md:col-span-2 text-xs font-bold leading-5 text-[#667267]">Use the displayed unit and record the actual amount only. FarmConnect deducts it once, after admin approves the proof; unused reserved stock is not charged.</p>
-                      </div>
                       <div className="rounded-2xl bg-white p-4">
                         <b>Completion Gate</b>
                         <p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{String(selected.taskMetadata.completion_gate || "All required work, health status, and evidence must be recorded.")}</p>
@@ -6926,14 +6918,30 @@ export function CaretakerTasks() {
                     <span className="text-sm font-black">Work Documentation</span>
                     <textarea value={documentation} onChange={(event) => setDocumentation(event.target.value)} className="mt-2 min-h-32 w-full rounded-2xl border border-[#ded8c9] p-4 text-sm font-bold" placeholder={isSaleReleaseTask ? "Write your acknowledgement and final sale release note..." : "Write what was done, what was observed, and any quantity used..."} />
                   </label>
-                  {needsFeedQty && (
-                    <label className="block max-w-48">
-                      <span className="text-sm font-black">Feed Used</span>
-                      <div className="mt-2 flex items-center gap-2">
-                        <input value={feedUsed} onChange={(event) => setFeedUsed(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" className="w-28 rounded-xl border p-3 font-black" />
-                        <span className="font-bold">kg</span>
-                      </div>
-                    </label>
+                  {(needsFeedQty || isMissionTask) && (
+                    <div className="grid max-w-2xl gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="text-sm font-black">Feed Used</span>
+                        <div className="mt-2 flex items-center gap-2">
+                          <input value={feedUsed} onChange={(event) => setFeedUsed(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.000" className="min-w-0 flex-1 rounded-xl border p-3 font-black" />
+                          <span className="font-bold">kg</span>
+                        </div>
+                      </label>
+                      {isMissionTask && (
+                        <label className="block">
+                          <span className="text-sm font-black">Actual Remaining Feed</span>
+                          <div className="mt-2 flex items-center gap-2">
+                            <input value={actualRemainingFeed} onChange={(event) => setActualRemainingFeed(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.000" className="min-w-0 flex-1 rounded-xl border p-3 font-black" />
+                            <span className="font-bold">kg</span>
+                          </div>
+                        </label>
+                      )}
+                      {isMissionTask && (
+                        <div className={"sm:col-span-2 rounded-xl p-3 text-xs font-bold leading-5 " + (hasInventoryDiscrepancy ? "bg-amber-100 text-amber-950" : "bg-white text-[#667267]")}>
+                          Expected remaining: <b>{expectedRemainingFeedKg.toFixed(3)} kg</b> from {reservedFeedKg.toFixed(3)} kg reserved. {hasInventoryDiscrepancy ? "Inventory discrepancy will be flagged for Admin review." : "FarmConnect deducts Feed Used once, only after Admin approves the proof."}
+                        </div>
+                      )}
+                    </div>
                   )}
                   {!isSaleReleaseTask && (
                     <div>
@@ -8043,7 +8051,6 @@ function AdminCustomerRequestsPage() {
   const [activeSection, setActiveSection] = useState("payment");
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const [liveWithdrawals, setLiveWithdrawals] = useState<any[]>([]);
-  const [liveCarePlans, setLiveCarePlans] = useState<any[]>([]);
   const [liveSellCount, setLiveSellCount] = useState(0);
   const [adminStatus, setAdminStatus] = useState("");
   const liveWithdrawalJobs = liveWithdrawals.map((row: any) => ({
@@ -8079,7 +8086,6 @@ function AdminCustomerRequestsPage() {
   const [payoutReceiptPreview, setPayoutReceiptPreview] = useState("");
   const [payoutReference, setPayoutReference] = useState("");
   const activeSectionInfo = customerDeskSections.find((section) => section.id === activeSection) || customerDeskSections[0];
-  const openCarePlans = liveCarePlans.filter((plan: any) => !["completed", "cancelled", "expired"].includes(String(plan.status || "").toLowerCase()));
   const selectedKey = `${selected.queue}-${selected.id}-${selected.problem}`;
   const orderItems =
     selected.queue === "payment" && selected.problem.includes("Farm Buy")
@@ -8145,13 +8151,6 @@ function AdminCustomerRequestsPage() {
       .catch(() => {
         if (mounted) setLiveSellCount(0);
       });
-    getAdminCarePlans()
-      .then((rows) => {
-        if (mounted) setLiveCarePlans(rows || []);
-      })
-      .catch(() => {
-        if (mounted) setLiveCarePlans([]);
-      });
     return () => {
       mounted = false;
     };
@@ -8201,9 +8200,7 @@ function AdminCustomerRequestsPage() {
               <Badge tone={section.tone}>
                 {section.id === "sell"
                   ? liveSellCount
-                  : section.id === "care"
-                    ? openCarePlans.length + customerRequestJobs.filter((job) => job.queue === section.id && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`)).length
-                    : customerRequestJobs.filter((job) => job.queue === section.id && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`)).length}
+                  : customerRequestJobs.filter((job) => job.queue === section.id && !hiddenIds.includes(`${job.queue}-${job.id}-${job.problem}`)).length}
               </Badge>
             </div>
             <h2 className="mt-3 text-lg font-black">{section.title}</h2>
@@ -8217,47 +8214,8 @@ function AdminCustomerRequestsPage() {
         </div>
       )}
       {activeSection === "care" && (
-        <div className="mt-5 space-y-4">
-          <Card>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-black uppercase text-[#1f6b45]">Care Request Queue</p>
-                <h2 className="mt-1 text-2xl font-black">Care Plan Requests</h2>
-                <p className="mt-1 text-sm font-bold text-[#667267]">Review happens here. After the paid request is approved, it moves to Task Management for one caretaker assignment; daily tasks are automatic after that.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge tone={openCarePlans.length ? "warn" : "good"}>{openCarePlans.length} open</Badge>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {openCarePlans.slice(0, 9).map((plan: any) => {
-                const animal = Array.isArray(plan.customer_animals) ? plan.customer_animals[0] : plan.customer_animals;
-                const customer = Array.isArray(plan.customer) ? plan.customer[0] : plan.customer;
-                return (
-                  <div key={plan.id} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-[#667267]">{plan.duration_days || 30}-day Care Plan</p>
-                        <h3 className="mt-1 text-lg font-black">{animal?.animal_name || "Customer rooster"}</h3>
-                      </div>
-                      <Badge tone="warn">{String(plan.status || "draft").replaceAll("_", " ")}</Badge>
-                    </div>
-                    <p className="mt-2 text-xs font-bold text-[#667267]">{customer?.display_name || customer?.full_name || customer?.email || "Customer"}</p>
-                    <p className="mt-2 text-xs font-black text-[#1f6b45]">{["paid_pending_setup", "ready"].includes(String(plan.status)) ? "Approved → Ready for Task Management" : ["active", "paused"].includes(String(plan.status)) ? "Assigned → Daily missions automatic" : `Requested mission Day ${plan.requested_start_day || 1} → Care Request review`}</p>
-                  </div>
-                );
-              })}
-              {!openCarePlans.length && <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-4 text-sm font-bold text-[#667267]">No open Care Plan request right now.</div>}
-            </div>
-          </Card>
-          <div>
-            <h2 className="mb-3 text-xl font-black">One-Time Care Payment Queue</h2>
-            <AdminManualPaymentQueue sourceType="care_request" />
-          </div>
-          <div>
-            <h2 className="mb-3 text-xl font-black">Care Plan Payment Review</h2>
-            <AdminManualPaymentQueue sourceType="care_plan" />
-          </div>
+        <div className="mt-5">
+          <AdminManualPaymentQueue sourceType="care" />
         </div>
       )}
       {activeSection === "sell" && (
@@ -8600,18 +8558,8 @@ export function AdminCustomerRequestsSection({ section }: { section: string }) {
   if (section === "care") {
     return (
       <Shell role="admin" title="Care Request">
-        <PageTitle title="Care Request" text="Review Care Plan and one-time care requests here. Paid approvals move to Task Management." icon="rooster" />
-        <div className="grid gap-5">
-          <AdminLiveCarePlanRequestQueue />
-          <div>
-            <h2 className="mb-3 text-xl font-black">Care Plan Payment Review</h2>
-            <AdminManualPaymentQueue sourceType="care_plan" />
-          </div>
-          <div>
-            <h2 className="mb-3 text-xl font-black">One-Time Care Payment Review</h2>
-            <AdminManualPaymentQueue sourceType="care_request" />
-          </div>
-        </div>
+        <PageTitle title="Customer Care Queue" text="Review every submitted customer care payment in one queue. Approved requests move to Task Management." icon="rooster" />
+        <AdminManualPaymentQueue sourceType="care" />
       </Shell>
     );
   }
@@ -8640,57 +8588,6 @@ export function AdminCustomerRequestsSection({ section }: { section: string }) {
     );
   }
   return <AdminCustomerRequestsPage />;
-}
-
-function AdminLiveCarePlanRequestQueue() {
-  const [plans, setPlans] = useState<any[]>([]);
-  const [note, setNote] = useState("Loading Care Plan requests...");
-  useEffect(() => {
-    getAdminCarePlans()
-      .then((rows) => {
-        const open = (rows || []).filter((plan: any) => !["completed", "cancelled", "expired"].includes(String(plan.status || "")));
-        setPlans(open);
-        setNote(open.length ? "Care Plan requests are visible here; paid approvals automatically become assignable in Task Management." : "No open Care Plan request right now.");
-      })
-      .catch((error) => {
-        setPlans([]);
-        setNote(`Care Plan requests could not load: ${readableAppError(error)}`);
-      });
-  }, []);
-  return (
-    <Card>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-black uppercase text-[#1f6b45]">Care Plan Queue</p>
-          <h2 className="mt-1 text-2xl font-black">Submitted Care Plans</h2>
-          <p className="mt-1 text-sm font-bold text-[#667267]">No separate Operations page: Care Request review stays here, then Task Management handles the one-time caretaker assignment.</p>
-        </div>
-        <Badge tone={plans.length ? "warn" : "good"}>{plans.length}</Badge>
-      </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {plans.map((plan: any) => {
-          const animal = Array.isArray(plan.customer_animals) ? plan.customer_animals[0] : plan.customer_animals;
-          const customer = Array.isArray(plan.customer) ? plan.customer[0] : plan.customer;
-          const status = String(plan.status || "draft");
-          return (
-            <div key={plan.id} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-[#667267]">{Number(plan.duration_days || 30)}-Day Care Plan</p>
-                  <h3 className="mt-1 text-lg font-black">{animal?.animal_name || "Customer rooster"}</h3>
-                </div>
-                <Badge tone={["paid_pending_setup", "ready"].includes(status) ? "good" : "warn"}>{status.replaceAll("_", " ")}</Badge>
-              </div>
-              <p className="mt-2 text-xs font-bold text-[#667267]">{customer?.display_name || customer?.full_name || customer?.email || "Customer"}</p>
-              <p className="mt-2 text-xs font-black text-[#1f6b45]">{["paid_pending_setup", "ready"].includes(status) ? "Approved → now in Task Management" : ["active", "paused"].includes(status) ? "Assigned → daily missions automatic" : status === "draft" ? "Submitted → waiting for Care Request review" : "Payment review in progress"}</p>
-            </div>
-          );
-        })}
-        {!plans.length && <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-5 text-sm font-bold text-[#667267]">No submitted Care Plan request.</div>}
-      </div>
-      <p role="status" className="mt-4 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{note}</p>
-    </Card>
-  );
 }
 
 function AdminRoosterSaleQueue() {
@@ -8809,7 +8706,7 @@ function AdminRoosterSaleQueue() {
   );
 }
 
-function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "care_request" | "care_plan" } = {}) {
+function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "care_request" | "care_plan" | "care" } = {}) {
   const [rows, setRows] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [note, setNote] = useState("Loading manual payment requests...");
@@ -8820,7 +8717,8 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
   const activeRows = rows.filter((row) => {
     const active = ["for_review", "needs_info"].includes(String(row.status || "for_review"));
     const rowSource = String(row.source_type || row.sourceType || "").toLowerCase();
-    return active && (!sourceType || rowSource === sourceType);
+    const sourceMatches = !sourceType || (sourceType === "care" ? ["care_request", "care_plan"].includes(rowSource) : rowSource === sourceType);
+    return active && sourceMatches;
   });
   const selected = activeRows.find((row) => row.id === selectedId) || activeRows[0] || null;
 
@@ -8828,7 +8726,10 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     try {
       const live = await getAdminManualPaymentRequests();
       setRows(live);
-      const filtered = live.filter((row: any) => ["for_review", "needs_info"].includes(String(row.status || "for_review")) && (!sourceType || String(row.source_type || "").toLowerCase() === sourceType));
+      const filtered = live.filter((row: any) => {
+        const rowSource = String(row.source_type || "").toLowerCase();
+        return ["for_review", "needs_info"].includes(String(row.status || "for_review")) && (!sourceType || (sourceType === "care" ? ["care_request", "care_plan"].includes(rowSource) : rowSource === sourceType));
+      });
       setSelectedId((current) => (filtered.some((row: any) => row.id === current) ? current : filtered[0]?.id || ""));
       setNote(filtered.length ? "Select one customer request and review every detail before deciding." : "No payment request waiting for admin review.");
     } catch {
@@ -8863,10 +8764,11 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     }
   }
 
-  const queueTitle = sourceType === "care_request" ? "Care Request Payment Review" : sourceType === "care_plan" ? "Care Plan Payment Review" : sourceType === "farm_buy" ? "Farm Buy Payment Review" : "Pending Manual Payments";
+  const queueTitle = sourceType === "care" ? "Customer Care Queue" : sourceType === "care_request" ? "Care Request Payment Review" : sourceType === "care_plan" ? "Care Plan Payment Review" : sourceType === "farm_buy" ? "Farm Buy Payment Review" : "Pending Manual Payments";
   const profile = selected ? (Array.isArray(selected.profiles) ? selected.profiles[0] : selected.profiles) : null;
   const customer = profile?.display_name || profile?.full_name || profile?.email || selected?.sender_name || "Customer";
   const summary = selected?.summary || {};
+  const selectedSource = String(selected?.source_type || selected?.sourceType || "").toLowerCase();
   const summaryItems = selected ? (Array.isArray(summary.lines) ? summary.lines : Array.isArray(summary.items) ? summary.items : Array.isArray(summary.cartItems) ? summary.cartItems : Array.isArray(summary.products) ? summary.products : []) : [];
   const rooster = summary.rooster?.name || summary.rooster_name || selected?.rooster_name || "Recorded rooster";
   const service = summary.service?.name || summary.service_name || selected?.service_name || "Care request";
@@ -8897,6 +8799,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
             {activeRows.map((row) => {
               const rowProfile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
               const rowCustomer = rowProfile?.display_name || rowProfile?.full_name || rowProfile?.email || row.sender_name || "Customer";
+              const rowSource = String(row.source_type || row.sourceType || "").toLowerCase();
               return (
                 <button key={row.id} type="button" onClick={() => selectRequest(row.id)} className={"w-full rounded-2xl border p-3 text-left transition " + (selected?.id === row.id ? "border-[#1f6b45] bg-emerald-50 shadow-sm" : "border-[#ece6d8] bg-[#fffdf7] hover:border-[#1f6b45]")}>
                   <div className="flex items-start justify-between gap-2">
@@ -8907,12 +8810,15 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
                       </p>
                       <p className="mt-2 text-xs font-black text-[#1f6b45]">{row.created_at ? new Date(row.created_at).toLocaleString() : "For review"}</p>
                     </div>
-                    <Badge tone={row.risk_status === "clear" ? "good" : "warn"}>{row.risk_status || "check"}</Badge>
+                    <div className="flex flex-col items-end gap-1">
+                      {sourceType === "care" && <Badge tone="good">{rowSource === "care_plan" ? "30-Day Care Plan" : "Today's Standard Care"}</Badge>}
+                      <Badge tone={row.risk_status === "clear" ? "good" : "warn"}>{row.risk_status || "check"}</Badge>
+                    </div>
                   </div>
                 </button>
               );
             })}
-            {!activeRows.length && <div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold leading-6 text-[#667267]">No pending {sourceType === "care_request" ? "care-request" : sourceType === "care_plan" ? "Care Plan" : "Farm Buy"} payment right now.</div>}
+            {!activeRows.length && <div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold leading-6 text-[#667267]">No pending {sourceType === "care" ? "customer care" : sourceType === "care_request" ? "care-request" : sourceType === "care_plan" ? "Care Plan" : "Farm Buy"} payment right now.</div>}
           </div>
         </Card>
         <Card className="min-h-[620px]">
@@ -8926,14 +8832,14 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
                 </div>
                 <Badge tone="warn">{queueTitle}</Badge>
               </div>
-              {sourceType === "care_request" ? (
+              {selectedSource === "care_request" ? (
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <Info label="Rooster" value={rooster} />
                   <Info label="Requested Service" value={service} />
                   <Info label="Customer Note" value={summary.customer_note || "No customer note"} />
                   <Info label="Payment Status" value={String(selected.status || "for_review").replaceAll("_", " ")} />
                 </div>
-              ) : sourceType === "care_plan" ? (
+              ) : selectedSource === "care_plan" ? (
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <Info label="Package" value={`${Number(summary.duration_days || 0)}-day Care Plan`} />
                   <Info label="Feed Included" value={`${Number(summary.feed_required_kg || 0).toFixed(3)} kg`} />
