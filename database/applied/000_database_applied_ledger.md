@@ -924,3 +924,13 @@ Purpose:
 - Reserve a complete six-part standard package; medicine and emergency treatment remain separately authorized.
 - Make the first caretaker task combine package readiness with the real Day 1 mission.
 - Hold later automatic missions until Admin approves the caretaker's Day 1 readiness proof.
+
+## 066_care_plan_task_checklist_compatibility.sql
+
+Status: **PENDING REVIEWED APPLICATION**
+
+Purpose:
+
+- Validate paid Care Plan proofs against the exact immutable checklist stored on the assigned caretaker task.
+- Preserve Day 1 package-readiness items added by migration 065 instead of comparing only with the shorter base mission catalog.
+- Keep PASS, exact feed usage, evidence, QR-exception, atomic Admin approval, and idempotency guards unchanged.

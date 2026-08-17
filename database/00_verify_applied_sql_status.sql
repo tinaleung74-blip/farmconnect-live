@@ -196,6 +196,7 @@ with expected(migration, kind, object_name) as (
     ,('065_fixed_5000_care_plan_package_day1_readiness.sql','table','care_plan_package_items')
     ,('065_fixed_5000_care_plan_package_day1_readiness.sql','function','customer_prepare_fixed_care_plan_payment')
     ,('065_fixed_5000_care_plan_package_day1_readiness.sql','function','sync_care_plan_day1_readiness')
+    ,('066_care_plan_task_checklist_compatibility.sql','function','care_plan_task_checklist_compatibility_version')
 ),
 object_status as (
   select
