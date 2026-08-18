@@ -343,7 +343,12 @@ export async function prepareCustomerCarePlanPayment(carePlanId: string) {
   if (error) throw error;
   return data as GuardedWorkflowResult & {
     package_total: number;
+    daily_service_rate: number;
     feed_required_kg: number;
+    average_daily_feed_kg: number;
+    feed_inventory_item_id: string;
+    feed_product_name: string;
+    available_feed_kg: number;
     duration_days: number;
     requested_start_day: number;
   };

@@ -26,6 +26,8 @@ try {
   fs.mkdirSync(path.dirname(buildMarker), { recursive: true });
   fs.writeFileSync(buildMarker, `${JSON.stringify({ passed: true, generatedAt: new Date().toISOString() }, null, 2)}\n`);
   run("test:lint-critical");
+  run("test:kafarm-guardian");
+  run("test:kafarm-gate");
   run("test:security");
   run("test:dependencies");
   run("test:care-plan");

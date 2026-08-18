@@ -1117,6 +1117,7 @@ export function KafarmCommandCenter() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Link href="/admin/kafarm/guardian" className="rounded-2xl bg-[#6b2fb8] px-5 py-4 text-xs font-black text-white shadow-md">Guardian</Link>
                 <button
                   type="button"
                   data-kafarm-monitor-ignore="true"

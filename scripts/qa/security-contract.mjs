@@ -25,12 +25,22 @@ const env = Object.fromEntries(read(path.join(root, ".env.local")).split(/\r?\n/
   .map(match => [match[1].trim(), match[2].trim().replace(/^['"]|['"]$/g, "")]));
 const clientFiles = [...walk(path.join(root, "app")), ...walk(path.join(root, "lib"))];
 const customerAppSource = read(path.join(root, "lib", "farmconnect-v1.tsx"));
+const customerAuthSource = read(path.join(root, "lib", "customer-auth.ts"));
 const verificationAppSource = read(path.join(root, "lib", "farmconnect-unified-account-verification.tsx"));
 const kycReviewGuardSource = read(path.join(root, "database", "applied", "052_customer_kyc_review_status_guard.sql"));
 const isolatedTargetGuardSource = read(path.join(root, "scripts", "qa", "isolated-supabase-guard.mjs"));
+const rateLimitSource = read(path.join(root, "lib", "security", "farmconnect-rate-limit.ts"));
+const guardianApiSource = read(path.join(root, "app", "api", "kafarm", "guardian", "route.ts"));
+const guardianClientSource = read(path.join(root, "app", "admin", "kafarm", "guardian", "_components", "GuardianClient.tsx"));
 const clientSecretReferences = clientFiles
   .filter(file => !file.includes(`${path.sep}api${path.sep}`))
+  .filter(file => !/^\s*import\s+["']server-only["'];?/m.test(read(file)))
   .filter(file => /SUPABASE_SERVICE_ROLE_KEY|KAFARM_SQL_GATEWAY_TOKEN/.test(read(file)))
+  .map(file => path.relative(root, file));
+const openAiClientReferences = clientFiles
+  .filter(file => !file.includes(`${path.sep}api${path.sep}`))
+  .filter(file => !/^\s*import\s+["']server-only["'];?/m.test(read(file)))
+  .filter(file => /OPENAI_API_KEY/.test(read(file)))
   .map(file => path.relative(root, file));
 
 const checks = [
@@ -38,6 +48,7 @@ const checks = [
   { name: "SQL gateway admin page removed", ok: !fs.existsSync(path.join(root, "app", "admin", "kafarm", "sql-gateway", "page.tsx")) },
   { name: "SQL gateway disabled in local deployment config", ok: env.KAFARM_SQL_GATEWAY_ENABLED !== "true" },
   { name: "No service key or gateway token in client modules", ok: clientSecretReferences.length === 0, evidence: clientSecretReferences },
+  { name: "No OpenAI API key reference in client modules", ok: openAiClientReferences.length === 0, evidence: openAiClientReferences },
   { name: "Environment files are ignored", ok: /(?:^|\n)\.env\*/.test(read(path.join(root, ".gitignore"))) || /(?:^|\n)\.env\.local/.test(read(path.join(root, ".gitignore"))) },
   { name: "Security headers configured", ok: /Content-Security-Policy|X-Content-Type-Options|frame-ancestors/.test(read(path.join(root, "next.config.ts"))) },
   { name: "KYC evidence uploads use private storage", ok: /uploadPrivateEvidenceFile\(\{\s*bucket:\s*"farmconnect-customer-kyc"/.test(customerAppSource) },
@@ -47,6 +58,10 @@ const checks = [
   { name: "KYC admin guard accepts live review status", ok: /ready_for_review/.test(kycReviewGuardSource) && /REJECTION_NOTE_REQUIRED/.test(kycReviewGuardSource) },
   { name: "Customer KYC settings distinguish pending rejected and approved", ok: /Your KYC is in review/.test(customerAppSource) && /KYC rejected for resubmission/.test(customerAppSource) && /Approved and locked/.test(customerAppSource) },
   { name: "Admin KYC rejection explicitly reopens resubmission", ok: /Reject for Resubmission/.test(verificationAppSource) && /upload corrected KYC evidence/.test(verificationAppSource) },
+  { name: "Customer identity resolves by Auth UID only", ok: /\.eq\("auth_user_id", user\.id\)/.test(customerAuthSource) && !/\.eq\("email",/.test(customerAuthSource) && !/profileByEmail/.test(customerAuthSource) },
+  { name: "Rate-limit readiness defaults to honest OFF mode", ok: /effectiveMode:\s*"off"/.test(rateLimitSource) && /businessRpcEnforcement:\s*false/.test(rateLimitSource) && /persistentBackendInstalled:\s*false/.test(rateLimitSource) },
+  { name: "Rate-limit activation is deployment controlled and Admin visible", ok: /deployment_environment_only/.test(rateLimitSource) && /getFarmConnectRateLimitReadiness/.test(guardianApiSource) && /Rate Limit OFF · Deployment Controlled/.test(guardianClientSource) },
+  { name: "Rate-limit configuration is server-only", ok: /^\s*import\s+["']server-only["'];?/m.test(rateLimitSource) && !guardianClientSource.includes("FARMCONNECT_RATE_LIMIT_MODE") },
   { name: "E2E harness permanently rejects the FarmConnect production database", ok: /E2E_PRODUCTION_DATABASE_BLOCKED/.test(isolatedTargetGuardSource) && /bfckjrqrixbtqqvsxgjq\.supabase\.co/.test(isolatedTargetGuardSource) },
 ];
 const report = { generatedAt: new Date().toISOString(), passed: checks.every(check => check.ok), checks };

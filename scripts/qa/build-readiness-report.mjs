@@ -11,6 +11,7 @@ const securityPath = path.join(resultDir, "kafarm", "security-contract.json");
 const dependencyPath = path.join(resultDir, "kafarm", "dependency-contract.json");
 const recoveryPath = path.join(resultDir, "kafarm", "recovery-contract.json");
 const workflowPath = path.join(resultDir, "kafarm", "workflow-reconciliation.json");
+const guardianPath = path.join(resultDir, "kafarm", "guardian-contract.json");
 const browserDir = path.join(resultDir, "playwright");
 const outputPath = path.join(resultDir, "kafarm", "production-readiness.md");
 
@@ -35,6 +36,7 @@ const security = readJson(securityPath);
 const dependency = readJson(dependencyPath);
 const recovery = readJson(recoveryPath);
 const workflow = readJson(workflowPath);
+const guardian = readJson(guardianPath);
 const browserFiles = fs.existsSync(browserDir)
   ? fs.readdirSync(browserDir).filter(file => /^results(?:-.+)?\.json$/.test(file))
   : [];
@@ -52,7 +54,8 @@ const securityPassed = security?.passed === true;
 const dependencyPassed = dependency?.passed === true;
 const recoveryPassed = recovery?.passed === true;
 const workflowPassed = workflow?.passed === true;
-const passed = buildPassed && browserPassed && databasePassed && businessPassed && lintPassed && securityPassed && dependencyPassed && recoveryPassed && workflowPassed;
+const guardianPassed = guardian?.passed === true;
+const passed = buildPassed && browserPassed && databasePassed && businessPassed && lintPassed && securityPassed && dependencyPassed && recoveryPassed && workflowPassed && guardianPassed;
 
 const lines = [
   "# FarmConnect Production Readiness Report",
@@ -68,6 +71,7 @@ const lines = [
   `- Production dependency vulnerability contract: ${dependencyPassed ? "PASS" : "FAIL"}`,
   `- Backup/restore recovery contract: ${recoveryPassed ? "PASS" : "FAIL"}`,
   `- Live workflow reconciliation: ${workflowPassed ? "PASS" : "FAIL"}`,
+  `- KaFarm Guardian safety contract: ${guardianPassed ? "PASS" : "FAIL"}`,
   `- Live database/RLS contract: ${databasePassed ? "PASS" : "FAIL"}`,
   `- Critical business workflow contract: ${businessPassed ? "PASS" : "FAIL"}`,
   `- Browser E2E on desktop, phone, and tablet: ${browserPassed ? "PASS" : "FAIL"}`,
