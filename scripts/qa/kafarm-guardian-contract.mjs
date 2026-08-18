@@ -1,0 +1,47 @@
+import fs from "node:fs";
+import path from "node:path";
+
+const root = process.cwd();
+const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+const exists = (file) => fs.existsSync(path.join(root, file));
+const outputPath = path.join(root, "test-results", "kafarm", "guardian-contract.json");
+
+const reasoning = read("lib/kafarm/guardian/reasoning.ts");
+const tools = read("lib/kafarm/guardian/evidence-tools.ts");
+const gate = read("lib/kafarm/guardian/logic-gate.ts");
+const auth = read("lib/kafarm/guardian/admin-auth.ts");
+const monitor = read("app/api/kafarm/guardian/monitor/route.ts");
+const guardianRoute = read("app/api/kafarm/guardian/route.ts");
+const blueprint = JSON.parse(read("config/kafarm/farmconnect-blueprint.v1.json"));
+const map = JSON.parse(read("lib/kafarm/guardian/system-map.generated.json"));
+
+const checks = [
+  { name: "FarmConnect-only owner blueprint exists", ok: blueprint.application === "FarmConnect" && blueprint.blueprintId === "farmconnect-owner-blueprint" },
+  { name: "Protected zones cover every required sensitive category", ok: ["wallet_balance", "withdrawal", "payment_approval", "rooster_ownership", "kyc_decision", "account_role", "pin_password_security", "destructive_data", "rls_policy", "production_schema", "arbitrary_sql"].every((item) => blueprint.protectedZones.includes(item)) },
+  { name: "OpenAI Responses API is server-side only", ok: /import "server-only"/.test(reasoning) && /https:\/\/api\.openai\.com\/v1\/responses/.test(reasoning) && !/NEXT_PUBLIC_OPENAI/.test(reasoning) },
+  { name: "Structured output and strict function tools are enabled", ok: /json_schema/.test(reasoning) && /strict: true/.test(reasoning) && /kaFarmEvidenceToolDefinitions/.test(reasoning) },
+  { name: "Controlled evidence tools cover the required read domains", ok: ["system_map_lookup", "source_code_lookup", "route_lookup", "dependency_lookup", "database_metadata_read", "workflow_event_read", "incident_read", "test_result_read", "git_change_history_read", "blueprint_lookup"].every((item) => tools.includes(`name: \"${item}\"`)) },
+  { name: "No mutation-named model tool is exposed", ok: !/name: "(?:insert|update|delete|execute_sql|approve|reject|pay|transfer|repair|fix)_/i.test(tools) },
+  { name: "Every Guardian request rechecks active Admin", ok: /authenticateKaFarmAdmin/.test(guardianRoute) && /ACTIVE_ADMIN_REQUIRED/.test(auth) && /PROJECT_URL_NOT_FARMCONNECT/.test(auth) },
+  { name: "AI action freeze defaults to enabled", ok: /KAFARM_AI_ACTIONS_FROZEN \?\? "true"/.test(gate) && /AI ACTIONS FROZEN/.test(gate) },
+  { name: "Gate separates reasoning from execution", ok: /APPROVAL_REQUIRED/.test(gate) && /executionAllowed/.test(gate) && /protectedZones/.test(gate) },
+  { name: "Guardian API has no execution adapter", ok: /This endpoint has no mutation adapter/.test(guardianRoute) && /attempted: false/.test(guardianRoute) },
+  { name: "Proactive monitor is read-only and disabled by default", ok: /KAFARM_MONITOR_ENABLED \|\| "false"/.test(monitor) && /mutationAttempted: false/.test(monitor) },
+  { name: "Production schema proposals remain unapplied", ok: exists("database/proposed/067_kafarm_guardian_read_only_monitor.sql") && exists("database/proposed/068_kafarm_guardian_semantic_incident_memory.sql") && !exists("database/applied/067_kafarm_guardian_read_only_monitor.sql") && !exists("database/applied/068_kafarm_guardian_semantic_incident_memory.sql") },
+  { name: "Living system map is generated and explicitly caveated", ok: map.application === "FarmConnect" && map.counts.pages > 0 && map.counts.edges > 0 && Array.isArray(map.limitations) && map.limitations.length > 0 },
+  { name: "Guardian Admin page exists", ok: exists("app/admin/kafarm/guardian/page.tsx") && exists("app/admin/kafarm/guardian/_components/GuardianClient.tsx") },
+];
+
+const report = {
+  generatedAt: new Date().toISOString(),
+  commit: map.git?.commit || null,
+  passed: checks.every((item) => item.ok),
+  checks,
+  proofRule: "This static contract proves safety wiring exists. It does not prove an OpenAI call, live database read, browser workflow, or production deployment passed.",
+};
+
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+fs.writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+for (const item of checks) console.log(`- ${item.ok ? "PASS" : "FAIL"}: ${item.name}`);
+console.log(`[KaFarm Guardian Contract] ${report.passed ? "PASS" : "FAIL"}`);
+if (!report.passed) process.exitCode = 1;

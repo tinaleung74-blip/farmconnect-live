@@ -35,6 +35,10 @@ function readableAppError(error: unknown) {
     WALLET_PIN_NOT_SET: "Set your Wallet PIN in Settings before requesting a withdrawal.",
     WALLET_PIN_INVALID: "Wallet PIN is incorrect.",
     WALLET_PIN_LOCKED: "Wallet PIN is temporarily locked after repeated failed attempts. Try again later.",
+    CARE_PLAN_CUSTOMER_FEED_BALANCE_INSUFFICIENT: "Inventory does not have enough eligible feed for the rooster’s complete age-based 30-day requirement. Buy feed in Farm Buy, wait for approval, then try again.",
+    CARE_PLAN_CUSTOMER_FEED_CONVERSION_REQUIRED: "The selected feed has no verified kilogram conversion. Ask Admin to correct the feed unit before requesting a Care Plan.",
+    MISSION_CATALOG_FEED_QUANTITY_INCOMPLETE: "The care standard is missing an exact feed quantity for one or more covered days. Care Plan payment is safely blocked until Admin corrects the mission catalog.",
+    CARE_PLAN_CATALOG_WINDOW_EXHAUSTED: "This rooster no longer has a complete 30-day window inside the current 180-day care program. Ask Admin for the next approved mature-rooster program.",
     LOGIN_REQUIRED: "Login again before continuing.",
   };
   const raw = error instanceof Error ? error.message : error && typeof error === "object" ? [(error as { message?: unknown }).message, (error as { details?: unknown }).details, (error as { hint?: unknown }).hint, (error as { code?: unknown }).code].filter((item) => typeof item === "string" && item.trim()).join(" | ") : typeof error === "string" ? error : "";
@@ -48,6 +52,15 @@ function readableAppError(error: unknown) {
       hint?: unknown;
       code?: unknown;
     };
+    return [value.message, value.details, value.hint, value.code].filter((item) => typeof item === "string" && item.trim()).join(" | ");
+  }
+  return typeof error === "string" ? error : "";
+}
+
+function rawAppError(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const value = error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown };
     return [value.message, value.details, value.hint, value.code].filter((item) => typeof item === "string" && item.trim()).join(" | ");
   }
   return typeof error === "string" ? error : "";
@@ -327,7 +340,7 @@ const services = [
     name: "Care Plan (30 Days)",
     category: "Care Plan",
     price: 5000,
-    proof: "Complete 30-day standard package + automatic daily premium missions",
+    proof: "₱5,000 total · ₱166.67 average/day · customer-owned age-based feed required",
     eta: "Payment approval, then one caretaker assignment",
   },
   {
@@ -2725,8 +2738,12 @@ export function FarmRequests() {
               care_plan_id: carePlanId,
               rooster: { id: rooster.id, name: rooster.name, tag: rooster.tag, breed: rooster.breed },
               duration_days: 30,
-              requested_start_day: overview?.catalogDay || 1,
+              requested_start_day: Number(prepared.requested_start_day || overview?.catalogDay || 1),
               feed_required_kg: Number(prepared.feed_required_kg || 0),
+              average_daily_feed_kg: Number(prepared.average_daily_feed_kg || 0),
+              feed_inventory_item_id: prepared.feed_inventory_item_id,
+              feed_product_name: prepared.feed_product_name,
+              daily_service_rate: Number(prepared.daily_service_rate || 0),
               package_total: 5000,
               customer_note: note,
             },
@@ -2735,7 +2752,7 @@ export function FarmRequests() {
         const [plans, overviews] = await Promise.all([getCustomerCarePlans(), getCustomerRoosterCareOverviews()]);
         setCarePlans(plans);
         setCareOverviews(overviews);
-        setRequestNote(`30-day Care Plan prepared for ${rooster.name}. Continue to the ₱5,000 payment page; Admin approval moves it to Task Management.`);
+        setRequestNote(`30-day Care Plan prepared for ${rooster.name}: ${Number(prepared.feed_required_kg || 0).toFixed(3)} kg total (${Number(prepared.average_daily_feed_kg || 0).toFixed(3)} kg/day average) of ${prepared.feed_product_name || "customer-owned feed"} reserved. Service total is ₱5,000 (₱166.67 average/day).`);
         router.push("/customer/payment?type=care_plan");
         return;
       }
@@ -2783,8 +2800,9 @@ export function FarmRequests() {
       const rows = await getCustomerCareRequests();
       setCareRows(rows);
     } catch (error) {
+      const rawMessage = rawAppError(error);
       const message = readableAppError(error);
-      setRequestNote(/CARE_INVENTORY_ITEM_REQUIRED/i.test(message) ? "This care request needs customer-owned supplies that are not in Inventory yet. Buy the required item in Farm Buy, then try again." : /CARE_INVENTORY_INSUFFICIENT/i.test(message) ? `Inventory is not enough for this mission. ${message.replace(/^.*CARE_INVENTORY_INSUFFICIENT[:|]?/i, "").replaceAll("|", " · ")}` : /PAID_CARE_PLAN_ALREADY_AUTOMATES_ROOSTER/i.test(message) ? "This rooster already has paid Care Plan automation, so a duplicate manual request is not allowed." : `Request failed: ${message || "Check login and Care Plan SQL."}`);
+      setRequestNote(/CARE_PLAN_CUSTOMER_FEED_BALANCE_INSUFFICIENT/i.test(rawMessage) ? `Care Plan blocked before payment: customer Inventory does not have enough eligible feed. ${rawMessage.replace(/^.*CARE_PLAN_CUSTOMER_FEED_BALANCE_INSUFFICIENT[|:]?/i, "").replaceAll("|", " · ")}` : /CARE_INVENTORY_ITEM_REQUIRED/i.test(rawMessage) ? "This care request needs customer-owned supplies that are not in Inventory yet. Buy the required item in Farm Buy, then try again." : /CARE_INVENTORY_INSUFFICIENT/i.test(rawMessage) ? `Inventory is not enough for this mission. ${rawMessage.replace(/^.*CARE_INVENTORY_INSUFFICIENT[:|]?/i, "").replaceAll("|", " · ")}` : /PAID_CARE_PLAN_ALREADY_AUTOMATES_ROOSTER/i.test(rawMessage) ? "This rooster already has paid Care Plan automation, so a duplicate manual request is not allowed." : `Request failed: ${message || "Check login and Care Plan SQL."}`);
     } finally {
       setSubmitting(false);
     }
@@ -2808,6 +2826,10 @@ export function FarmRequests() {
             duration_days: Number(plan.duration_days || 30),
             requested_start_day: Number(plan.requested_start_day || 1),
             feed_required_kg: Number(prepared.feed_required_kg || plan.feed_required_kg || 0),
+            average_daily_feed_kg: Number(prepared.average_daily_feed_kg || 0),
+            feed_inventory_item_id: prepared.feed_inventory_item_id || plan.feed_inventory_item_id,
+            feed_product_name: prepared.feed_product_name,
+            daily_service_rate: Number(prepared.daily_service_rate || 0),
             package_total: 5000,
           },
         }),
@@ -2859,7 +2881,7 @@ export function FarmRequests() {
           <button onClick={submitRequest} className="mt-3 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
             {submitting ? "Saving..." : service.name === "Care Plan (30 Days)" ? "Pay ₱5,000 Care Plan" : service.price > 0 ? "Pay" : "Send Request"}
           </button>
-          {service.name === "Care Plan (30 Days)" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-900">One request starts a verified 30-day package. After payment and one caretaker assignment, the Mission Engine creates the daily tasks automatically.</p> : service.price > 0 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-[#7a4b00]">Inventory is checked and reserved before payment. Admin approves before the task goes to caretaker.</p>}
+          {service.name === "Care Plan (30 Days)" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-900">The server computes the rooster’s exact 30-day feed requirement from its ownership date and the 180-day program. Enough customer-owned feed must be available and is reserved before the ₱5,000 payment.</p> : service.price > 0 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-[#7a4b00]">Inventory is checked and reserved before payment. Admin approves before the task goes to caretaker.</p>}
         </Card>
         <Card>
           <h2 className="text-lg font-black xl:text-xl">3. Request Logs</h2>
@@ -2904,9 +2926,7 @@ export function CustomerCarePlansPage() {
   const [animals, setAnimals] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [animalId, setAnimalId] = useState("");
-  const [duration, setDuration] = useState<30 | 60 | 90 | 180>(30);
-  const [startDay, setStartDay] = useState("1");
-  const [note, setNote] = useState("Request a plan first. Admin verifies the rooster stage, food requirement, caretaker, and final price before you pay.");
+  const [note, setNote] = useState("The 30-day service is ₱5,000 (₱166.67 average/day). FarmConnect derives the program day and reserves enough customer-owned feed before payment.");
   const [saving, setSaving] = useState(false);
   async function load() {
     const [owned, carePlans] = await Promise.all([getCustomerOwnedRoosters(), getCustomerCarePlans()]);
@@ -2919,16 +2939,11 @@ export function CustomerCarePlansPage() {
   }, []);
   async function requestPlan() {
     if (!animalId || saving) return;
-    const requestedDay = Number(startDay);
-    if (!Number.isInteger(requestedDay) || requestedDay < 1 || requestedDay + duration - 1 > 180) {
-      setNote("Choose a valid starting mission day that fits inside Day 1-180.");
-      return;
-    }
     try {
       setSaving(true);
-      await requestCustomerCarePlan(animalId, duration, requestedDay);
+      await requestCustomerCarePlan(animalId, 30, 1);
       await load();
-      setNote("Care Plan requested. Wait for the verified package quote before paying.");
+      setNote("Care Plan feed balance reserved. Review the fixed ₱5,000 payment, then wait for Admin approval and Task Management assignment.");
     } catch (error) {
       setNote(`Request failed: ${readableAppError(error)}`);
     } finally {
@@ -2980,7 +2995,7 @@ export function CustomerCarePlansPage() {
       <div className="mt-5 grid gap-5 lg:grid-cols-[380px_1fr]">
         <Card>
           <h2 className="text-xl font-black">Request Verified Package</h2>
-          <p className="mt-2 text-sm font-bold leading-6 text-[#667267]">No estimate is charged. Admin verifies food, caretaker coverage, and the locked total first.</p>
+          <p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Fixed 30-day service: ₱5,000. The server reads the rooster ownership date, totals the matching 180-day feed standard, and reserves enough eligible customer inventory before payment.</p>
           <label className="mt-4 block text-sm font-black">
             Rooster
             <select value={animalId} onChange={(event) => setAnimalId(event.target.value)} className="mt-2 w-full rounded-xl border p-3">
@@ -2991,20 +3006,10 @@ export function CustomerCarePlansPage() {
               ))}
             </select>
           </label>
-          <label className="mt-4 block text-sm font-black">
-            Duration
-            <select value={duration} onChange={(event) => setDuration(Number(event.target.value) as typeof duration)} className="mt-2 w-full rounded-xl border p-3">
-              <option value={30}>30 days</option>
-              <option value={60}>60 days</option>
-              <option value={90}>90 days</option>
-              <option value={180}>180 days</option>
-            </select>
-          </label>
-          <label className="mt-4 block text-sm font-black">
-            Current Mission Day
-            <input value={startDay} onChange={(event) => setStartDay(event.target.value.replace(/\D/g, ""))} inputMode="numeric" className="mt-2 w-full rounded-xl border p-3" />
-            <span className="mt-1 block text-xs text-[#667267]">Admin verifies this against the rooster record before quoting.</span>
-          </label>
+          <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-black text-emerald-950">
+            30 days · ₱5,000 total · ₱166.67 average/day
+            <span className="mt-1 block text-xs text-[#667267]">Program day is computed from the official ownership date. It cannot be lowered manually.</span>
+          </div>
           <button disabled={!animalId || saving} onClick={requestPlan} className="mt-5 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white disabled:opacity-50">
             {saving ? "Requesting..." : "Request Care Plan"}
           </button>
@@ -3030,7 +3035,7 @@ export function CustomerCarePlansPage() {
                   </div>
                   {plan.quoted_at && (
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                      <Info label="Food Included" value={`${Number(plan.feed_required_kg || 0).toFixed(3)} kg`} />
+                      <Info label="Customer Feed Reserved" value={`${Number(plan.feed_required_kg || 0).toFixed(3)} kg`} />
                       <Info label="Labor + Service" value={peso(Number(plan.labor_price || 0) + Number(plan.service_fee || 0))} />
                       <Info label="Locked Total" value={peso(Number(plan.package_total || 0))} />
                     </div>
@@ -3038,7 +3043,7 @@ export function CustomerCarePlansPage() {
                   <p className="mt-3 text-sm font-bold text-[#667267]">{plan.quote_note || "Waiting for admin package verification."}</p>
                   {plan.quote_expires_at && plan.status === "payment_for_review" && (
                     <p className="mt-2 text-xs font-bold text-[#667267]">
-                      Pay before {new Date(plan.quote_expires_at).toLocaleString("en-PH", { timeZone: "Asia/Manila" })}. The server will reject an expired quote and require a fresh stock check.
+                      Pay before {new Date(plan.quote_expires_at).toLocaleString("en-PH", { timeZone: "Asia/Manila" })}. The server will reject an expired quote and require a fresh customer inventory balance check.
                     </p>
                   )}
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -4770,7 +4775,9 @@ export function CustomerPaymentPage() {
             {context.sourceType === "care_plan" && (
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <Info label="Package" value={`${Number(context.summary?.duration_days || 0)}-day Care Plan`} />
-                <Info label="Food Included" value={`${Number(context.summary?.feed_required_kg || 0).toFixed(3)} kg`} />
+                <Info label="Customer Feed Reserved" value={`${Number(context.summary?.feed_required_kg || 0).toFixed(3)} kg`} />
+                <Info label="Average Feed / Day" value={`${Number(context.summary?.average_daily_feed_kg || 0).toFixed(3)} kg`} />
+                <Info label="Average Service / Day" value="₱166.67" />
                 <Info label="Coverage" value="Daily caretaker missions" />
                 <Info label="Status" value="Payment for review" />
               </div>

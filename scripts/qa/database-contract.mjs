@@ -46,6 +46,9 @@ const requiredTables = [
   "rooster_daily_missions",
   "care_plan_events",
   "care_plan_inventory_usage",
+  "manual_care_inventory_reservations",
+  "manual_care_inventory_usage",
+  "care_plan_package_items",
 ];
 
 const requiredDefinerFunctions = [
@@ -86,11 +89,18 @@ const requiredDefinerFunctions = [
   "admin_control_care_plan",
   "admin_record_care_plan_refund",
   "kafarm_care_plan_health_snapshot",
+  "caretaker_submit_manual_mission_proof",
+  "admin_review_manual_mission_proof_guarded",
+  "admin_assign_care_plan",
+  "customer_prepare_fixed_care_plan_payment",
+  "sync_care_plan_day1_readiness",
 ];
 
 const requiredInvokerFunctions = [
   "withdrawal_wallet_pin_guard_version",
   "care_mission_checklist_passes",
+  "care_plan_customer_inventory_contract_version",
+  "kafarm_care_plan_health_classifier_version",
 ];
 
 function fail(message) {

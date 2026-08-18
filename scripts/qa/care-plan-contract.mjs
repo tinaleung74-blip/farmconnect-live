@@ -62,6 +62,18 @@ const checklistCompatibilityPath = path.join(
   "applied",
   "066_care_plan_task_checklist_compatibility.sql",
 );
+const customerFeedContractPath = path.join(
+  root,
+  "database",
+  "applied",
+  "069_care_plan_customer_feed_balance_pricing_contract.sql",
+);
+const healthClassificationPath = path.join(
+  root,
+  "database",
+  "applied",
+  "070_kafarm_care_plan_health_qr_classification.sql",
+);
 const appSourcePath = path.join(root, "lib", "farmconnect-v1.tsx");
 const customerRoutePath = path.join(
   root,
@@ -100,6 +112,8 @@ for (const filePath of [
   taskAssignmentPath,
   fixedPackagePath,
   checklistCompatibilityPath,
+  customerFeedContractPath,
+  healthClassificationPath,
   appSourcePath,
   customerRoutePath,
   adminRoutePath,
@@ -121,6 +135,8 @@ const unifiedCare = fs.readFileSync(unifiedCarePath, "utf8");
 const taskAssignment = fs.readFileSync(taskAssignmentPath, "utf8");
 const fixedPackage = fs.readFileSync(fixedPackagePath, "utf8");
 const checklistCompatibility = fs.readFileSync(checklistCompatibilityPath, "utf8");
+const customerFeedContract = fs.readFileSync(customerFeedContractPath, "utf8");
+const healthClassification = fs.readFileSync(healthClassificationPath, "utf8");
 const appSource = fs.readFileSync(appSourcePath, "utf8");
 const cronRoute = fs.readFileSync(cronRoutePath, "utf8");
 const businessFlow = fs.readFileSync(businessFlowPath, "utf8");
@@ -403,15 +419,49 @@ const assertions = [
     "Admin normal flow still exposes the separate Care Plan Operations step",
   ],
   [
-    /round\(v_plan\.package_total,2\)<>5000/i.test(fixedPackage) &&
+    /package_total=5000/i.test(customerFeedContract) &&
+      /round\(5000::numeric\/30,2\)/i.test(customerFeedContract) &&
       /amountExpected: 5000/.test(appSource) &&
       /Pay ₱5,000 Care Plan/.test(appSource),
-    "The 30-day Care Plan is not locked to PHP 5,000 across database and customer UI",
+    "The 30-day Care Plan is not locked to PHP 5,000 / PHP 166.67 average per day across database and customer UI",
   ],
   [
-    /round\(sum\(coalesce\(feed_grams_max,30\)\)\/1000,3\)/i.test(fixedPackage) &&
-      /CARE_PLAN_COMPLETE_FEED_PACKAGE_UNAVAILABLE/i.test(fixedPackage),
-    "The fixed package does not calculate and stock-check exact 30-day feed",
+    /round\(sum\(feed_grams_max\)\/1000,3\)/i.test(customerFeedContract) &&
+      /MISSION_CATALOG_FEED_QUANTITY_INCOMPLETE/i.test(customerFeedContract) &&
+      /CARE_PLAN_CUSTOMER_FEED_BALANCE_INSUFFICIENT/i.test(customerFeedContract) &&
+      /manual_care_inventory_reservations/i.test(customerFeedContract) &&
+      /v_required_units,v_required_units,0,'quoted'/i.test(customerFeedContract),
+    "The fixed package does not calculate, cross-reservation-check, and reserve exact customer-owned 30-day feed",
+  ],
+  [
+    /substring\(lower\(coalesce\(item\.unit_label/i.test(customerFeedContract) &&
+      /substring\(lower\(coalesce\(v_inventory_item\.unit_label/i.test(customerFeedContract),
+    "Numeric kilogram pack labels are not converted to exact inventory units",
+  ],
+  [
+    /v_plan\.status='payment_for_review'[\s\S]*v_plan\.quote_expires_at>=now\(\)[\s\S]*'duplicate',true/i.test(customerFeedContract),
+    "A payment-page retry can duplicate the locked quote and Inbox notice",
+  ],
+  [
+    /revoke all on function public\.admin_prepare_care_plan_quote_v2[\s\S]*authenticated/i.test(customerFeedContract),
+    "The legacy Admin custom quote can still override the fixed customer-owned-feed contract",
+  ],
+  [
+    /'paid_manual_open_conflicts'[\s\S]*request\.workflow_type='manual_standard_mission'/i.test(healthClassification) &&
+      /kafarm_care_plan_health_classifier_version/i.test(healthClassification),
+    "KaFarm still reports QR/system setup tasks as paid/manual Care Plan conflicts",
+  ],
+  [
+    /start_day_source','official_acquired_at'/i.test(customerFeedContract) &&
+      /v_animal\.acquired_at at time zone 'Asia\/Manila'/i.test(customerFeedContract) &&
+      /CARE_PLAN_CATALOG_WINDOW_EXHAUSTED/i.test(customerFeedContract),
+    "The customer can still understate the rooster program day or exceed the 180-day catalog",
+  ],
+  [
+    !/package_total\) !== 350/.test(businessFlow) &&
+      /package_total\) !== 5000/.test(businessFlow) &&
+      /CARE_PLAN_CUSTOMER_FEED_BALANCE_INSUFFICIENT/.test(businessFlow),
+    "The isolated business E2E still tests the removed PHP 350 quote instead of the customer-feed PHP 5,000 contract",
   ],
   [
     /care_plan_package_items/i.test(fixedPackage) &&

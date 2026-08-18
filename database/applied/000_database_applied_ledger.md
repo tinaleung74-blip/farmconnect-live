@@ -934,3 +934,47 @@ Purpose:
 - Validate paid Care Plan proofs against the exact immutable checklist stored on the assigned caretaker task.
 - Preserve Day 1 package-readiness items added by migration 065 instead of comparing only with the shorter base mission catalog.
 - Keep PASS, exact feed usage, evidence, QR-exception, atomic Admin approval, and idempotency guards unchanged.
+
+## 069_care_plan_customer_feed_balance_pricing_contract.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-18 (Asia/Manila)**
+
+Verification:
+
+- `prepare_rpc = true`
+- `request_rpc = true`
+- `version_rpc = true`
+- `fixed_total = 5000`
+- `average_daily_rate = 166.67`
+- Contract version: `069_care_plan_customer_feed_balance_pricing_v1`
+- Read-only health counts after application: `catalog_days = 180`, `active_supply_conversion_missing = 0`, `negative_inventory = 0`, `pending_refunds = 0`, `overdue_missions = 0`, `unreviewed_proofs = 0`.
+- `paid_manual_open_conflicts = 1` was traced read-only to an open `QR Tagging` request beside an active Care Plan. No record was changed. The KaFarm classifier must distinguish QR/system setup tasks from manual daily-care conflicts before this count is treated as a business blocker.
+
+Purpose:
+
+- Remove the obsolete PHP 350 Care Plan test assumption and keep the service total at PHP 5,000 for 30 days (PHP 166.67 displayed average per day).
+- Derive the 30-day mission window from the rooster's official ownership date instead of trusting a customer-entered program day.
+- Compute exact required kilograms from the matching 30-day slice of the 180-day mission catalog.
+- Require and reserve sufficient customer-owned feed before payment; include active manual-care and Care Plan reservations in the available-balance check.
+- Never auto-purchase, manufacture, or credit missing feed through Care Plan preparation.
+- Preserve exact approved-usage deduction, Day 1 readiness, Task Management assignment, and daily mission behavior from migrations 060-066.
+
+## 070_kafarm_care_plan_health_qr_classification.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-18 (Asia/Manila)**
+
+Verification:
+
+- `health_rpc = true`
+- `version_rpc = true`
+- `qr_system_tasks_excluded = true`
+- Classifier version: `070_kafarm_care_plan_health_qr_classification_v1`
+- Read-only post-check: `paid_manual_open_conflicts = 0`.
+- The original QR/system overlap remains present as `qr_system_overlap_preserved = 1`; no request, task, payment, inventory, or Care Plan record was changed or deleted.
+
+Purpose:
+
+- Keep QR Tagging and other system setup tasks out of `paid_manual_open_conflicts`.
+- Count only authoritative `manual_standard_mission` care requests against an open paid Care Plan.
+- Preserve every other read-only Care Plan and manual-care health key.
+- Change no customer, request, task, payment, inventory, or Care Plan record.

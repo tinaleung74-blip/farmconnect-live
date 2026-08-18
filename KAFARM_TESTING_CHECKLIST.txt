@@ -1,0 +1,97 @@
+FARMCONNECT — KAFARM TESTING CHECKLIST
+Updated: 2026-08-18 (Asia/Manila)
+
+Legend:
+[x] Verified already
+[ ] Must be checked after GitHub merge and production deployment
+
+IMPORTANT
+- This checklist is not a claim that every production workflow has passed.
+- Read-only KaFarm runs must never approve KYC, move money, assign ownership,
+  deduct inventory, or repair business records automatically.
+- Use an authorized demo account for any write-action test. Do not use a real
+  customer account or repeat a financial transaction without explicit approval.
+
+A. VERIFIED BEFORE PUBLISHING
+
+[x] KaFarm Guardian contract test passed.
+[x] KaFarm Guardian decision-gate unit test passed.
+[x] Care Plan contract test passed.
+[x] Security contract test passed.
+[x] Database contract script passed syntax validation.
+[x] Next.js production build passed.
+[x] Migration 069 applied and verified in production.
+[x] Care Plan price is PHP 5,000 for 30 days.
+[x] Required feed is computed from the correct 30-day part of the 180-day plan.
+[x] Customer-owned feed balance is checked before Care Plan payment.
+[x] Missing feed is not auto-purchased, fabricated, or credited.
+[x] Migration 070 applied and verified in production.
+[x] True paid-manual-care conflict count is 0.
+[x] Existing QR/system overlap remains preserved as 1.
+[x] No QR, request, payment, inventory, task, or Care Plan record was deleted by
+    the classifier correction.
+
+B. POST-MERGE DEPLOYMENT CHECK
+
+[ ] GitHub PR is merged into the production branch.
+[ ] Vercel deployment for the merge commit is Ready.
+[ ] Production homepage opens without a blank page or console-breaking error.
+[ ] Admin can sign in and open the Admin home page.
+[ ] Admin can open all KaFarm pages from the KaFarm navigation.
+[ ] Database runtime contract is rerun with the authorized `.env.local` for an
+    isolated non-production test target.
+[ ] Business-flow contract is rerun only on an isolated target with
+    `E2E_ALLOW_DB_WRITES=true`; never enable this against production.
+
+C. KAFARM PAGE CHECK
+
+[ ] Whole-App Reader: Run completes and writes output into the report box.
+[ ] Whole-App Reader: Technical Report can be copied.
+[ ] Whole-App Reader: Simple Explanation can be copied.
+[ ] Code ↔ Supabase Validation: Run completes without changing business data.
+[ ] Code ↔ Supabase Validation: technical result separates predicted evidence
+    from confirmed runtime/database evidence.
+[ ] Code ↔ Supabase Validation: QR Tagging is not reported as a paid manual-care
+    conflict.
+[ ] KaFarm Guardian: page loads only for the Admin role.
+[ ] KaFarm Guardian: read-only monitor produces a current system result.
+[ ] KaFarm Guardian: a clear system returns PASS/CLEAR, not a fabricated issue.
+[ ] KaFarm Guardian: a real failure identifies the last proven-good step and the
+    first failed step.
+[ ] KaFarm Guardian: sensitive recovery remains Admin-gated.
+[ ] KaFarm Guardian: rate-limit switch remains OFF until formally enabled.
+
+D. AUTHORIZATION AND SAFETY CHECK
+
+[ ] Customer cannot open Admin or Caretaker pages.
+[ ] Caretaker cannot open Admin or Customer pages.
+[ ] Admin-only KaFarm APIs reject unauthenticated and non-Admin requests.
+[ ] Authentication trusts the server-verified Supabase user ID, not a client-
+    supplied customer ID.
+[ ] Read-only KaFarm runs create no approval, payment, ownership, inventory, KYC,
+    assignment, or deletion event.
+[ ] Guardian does not run generic SQL supplied by a browser/user input.
+[ ] Logs and reports expose no password, PIN, private KYC value, token, or service
+    role key.
+
+E. CARE PLAN CHECK
+
+[ ] Customer sees the fixed PHP 5,000 total before payment.
+[ ] The displayed average is PHP 166.67 per day for 30 days.
+[ ] Insufficient customer-owned feed blocks preparation before payment.
+[ ] Sufficient feed creates one reservation without deducting usage early.
+[ ] Admin approval moves the paid request to Task Management.
+[ ] Admin assigns one responsible Caretaker.
+[ ] Day 1 includes package/readiness work and required safety guidance.
+[ ] Daily mission generation does not create duplicates.
+[ ] Caretaker submits actual feed used and remaining feed evidence.
+[ ] Inventory deducts once only after the authorized proof approval.
+[ ] Customer Care Logs show the verified daily result.
+[ ] One-time/manual care and paid Care Plan tasks are not misclassified.
+
+F. FINAL RELEASE VERDICT
+
+[ ] No HIGH or CRITICAL confirmed finding remains open.
+[ ] Any MEDIUM finding has an owner, evidence, and safe next action.
+[ ] Production smoke test evidence is saved with date and tested commit SHA.
+[ ] Final verdict is recorded as PASSED or BLOCKED — never assumed.

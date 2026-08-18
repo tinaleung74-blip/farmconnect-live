@@ -153,6 +153,15 @@ async function main() {
       inventory_metadata: { source: "isolated_e2e_fixture" },
     }).select("id,quantity").single(), "Care Plan feed fixture");
 
+    await noError(service.from("customer_inventory_items").update({ quantity: 0.001 }).eq("id", feedItem.id), "lower Care Plan feed fixture");
+    await expectRpcError(customer, "customer_request_care_plan", {
+      p_customer_animal_id: animal.id,
+      p_duration_days: 30,
+      p_requested_start_day: 16,
+    }, "CARE_PLAN_CUSTOMER_FEED_BALANCE_INSUFFICIENT");
+    await noError(service.from("customer_inventory_items").update({ quantity: 100 }).eq("id", feedItem.id), "restore Care Plan feed fixture");
+    checks.push("Care Plan request is blocked before payment when customer-owned feed is insufficient");
+
     const cancelledDraftPlanId = await rpc(customer, "customer_request_care_plan", {
       p_customer_animal_id: animal.id,
       p_duration_days: 30,
@@ -170,17 +179,8 @@ async function main() {
       p_duration_days: 30,
       p_requested_start_day: 16,
     });
-    const expiredQuote = await rpc(admin, "admin_prepare_care_plan_quote_v2", {
-      p_care_plan_id: expiredPlanId,
-      p_caretaker_id: caretakerId,
-      p_feed_inventory_item_id: feedItem.id,
-      p_feed_product_id: null,
-      p_kg_per_inventory_unit: 1,
-      p_unquantified_day_feed_grams: 0,
-      p_labor_price: 1,
-      p_service_fee: 1,
-      p_quote_note: "E2E quote-expiry guard",
-    });
+    const expiredQuote = await one(customer.from("rooster_care_plans").select("package_total,feed_required_kg,feed_inventory_item_id,status").eq("id", expiredPlanId).single(), "fixed expired Care Plan quote");
+    if (Number(expiredQuote.package_total) !== 5000 || expiredQuote.feed_inventory_item_id !== feedItem.id) fail("Expired Care Plan did not reserve customer-owned feed at the fixed price");
     await noError(service.from("rooster_care_plans").update({ quote_expires_at: new Date(Date.now() - 60_000).toISOString() }).eq("id", expiredPlanId), "expire Care Plan quote fixture");
     await expectRpcError(customer, "customer_submit_manual_payment_guarded", {
       p_source_type: "care_plan",
@@ -205,18 +205,10 @@ async function main() {
       p_duration_days: 30,
       p_requested_start_day: 16,
     });
-    const quote = await rpc(admin, "admin_prepare_care_plan_quote_v2", {
-      p_care_plan_id: carePlanId,
-      p_caretaker_id: caretakerId,
-      p_feed_inventory_item_id: feedItem.id,
-      p_feed_product_id: null,
-      p_kg_per_inventory_unit: 1,
-      p_unquantified_day_feed_grams: 0,
-      p_labor_price: 300,
-      p_service_fee: 50,
-      p_quote_note: "E2E verified 30-day package",
-    });
-    if (Number(quote.feed_required_kg) <= 0 || Number(quote.package_total) !== 350) fail("Care Plan quote was not server-computed and locked");
+    const quote = await one(customer.from("rooster_care_plans").select("package_total,feed_required_kg,feed_inventory_item_id,requested_start_day,status").eq("id", carePlanId).single(), "fixed customer-owned-feed Care Plan quote");
+    if (Number(quote.feed_required_kg) <= 0 || Number(quote.package_total) !== 5000) fail("Care Plan quote was not fixed to PHP 5,000");
+    if (quote.feed_inventory_item_id !== feedItem.id) fail("Care Plan did not reserve the customer-owned feed fixture");
+    if (Number(quote.requested_start_day) !== 1) fail("Care Plan trusted the client-supplied day instead of the official ownership date");
     await expectRpcError(customer, "customer_submit_manual_payment_guarded", {
       p_source_type: "care_plan",
       p_source_ref: carePlanId,
@@ -246,17 +238,15 @@ async function main() {
     await rpc(admin, "admin_review_manual_payment_guarded", { p_payment_request_id: carePayment.id, p_decision: "approved", p_admin_note: "E2E Care Plan payment approved" });
     const paidPlan = await one(admin.from("rooster_care_plans").select("status").eq("id", carePlanId).single(), "paid Care Plan");
     if (paidPlan.status !== "paid_pending_setup") fail(`Care Plan payment produced ${paidPlan.status}`);
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    await rpc(admin, "admin_activate_care_plan", { p_care_plan_id: carePlanId, p_start_date: tomorrow });
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
-    await noError(service.from("rooster_care_plans").update({ start_date: today, end_date: new Date(Date.now() + 29 * 86400000).toISOString().slice(0, 10) }).eq("id", carePlanId), "move Care Plan into scheduler test window");
-    const generated = await rpc(admin, "generate_due_care_plan_missions", { p_run_date: today });
-    if (Number(generated.created) !== 1) fail("Care Plan daily scheduler did not create exactly one idempotent mission");
+    const assignment = await rpc(admin, "admin_assign_care_plan", { p_care_plan_id: carePlanId, p_caretaker_id: caretakerId, p_admin_note: "E2E Task Management assignment" });
+    if (assignment.status !== "ready" || Number(assignment.created_missions) !== 1) fail("Task Management assignment did not create the Day 1 readiness mission");
     const generatedAgain = await rpc(admin, "generate_due_care_plan_missions", { p_run_date: today });
     if (Number(generatedAgain.created) !== 0) fail("Care Plan scheduler retry created a duplicate mission");
     const missionTask = await one(caretaker.from("caretaker_tasks").select("id,daily_mission_id,task_metadata,status").eq("care_plan_id", carePlanId).single(), "caretaker daily mission visibility");
     const template = await one(service.from("rooster_daily_missions").select("mission_template_id").eq("id", missionTask.daily_mission_id).single(), "daily mission template link");
     const catalog = await one(service.from("care_mission_templates").select("operations_checklist,housing_checklist,supplement_checklist,vaccine_checklist,health_checklist").eq("id", template.mission_template_id).single(), "daily mission catalog record");
+    const expectedChecklist = missionTask.task_metadata || {};
     const checked = rows => (rows || []).map(label => ({ label, checked: true }));
     const missionProofId = await rpc(caretaker, "caretaker_submit_mission_proof", {
       p_task_id: missionTask.id,
@@ -266,11 +256,11 @@ async function main() {
       p_serial_exception: true,
       p_health_status: "pass",
       p_checklist_results: {
-        operations: checked(catalog.operations_checklist),
-        housing: checked(catalog.housing_checklist),
-        supplements: checked(catalog.supplement_checklist),
-        vaccines: checked(catalog.vaccine_checklist),
-        health: checked(catalog.health_checklist),
+        operations: checked(expectedChecklist.operations_checklist || catalog.operations_checklist),
+        housing: checked(expectedChecklist.housing_checklist || catalog.housing_checklist),
+        supplements: checked(expectedChecklist.supplement_checklist || catalog.supplement_checklist),
+        vaccines: checked(expectedChecklist.vaccine_checklist || catalog.vaccine_checklist),
+        health: checked(expectedChecklist.health_checklist || catalog.health_checklist),
       },
       p_inventory_usage: [{ inventory_item_id: feedItem.id, quantity: 0.1, unit: "kg" }],
     });

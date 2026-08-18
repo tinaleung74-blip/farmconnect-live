@@ -34,23 +34,14 @@ export async function resolveCustomerProfile(): Promise<CustomerProfile | null> 
   if (authError || !authData.user) return null;
 
   const user = authData.user;
-  const email = user.email || "";
-
-  const { data: profileById } = await supabase
+  const { data: profileByAuthId, error: profileError } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("auth_user_id", user.id)
     .maybeSingle();
 
-  if (profileById) return profileById as CustomerProfile;
-
-  const { data: profileByEmail } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("email", email)
-    .maybeSingle();
-
-  return (profileByEmail as CustomerProfile) || null;
+  if (profileError) throw profileError;
+  return (profileByAuthId as CustomerProfile) || null;
 }
 
 export function isActiveCustomer(profile: CustomerProfile | null) {

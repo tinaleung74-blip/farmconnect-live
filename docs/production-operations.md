@@ -26,6 +26,14 @@
 
 Record timestamp, deployed commit, role, route, action, expected result, actual result, request/RPC name, HTTP status, affected record IDs, KaFarm finding, and rollback decision. Do not include passwords, tokens, service keys, full payout numbers, or raw identity documents.
 
+## Rate-Limit Readiness Switch
+
+- Keep `FARMCONNECT_RATE_LIMIT_MODE=off` until further notice. KaFarm Guardian shows this server-side status to an authenticated Admin.
+- The prepared values are `off`, `observe`, and `enforce`, but the effective mode remains `off` while `persistentBackendInstalled=false` and `businessRpcEnforcement=false`.
+- Do not treat a browser button or one Next.js instance's memory as full-app protection. Customer, caretaker, and Admin business actions call Supabase RPCs and require persistent edge/database enforcement.
+- Activate observation or enforcement only after the persistent backend, per-workflow policies, multi-instance tests, retry/idempotency checks, and rollback procedure are implemented and verified on an isolated project.
+- Activation authority remains in secured deployment environment settings; there is no client-side toggle.
+
 ## Restore Drill
 
 The owner must restore a current backup into a separate project, run `test:db` against it, and verify representative customer, caretaker, payment, task proof, wallet, and inbox records. Set `PRODUCTION_RESTORE_DRILL_ATTESTED=true` only for the readiness run that follows a successful documented drill.

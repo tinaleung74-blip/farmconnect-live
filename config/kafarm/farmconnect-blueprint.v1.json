@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "1.0.0",
+  "blueprintId": "farmconnect-owner-blueprint",
+  "application": "FarmConnect",
+  "updatedAt": "2026-08-18",
+  "intent": "Keep Customer, Admin, and Caretaker workflows connected through verified records, explicit approvals, durable evidence, and least-privilege access.",
+  "productRules": [
+    "FarmConnect must never present payment, ownership, care, sale, or withdrawal as complete until every required downstream record exists.",
+    "Customer-visible status must be derived from authoritative workflow records, not optimistic UI state.",
+    "Admin decisions and Caretaker work must preserve evidence, actor, timestamp, and related-record linkage.",
+    "KaFarm may explain and recommend from evidence but may not silently redefine FarmConnect business intent."
+  ],
+  "uxRules": [
+    "Customer pages explain the current state, required next step, and official evidence result.",
+    "Admin queues show only actionable records and move reviewed records out of the open queue.",
+    "Caretaker tasks show the exact rooster, procedure, safety guidance, proof requirements, and inventory quantities.",
+    "Errors must be visible and actionable; a failed action may not look successful."
+  ],
+  "visualRules": [
+    "Preserve FarmConnect visual identity and readable hierarchy across desktop, tablet, and phone.",
+    "Do not expose credentials, PINs, private KYC values, payout identifiers, or service-role secrets.",
+    "Use consistent status language and do not use success colors for unverified states."
+  ],
+  "businessRules": {
+    "farmBuy": [
+      "Payment submission creates a review request, not ownership.",
+      "Approved payment must create the expected inventory or rooster ownership record exactly once."
+    ],
+    "careRequests": [
+      "A paid and approved request moves to Task Management for assignment.",
+      "Approved proof must release the linked customer Care Log and reconcile actual inventory use."
+    ],
+    "carePlans": [
+      "A paid active Care Plan generates one authorized daily mission for the assigned Caretaker.",
+      "Unpaid customers still receive daily standard guidance but no automatic paid caretaker mission.",
+      "Reserved supplies are deducted only from verified actual use and never twice."
+    ],
+    "careLogs": [
+      "Only approved proof becomes an official customer-visible Care Log."
+    ],
+    "sellRequest": [
+      "No sale price is guaranteed before inspection and Admin review.",
+      "A completed sale must reconcile ownership release, evidence, and wallet ledger exactly once."
+    ],
+    "wallet": [
+      "Wallet balance is derived from an auditable ledger; KaFarm must never manufacture credit."
+    ],
+    "withdrawals": [
+      "Withdrawal eligibility requires approved KYC and the configured security controls.",
+      "Completed withdrawal requires payout proof, ledger consistency, and customer Inbox evidence."
+    ],
+    "kyc": [
+      "KYC decisions are Admin-only and private evidence must remain access controlled.",
+      "Approved KYC must reconcile with the customer profile verification state."
+    ],
+    "caretaker": [
+      "Caretaker access requires an active approved role.",
+      "Submitted work must not become complete before required proof and Admin review."
+    ],
+    "support": [
+      "Sensitive identity, money, ownership, fraud, or security concerns escalate to an Admin."
+    ]
+  },
+  "securityRules": [
+    "Re-authenticate and re-authorize every KaFarm API request as an active FarmConnect Admin.",
+    "Use server-only data access and return minimized DTOs.",
+    "Never give the model a service-role key, raw credential, unrestricted SQL, or generic mutation tool.",
+    "Treat runtime input, route parameters, tool arguments, and model output as untrusted."
+  ],
+  "protectedZones": [
+    "wallet_balance",
+    "withdrawal",
+    "payout_release",
+    "payment_approval",
+    "rooster_ownership",
+    "kyc_decision",
+    "account_role",
+    "pin_password_security",
+    "fraud_marking",
+    "destructive_data",
+    "rls_policy",
+    "production_schema",
+    "arbitrary_sql"
+  ],
+  "proofOfDone": {
+    "green": ["static_check", "targeted_test"],
+    "yellow": ["static_check", "unit_or_contract", "browser_or_integration", "regression"],
+    "orange": ["build", "database_contract", "role_test", "invariant", "browser", "regression", "explicit_approval"],
+    "red": ["independent_verification", "explicit_approval", "before_state", "after_state", "invariant", "rollback_plan", "audit_evidence"]
+  }
+}
