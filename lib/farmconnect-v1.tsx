@@ -4176,12 +4176,13 @@ export function WithdrawPageV2() {
       setSaving(true);
       if (received) await confirmWithdrawalResult(row.id, true, "Customer confirmed payout received.");
       else await reportWithdrawalProblem(row.id, problemNote.trim());
+      await loadWithdrawalData();
       setProblemId("");
       setProblemNote("");
-      setNote(received ? "Payout confirmed. The withdrawal is complete and remains in your wallet logs." : "Your report is locked for manual Admin investigation. No second payout can be sent until the existing evidence is reviewed.");
-      await loadWithdrawalData();
+      setNote(received ? "Payout confirmed. The withdrawal is complete and remains in your wallet logs." : "Problem sent successfully. Waiting for Admin investigation; no resubmit or second payout is allowed while the case is open.");
     } catch (error) {
-      setNote(`Confirmation failed: ${error instanceof Error ? error.message : "Check SQL 040 and login."}`);
+      const detail = readableAppError(error);
+      setNote(detail.includes("WITHDRAWAL_DISPUTE_ALREADY_OPEN") ? "This payout already has an open investigation. Please wait for the Admin result; do not submit it again." : `Payout response failed: ${detail || "Your session or the withdrawal state could not be verified. Refresh once and try again."}`);
     } finally {
       setSaving(false);
     }
@@ -4288,10 +4289,11 @@ export function WithdrawPageV2() {
                           >
                             Cancel
                           </button>
-                          <button type="button" disabled={saving} onClick={() => void answerConfirmation(row, false)} className="rounded-xl bg-red-600 px-3 py-2 font-black text-white">
+                          <button type="button" disabled={saving || problemNote.trim().length < 5} onClick={() => void answerConfirmation(row, false)} className="rounded-xl bg-red-600 px-3 py-2 font-black text-white disabled:cursor-not-allowed disabled:bg-[#b9b3a4]">
                             Send Problem
                           </button>
                         </div>
+                        <p className="text-xs font-bold text-[#667267]">Write at least 5 characters. One report opens one locked Admin investigation.</p>
                       </>
                     ) : (
                       <button type="button" onClick={() => setProblemId(row.id)} className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-black text-red-700">
@@ -11209,15 +11211,20 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
   const request = selected?.withdrawal_requests || null;
   const profile = request ? (Array.isArray(request.profiles) ? request.profiles[0] : request.profiles) : null;
 
-  async function loadIssues() {
+  async function loadIssues(options?: { preserveMessage?: boolean; selectId?: string }) {
     try {
       const data = await getAdminWithdrawalDisputes();
       setRows(data);
-      setSelectedId((current) => (data.some((row: any) => row.id === current) ? current : data[0]?.id || ""));
-      setMessage(data.length ? "Select a report and manually compare the customer request with the existing Admin payout evidence." : "No withdrawal dispute is waiting for investigation.");
+      setSelectedId((current) => {
+        const preferred = options?.selectId || current;
+        return data.some((row: any) => row.id === preferred) ? preferred : data[0]?.id || "";
+      });
+      if (!options?.preserveMessage) setMessage(data.length ? "Select a report and manually compare the customer request with the existing Admin payout evidence." : "No withdrawal dispute is waiting for investigation.");
+      return data;
     } catch (error) {
       setRows([]);
       setMessage(`Issue queue could not load: ${readableAppError(error) || "Check migration 073 and Admin login."}`);
+      return [];
     }
   }
 
@@ -11252,6 +11259,7 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
           allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
         });
       }
+      const resolvedId = selected.id;
       await resolveWithdrawalDispute({
         disputeId: selected.id,
         resolutionType: resolution,
@@ -11260,12 +11268,15 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
         correctedReceiptUrl: storedPath,
         correctedReceiptFileName: receiptFile?.name || null,
       });
-      setMessage(resolution === "farm_corrected_payout" ? "Corrected external payout evidence saved. Customer must review and confirm the new payout." : "Existing request, reference, and payout receipt were preserved with the Admin explanation. Case resolved without a second payout.");
+      const successMessage = resolution === "farm_corrected_payout" ? "Resolution saved successfully. Corrected external payout evidence is ready for customer confirmation." : "Resolution saved successfully. Original payout evidence was preserved and the Admin explanation was sent without a second payout.";
       setResolution(null);
       setResolutionNote("");
       setReference("");
       setReceiptFile(null);
-      await loadIssues();
+      setMode("completed");
+      await loadIssues({ preserveMessage: true, selectId: resolvedId });
+      setSelectedId(resolvedId);
+      setMessage(successMessage);
     } catch (error) {
       setMessage(`Resolution failed: ${readableAppError(error) || "Check the case state, evidence, and migration 073."}`);
     } finally {
@@ -11277,15 +11288,15 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
     <Shell role="admin" title={config[0]}>
       <PageTitle title="Issue Management" text="Manually investigate reported withdrawal payouts using the original customer request, Admin reference, and existing receipt." icon="alert" />
       <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <button onClick={() => setMode("customer")} className={"rounded-2xl border p-4 text-left " + (mode === "customer" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95")}>
+        <button type="button" onClick={() => setMode("customer")} className={"rounded-2xl border p-4 text-left " + (mode === "customer" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95")}>
           <b>Customer Reports</b>
           <p className="text-xs font-bold text-[#667267]">Customer issues from support, payment, care, withdrawal, or inbox.</p>
         </button>
-        <button onClick={() => setMode("caretaker")} className={"rounded-2xl border p-4 text-left " + (mode === "caretaker" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95")}>
+        <button type="button" onClick={() => setMode("caretaker")} className={"rounded-2xl border p-4 text-left " + (mode === "caretaker" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95")}>
           <b>Caretaker Reports</b>
           <p className="text-xs font-bold text-[#667267]">QR, camera, upload, task, proof, or backjob issues.</p>
         </button>
-        <button onClick={() => setMode("completed")} className={"rounded-2xl border p-4 text-left " + (mode === "completed" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95")}>
+        <button type="button" onClick={() => setMode("completed")} className={"rounded-2xl border p-4 text-left " + (mode === "completed" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95")}>
           <b>Completed Issues</b>
           <p className="text-xs font-bold text-[#667267]">Resolved reports with final note, evidence, and inbox update.</p>
         </button>
@@ -11300,7 +11311,7 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
               {visibleRows.map((row) => {
                 const req = row.withdrawal_requests;
                 const p = req ? (Array.isArray(req.profiles) ? req.profiles[0] : req.profiles) : null;
-                return <button key={row.id} onClick={() => { setSelectedId(row.id); setResolution(null); }} className={"w-full rounded-2xl border p-3 text-left " + (selected?.id === row.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}><b className="block truncate">{p?.display_name || p?.full_name || p?.email || row.original_payout_holder}</b><p className="mt-1 text-xs font-bold text-[#667267]">{peso(Number(row.original_amount || 0))} / {row.original_payout_method}</p><p className="mt-2 text-xs font-black text-amber-700">{String(row.status).replaceAll("_", " ")}</p></button>;
+                return <button type="button" key={row.id} onClick={() => { setSelectedId(row.id); setResolution(null); }} className={"w-full rounded-2xl border p-3 text-left " + (selected?.id === row.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}><b className="block truncate">{p?.display_name || p?.full_name || p?.email || row.original_payout_holder}</b><p className="mt-1 text-xs font-bold text-[#667267]">{peso(Number(row.original_amount || 0))} / {row.original_payout_method}</p><p className="mt-2 text-xs font-black text-amber-700">{String(row.status).replaceAll("_", " ")}</p></button>;
               })}
               {!visibleRows.length && <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No case in this queue.</p>}
             </div>
@@ -11318,7 +11329,7 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
                 <Info label="Admin Payout Reference" value={selected.original_admin_reference || "Not recorded"} />
                 <Info label="Admin Payout Receipt" value={selected.original_admin_receipt_file_name || "Not recorded"} />
               </div>
-              <button onClick={() => void openReceipt(selected.original_admin_receipt_url)} className="mt-4 w-full rounded-xl bg-[#0f6fb8] px-4 py-3 font-black text-white">Open Existing Admin Payout Receipt</button>
+              <button type="button" onClick={() => void openReceipt(selected.original_admin_receipt_url)} className="mt-4 w-full rounded-xl bg-[#0f6fb8] px-4 py-3 font-black text-white">Open Existing Admin Payout Receipt</button>
               {selected.resolution_note && <div className="mt-4 rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-black uppercase text-emerald-800">Final Investigation Note</p><p className="mt-2 text-sm font-bold">{selected.resolution_note}</p></div>}
             </> : <div className="grid min-h-[520px] place-items-center text-center"><div><h2 className="text-2xl font-black">No report selected</h2><p className="mt-2 text-sm font-bold text-[#667267]">Customer payout disputes will appear here automatically.</p></div></div>}
           </Card>
@@ -11326,11 +11337,12 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
             <h2 className="text-lg font-black">Manual Resolution</h2>
             <p className="mt-2 text-xs font-bold leading-5 text-[#667267]">Check the customer payout method and amount against the existing Admin reference and receipt. FarmConnect does not verify external e-wallet or bank transfers automatically.</p>
             {selected?.status === "under_investigation" ? <>
-              <button onClick={() => setResolution("farm_corrected_payout")} className={"mt-5 w-full rounded-2xl px-4 py-4 font-black text-white " + (resolution === "farm_corrected_payout" ? "bg-red-700 ring-4 ring-red-200" : "bg-red-600")}>Farm Fault — Correct Payout</button>
-              <button onClick={() => setResolution("customer_fault_explained")} className={"mt-3 w-full rounded-2xl px-4 py-4 font-black text-white " + (resolution === "customer_fault_explained" ? "bg-[#145a38] ring-4 ring-emerald-200" : "bg-[#1f6b45]")}>Customer Detail Fault — Send Explanation</button>
+              <button type="button" onClick={() => setResolution("farm_corrected_payout")} className={"mt-5 w-full rounded-2xl px-4 py-4 font-black text-white " + (resolution === "farm_corrected_payout" ? "bg-red-700 ring-4 ring-red-200" : "bg-red-600")}>Farm Fault — Correct Payout</button>
+              <button type="button" onClick={() => setResolution("customer_fault_explained")} className={"mt-3 w-full rounded-2xl px-4 py-4 font-black text-white " + (resolution === "customer_fault_explained" ? "bg-[#145a38] ring-4 ring-emerald-200" : "bg-[#1f6b45]")}>Customer Detail Fault — Send Explanation</button>
               {resolution === "farm_corrected_payout" && <div className="mt-4 grid gap-3"><input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="New corrected payout reference" className="rounded-xl border border-[#ded8c9] p-3 font-black" /><label className="rounded-xl border-2 border-dashed border-[#d8cfbd] p-3 text-sm font-black">New corrected payout receipt<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setReceiptFile(event.target.files?.[0] || null)} className="mt-2 block w-full text-xs" /></label></div>}
               <textarea value={resolutionNote} onChange={(event) => setResolutionNote(event.target.value)} placeholder="Write the manual investigation finding and why this resolution is correct..." className="mt-4 h-32 w-full resize-none rounded-2xl border border-[#ded8c9] p-3 text-sm font-bold" />
-              <button disabled={!resolution || saving} onClick={() => void submitResolution()} className="mt-3 w-full rounded-2xl bg-[#111827] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">{saving ? "Saving Resolution..." : "Confirm Manual Resolution"}</button>
+              <button type="button" disabled={!resolution || saving || resolutionNote.trim().length < 10 || (resolution === "farm_corrected_payout" && (!reference.trim() || !receiptFile))} onClick={() => void submitResolution()} className="mt-3 w-full rounded-2xl bg-[#111827] px-4 py-4 font-black text-white disabled:cursor-not-allowed disabled:bg-[#b9b3a4]">{saving ? "Saving Resolution..." : "Confirm Manual Resolution"}</button>
+              <p className="mt-2 text-xs font-bold text-[#667267]">Select one result and write at least 10 characters. Farm-fault correction also requires a new reference and receipt.</p>
             </> : <p className="mt-5 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">This case is no longer open for a new resolution.</p>}
             <p className="mt-4 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{message}</p>
           </Card>
