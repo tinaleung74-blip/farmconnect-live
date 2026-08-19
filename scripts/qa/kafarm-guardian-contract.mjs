@@ -26,8 +26,9 @@ const checks = [
   { name: "AI action freeze defaults to enabled", ok: /KAFARM_AI_ACTIONS_FROZEN \?\? "true"/.test(gate) && /AI ACTIONS FROZEN/.test(gate) },
   { name: "Gate separates reasoning from execution", ok: /APPROVAL_REQUIRED/.test(gate) && /executionAllowed/.test(gate) && /protectedZones/.test(gate) },
   { name: "Guardian API has no execution adapter", ok: /This endpoint has no mutation adapter/.test(guardianRoute) && /attempted: false/.test(guardianRoute) },
-  { name: "Proactive monitor is read-only and disabled by default", ok: /KAFARM_MONITOR_ENABLED \|\| "false"/.test(monitor) && /mutationAttempted: false/.test(monitor) },
-  { name: "Production schema proposals remain unapplied", ok: exists("database/proposed/067_kafarm_guardian_read_only_monitor.sql") && exists("database/proposed/068_kafarm_guardian_semantic_incident_memory.sql") && !exists("database/applied/067_kafarm_guardian_read_only_monitor.sql") && !exists("database/applied/068_kafarm_guardian_semantic_incident_memory.sql") },
+  { name: "Proactive monitor is disabled by default and never mutates business workflows", ok: /KAFARM_MONITOR_ENABLED \|\| "false"/.test(monitor) && /businessMutationAttempted: false/.test(monitor) && /automaticRepairAttempted: false/.test(monitor) },
+  { name: "Monitor findings persist only as deduplicated Admin incidents", ok: /from\("kafarm_incidents"\)/.test(monitor) && /ignoreDuplicates: true/.test(monitor) && /guardian_monitor/.test(monitor) },
+  { name: "Durable monitor SQL is explicit and service-role guarded", ok: exists("database/applied/077_kafarm_guardian_durable_monitor.sql") && /KAFARM_MONITOR_AUTH_REQUIRED/.test(read("database/applied/077_kafarm_guardian_durable_monitor.sql")) && /grant execute.*service_role/i.test(read("database/applied/077_kafarm_guardian_durable_monitor.sql")) },
   { name: "Living system map is generated and explicitly caveated", ok: map.application === "FarmConnect" && map.counts.pages > 0 && map.counts.edges > 0 && Array.isArray(map.limitations) && map.limitations.length > 0 },
   { name: "Guardian Admin page exists", ok: exists("app/admin/kafarm/guardian/page.tsx") && exists("app/admin/kafarm/guardian/_components/GuardianClient.tsx") },
 ];

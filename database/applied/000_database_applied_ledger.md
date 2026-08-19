@@ -1049,3 +1049,54 @@ Purpose:
 - Keep the active-admin guard, row lock, rejection-note requirement, idempotent completed decisions, and canonical KYC review RPC.
 - Allow only an authenticated active Admin to approve or reject a risk-flagged submission.
 - Change no existing KYC decision or customer profile during migration application.
+
+## 075_withdrawal_dispute_inbox_schema_fix.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-19 (Asia/Manila)**
+
+Verification:
+
+- `version_rpc = true`
+- `customer_report_rpc = true`
+- `inbox_updated_at_absent = true`
+
+Purpose:
+
+- Replace `customer_report_withdrawal_problem(uuid,text)` with the same guarded dispute workflow.
+- Remove the invalid write to the nonexistent `inbox_items.updated_at` column.
+- Preserve the withdrawal request, dispute, evidence log, Inbox notice, ownership checks, and idempotent open-case behavior.
+- Move no money and create no payout or Admin decision during migration application.
+
+## 076_withdrawal_dispute_reopen_cycle.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-19 (Asia/Manila)**
+
+Verification:
+
+- `version_rpc = true`
+- `customer_report_rpc = true`
+- `stranded_cases_remaining = 0`
+
+Purpose:
+
+- Reopen the same withdrawal dispute when a customer rejects a corrected payout.
+- Snapshot the latest Admin payout reference and receipt for the next investigation.
+- Preserve prior resolution history in withdrawal evidence logs while clearing only the active resolution fields.
+- Reconcile already-stranded `under_investigation` / `awaiting_customer_confirmation` cases.
+- Create no duplicate dispute, send no payout, and move no wallet balance during migration application.
+
+## 077_kafarm_guardian_durable_monitor.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-19 (Asia/Manila)**
+
+Verification:
+
+- `snapshot_rpc = true`
+- `incident_table = true`
+- `business_mutation = false`
+
+Purpose:
+
+- Give the scheduled KaFarm Guardian a service-role-only read snapshot of stuck workflows, recent runtime incidents, and overdue Care Plan missions.
+- Allow the server route to preserve deduplicated findings in the existing Admin incident queue.
+- Perform no approval, payment, KYC, ownership, refund, deletion, or automatic business repair.
