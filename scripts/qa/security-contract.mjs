@@ -58,6 +58,8 @@ const checks = [
   { name: "KYC admin guard accepts live review status", ok: /ready_for_review/.test(kycReviewGuardSource) && /REJECTION_NOTE_REQUIRED/.test(kycReviewGuardSource) },
   { name: "Customer KYC settings distinguish pending rejected and approved", ok: /Your KYC is in review/.test(customerAppSource) && /KYC rejected for resubmission/.test(customerAppSource) && /Approved and locked/.test(customerAppSource) },
   { name: "Admin KYC rejection explicitly reopens resubmission", ok: /Reject for Resubmission/.test(verificationAppSource) && /upload corrected KYC evidence/.test(verificationAppSource) },
+  { name: "Admin KYC queue keeps risk-flagged submissions reviewable", ok: /customerQueueStatuses[\s\S]*?"high_risk"[\s\S]*?"duplicate_risk"/.test(verificationAppSource) },
+  { name: "Admin KYC risk badge falls back to the submitted status", ok: /const status = normalizedVerificationStatus\([\s\S]*?valueText\(recordValue\(row, "auto_check_status"\), status\)/.test(verificationAppSource) },
   { name: "Customer identity resolves by Auth UID only", ok: /\.eq\("auth_user_id", user\.id\)/.test(customerAuthSource) && !/\.eq\("email",/.test(customerAuthSource) && !/profileByEmail/.test(customerAuthSource) },
   { name: "Rate-limit readiness defaults to honest OFF mode", ok: /effectiveMode:\s*"off"/.test(rateLimitSource) && /businessRpcEnforcement:\s*false/.test(rateLimitSource) && /persistentBackendInstalled:\s*false/.test(rateLimitSource) },
   { name: "Rate-limit activation is deployment controlled and Admin visible", ok: /deployment_environment_only/.test(rateLimitSource) && /getFarmConnectRateLimitReadiness/.test(guardianApiSource) && /Rate Limit OFF · Deployment Controlled/.test(guardianClientSource) },

@@ -59,6 +59,8 @@ const customerQueueStatuses = new Set([
   "needs_review",
   "awaiting_review",
   "needs_info",
+  "high_risk",
+  "duplicate_risk",
 ]);
 const customerApprovedStatuses = new Set(["approved", "verified", "accepted"]);
 
@@ -171,7 +173,13 @@ function mapCustomerRows(rows: UnknownRow[]): VerificationRow[] {
   return rows.map(row => {
     const profile = (recordValue(row, "profile") || {}) as UnknownRow;
     const documents = Array.isArray(recordValue(row, "documents")) ? recordValue(row, "documents") as UnknownRow[] : [];
-    const riskSource = valueText(recordValue(profile, "kyc_risk_level"), valueText(recordValue(row, "auto_check_status"), "low")).toLowerCase();
+    const status = normalizedVerificationStatus(
+      recordValue(row, "status") || recordValue(row, "verification_status") || recordValue(row, "review_status"),
+    );
+    const riskSource = valueText(
+      recordValue(profile, "kyc_risk_level"),
+      valueText(recordValue(row, "auto_check_status"), status),
+    ).toLowerCase();
     const risk: RiskLevel = riskSource.includes("high") || riskSource.includes("failed")
       ? "High"
       : riskSource.includes("medium") || riskSource.includes("review") || riskSource.includes("duplicate")
@@ -186,9 +194,7 @@ function mapCustomerRows(rows: UnknownRow[]): VerificationRow[] {
       email: valueText(recordValue(profile, "email"), "No email"),
       phone: valueText(recordValue(profile, "phone"), "No phone"),
       submitted: displayDate(recordValue(row, "submitted_at") || recordValue(row, "updated_at") || recordValue(row, "created_at")),
-      status: normalizedVerificationStatus(
-        recordValue(row, "status") || recordValue(row, "verification_status") || recordValue(row, "review_status"),
-      ),
+      status,
       details: `${valueText(recordValue(row, "id_type"), "ID not set")} / ${valueText(recordValue(row, "city"), "City not set")}, ${valueText(recordValue(row, "province"), "Province not set")}`,
       files: documents.map(document => ({
         label: valueText(recordValue(document, "document_type"), "KYC document").replaceAll("_", " "),

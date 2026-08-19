@@ -1,48 +1,20 @@
 {
   "schemaVersion": "1.0.0",
   "application": "FarmConnect",
-  "generatedAt": "2026-08-18T09:01:05.439Z",
+  "generatedAt": "2026-08-19T03:41:55.877Z",
   "sourceSnapshot": {
-    "generatedAt": "2026-08-18T09:01:05.285Z",
-    "sourceFingerprint": "5b864adb8cbe25c6179a28afd0759bb3049e832542bce10864c677bcc66dcd11",
+    "generatedAt": "2026-08-19T03:41:55.677Z",
+    "sourceFingerprint": "a44669e387a1fa3d2972fb295c98576c5ce4e694bf36ade73e2a436712de3740",
     "schemaVersion": "2.2.0"
   },
   "git": {
-    "commit": "7a041e3076f27d005ed0571387d492b902026c67",
+    "commit": "a4e448c09467c6aeab5f7eec0e444df9e6609180",
     "branch": "agent/kafarm-guardian",
     "dirtyFiles": [
-      "M app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      " M database/00_verify_applied_sql_status.sql",
-      " M database/CARE_PLAN_058_062_DEPLOYMENT_RUNBOOK.md",
-      " M database/applied/000_database_applied_ledger.md",
-      " M docs/production-operations.md",
-      " M lib/customer-auth.ts",
-      " M lib/farmconnect-data.ts",
-      " M lib/farmconnect-v1.tsx",
+      "M lib/farmconnect-unified-account-verification.tsx",
       " M lib/kafarm-system-snapshot.generated.json",
-      " M package.json",
-      " M scripts/qa/build-readiness-report.mjs",
-      " M scripts/qa/business-flow-contract.mjs",
-      " M scripts/qa/care-plan-contract.mjs",
-      " M scripts/qa/database-contract.mjs",
-      " M scripts/qa/run-readiness.mjs",
-      " M scripts/qa/security-contract.mjs",
-      " M vercel.json",
-      "?? KAFARM_TESTING_CHECKLIST.txt",
-      "?? app/admin/kafarm/guardian/",
-      "?? app/api/kafarm/guardian/",
-      "?? config/",
-      "?? database/applied/069_care_plan_customer_feed_balance_pricing_contract.sql",
-      "?? database/applied/070_kafarm_care_plan_health_qr_classification.sql",
-      "?? database/proposed/",
-      "?? docs/blueprint/",
-      "?? docs/kafarm/",
-      "?? lib/kafarm/",
-      "?? lib/security/",
-      "?? scripts/kafarm/build-guardian-map.mjs",
-      "?? scripts/kafarm/guardian-cleanup-audit.mjs",
-      "?? scripts/qa/kafarm-guardian-contract.mjs",
-      "?? scripts/qa/kafarm-guardian-gate-unit.mjs"
+      " M lib/kafarm/guardian/system-map.generated.json",
+      " M scripts/qa/security-contract.mjs"
     ]
   },
   "blueprint": {
@@ -1091,132 +1063,132 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:163:20",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:165:20",
       "type": "action",
       "name": "Logout",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 163,
+      "line": 165,
       "role": "system",
       "route": "lib/farmconnect-unified-account-verification.tsx",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:349:21",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:355:21",
       "type": "action",
       "name": "Check Again",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 349,
+      "line": 355,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:358:22",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:364:22",
       "type": "action",
       "name": "Verification Queue Waiting for a real admin decision.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 358,
+      "line": 364,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": "()=>setTab(\"queue\")} className={`rounded-2xl border p-4 text-left ${tab === \"queue\" ? \"border-[#1f6b45] bg-emerald-50\" :"
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:358:23",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:364:23",
       "type": "action",
       "name": "Verified Accounts Approved customers and caretakers.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 358,
+      "line": 364,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": "()=>setTab(\"verified\")} className={`rounded-2xl border p-4 text-left ${tab === \"verified\" ? \"border-[#1f6b45] bg-emerald"
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:360:24",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:366:24",
       "type": "action",
       "name": "Customers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 360,
+      "line": 366,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": "()=>setMode(\"customer\")} className={`rounded-xl px-3 py-3 text-sm font-black ${mode === \"customer\" ? \"bg-[#1f6b45] text-"
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:360:25",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:366:25",
       "type": "action",
       "name": "Caretakers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 360,
+      "line": 366,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": "()=>setMode(\"caretaker\")} className={`rounded-xl px-3 py-3 text-sm font-black ${mode === \"caretaker\" ? \"bg-[#1f6b45] tex"
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:360:26",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:366:26",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 360,
+      "line": 366,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": "()=>setSelectedId(row.id)} className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left ${selected?.id =="
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:361:27",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:367:27",
       "type": "action",
       "name": "Open",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 361,
+      "line": 367,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:362:28",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:368:28",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 362,
+      "line": 368,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:362:29",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:368:29",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 362,
+      "line": 368,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:364:30",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:370:30",
       "type": "action",
       "name": "Close",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 364,
+      "line": 370,
       "role": "admin",
       "route": "/admin/account-verification",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:438:31",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:444:31",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 438,
+      "line": 444,
       "role": "caretaker",
       "route": "/caretaker/signup",
       "wiring": "handled-unproven",
@@ -3408,11 +3380,11 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:116:112",
+      "id": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:118:112",
       "type": "rpc",
       "name": "admin_session_guard_status",
       "file": "lib/farmconnect-unified-account-verification.tsx",
-      "line": 116,
+      "line": 118,
       "role": "system",
       "route": "lib/farmconnect-unified-account-verification.tsx"
     },
@@ -3774,94 +3746,94 @@
     },
     {
       "from": "route:lib/farmconnect-unified-account-verification.tsx",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:163:20",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:165:20",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:163"
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:165"
     },
     {
-      "from": "action:lib/farmconnect-unified-account-verification.tsx:163:20",
-      "to": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:116:112",
+      "from": "action:lib/farmconnect-unified-account-verification.tsx:165:20",
+      "to": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:118:112",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:163 near lib/farmconnect-unified-account-verification.tsx:116"
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:165 near lib/farmconnect-unified-account-verification.tsx:118"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:349:21",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:355:21",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:349"
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:355"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:358:22",
-      "relation": "contains_action",
-      "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:358"
-    },
-    {
-      "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:358:23",
-      "relation": "contains_action",
-      "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:358"
-    },
-    {
-      "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:360:24",
-      "relation": "contains_action",
-      "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:360"
-    },
-    {
-      "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:360:25",
-      "relation": "contains_action",
-      "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:360"
-    },
-    {
-      "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:360:26",
-      "relation": "contains_action",
-      "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:360"
-    },
-    {
-      "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:361:27",
-      "relation": "contains_action",
-      "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:361"
-    },
-    {
-      "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:362:28",
-      "relation": "contains_action",
-      "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:362"
-    },
-    {
-      "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:362:29",
-      "relation": "contains_action",
-      "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:362"
-    },
-    {
-      "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:364:30",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:364:22",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:364"
     },
     {
-      "from": "route:/caretaker/signup",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:438:31",
+      "from": "route:/admin/account-verification",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:364:23",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:438"
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:364"
+    },
+    {
+      "from": "route:/admin/account-verification",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:366:24",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:366"
+    },
+    {
+      "from": "route:/admin/account-verification",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:366:25",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:366"
+    },
+    {
+      "from": "route:/admin/account-verification",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:366:26",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:366"
+    },
+    {
+      "from": "route:/admin/account-verification",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:367:27",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:367"
+    },
+    {
+      "from": "route:/admin/account-verification",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:368:28",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:368"
+    },
+    {
+      "from": "route:/admin/account-verification",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:368:29",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:368"
+    },
+    {
+      "from": "route:/admin/account-verification",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:370:30",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:370"
+    },
+    {
+      "from": "route:/caretaker/signup",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:444:31",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:444"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
@@ -4792,35 +4764,35 @@
       "to": "route:/admin/login",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:155"
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:157"
     },
     {
       "from": "route:lib/farmconnect-unified-account-verification.tsx",
       "to": "route:/admin",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:161"
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:163"
     },
     {
       "from": "route:lib/farmconnect-unified-account-verification.tsx",
       "to": "route:/admin/kafarm",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:163"
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:165"
     },
     {
       "from": "route:/admin/account-verification",
       "to": "route:/admin/login",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:349"
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:355"
     },
     {
       "from": "route:/caretaker/signup",
       "to": "route:/login",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-unified-account-verification.tsx:438"
+      "evidence": "lib/farmconnect-unified-account-verification.tsx:444"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
@@ -5745,5 +5717,5 @@
     "A test script existing does not mean it passed on this commit or deployment.",
     "The generated map contains source references, not unrestricted runtime source-code access."
   ],
-  "fingerprint": "57780398f4685e544dc3316ca93ce151b4cc61bff3b8c5dd2e0716c91f4e99fa"
+  "fingerprint": "fbbbc70550a3dd512e49f951ff6bf93dd90ef98470f49c6789a2133b386d3066"
 }
