@@ -146,6 +146,7 @@ with expected(migration, kind, object_name) as (
     ,('073_manual_withdrawal_dispute_investigation.sql','function','customer_report_withdrawal_problem')
     ,('073_manual_withdrawal_dispute_investigation.sql','function','admin_resolve_withdrawal_dispute')
     ,('073_manual_withdrawal_dispute_investigation.sql','function','withdrawal_dispute_investigation_version')
+    ,('074_withdrawal_legacy_problem_to_investigation.sql','function','withdrawal_legacy_problem_reconciliation_version')
     ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','rooster_sale_workflow_version')
     ,('044_workflow_chain_guard.sql','table','workflow_operation_keys')
     ,('044_workflow_chain_guard.sql','table','workflow_chain_runs')
