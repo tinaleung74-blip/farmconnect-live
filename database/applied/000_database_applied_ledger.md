@@ -861,6 +861,23 @@ Expected success output:
 - `admin_resolution_rpc = true`
 - `direct_customer_resubmit_revoked = true`
 
+## 074_withdrawal_legacy_problem_to_investigation.sql
+
+Status: **APPLIED / OWNER VERIFIED 2026-08-19**
+
+Purpose:
+
+- Move only proven legacy customer payout-problem rows from `needs_info` into the manual investigation queue.
+- Preserve the original payout method, account, amount, Admin reference, receipt, and customer note.
+- Make old cached customer clients route a negative payout confirmation into the guarded dispute workflow.
+- Keep Admin-requested information rows untouched when no customer problem evidence exists.
+
+Expected success output:
+
+- `legacy_problem_rows_remaining = 0`
+- `open_investigation_cases >= 1` for the currently reported test case
+- `legacy_rpc_guarded = true`
+
 ## 058_care_plan_mission_engine_foundation.sql
 
 Status: **APPLIED / CONTROLLED E2E VERIFIED (2026-08-14 ASIA/MANILA)**

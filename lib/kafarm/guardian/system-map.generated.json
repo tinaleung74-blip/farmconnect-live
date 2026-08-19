@@ -1,23 +1,22 @@
 {
   "schemaVersion": "1.0.0",
   "application": "FarmConnect",
-  "generatedAt": "2026-08-19T09:15:58.671Z",
+  "generatedAt": "2026-08-19T09:41:45.764Z",
   "sourceSnapshot": {
-    "generatedAt": "2026-08-19T09:15:58.589Z",
-    "sourceFingerprint": "5867ed819063c0d82dac4cff1ea0f8d79c5a191099554cde794e8ac0568f8016",
+    "generatedAt": "2026-08-19T09:41:45.370Z",
+    "sourceFingerprint": "ae6a89a962acdced3837ef64fcfb6f6fb252d6b1e3024431134a98e6cb436925",
     "schemaVersion": "2.2.0"
   },
   "git": {
-    "commit": "36f0f25eb645680852f2bc364f4a407b5d76252f",
-    "branch": "master",
+    "commit": "cde2e2c5e59987659b6f93953453b01001db3d6e",
+    "branch": "agent/withdrawal-dispute-investigation",
     "dirtyFiles": [
       "M database/00_verify_applied_sql_status.sql",
       " M database/applied/000_database_applied_ledger.md",
-      " M lib/farmconnect-data.ts",
       " M lib/farmconnect-v1.tsx",
       " M lib/kafarm-system-snapshot.generated.json",
       " M scripts/qa/withdrawal-recovery-contract.mjs",
-      "?? database/applied/073_manual_withdrawal_dispute_investigation.sql"
+      "?? database/applied/074_withdrawal_legacy_problem_to_investigation.sql"
     ]
   },
   "blueprint": {
@@ -5759,5 +5758,5 @@
     "A test script existing does not mean it passed on this commit or deployment.",
     "The generated map contains source references, not unrestricted runtime source-code access."
   ],
-  "fingerprint": "e20b197bdf48ab22b8f98c865df4fa0de0622636c8c9f79af87bac97fca2367c"
+  "fingerprint": "f2098bb50c4acffac80daf9af7350586b861044615b9bb48c96595efdb5ccfab"
 }

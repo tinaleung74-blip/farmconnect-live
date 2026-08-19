@@ -4268,7 +4268,7 @@ export function WithdrawPageV2() {
                   </div>
                 )}
                 {row.admin_note && <p className="mt-3 text-sm font-bold leading-6 text-[#667267]">Admin note: {row.admin_note}</p>}
-                {row.status === "under_investigation" && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-black text-amber-900">Under manual investigation. The original payout evidence is locked and no resend is allowed yet.</p>}
+                {["under_investigation", "needs_info"].includes(String(row.status || "")) && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-black text-amber-900">Waiting for Admin investigation. The original payout evidence is locked and no resubmit or second payout is allowed.</p>}
                 {row.status === "sent_for_customer_confirmation" && (
                   <div className="mt-3 grid gap-2">
                     <button type="button" disabled={saving} onClick={() => void answerConfirmation(row, true)} className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">

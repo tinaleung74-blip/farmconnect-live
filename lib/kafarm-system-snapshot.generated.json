@@ -1,17 +1,16 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-19T09:15:58.589Z",
-  "sourceFingerprint": "5867ed819063c0d82dac4cff1ea0f8d79c5a191099554cde794e8ac0568f8016",
+  "generatedAt": "2026-08-19T09:41:45.370Z",
+  "sourceFingerprint": "ae6a89a962acdced3837ef64fcfb6f6fb252d6b1e3024431134a98e6cb436925",
   "git": {
-    "commit": "36f0f25eb645680852f2bc364f4a407b5d76252f",
-    "branch": "master",
+    "commit": "cde2e2c5e59987659b6f93953453b01001db3d6e",
+    "branch": "agent/withdrawal-dispute-investigation",
     "dirtyFiles": [
       "database/00_verify_applied_sql_status.sql",
       "database/applied/000_database_applied_ledger.md",
-      "lib/farmconnect-data.ts",
       "lib/farmconnect-v1.tsx",
       "scripts/qa/withdrawal-recovery-contract.mjs",
-      "database/applied/073_manual_withdrawal_dispute_investigation.sql"
+      "database/applied/074_withdrawal_legacy_problem_to_investigation.sql"
     ]
   },
   "safety": {
@@ -5031,7 +5030,7 @@
     },
     {
       "file": "lib/farmconnect-v1.tsx",
-      "sha256": "8dd0217569fb8358a0a0a4898230b1973d43c38ad6345b0f4792a4d1f890d4e0"
+      "sha256": "fd08f55549e60622471304345017fb983a3e04dbf5f9b21853476ee9cdc7a029"
     },
     {
       "file": "lib/kafarm-brain.ts",
