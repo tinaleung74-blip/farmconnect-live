@@ -4430,14 +4430,15 @@ export function InboxPage() {
             const text = row.body || row.message || row.description || "Open this record for details.";
             const searchable = `${title} ${text}`.toLowerCase();
             const isPaymentRecord = rawCategory === "receipt" || rawCategory === "invoice" || /payment|receipt|invoice|amount:|reference:/.test(searchable);
+            const isWithdrawalRecord = rawCategory === "withdraw" || searchable.includes("withdrawal");
             const isCarePayment = isPaymentRecord && (searchable.includes("care request") || searchable.includes("source: care_request"));
             const isCashPayment = isPaymentRecord && /cash[ -]?in/.test(searchable);
-            const tab = isPaymentRecord ? "Receipts" : rawCategory === "farm_update" || rawCategory === "care" ? "Caretaker Updates" : rawCategory === "wallet" || rawCategory === "cashin" || rawCategory === "withdraw" || rawCategory === "alert" ? "Alerts" : "Messages";
+            const tab = isWithdrawalRecord ? "Alerts" : isPaymentRecord ? "Receipts" : rawCategory === "farm_update" || rawCategory === "care" ? "Caretaker Updates" : rawCategory === "wallet" || rawCategory === "cashin" || rawCategory === "alert" ? "Alerts" : "Messages";
             const reference = text.match(/Reference:\s*([^\.]+)/i)?.[1]?.trim();
             const paymentRequestId = text.match(/Payment Request:\s*([a-f0-9-]+)/i)?.[1]?.trim();
             const invoicePath = isCarePayment ? "/customer/inbox/invoice/care-request" : isCashPayment ? "/customer/inbox/invoice/cashin" : "/customer/inbox/invoice/farm-buy";
             const invoiceQuery = paymentRequestId ? `?payment=${encodeURIComponent(paymentRequestId)}` : reference ? `?reference=${encodeURIComponent(reference)}` : "";
-            const href = tab === "Receipts" ? `${invoicePath}${invoiceQuery}` : tab === "Caretaker Updates" ? "/customer/care-logs" : undefined;
+            const href = isWithdrawalRecord ? "/customer/withdraw" : tab === "Receipts" ? `${invoicePath}${invoiceQuery}` : tab === "Caretaker Updates" ? "/customer/care-logs" : undefined;
             const status = searchable.includes("for admin review") || searchable.includes("waiting for admin") ? "Pending" : searchable.includes("rejected") ? "Rejected" : searchable.includes("needs more info") || searchable.includes("needs correction") || searchable.includes("problem was sent back") ? "Needs Info" : searchable.includes("completed") || searchable.includes("complete and remains") ? "Completed" : searchable.includes("approved") ? "Approved" : searchable.includes("submitted") || searchable.includes("recorded") ? "Recorded" : String(row.status || "Recorded").replaceAll("_", " ");
             return {
               id: row.id,
@@ -4445,7 +4446,7 @@ export function InboxPage() {
               text,
               status,
               tab,
-              action: href?.includes("invoice") ? "invoice" : href ? "carelogs" : "read",
+              action: isWithdrawalRecord ? "withdrawal" : href?.includes("invoice") ? "invoice" : href ? "carelogs" : "read",
               href,
               created_at: row.created_at,
               is_read: Boolean(row.is_read),
@@ -4480,7 +4481,7 @@ export function InboxPage() {
     .filter((i) => category === "All" || i.tab === category)
     .filter((i) => (i.title + " " + i.text + " " + i.status).toLowerCase().includes(query.toLowerCase()))
     .sort((a, b) => (sort === "Unread first" ? Number(read.includes(a.inboxKey)) - Number(read.includes(b.inboxKey)) : sort === "Oldest first" ? String(a.created_at || a.title).localeCompare(String(b.created_at || b.title)) : String(b.created_at || b.title).localeCompare(String(a.created_at || a.title))));
-  const actionLabel = (item: any) => (item.action === "invoice" ? "Open Receipt" : item.action === "carelogs" ? "Open Care Logs" : "Mark Read");
+  const actionLabel = (item: any) => (item.action === "withdrawal" ? "Open Withdrawal" : item.action === "invoice" ? "Open Receipt" : item.action === "carelogs" ? "Open Care Logs" : "Mark Read");
   async function markItemRead(item: any) {
     if (!read.includes(item.inboxKey)) {
       try {

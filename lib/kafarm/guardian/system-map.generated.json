@@ -1,22 +1,20 @@
 {
   "schemaVersion": "1.0.0",
   "application": "FarmConnect",
-  "generatedAt": "2026-08-19T04:13:09.443Z",
+  "generatedAt": "2026-08-19T07:29:57.937Z",
   "sourceSnapshot": {
-    "generatedAt": "2026-08-19T04:13:09.254Z",
-    "sourceFingerprint": "6e8e2fb497a08f9f9429166a6ec6ea75b1d57756cfe288482a4a0301a5ab324f",
+    "generatedAt": "2026-08-19T07:29:57.808Z",
+    "sourceFingerprint": "20907d3cee1000289ae5241aa335ac706fc0c2f5604c0e458ae4e037c7c4f3a6",
     "schemaVersion": "2.2.0"
   },
   "git": {
-    "commit": "acec52287cd7b7082e112b708cd1418b7842c3d0",
+    "commit": "d9f77e938faf1a1fef75423a0dddd9ec36a03e65",
     "branch": "agent/kafarm-guardian",
     "dirtyFiles": [
-      "M database/00_verify_applied_sql_status.sql",
-      " M database/applied/000_database_applied_ledger.md",
-      " M lib/farmconnect-unified-account-verification.tsx",
+      "M lib/farmconnect-v1.tsx",
       " M lib/kafarm-system-snapshot.generated.json",
-      " M scripts/qa/security-contract.mjs",
-      "?? database/applied/071_customer_kyc_risk_review_guard.sql"
+      " M package.json",
+      "?? scripts/qa/customer-inbox-routing-contract.mjs"
     ]
   },
   "blueprint": {
@@ -30,7 +28,7 @@
     "actions": 139,
     "backendReferences": 122,
     "edges": 250,
-    "tests": 18
+    "tests": 19
   },
   "nodes": [
     {
@@ -1604,770 +1602,770 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4522:69",
+      "id": "action:lib/farmconnect-v1.tsx:4523:69",
       "type": "action",
       "name": "Mark All as Read",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4522,
+      "line": 4523,
       "role": "customer",
       "route": "/customer/inbox, /customer/notifications",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4530:70",
+      "id": "action:lib/farmconnect-v1.tsx:4531:70",
       "type": "action",
       "name": "{count > 0 && }",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4530,
+      "line": 4531,
       "role": "customer",
       "route": "/customer/inbox, /customer/notifications",
       "wiring": "handled-unproven",
       "handler": "() => setCategory(c.name)} className={\"flex min-w-[190px] shrink-0 items-center gap-3 rounded-2xl px-3 py-3 text-left tr"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4574:71",
+      "id": "action:lib/farmconnect-v1.tsx:4575:71",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4574,
+      "line": 4575,
       "role": "customer",
       "route": "/customer/inbox, /customer/notifications",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4579:72",
+      "id": "action:lib/farmconnect-v1.tsx:4580:72",
       "type": "action",
       "name": "Mark as Read",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4579,
+      "line": 4580,
       "role": "customer",
       "route": "/customer/inbox, /customer/notifications",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4584:73",
+      "id": "action:lib/farmconnect-v1.tsx:4585:73",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4584,
+      "line": 4585,
       "role": "customer",
       "route": "/customer/inbox, /customer/notifications",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4731:74",
+      "id": "action:lib/farmconnect-v1.tsx:4732:74",
       "type": "action",
       "name": "x",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4731,
+      "line": 4732,
       "role": "customer",
       "route": "/customer/payment",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4791:75",
+      "id": "action:lib/farmconnect-v1.tsx:4792:75",
       "type": "action",
       "name": "Payment channel",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4791,
+      "line": 4792,
       "role": "customer",
       "route": "/customer/payment",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4802:76",
+      "id": "action:lib/farmconnect-v1.tsx:4803:76",
       "type": "action",
       "name": "View QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4802,
+      "line": 4803,
       "role": "customer",
       "route": "/customer/payment",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4833:77",
+      "id": "action:lib/farmconnect-v1.tsx:4834:77",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4833,
+      "line": 4834,
       "role": "customer",
       "route": "/customer/payment",
       "wiring": "handled-unproven",
       "handler": "submitPayment} className={\"mt-4 w-full rounded-2xl px-4 py-4 font-black text-white \" + (submitting ? \"bg-[#7f9b8d]\" : \"b"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4987:78",
+      "id": "action:lib/farmconnect-v1.tsx:4988:78",
       "type": "action",
       "name": "Close",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4987,
+      "line": 4988,
       "role": "customer",
       "route": "/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5021:79",
+      "id": "action:lib/farmconnect-v1.tsx:5022:79",
       "type": "action",
       "name": "View Uploaded Receipt",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5021,
+      "line": 5022,
       "role": "customer",
       "route": "/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5059:80",
+      "id": "action:lib/farmconnect-v1.tsx:5060:80",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5059,
+      "line": 5060,
       "role": "customer",
       "route": "/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
       "wiring": "handled-unproven",
       "handler": "() => setCorrectionMethod(row)} className={\"rounded-2xl border p-4 text-left \" + (correctionMethod.method === row.method"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5074:81",
+      "id": "action:lib/farmconnect-v1.tsx:5075:81",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5074,
+      "line": 5075,
       "role": "customer",
       "route": "/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5297:82",
+      "id": "action:lib/farmconnect-v1.tsx:5298:82",
       "type": "action",
       "name": "Open Live Admin Escalation",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5297,
+      "line": 5298,
       "role": "customer",
       "route": "/customer/customer-service, /customer/support",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5311:83",
+      "id": "action:lib/farmconnect-v1.tsx:5312:83",
       "type": "action",
       "name": "Send",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5311,
+      "line": 5312,
       "role": "customer",
       "route": "/customer/customer-service, /customer/support",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5936:84",
+      "id": "action:lib/farmconnect-v1.tsx:5937:84",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5936,
+      "line": 5937,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5942:85",
+      "id": "action:lib/farmconnect-v1.tsx:5943:85",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5942,
+      "line": 5943,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6006:86",
+      "id": "action:lib/farmconnect-v1.tsx:6007:86",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6006,
+      "line": 6007,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": "() => card.key && openPanel(card.key, card.title)} className={\"flex w-full items-center gap-3 rounded-2xl border p-3 tex"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6116:87",
+      "id": "action:lib/farmconnect-v1.tsx:6117:87",
       "type": "action",
       "name": "ID Front chooseKycPhoto(\"front\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6116,
+      "line": 6117,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6124:88",
+      "id": "action:lib/farmconnect-v1.tsx:6125:88",
       "type": "action",
       "name": "ID Back chooseKycPhoto(\"back\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6124,
+      "line": 6125,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6132:89",
+      "id": "action:lib/farmconnect-v1.tsx:6133:89",
       "type": "action",
       "name": "Selfie chooseKycPhoto(\"selfie\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6132,
+      "line": 6133,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6149:90",
+      "id": "action:lib/farmconnect-v1.tsx:6150:90",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6149,
+      "line": 6150,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": "submitKyc} disabled={!kycConsent || kycSubmitting} className={\"rounded-2xl px-4 py-4 font-black text-white md:col-span-2"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6198:91",
+      "id": "action:lib/farmconnect-v1.tsx:6199:91",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6198,
+      "line": 6199,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6208:92",
+      "id": "action:lib/farmconnect-v1.tsx:6209:92",
       "type": "action",
       "name": "Change Password",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6208,
+      "line": 6209,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6219:93",
+      "id": "action:lib/farmconnect-v1.tsx:6220:93",
       "type": "action",
       "name": "Save Contact Details",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6219,
+      "line": 6220,
       "role": "customer",
       "route": "/customer/settings",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6703:94",
+      "id": "action:lib/farmconnect-v1.tsx:6704:94",
       "type": "action",
       "name": "/",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6703,
+      "line": 6704,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": "() => resetDraft(task)} className={\"w-full rounded-xl border p-3 text-left \" + (selected?.id === task.id ? \"border-[#1f6"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6856:95",
+      "id": "action:lib/farmconnect-v1.tsx:6857:95",
       "type": "action",
       "name": "Download QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6856,
+      "line": 6857,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6860:96",
+      "id": "action:lib/farmconnect-v1.tsx:6861:96",
       "type": "action",
       "name": "Print Tag",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6860,
+      "line": 6861,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6920:97",
+      "id": "action:lib/farmconnect-v1.tsx:6921:97",
       "type": "action",
       "name": "Add Evidence",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6920,
+      "line": 6921,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6930:98",
+      "id": "action:lib/farmconnect-v1.tsx:6931:98",
       "type": "action",
       "name": "x",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6930,
+      "line": 6931,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": "() => setProofFiles((files) => files.filter((_, itemIndex) => itemIndex !== index))} className=\"absolute right-1 top-1 g"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6939:99",
+      "id": "action:lib/farmconnect-v1.tsx:6940:99",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6939,
+      "line": 6940,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6962:100",
+      "id": "action:lib/farmconnect-v1.tsx:6963:100",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6962,
+      "line": 6963,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6997:101",
+      "id": "action:lib/farmconnect-v1.tsx:6998:101",
       "type": "action",
       "name": "Verify QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6997,
+      "line": 6998,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7000:102",
+      "id": "action:lib/farmconnect-v1.tsx:7001:102",
       "type": "action",
       "name": "Skip QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7000,
+      "line": 7001,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7013:103",
+      "id": "action:lib/farmconnect-v1.tsx:7014:103",
       "type": "action",
       "name": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7013,
+      "line": 7014,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7061:104",
+      "id": "action:lib/farmconnect-v1.tsx:7062:104",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7061,
+      "line": 7062,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7064:105",
+      "id": "action:lib/farmconnect-v1.tsx:7065:105",
       "type": "action",
       "name": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7064,
+      "line": 7065,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7300:106",
+      "id": "action:lib/farmconnect-v1.tsx:7301:106",
       "type": "action",
       "name": "Escalate to Admin",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7300,
+      "line": 7301,
       "role": "caretaker",
       "route": "/caretaker/chat, /caretaker/mortality, /caretaker/notes",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7314:107",
+      "id": "action:lib/farmconnect-v1.tsx:7315:107",
       "type": "action",
       "name": "Send",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7314,
+      "line": 7315,
       "role": "caretaker",
       "route": "/caretaker/chat, /caretaker/mortality, /caretaker/notes",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7448:108",
+      "id": "action:lib/farmconnect-v1.tsx:7449:108",
       "type": "action",
       "name": "-",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7448,
+      "line": 7449,
       "role": "caretaker",
       "route": "/caretaker/dashboard",
       "wiring": "handled-unproven",
       "handler": "() => setSelected(t)} className={\"w-full rounded-xl border p-3 text-left transition \" + (selected?.id === t.id ? \"border"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7846:109",
+      "id": "action:lib/farmconnect-v1.tsx:7847:109",
       "type": "action",
       "name": "Refresh Database Queue",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7846,
+      "line": 7847,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7852:110",
+      "id": "action:lib/farmconnect-v1.tsx:7853:110",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7852,
+      "line": 7853,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": "() => setSelected(chat)} className={\"w-full rounded-2xl border p-3 text-left transition \" + (selected.id === chat.id ? \""
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7916:111",
+      "id": "action:lib/farmconnect-v1.tsx:7917:111",
       "type": "action",
       "name": "Send",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7916,
+      "line": 7917,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7926:112",
+      "id": "action:lib/farmconnect-v1.tsx:7927:112",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7926,
+      "line": 7927,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7929:113",
+      "id": "action:lib/farmconnect-v1.tsx:7930:113",
       "type": "action",
       "name": "End Chat",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7929,
+      "line": 7930,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7932:114",
+      "id": "action:lib/farmconnect-v1.tsx:7933:114",
       "type": "action",
       "name": "Complete Chat",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7932,
+      "line": 7933,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8162:115",
+      "id": "action:lib/farmconnect-v1.tsx:8163:115",
       "type": "action",
       "name": "{section.id === \"sell\" ? liveSellCount : customerRequestJobs.filter((job) => job.queue === section.i",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8162,
+      "line": 8163,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": "() => setActiveSection(section.id)} className={\"rounded-2xl border p-4 text-left shadow-sm transition \" + (activeSection"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8216:116",
+      "id": "action:lib/farmconnect-v1.tsx:8217:116",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8216,
+      "line": 8217,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": "() => {\r\n                      setSelected(job);\r\n                      setDecision(\"open\");\r\n                      setN"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8321:117",
+      "id": "action:lib/farmconnect-v1.tsx:8322:117",
       "type": "action",
       "name": "View Payout Proof",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8321,
+      "line": 8322,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8337:118",
+      "id": "action:lib/farmconnect-v1.tsx:8338:118",
       "type": "action",
       "name": "View Receipt",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8337,
+      "line": 8338,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8355:119",
+      "id": "action:lib/farmconnect-v1.tsx:8356:119",
       "type": "action",
       "name": "/",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8355,
+      "line": 8356,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": "() => setSelectedCaretaker(caretaker.name)} className={\"w-full rounded-2xl border p-3 text-left transition \" + (selected"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8363:120",
+      "id": "action:lib/farmconnect-v1.tsx:8364:120",
       "type": "action",
       "name": "Assign Task",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8363,
+      "line": 8364,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8371:121",
+      "id": "action:lib/farmconnect-v1.tsx:8372:121",
       "type": "action",
       "name": "Approve",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8371,
+      "line": 8372,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8374:122",
+      "id": "action:lib/farmconnect-v1.tsx:8375:122",
       "type": "action",
       "name": "Reject",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8374,
+      "line": 8375,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8383:123",
+      "id": "action:lib/farmconnect-v1.tsx:8384:123",
       "type": "action",
       "name": "View Invoice",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8383,
+      "line": 8384,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8387:124",
+      "id": "action:lib/farmconnect-v1.tsx:8388:124",
       "type": "action",
       "name": "Submit Decision",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8387,
+      "line": 8388,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": "completeRequest} disabled={decision === \"open\"} className={\"mt-4 w-full rounded-2xl px-4 py-4 font-black text-white \" + "
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8407:125",
+      "id": "action:lib/farmconnect-v1.tsx:8408:125",
       "type": "action",
       "name": "Close",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8407,
+      "line": 8408,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8615:126",
+      "id": "action:lib/farmconnect-v1.tsx:8616:126",
       "type": "action",
       "name": "/",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8615,
+      "line": 8616,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": "() => {\r\n                setSelectedId(row.id);\r\n                setAdminNote(\"\");\r\n              }}\r\n              clas"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8664:127",
+      "id": "action:lib/farmconnect-v1.tsx:8665:127",
       "type": "action",
       "name": "Approve for Final Release",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8664,
+      "line": 8665,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8667:128",
+      "id": "action:lib/farmconnect-v1.tsx:8668:128",
       "type": "action",
       "name": "Reject with Note",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8667,
+      "line": 8668,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8771:129",
+      "id": "action:lib/farmconnect-v1.tsx:8772:129",
       "type": "action",
       "name": "/ Ref {sourceType === \"care\" && }",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8771,
+      "line": 8772,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": "() => selectRequest(row.id)} className={\"w-full rounded-2xl border p-3 text-left transition \" + (selected?.id === row.id"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8861:130",
+      "id": "action:lib/farmconnect-v1.tsx:8862:130",
       "type": "action",
       "name": "View Receipt",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8861,
+      "line": 8862,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8898:131",
+      "id": "action:lib/farmconnect-v1.tsx:8899:131",
       "type": "action",
       "name": "View Invoice",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8898,
+      "line": 8899,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8902:132",
+      "id": "action:lib/farmconnect-v1.tsx:8903:132",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8902,
+      "line": 8903,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8918:133",
+      "id": "action:lib/farmconnect-v1.tsx:8919:133",
       "type": "action",
       "name": "Close",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8918,
+      "line": 8919,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9002:134",
+      "id": "action:lib/farmconnect-v1.tsx:9003:134",
       "type": "action",
       "name": "-",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9002,
+      "line": 9003,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": "() => setSelectedId(row.id)} className={\"w-full rounded-2xl border p-3 text-left \" + (selected?.id === row.id ? \"border-"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9068:135",
+      "id": "action:lib/farmconnect-v1.tsx:9069:135",
       "type": "action",
       "name": "Approve",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9068,
+      "line": 9069,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9071:136",
+      "id": "action:lib/farmconnect-v1.tsx:9072:136",
       "type": "action",
       "name": "Needs Info",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9071,
+      "line": 9072,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9074:137",
+      "id": "action:lib/farmconnect-v1.tsx:9075:137",
       "type": "action",
       "name": "Reject",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9074,
+      "line": 9075,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:12205:138",
+      "id": "action:lib/farmconnect-v1.tsx:12206:138",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 12205,
+      "line": 12206,
       "role": "system",
       "route": "/signup",
       "wiring": "handled-unproven",
@@ -3391,47 +3389,47 @@
       "route": "lib/farmconnect-unified-account-verification.tsx"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:5780:113",
+      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:5781:113",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5780,
+      "line": 5781,
       "role": "customer",
       "route": "/customer/settings"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:12052:114",
+      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:12053:114",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 12052,
+      "line": 12053,
       "role": "system",
       "route": "lib/farmconnect-v1.tsx"
     },
     {
-      "id": "backend:rpc:customer_record_kyc_consent:lib/farmconnect-v1.tsx:5652:115",
+      "id": "backend:rpc:customer_record_kyc_consent:lib/farmconnect-v1.tsx:5653:115",
       "type": "rpc",
       "name": "customer_record_kyc_consent",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5652,
+      "line": 5653,
       "role": "customer",
       "route": "/customer/settings"
     },
     {
-      "id": "backend:rpc:customer_submit_kyc:lib/farmconnect-v1.tsx:5658:116",
+      "id": "backend:rpc:customer_submit_kyc:lib/farmconnect-v1.tsx:5659:116",
       "type": "rpc",
       "name": "customer_submit_kyc",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5658,
+      "line": 5659,
       "role": "customer",
       "route": "/customer/settings"
     },
     {
-      "id": "backend:rpc:change_wallet_pin:lib/farmconnect-v1.tsx:5734:117",
+      "id": "backend:rpc:change_wallet_pin:lib/farmconnect-v1.tsx:5735:117",
       "type": "rpc",
       "name": "change_wallet_pin",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5734,
+      "line": 5735,
       "role": "customer",
       "route": "/customer/settings"
     },
@@ -4098,507 +4096,507 @@
     },
     {
       "from": "route:/customer/inbox, /customer/notifications",
-      "to": "action:lib/farmconnect-v1.tsx:4522:69",
+      "to": "action:lib/farmconnect-v1.tsx:4523:69",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4522"
+      "evidence": "lib/farmconnect-v1.tsx:4523"
     },
     {
       "from": "route:/customer/inbox, /customer/notifications",
-      "to": "action:lib/farmconnect-v1.tsx:4530:70",
+      "to": "action:lib/farmconnect-v1.tsx:4531:70",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4530"
+      "evidence": "lib/farmconnect-v1.tsx:4531"
     },
     {
       "from": "route:/customer/inbox, /customer/notifications",
-      "to": "action:lib/farmconnect-v1.tsx:4574:71",
+      "to": "action:lib/farmconnect-v1.tsx:4575:71",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4574"
+      "evidence": "lib/farmconnect-v1.tsx:4575"
     },
     {
       "from": "route:/customer/inbox, /customer/notifications",
-      "to": "action:lib/farmconnect-v1.tsx:4579:72",
+      "to": "action:lib/farmconnect-v1.tsx:4580:72",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4579"
+      "evidence": "lib/farmconnect-v1.tsx:4580"
     },
     {
       "from": "route:/customer/inbox, /customer/notifications",
-      "to": "action:lib/farmconnect-v1.tsx:4584:73",
+      "to": "action:lib/farmconnect-v1.tsx:4585:73",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4584"
+      "evidence": "lib/farmconnect-v1.tsx:4585"
     },
     {
       "from": "route:/customer/payment",
-      "to": "action:lib/farmconnect-v1.tsx:4731:74",
+      "to": "action:lib/farmconnect-v1.tsx:4732:74",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4731"
+      "evidence": "lib/farmconnect-v1.tsx:4732"
     },
     {
       "from": "route:/customer/payment",
-      "to": "action:lib/farmconnect-v1.tsx:4791:75",
+      "to": "action:lib/farmconnect-v1.tsx:4792:75",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4791"
+      "evidence": "lib/farmconnect-v1.tsx:4792"
     },
     {
       "from": "route:/customer/payment",
-      "to": "action:lib/farmconnect-v1.tsx:4802:76",
+      "to": "action:lib/farmconnect-v1.tsx:4803:76",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4802"
+      "evidence": "lib/farmconnect-v1.tsx:4803"
     },
     {
       "from": "route:/customer/payment",
-      "to": "action:lib/farmconnect-v1.tsx:4833:77",
+      "to": "action:lib/farmconnect-v1.tsx:4834:77",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4833"
+      "evidence": "lib/farmconnect-v1.tsx:4834"
     },
     {
       "from": "route:/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
-      "to": "action:lib/farmconnect-v1.tsx:4987:78",
+      "to": "action:lib/farmconnect-v1.tsx:4988:78",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4987"
+      "evidence": "lib/farmconnect-v1.tsx:4988"
     },
     {
       "from": "route:/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
-      "to": "action:lib/farmconnect-v1.tsx:5021:79",
+      "to": "action:lib/farmconnect-v1.tsx:5022:79",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5021"
+      "evidence": "lib/farmconnect-v1.tsx:5022"
     },
     {
       "from": "route:/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
-      "to": "action:lib/farmconnect-v1.tsx:5059:80",
+      "to": "action:lib/farmconnect-v1.tsx:5060:80",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5059"
+      "evidence": "lib/farmconnect-v1.tsx:5060"
     },
     {
       "from": "route:/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
-      "to": "action:lib/farmconnect-v1.tsx:5074:81",
+      "to": "action:lib/farmconnect-v1.tsx:5075:81",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5074"
+      "evidence": "lib/farmconnect-v1.tsx:5075"
     },
     {
       "from": "route:/customer/customer-service, /customer/support",
-      "to": "action:lib/farmconnect-v1.tsx:5297:82",
+      "to": "action:lib/farmconnect-v1.tsx:5298:82",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5297"
+      "evidence": "lib/farmconnect-v1.tsx:5298"
     },
     {
       "from": "route:/customer/customer-service, /customer/support",
-      "to": "action:lib/farmconnect-v1.tsx:5311:83",
+      "to": "action:lib/farmconnect-v1.tsx:5312:83",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5311"
+      "evidence": "lib/farmconnect-v1.tsx:5312"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:5936:84",
+      "to": "action:lib/farmconnect-v1.tsx:5937:84",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5936"
+      "evidence": "lib/farmconnect-v1.tsx:5937"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:5936:84",
-      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:5780:113",
+      "from": "action:lib/farmconnect-v1.tsx:5937:84",
+      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:5781:113",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "lib/farmconnect-v1.tsx:5936 near lib/farmconnect-v1.tsx:5780"
+      "evidence": "lib/farmconnect-v1.tsx:5937 near lib/farmconnect-v1.tsx:5781"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:5942:85",
+      "to": "action:lib/farmconnect-v1.tsx:5943:85",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5942"
+      "evidence": "lib/farmconnect-v1.tsx:5943"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6006:86",
+      "to": "action:lib/farmconnect-v1.tsx:6007:86",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6006"
+      "evidence": "lib/farmconnect-v1.tsx:6007"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6116:87",
+      "to": "action:lib/farmconnect-v1.tsx:6117:87",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6116"
+      "evidence": "lib/farmconnect-v1.tsx:6117"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6124:88",
+      "to": "action:lib/farmconnect-v1.tsx:6125:88",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6124"
+      "evidence": "lib/farmconnect-v1.tsx:6125"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6132:89",
+      "to": "action:lib/farmconnect-v1.tsx:6133:89",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6132"
+      "evidence": "lib/farmconnect-v1.tsx:6133"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6149:90",
+      "to": "action:lib/farmconnect-v1.tsx:6150:90",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6149"
+      "evidence": "lib/farmconnect-v1.tsx:6150"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6198:91",
+      "to": "action:lib/farmconnect-v1.tsx:6199:91",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6198"
+      "evidence": "lib/farmconnect-v1.tsx:6199"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6208:92",
+      "to": "action:lib/farmconnect-v1.tsx:6209:92",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6208"
+      "evidence": "lib/farmconnect-v1.tsx:6209"
     },
     {
       "from": "route:/customer/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6219:93",
+      "to": "action:lib/farmconnect-v1.tsx:6220:93",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6219"
+      "evidence": "lib/farmconnect-v1.tsx:6220"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:6703:94",
+      "to": "action:lib/farmconnect-v1.tsx:6704:94",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6703"
+      "evidence": "lib/farmconnect-v1.tsx:6704"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:6856:95",
+      "to": "action:lib/farmconnect-v1.tsx:6857:95",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6856"
+      "evidence": "lib/farmconnect-v1.tsx:6857"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:6860:96",
+      "to": "action:lib/farmconnect-v1.tsx:6861:96",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6860"
+      "evidence": "lib/farmconnect-v1.tsx:6861"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:6920:97",
+      "to": "action:lib/farmconnect-v1.tsx:6921:97",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6920"
+      "evidence": "lib/farmconnect-v1.tsx:6921"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:6930:98",
+      "to": "action:lib/farmconnect-v1.tsx:6931:98",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6930"
+      "evidence": "lib/farmconnect-v1.tsx:6931"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:6939:99",
+      "to": "action:lib/farmconnect-v1.tsx:6940:99",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6939"
+      "evidence": "lib/farmconnect-v1.tsx:6940"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:6962:100",
+      "to": "action:lib/farmconnect-v1.tsx:6963:100",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6962"
+      "evidence": "lib/farmconnect-v1.tsx:6963"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:6997:101",
+      "to": "action:lib/farmconnect-v1.tsx:6998:101",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6997"
+      "evidence": "lib/farmconnect-v1.tsx:6998"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7000:102",
+      "to": "action:lib/farmconnect-v1.tsx:7001:102",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7000"
+      "evidence": "lib/farmconnect-v1.tsx:7001"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7013:103",
+      "to": "action:lib/farmconnect-v1.tsx:7014:103",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7013"
+      "evidence": "lib/farmconnect-v1.tsx:7014"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7061:104",
+      "to": "action:lib/farmconnect-v1.tsx:7062:104",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7061"
+      "evidence": "lib/farmconnect-v1.tsx:7062"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7064:105",
+      "to": "action:lib/farmconnect-v1.tsx:7065:105",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7064"
+      "evidence": "lib/farmconnect-v1.tsx:7065"
     },
     {
       "from": "route:/caretaker/chat, /caretaker/mortality, /caretaker/notes",
-      "to": "action:lib/farmconnect-v1.tsx:7300:106",
+      "to": "action:lib/farmconnect-v1.tsx:7301:106",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7300"
+      "evidence": "lib/farmconnect-v1.tsx:7301"
     },
     {
       "from": "route:/caretaker/chat, /caretaker/mortality, /caretaker/notes",
-      "to": "action:lib/farmconnect-v1.tsx:7314:107",
+      "to": "action:lib/farmconnect-v1.tsx:7315:107",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7314"
+      "evidence": "lib/farmconnect-v1.tsx:7315"
     },
     {
       "from": "route:/caretaker/dashboard",
-      "to": "action:lib/farmconnect-v1.tsx:7448:108",
+      "to": "action:lib/farmconnect-v1.tsx:7449:108",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7448"
+      "evidence": "lib/farmconnect-v1.tsx:7449"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:7846:109",
+      "to": "action:lib/farmconnect-v1.tsx:7847:109",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7846"
+      "evidence": "lib/farmconnect-v1.tsx:7847"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:7852:110",
+      "to": "action:lib/farmconnect-v1.tsx:7853:110",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7852"
+      "evidence": "lib/farmconnect-v1.tsx:7853"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:7916:111",
+      "to": "action:lib/farmconnect-v1.tsx:7917:111",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7916"
+      "evidence": "lib/farmconnect-v1.tsx:7917"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:7926:112",
+      "to": "action:lib/farmconnect-v1.tsx:7927:112",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7926"
+      "evidence": "lib/farmconnect-v1.tsx:7927"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:7929:113",
+      "to": "action:lib/farmconnect-v1.tsx:7930:113",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7929"
+      "evidence": "lib/farmconnect-v1.tsx:7930"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:7932:114",
+      "to": "action:lib/farmconnect-v1.tsx:7933:114",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7932"
+      "evidence": "lib/farmconnect-v1.tsx:7933"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8162:115",
+      "to": "action:lib/farmconnect-v1.tsx:8163:115",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8162"
+      "evidence": "lib/farmconnect-v1.tsx:8163"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8216:116",
+      "to": "action:lib/farmconnect-v1.tsx:8217:116",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8216"
+      "evidence": "lib/farmconnect-v1.tsx:8217"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8321:117",
+      "to": "action:lib/farmconnect-v1.tsx:8322:117",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8321"
+      "evidence": "lib/farmconnect-v1.tsx:8322"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8337:118",
+      "to": "action:lib/farmconnect-v1.tsx:8338:118",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8337"
+      "evidence": "lib/farmconnect-v1.tsx:8338"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8355:119",
+      "to": "action:lib/farmconnect-v1.tsx:8356:119",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8355"
+      "evidence": "lib/farmconnect-v1.tsx:8356"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8363:120",
+      "to": "action:lib/farmconnect-v1.tsx:8364:120",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8363"
+      "evidence": "lib/farmconnect-v1.tsx:8364"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8371:121",
+      "to": "action:lib/farmconnect-v1.tsx:8372:121",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8371"
+      "evidence": "lib/farmconnect-v1.tsx:8372"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8374:122",
+      "to": "action:lib/farmconnect-v1.tsx:8375:122",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8374"
+      "evidence": "lib/farmconnect-v1.tsx:8375"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8383:123",
+      "to": "action:lib/farmconnect-v1.tsx:8384:123",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8383"
+      "evidence": "lib/farmconnect-v1.tsx:8384"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8387:124",
+      "to": "action:lib/farmconnect-v1.tsx:8388:124",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8387"
+      "evidence": "lib/farmconnect-v1.tsx:8388"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8407:125",
+      "to": "action:lib/farmconnect-v1.tsx:8408:125",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8407"
+      "evidence": "lib/farmconnect-v1.tsx:8408"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8615:126",
+      "to": "action:lib/farmconnect-v1.tsx:8616:126",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8615"
+      "evidence": "lib/farmconnect-v1.tsx:8616"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8664:127",
+      "to": "action:lib/farmconnect-v1.tsx:8665:127",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8664"
+      "evidence": "lib/farmconnect-v1.tsx:8665"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8667:128",
+      "to": "action:lib/farmconnect-v1.tsx:8668:128",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8667"
+      "evidence": "lib/farmconnect-v1.tsx:8668"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8771:129",
+      "to": "action:lib/farmconnect-v1.tsx:8772:129",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8771"
+      "evidence": "lib/farmconnect-v1.tsx:8772"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8861:130",
+      "to": "action:lib/farmconnect-v1.tsx:8862:130",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8861"
+      "evidence": "lib/farmconnect-v1.tsx:8862"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8898:131",
+      "to": "action:lib/farmconnect-v1.tsx:8899:131",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8898"
+      "evidence": "lib/farmconnect-v1.tsx:8899"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8902:132",
+      "to": "action:lib/farmconnect-v1.tsx:8903:132",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8902"
+      "evidence": "lib/farmconnect-v1.tsx:8903"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8918:133",
+      "to": "action:lib/farmconnect-v1.tsx:8919:133",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:8918"
+      "evidence": "lib/farmconnect-v1.tsx:8919"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9002:134",
+      "to": "action:lib/farmconnect-v1.tsx:9003:134",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:9002"
+      "evidence": "lib/farmconnect-v1.tsx:9003"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9068:135",
+      "to": "action:lib/farmconnect-v1.tsx:9069:135",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:9068"
+      "evidence": "lib/farmconnect-v1.tsx:9069"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9071:136",
+      "to": "action:lib/farmconnect-v1.tsx:9072:136",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:9071"
+      "evidence": "lib/farmconnect-v1.tsx:9072"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9074:137",
+      "to": "action:lib/farmconnect-v1.tsx:9075:137",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:9074"
+      "evidence": "lib/farmconnect-v1.tsx:9075"
     },
     {
       "from": "route:/signup",
-      "to": "action:lib/farmconnect-v1.tsx:12205:138",
+      "to": "action:lib/farmconnect-v1.tsx:12206:138",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:12205"
+      "evidence": "lib/farmconnect-v1.tsx:12206"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:12205:138",
-      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:12052:114",
+      "from": "action:lib/farmconnect-v1.tsx:12206:138",
+      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:12053:114",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "lib/farmconnect-v1.tsx:12205 near lib/farmconnect-v1.tsx:12052"
+      "evidence": "lib/farmconnect-v1.tsx:12206 near lib/farmconnect-v1.tsx:12053"
     },
     {
       "from": "route:/admin/kafarm",
@@ -5088,140 +5086,140 @@
       "to": "route:/customer/dashboard",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4707"
+      "evidence": "lib/farmconnect-v1.tsx:4708"
     },
     {
       "from": "route:/customer/payment",
       "to": "route:/customer/inbox",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:4848"
+      "evidence": "lib/farmconnect-v1.tsx:4849"
     },
     {
       "from": "route:/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
       "to": "route:/customer/inbox",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5085"
+      "evidence": "lib/farmconnect-v1.tsx:5086"
     },
     {
       "from": "route:/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
       "to": "route:/customer/farm-buy",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5088"
+      "evidence": "lib/farmconnect-v1.tsx:5089"
     },
     {
       "from": "route:/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
       "to": "route:/customer/inventory",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5091"
+      "evidence": "lib/farmconnect-v1.tsx:5092"
     },
     {
       "from": "route:/customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
       "to": "route:/customer/roosters",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:5094"
+      "evidence": "lib/farmconnect-v1.tsx:5095"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "to": "route:/caretaker/chat",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:6942"
+      "evidence": "lib/farmconnect-v1.tsx:6943"
     },
     {
       "from": "route:/caretaker/dashboard",
       "to": "route:/caretaker/tasks",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7492"
+      "evidence": "lib/farmconnect-v1.tsx:7493"
     },
     {
       "from": "route:/caretaker/dashboard",
       "to": "route:/caretaker/chat",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7495"
+      "evidence": "lib/farmconnect-v1.tsx:7496"
     },
     {
       "from": "route:/admin, /admin/analytics",
       "to": "route:/admin/evidence",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:7935"
+      "evidence": "lib/farmconnect-v1.tsx:7936"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
       "to": "route:/admin/account-verification",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:10271"
+      "evidence": "lib/farmconnect-v1.tsx:10272"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
       "to": "route:/admin/evidence",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:11909"
+      "evidence": "lib/farmconnect-v1.tsx:11910"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
       "to": "route:/admin/evidence",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:11956"
+      "evidence": "lib/farmconnect-v1.tsx:11957"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
       "to": "route:/admin/customer-requests/resolved",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:11959"
+      "evidence": "lib/farmconnect-v1.tsx:11960"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
       "to": "route:/customer/register",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:12098"
+      "evidence": "lib/farmconnect-v1.tsx:12099"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
       "to": "route:/caretaker/signup",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:12101"
+      "evidence": "lib/farmconnect-v1.tsx:12102"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
       "to": "route:/",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:12104"
+      "evidence": "lib/farmconnect-v1.tsx:12105"
     },
     {
       "from": "route:/signup",
       "to": "route:/customer/dashboard",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:12178"
+      "evidence": "lib/farmconnect-v1.tsx:12179"
     },
     {
       "from": "route:/signup",
       "to": "route:/login",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:12208"
+      "evidence": "lib/farmconnect-v1.tsx:12209"
     },
     {
       "from": "route:lib/farmconnect-v1.tsx",
       "to": "route:/login",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "lib/farmconnect-v1.tsx:12390"
+      "evidence": "lib/farmconnect-v1.tsx:12391"
     }
   ],
   "featureDependencies": [
@@ -5647,6 +5645,12 @@
       "currentReleaseStatus": "NOT_RUN_CURRENT_RELEASE"
     },
     {
+      "name": "test:inbox-routing",
+      "command": "node scripts/qa/customer-inbox-routing-contract.mjs",
+      "exists": true,
+      "currentReleaseStatus": "NOT_RUN_CURRENT_RELEASE"
+    },
+    {
       "name": "test:dependencies",
       "command": "node scripts/qa/dependency-contract.mjs",
       "exists": true,
@@ -5719,5 +5723,5 @@
     "A test script existing does not mean it passed on this commit or deployment.",
     "The generated map contains source references, not unrestricted runtime source-code access."
   ],
-  "fingerprint": "8494ee15bd33617c55df97d87128d763243e46a3abe3470e3c735b857f471599"
+  "fingerprint": "4a1208d7b341e0a23f04001a500e4ff4960f359f833983f0ee3832da72392fcb"
 }

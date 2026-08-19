@@ -14,6 +14,7 @@
         "test:kafarm-guardian": "node scripts/qa/kafarm-guardian-contract.mjs",
         "test:kafarm-gate": "node scripts/qa/kafarm-guardian-gate-unit.mjs",
         "test:security": "node scripts/qa/security-contract.mjs",
+        "test:inbox-routing": "node scripts/qa/customer-inbox-routing-contract.mjs",
         "test:dependencies": "node scripts/qa/dependency-contract.mjs",
         "test:recovery": "node scripts/qa/recovery-contract.mjs",
         "test:workflow": "node scripts/qa/workflow-reconciliation.mjs",
