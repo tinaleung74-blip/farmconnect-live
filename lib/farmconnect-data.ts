@@ -1127,6 +1127,29 @@ export async function confirmWithdrawalResult(withdrawalRequestId: string, recei
   return data as string;
 }
 
+export async function resubmitWithdrawalRequest(payload: {
+  withdrawalRequestId: string;
+  payoutMethod: string;
+  payoutHolder: string;
+  payoutAccount: string;
+  customerNote: string;
+  walletPin: string;
+}) {
+  const { data, error } = await supabase.rpc("customer_resubmit_withdrawal_request", {
+    p_withdrawal_request_id: payload.withdrawalRequestId,
+    p_payout_method: payload.payoutMethod,
+    p_payout_holder: payload.payoutHolder,
+    p_payout_account: payload.payoutAccount,
+    p_customer_note: payload.customerNote,
+    p_wallet_pin: payload.walletPin,
+  });
+  if (error) throw error;
+  const result = data as GuardedWorkflowResult;
+  if (result?.error) throw new Error(result.error);
+  if (!result?.id) throw new Error("WORKFLOW_RESULT_MISSING");
+  return result;
+}
+
 export async function getCaretakerApplications(statuses?: string[]) {
   let query = supabase.from("caretaker_applications").select("*").order("created_at", { ascending: false }).limit(80);
 

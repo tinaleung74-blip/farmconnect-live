@@ -140,6 +140,8 @@ with expected(migration, kind, object_name) as (
     ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','customer_save_payout_method')
     ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','customer_confirm_withdrawal_result')
     ,('057_withdrawal_completion_inbox_sync.sql','function','withdrawal_completion_inbox_sync_version')
+    ,('072_withdrawal_recovery_and_ledger_integrity.sql','function','customer_resubmit_withdrawal_request')
+    ,('072_withdrawal_recovery_and_ledger_integrity.sql','function','withdrawal_recovery_integrity_version')
     ,('040_rooster_sale_and_withdrawal_confirmation.sql','function','rooster_sale_workflow_version')
     ,('044_workflow_chain_guard.sql','table','workflow_operation_keys')
     ,('044_workflow_chain_guard.sql','table','workflow_chain_runs')

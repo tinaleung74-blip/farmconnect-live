@@ -825,6 +825,23 @@ Expected success output:
 
 - `completed_with_stale_confirmation_notice = 0`
 
+## 072_withdrawal_recovery_and_ledger_integrity.sql
+
+Status: **APPLIED / OWNER VERIFIED 2026-08-19**
+
+Purpose:
+
+- Let a customer correct a `needs_info` withdrawal without creating another request or wallet hold.
+- Give Admin a guarded `needs_info` recovery path and recheck live KYC inside the approval transaction.
+- Close or reverse the original `WITHDRAWAL_HOLD` ledger row when the request completes or is rejected.
+- Preserve payout corrections, decisions, Inbox notices, and evidence as an auditable state transition.
+
+Expected success output:
+
+- `customer_correction_rpc = true`
+- `admin_kyc_guard = true`
+- `ledger_trigger = true`
+
 ## 058_care_plan_mission_engine_foundation.sql
 
 Status: **APPLIED / CONTROLLED E2E VERIFIED (2026-08-14 ASIA/MANILA)**
