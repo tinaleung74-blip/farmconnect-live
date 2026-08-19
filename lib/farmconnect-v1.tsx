@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAdminEscalatedChats, getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, runAdminSupportAction, saveKaFarmSupportMessage, sendSupportMessage } from "@/lib/backend/support-chat";
 import { getEscalationNotice, getKaFarmReply, shouldEscalateToAdmin } from "@/lib/kafarm-brain";
-import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, assignAdminCarePlan, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterCareOverviews, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, requestCustomerCarePlan, requestRoosterSalePrice, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerManualMissionProof, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem, type CustomerRoosterCareOverview } from "@/lib/farmconnect-data";
+import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, assignAdminCarePlan, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterCareOverviews, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, requestCustomerCarePlan, requestRoosterSalePrice, resubmitWithdrawalRequest, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerManualMissionProof, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem, type CustomerRoosterCareOverview } from "@/lib/farmconnect-data";
 import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/customer-signup";
 import { adminReviewManualMissionProof } from "@/lib/farmconnect-data";
 import { prepareCustomerCarePlanPayment } from "@/lib/farmconnect-data";
@@ -35,6 +35,8 @@ function readableAppError(error: unknown) {
     WALLET_PIN_NOT_SET: "Set your Wallet PIN in Settings before requesting a withdrawal.",
     WALLET_PIN_INVALID: "Wallet PIN is incorrect.",
     WALLET_PIN_LOCKED: "Wallet PIN is temporarily locked after repeated failed attempts. Try again later.",
+    WITHDRAWAL_NOT_WAITING_FOR_CORRECTION: "This withdrawal is no longer waiting for corrected payout details. Refresh the page.",
+    WITHDRAWAL_HOLD_NOT_ACTIVE: "This withdrawal no longer has an active wallet hold. Admin must investigate before it can continue.",
     CARE_PLAN_CUSTOMER_FEED_BALANCE_INSUFFICIENT: "Inventory does not have enough eligible feed for the rooster’s complete age-based 30-day requirement. Buy feed in Farm Buy, wait for approval, then try again.",
     CARE_PLAN_CUSTOMER_FEED_CONVERSION_REQUIRED: "The selected feed has no verified kilogram conversion. Ask Admin to correct the feed unit before requesting a Care Plan.",
     MISSION_CATALOG_FEED_QUANTITY_INCOMPLETE: "The care standard is missing an exact feed quantity for one or more covered days. Care Plan payment is safely blocked until Admin corrects the mission catalog.",
@@ -4080,6 +4082,7 @@ export function WithdrawPageV2() {
   const [note, setNote] = useState("Loading your payout methods and withdrawal history...");
   const [problemId, setProblemId] = useState("");
   const [problemNote, setProblemNote] = useState("");
+  const [correctionId, setCorrectionId] = useState("");
   const [withdrawalAccess, setWithdrawalAccess] = useState({
     kycReady: false,
     available: 0,
@@ -4156,6 +4159,30 @@ export function WithdrawPageV2() {
     }
   }
 
+  async function resubmitCorrection(walletPin: string) {
+    const request = requests.find((row) => row.id === correctionId);
+    if (!request || !selected) return;
+    try {
+      setSaving(true);
+      await resubmitWithdrawalRequest({
+        withdrawalRequestId: request.id,
+        payoutMethod: selected.provider,
+        payoutHolder: selected.account_holder,
+        payoutAccount: selected.account_number,
+        customerNote: "Customer corrected the payout method after Admin requested more information.",
+        walletPin,
+      });
+      setCorrectionId("");
+      setNote("Corrected payout details were returned to Admin review. No second wallet hold was created.");
+      await loadWithdrawalData();
+    } catch (error) {
+      setNote(`Correction failed: ${readableAppError(error) || "Check the selected payout method, Wallet PIN, and request status."}`);
+    } finally {
+      setSaving(false);
+      setPinOpen(false);
+    }
+  }
+
   async function openPayoutProof(row: any) {
     try {
       const url = await createPrivateEvidenceUrl("withdrawal-proofs", row.admin_receipt_url);
@@ -4187,7 +4214,7 @@ export function WithdrawPageV2() {
   return (
     <Shell role="customer" title="Withdraw">
       <PageTitle title="Withdraw Funds" text="Choose payout details, request an amount, then confirm the admin payout proof." icon="wallet" />
-      {pinOpen && selected && <PinGate title="Confirm Withdrawal Request" onClose={() => setPinOpen(false)} onConfirm={(pin) => void sendWithdrawal(pin)} />}
+      {pinOpen && selected && <PinGate title={correctionId ? "Confirm Corrected Payout Details" : "Confirm Withdrawal Request"} onClose={() => { setPinOpen(false); setCorrectionId(""); }} onConfirm={(pin) => void (correctionId ? resubmitCorrection(pin) : sendWithdrawal(pin))} />}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="grid gap-5">
           <Card>
@@ -4265,6 +4292,11 @@ export function WithdrawPageV2() {
                   </div>
                 )}
                 {row.admin_note && <p className="mt-3 text-sm font-bold leading-6 text-[#667267]">Admin note: {row.admin_note}</p>}
+                {row.status === "needs_info" && (
+                  <button type="button" disabled={!selected || saving} onClick={() => { setCorrectionId(row.id); setPinOpen(true); }} className="mt-3 w-full rounded-xl bg-amber-500 px-4 py-3 font-black text-white disabled:bg-[#b9b3a4]">
+                    Use Selected Method and Resubmit
+                  </button>
+                )}
                 {row.status === "sent_for_customer_confirmation" && (
                   <div className="mt-3 grid gap-2">
                     <button type="button" disabled={saving} onClick={() => void answerConfirmation(row, true)} className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
@@ -9428,7 +9460,7 @@ function AdminRoleBridge({ kind }: { kind: AdminBridgeKind }) {
 function AdminWithdrawalReviewQueue() {
   const [rows, setRows] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState("");
-  const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
+  const [decision, setDecision] = useState<"approved" | "rejected" | "needs_info" | null>(null);
   const [adminNote, setAdminNote] = useState("");
   const [reference, setReference] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -9483,8 +9515,8 @@ function AdminWithdrawalReviewQueue() {
       setStatusNote("Cannot approve yet: customer KYC must be approved before payout release.");
       return;
     }
-    if (decision === "rejected" && adminNote.trim().length < 5) {
-      setStatusNote("Write a clear rejection reason for the customer.");
+    if (decision !== "approved" && adminNote.trim().length < 5) {
+      setStatusNote(decision === "needs_info" ? "Tell the customer exactly what payout detail must be corrected." : "Write a clear rejection reason for the customer.");
       return;
     }
     if (decision === "approved" && (!reference.trim() || !receiptFile)) {
@@ -9506,7 +9538,7 @@ function AdminWithdrawalReviewQueue() {
         });
       }
       await adminReviewWithdrawalRequest(selected.id, decision, adminNote || "Payout details and proof checked by admin.", decision === "approved" ? reference : null, storedPath, receiptFile?.name || null);
-      setStatusNote(decision === "approved" ? "Payout proof saved. Customer inbox now asks for confirmation." : "Withdrawal returned to the customer with your rejection reason.");
+      setStatusNote(decision === "approved" ? "Payout proof saved. Customer inbox now asks for confirmation." : decision === "needs_info" ? "Request returned to the customer for correction. Funds remain safely on hold." : "Withdrawal rejected and held funds returned to the customer.");
       setDecision(null);
       setAdminNote("");
       setReference("");
@@ -9588,12 +9620,15 @@ function AdminWithdrawalReviewQueue() {
         <Card className="min-h-[620px]">
           <h2 className="text-lg font-black">Admin Action</h2>
           <p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Send payout externally first. Attach its real receipt and reference before approval.</p>
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid grid-cols-3 gap-3">
             <button type="button" disabled={!selected} onClick={() => setDecision("approved")} className={"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 " + (decision === "approved" ? "bg-[#145a38] ring-4 ring-emerald-200" : "bg-[#1f6b45]")}>
               Approve
             </button>
             <button type="button" disabled={!selected} onClick={() => setDecision("rejected")} className={"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 " + (decision === "rejected" ? "bg-red-700 ring-4 ring-red-200" : "bg-red-600")}>
               Reject
+            </button>
+            <button type="button" disabled={!selected} onClick={() => setDecision("needs_info")} className={"min-h-20 rounded-2xl px-3 py-3 font-black text-white disabled:opacity-40 " + (decision === "needs_info" ? "bg-amber-700 ring-4 ring-amber-200" : "bg-amber-500")}>
+              Needs Info
             </button>
           </div>
           {decision === "approved" && (
