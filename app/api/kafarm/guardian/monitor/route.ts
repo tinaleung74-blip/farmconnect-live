@@ -18,7 +18,7 @@ type MonitorFinding = {
 };
 
 function json(status: number, body: Record<string, unknown>) {
-  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", "X-KaFarm-Monitor": "read-only" } });
+  return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", "X-KaFarm-Monitor": "guarded-observer" } });
 }
 
 function fingerprint(item: MonitorFinding) {
@@ -61,13 +61,53 @@ export async function GET(request: NextRequest) {
   const severityRank = { critical: 4, high: 3, medium: 2, low: 1 };
   deduplicated.sort((a, b) => severityRank[b.severity] - severityRank[a.severity]);
 
+  let persistedCount = 0;
+  let persistenceError: string | null = null;
+  if (deduplicated.length) {
+    const incidentRows = deduplicated.map((item) => ({
+      incident_key: `guardian:${item.fingerprint}`,
+      source: "guardian_monitor",
+      title: `KaFarm Guardian: ${item.code.replaceAll("_", " ")}`,
+      category: item.workflow,
+      severity: item.severity.toUpperCase(),
+      status: "Checking",
+      app_role: "system",
+      route: "/api/kafarm/guardian/monitor",
+      affected: `${item.source}${item.sourceRecordId ? `:${item.sourceRecordId}` : ""}`,
+      message: item.message,
+      evidence: [
+        `Monitor code: ${item.code}`,
+        `Source: ${item.source}`,
+        ...(item.sourceRecordId ? [`Source record: ${item.sourceRecordId}`] : []),
+      ],
+      proposed_fix: "Open KaFarm System Health, verify the source record, and investigate the first failed workflow step.",
+      safe_recovery: "Do not repeat a sensitive transaction. Preserve evidence and use only the canonical guarded workflow after Admin review.",
+      metadata: {
+        monitorFingerprint: item.fingerprint,
+        monitorCode: item.code,
+        observedAt: new Date().toISOString(),
+        automaticRepairAttempted: false,
+      },
+    }));
+    const { data: persistedRows, error: persistError } = await service
+      .from("kafarm_incidents")
+      .upsert(incidentRows, { onConflict: "incident_key", ignoreDuplicates: true })
+      .select("id");
+    if (persistError) persistenceError = persistError.message;
+    else persistedCount = persistedRows?.length || 0;
+  }
+
   return json(200, {
-    ok: true,
-    mode: "read-only-proactive-monitor",
+    ok: !persistenceError,
+    mode: "guarded-proactive-monitor",
     generatedAt: new Date().toISOString(),
     findingCount: deduplicated.length,
     findings: deduplicated,
-    mutationAttempted: false,
-    persistence: "Response-only. Durable incident-memory persistence requires separate reviewed approval.",
+    mutationAttempted: deduplicated.length > 0,
+    businessMutationAttempted: false,
+    incidentLoggingAttempted: deduplicated.length > 0,
+    persistedCount,
+    persistenceError,
+    persistence: "Findings are deduplicated into the Admin KaFarm incident queue. No business workflow, money, KYC, ownership, approval, or recovery action is executed.",
   });
 }

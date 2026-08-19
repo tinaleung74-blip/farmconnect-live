@@ -31,6 +31,8 @@ const kycReviewGuardSource = read(path.join(root, "database", "applied", "052_cu
 const kycRiskReviewGuardSource = read(path.join(root, "database", "applied", "071_customer_kyc_risk_review_guard.sql"));
 const isolatedTargetGuardSource = read(path.join(root, "scripts", "qa", "isolated-supabase-guard.mjs"));
 const rateLimitSource = read(path.join(root, "lib", "security", "farmconnect-rate-limit.ts"));
+const forgotPasswordSource = read(path.join(root, "app", "forgot-password", "page.tsx"));
+const resetPasswordSource = read(path.join(root, "app", "reset-password", "page.tsx"));
 const guardianApiSource = read(path.join(root, "app", "api", "kafarm", "guardian", "route.ts"));
 const guardianClientSource = read(path.join(root, "app", "admin", "kafarm", "guardian", "_components", "GuardianClient.tsx"));
 const clientSecretReferences = clientFiles
@@ -64,6 +66,8 @@ const checks = [
   { name: "Guarded Admin KYC review accepts risk-flagged queue states", ok: /admin_review_customer_kyc_guarded/.test(kycRiskReviewGuardSource) && /'high_risk'/.test(kycRiskReviewGuardSource) && /'duplicate_risk'/.test(kycRiskReviewGuardSource) && /REJECTION_NOTE_REQUIRED/.test(kycRiskReviewGuardSource) },
   { name: "Guarded Admin KYC review enforces risk-flag minimums", ok: /when v_kyc_status = 'high_risk' then 'high'/.test(kycRiskReviewGuardSource) && /when v_kyc_status = 'duplicate_risk' then 'medium'/.test(kycRiskReviewGuardSource) && /v_effective_risk_level/.test(kycRiskReviewGuardSource) },
   { name: "Customer identity resolves by Auth UID only", ok: /\.eq\("auth_user_id", user\.id\)/.test(customerAuthSource) && !/\.eq\("email",/.test(customerAuthSource) && !/profileByEmail/.test(customerAuthSource) },
+  { name: "Password recovery sends a secure non-enumerating reset link", ok: /resetPasswordForEmail/.test(forgotPasswordSource) && /If this email belongs to a FarmConnect account/.test(forgotPasswordSource) && !/page placeholder/i.test(forgotPasswordSource) },
+  { name: "Password recovery link updates Auth then clears the recovery session", ok: /PASSWORD_RECOVERY/.test(resetPasswordSource) && /exchangeCodeForSession/.test(resetPasswordSource) && /updateUser\(\{ password \}\)/.test(resetPasswordSource) && /auth\.signOut/.test(resetPasswordSource) },
   { name: "Rate-limit readiness defaults to honest OFF mode", ok: /effectiveMode:\s*"off"/.test(rateLimitSource) && /businessRpcEnforcement:\s*false/.test(rateLimitSource) && /persistentBackendInstalled:\s*false/.test(rateLimitSource) },
   { name: "Rate-limit activation is deployment controlled and Admin visible", ok: /deployment_environment_only/.test(rateLimitSource) && /getFarmConnectRateLimitReadiness/.test(guardianApiSource) && /Rate Limit OFF · Deployment Controlled/.test(guardianClientSource) },
   { name: "Rate-limit configuration is server-only", ok: /^\s*import\s+["']server-only["'];?/m.test(rateLimitSource) && !guardianClientSource.includes("FARMCONNECT_RATE_LIMIT_MODE") },
