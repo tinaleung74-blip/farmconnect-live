@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAdminEscalatedChats, getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, runAdminSupportAction, saveKaFarmSupportMessage, sendSupportMessage } from "@/lib/backend/support-chat";
 import { getEscalationNotice, getKaFarmReply, shouldEscalateToAdmin } from "@/lib/kafarm-brain";
-import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, assignAdminCarePlan, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterCareOverviews, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, requestCustomerCarePlan, requestRoosterSalePrice, resubmitWithdrawalRequest, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerManualMissionProof, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem, type CustomerRoosterCareOverview } from "@/lib/farmconnect-data";
+import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, assignAdminCarePlan, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAdminWithdrawalDisputes, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterCareOverviews, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, reportWithdrawalProblem, requestCustomerCarePlan, requestRoosterSalePrice, resolveWithdrawalDispute, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerManualMissionProof, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem, type CustomerRoosterCareOverview } from "@/lib/farmconnect-data";
 import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/customer-signup";
 import { adminReviewManualMissionProof } from "@/lib/farmconnect-data";
 import { prepareCustomerCarePlanPayment } from "@/lib/farmconnect-data";
@@ -4082,7 +4082,6 @@ export function WithdrawPageV2() {
   const [note, setNote] = useState("Loading your payout methods and withdrawal history...");
   const [problemId, setProblemId] = useState("");
   const [problemNote, setProblemNote] = useState("");
-  const [correctionId, setCorrectionId] = useState("");
   const [withdrawalAccess, setWithdrawalAccess] = useState({
     kycReady: false,
     available: 0,
@@ -4159,30 +4158,6 @@ export function WithdrawPageV2() {
     }
   }
 
-  async function resubmitCorrection(walletPin: string) {
-    const request = requests.find((row) => row.id === correctionId);
-    if (!request || !selected) return;
-    try {
-      setSaving(true);
-      await resubmitWithdrawalRequest({
-        withdrawalRequestId: request.id,
-        payoutMethod: selected.provider,
-        payoutHolder: selected.account_holder,
-        payoutAccount: selected.account_number,
-        customerNote: "Customer corrected the payout method after Admin requested more information.",
-        walletPin,
-      });
-      setCorrectionId("");
-      setNote("Corrected payout details were returned to Admin review. No second wallet hold was created.");
-      await loadWithdrawalData();
-    } catch (error) {
-      setNote(`Correction failed: ${readableAppError(error) || "Check the selected payout method, Wallet PIN, and request status."}`);
-    } finally {
-      setSaving(false);
-      setPinOpen(false);
-    }
-  }
-
   async function openPayoutProof(row: any) {
     try {
       const url = await createPrivateEvidenceUrl("withdrawal-proofs", row.admin_receipt_url);
@@ -4199,10 +4174,11 @@ export function WithdrawPageV2() {
     }
     try {
       setSaving(true);
-      await confirmWithdrawalResult(row.id, received, received ? "Customer confirmed payout received." : problemNote.trim());
+      if (received) await confirmWithdrawalResult(row.id, true, "Customer confirmed payout received.");
+      else await reportWithdrawalProblem(row.id, problemNote.trim());
       setProblemId("");
       setProblemNote("");
-      setNote(received ? "Payout confirmed. The withdrawal is complete and remains in your wallet logs." : "Problem sent back to admin. The request returned to the review queue.");
+      setNote(received ? "Payout confirmed. The withdrawal is complete and remains in your wallet logs." : "Your report is locked for manual Admin investigation. No second payout can be sent until the existing evidence is reviewed.");
       await loadWithdrawalData();
     } catch (error) {
       setNote(`Confirmation failed: ${error instanceof Error ? error.message : "Check SQL 040 and login."}`);
@@ -4214,7 +4190,7 @@ export function WithdrawPageV2() {
   return (
     <Shell role="customer" title="Withdraw">
       <PageTitle title="Withdraw Funds" text="Choose payout details, request an amount, then confirm the admin payout proof." icon="wallet" />
-      {pinOpen && selected && <PinGate title={correctionId ? "Confirm Corrected Payout Details" : "Confirm Withdrawal Request"} onClose={() => { setPinOpen(false); setCorrectionId(""); }} onConfirm={(pin) => void (correctionId ? resubmitCorrection(pin) : sendWithdrawal(pin))} />}
+      {pinOpen && selected && <PinGate title="Confirm Withdrawal Request" onClose={() => setPinOpen(false)} onConfirm={(pin) => void sendWithdrawal(pin)} />}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="grid gap-5">
           <Card>
@@ -4292,11 +4268,7 @@ export function WithdrawPageV2() {
                   </div>
                 )}
                 {row.admin_note && <p className="mt-3 text-sm font-bold leading-6 text-[#667267]">Admin note: {row.admin_note}</p>}
-                {row.status === "needs_info" && (
-                  <button type="button" disabled={!selected || saving} onClick={() => { setCorrectionId(row.id); setPinOpen(true); }} className="mt-3 w-full rounded-xl bg-amber-500 px-4 py-3 font-black text-white disabled:bg-[#b9b3a4]">
-                    Use Selected Method and Resubmit
-                  </button>
-                )}
+                {row.status === "under_investigation" && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-black text-amber-900">Under manual investigation. The original payout evidence is locked and no resend is allowed yet.</p>}
                 {row.status === "sent_for_customer_confirmation" && (
                   <div className="mt-3 grid gap-2">
                     <button type="button" disabled={saving} onClick={() => void answerConfirmation(row, true)} className="rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
@@ -9460,7 +9432,7 @@ function AdminRoleBridge({ kind }: { kind: AdminBridgeKind }) {
 function AdminWithdrawalReviewQueue() {
   const [rows, setRows] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState("");
-  const [decision, setDecision] = useState<"approved" | "rejected" | "needs_info" | null>(null);
+  const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
   const [adminNote, setAdminNote] = useState("");
   const [reference, setReference] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -9515,8 +9487,8 @@ function AdminWithdrawalReviewQueue() {
       setStatusNote("Cannot approve yet: customer KYC must be approved before payout release.");
       return;
     }
-    if (decision !== "approved" && adminNote.trim().length < 5) {
-      setStatusNote(decision === "needs_info" ? "Tell the customer exactly what payout detail must be corrected." : "Write a clear rejection reason for the customer.");
+    if (decision === "rejected" && adminNote.trim().length < 5) {
+      setStatusNote("Write a clear rejection reason for the customer.");
       return;
     }
     if (decision === "approved" && (!reference.trim() || !receiptFile)) {
@@ -9538,7 +9510,7 @@ function AdminWithdrawalReviewQueue() {
         });
       }
       await adminReviewWithdrawalRequest(selected.id, decision, adminNote || "Payout details and proof checked by admin.", decision === "approved" ? reference : null, storedPath, receiptFile?.name || null);
-      setStatusNote(decision === "approved" ? "Payout proof saved. Customer inbox now asks for confirmation." : decision === "needs_info" ? "Request returned to the customer for correction. Funds remain safely on hold." : "Withdrawal rejected and held funds returned to the customer.");
+      setStatusNote(decision === "approved" ? "Payout proof saved. Customer inbox now asks for confirmation." : "Withdrawal rejected and held funds returned to the customer.");
       setDecision(null);
       setAdminNote("");
       setReference("");
@@ -9620,15 +9592,12 @@ function AdminWithdrawalReviewQueue() {
         <Card className="min-h-[620px]">
           <h2 className="text-lg font-black">Admin Action</h2>
           <p className="mt-1 text-xs font-bold leading-5 text-[#667267]">Send payout externally first. Attach its real receipt and reference before approval.</p>
-          <div className="mt-5 grid grid-cols-3 gap-3">
+          <div className="mt-5 grid grid-cols-2 gap-3">
             <button type="button" disabled={!selected} onClick={() => setDecision("approved")} className={"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 " + (decision === "approved" ? "bg-[#145a38] ring-4 ring-emerald-200" : "bg-[#1f6b45]")}>
               Approve
             </button>
             <button type="button" disabled={!selected} onClick={() => setDecision("rejected")} className={"min-h-20 rounded-2xl px-4 py-3 font-black text-white disabled:opacity-40 " + (decision === "rejected" ? "bg-red-700 ring-4 ring-red-200" : "bg-red-600")}>
               Reject
-            </button>
-            <button type="button" disabled={!selected} onClick={() => setDecision("needs_info")} className={"min-h-20 rounded-2xl px-3 py-3 font-black text-white disabled:opacity-40 " + (decision === "needs_info" ? "bg-amber-700 ring-4 ring-amber-200" : "bg-amber-500")}>
-              Needs Info
             </button>
           </div>
           {decision === "approved" && (
@@ -11227,11 +11196,86 @@ function AdminFarmOperationsPage({ config }: { config: string[] }) {
 }
 function AdminIssueManagementPage({ config }: { config: string[] }) {
   const [mode, setMode] = useState<"customer" | "caretaker" | "completed">("customer");
-  const [completedMode, setCompletedMode] = useState<"customer" | "caretaker">("customer");
+  const [rows, setRows] = useState<any[]>([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [resolution, setResolution] = useState<"farm_corrected_payout" | "customer_fault_explained" | null>(null);
+  const [resolutionNote, setResolutionNote] = useState("");
+  const [reference, setReference] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("Loading withdrawal investigations...");
+  const visibleRows = rows.filter((row) => (mode === "completed" ? row.status === "resolved" : mode === "customer" ? row.status !== "resolved" : false));
+  const selected = visibleRows.find((row) => row.id === selectedId) || visibleRows[0] || null;
+  const request = selected?.withdrawal_requests || null;
+  const profile = request ? (Array.isArray(request.profiles) ? request.profiles[0] : request.profiles) : null;
+
+  async function loadIssues() {
+    try {
+      const data = await getAdminWithdrawalDisputes();
+      setRows(data);
+      setSelectedId((current) => (data.some((row: any) => row.id === current) ? current : data[0]?.id || ""));
+      setMessage(data.length ? "Select a report and manually compare the customer request with the existing Admin payout evidence." : "No withdrawal dispute is waiting for investigation.");
+    } catch (error) {
+      setRows([]);
+      setMessage(`Issue queue could not load: ${readableAppError(error) || "Check migration 073 and Admin login."}`);
+    }
+  }
+
+  useEffect(() => {
+    void loadIssues();
+  }, []);
+
+  async function openReceipt(path?: string | null) {
+    if (!path) return setMessage("No payout receipt was recorded for this withdrawal.");
+    try {
+      const url = await createPrivateEvidenceUrl("withdrawal-proofs", path);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setMessage(`Payout receipt could not open: ${readableAppError(error) || "Check the private file path."}`);
+    }
+  }
+
+  async function submitResolution() {
+    if (!selected || !resolution || saving) return;
+    if (resolutionNote.trim().length < 10) return setMessage("Write a clear manual investigation note with at least 10 characters.");
+    if (resolution === "farm_corrected_payout" && (!reference.trim() || !receiptFile)) return setMessage("Corrected payout needs its new external reference and receipt screenshot.");
+    try {
+      setSaving(true);
+      let storedPath: string | null = null;
+      if (resolution === "farm_corrected_payout" && receiptFile) {
+        storedPath = await uploadPrivateEvidenceFile({
+          bucket: "withdrawal-proofs",
+          folder: `${selected.withdrawal_request_id}/dispute-${selected.id}`,
+          kind: "corrected-payout",
+          file: receiptFile,
+          maxBytes: 10 * 1024 * 1024,
+          allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
+        });
+      }
+      await resolveWithdrawalDispute({
+        disputeId: selected.id,
+        resolutionType: resolution,
+        resolutionNote: resolutionNote.trim(),
+        correctedReference: resolution === "farm_corrected_payout" ? reference.trim() : null,
+        correctedReceiptUrl: storedPath,
+        correctedReceiptFileName: receiptFile?.name || null,
+      });
+      setMessage(resolution === "farm_corrected_payout" ? "Corrected external payout evidence saved. Customer must review and confirm the new payout." : "Existing request, reference, and payout receipt were preserved with the Admin explanation. Case resolved without a second payout.");
+      setResolution(null);
+      setResolutionNote("");
+      setReference("");
+      setReceiptFile(null);
+      await loadIssues();
+    } catch (error) {
+      setMessage(`Resolution failed: ${readableAppError(error) || "Check the case state, evidence, and migration 073."}`);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Shell role="admin" title={config[0]}>
-      <PageTitle title="Issue Management" text="KaFarm reads chat/report context, finds evidence, prepares diagnosis, and helps admin resolve customer or caretaker issues." icon="alert" />
+      <PageTitle title="Issue Management" text="Manually investigate reported withdrawal payouts using the original customer request, Admin reference, and existing receipt." icon="alert" />
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <button onClick={() => setMode("customer")} className={"rounded-2xl border p-4 text-left " + (mode === "customer" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95")}>
           <b>Customer Reports</b>
@@ -11246,39 +11290,49 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
           <p className="text-xs font-bold text-[#667267]">Resolved reports with final note, evidence, and inbox update.</p>
         </button>
       </div>
-      {mode !== "completed" && (
-        <Card className="mt-5 min-h-[420px]">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-black">{mode === "customer" ? "Customer Queue" : "Caretaker Queue"}</h2>
-            <Badge tone="good">0 open</Badge>
-          </div>
-          <div className="mt-8 grid min-h-72 place-items-center rounded-2xl border border-dashed border-[#d8d0bd] bg-[#fffdf7] p-8 text-center">
-            <div>
-              <h3 className="text-2xl font-black">No open reports</h3>
-              <p className="mt-2 max-w-lg text-sm font-bold leading-6 text-[#667267]">Real reports from support chats and captured incidents will appear here. Demo accounts are no longer shown.</p>
+      {mode === "caretaker" ? (
+        <Card className="mt-5 grid min-h-[420px] place-items-center text-center"><div><h2 className="text-2xl font-black">No caretaker dispute workflow</h2><p className="mt-2 text-sm font-bold text-[#667267]">This scoped investigation queue currently handles customer withdrawal payout reports only.</p></div></Card>
+      ) : (
+        <div className="mt-5 grid gap-4 xl:grid-cols-[300px_minmax(500px,1fr)_360px]">
+          <Card className="min-h-[620px]">
+            <div className="flex items-center justify-between"><h2 className="text-lg font-black">{mode === "completed" ? "Resolved Cases" : "Investigation Queue"}</h2><Badge tone={visibleRows.length ? "warn" : "good"}>{visibleRows.length}</Badge></div>
+            <div className="mt-4 space-y-3">
+              {visibleRows.map((row) => {
+                const req = row.withdrawal_requests;
+                const p = req ? (Array.isArray(req.profiles) ? req.profiles[0] : req.profiles) : null;
+                return <button key={row.id} onClick={() => { setSelectedId(row.id); setResolution(null); }} className={"w-full rounded-2xl border p-3 text-left " + (selected?.id === row.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}><b className="block truncate">{p?.display_name || p?.full_name || p?.email || row.original_payout_holder}</b><p className="mt-1 text-xs font-bold text-[#667267]">{peso(Number(row.original_amount || 0))} / {row.original_payout_method}</p><p className="mt-2 text-xs font-black text-amber-700">{String(row.status).replaceAll("_", " ")}</p></button>;
+              })}
+              {!visibleRows.length && <p className="rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No case in this queue.</p>}
             </div>
-          </div>
-        </Card>
-      )}
-      {mode === "completed" && (
-        <div className="mt-5 grid gap-4 xl:grid-cols-[300px_minmax(620px,1fr)]">
-          <Card className="min-h-[520px]">
-            <h2 className="text-lg font-black">Resolved Accounts</h2>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button onClick={() => setCompletedMode("customer")} className={"rounded-xl px-3 py-3 text-sm font-black " + (completedMode === "customer" ? "bg-[#1f6b45] text-white" : "bg-[#f6f3e8]")}>
-                Clients
-              </button>
-              <button onClick={() => setCompletedMode("caretaker")} className={"rounded-xl px-3 py-3 text-sm font-black " + (completedMode === "caretaker" ? "bg-[#1f6b45] text-white" : "bg-[#f6f3e8]")}>
-                Caretakers
-              </button>
-            </div>
-            <p className="mt-5 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">No completed issues yet.</p>
           </Card>
-          <Card className="grid min-h-[520px] place-items-center text-center">
-            <div>
-              <h2 className="text-2xl font-black">No resolved record selected</h2>
-              <p className="mt-2 text-sm font-bold text-[#667267]">Resolved live reports will keep their final note and evidence here.</p>
-            </div>
+          <Card className="min-h-[620px]">
+            {selected ? <>
+              <p className="text-xs font-black uppercase text-[#667267]">Manual Withdrawal Investigation</p>
+              <h2 className="mt-1 text-2xl font-black">{profile?.display_name || profile?.full_name || profile?.email || selected.original_payout_holder}</h2>
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-black uppercase text-amber-800">Customer Report</p><p className="mt-2 text-sm font-bold leading-6">{selected.customer_report}</p></div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <Info label="Customer Payout Method" value={selected.original_payout_method} />
+                <Info label="Withdrawal Amount" value={peso(Number(selected.original_amount || 0))} />
+                <Info label="Customer Account Holder" value={selected.original_payout_holder} />
+                <Info label="Customer Payout Account" value={selected.original_payout_account} />
+                <Info label="Admin Payout Reference" value={selected.original_admin_reference || "Not recorded"} />
+                <Info label="Admin Payout Receipt" value={selected.original_admin_receipt_file_name || "Not recorded"} />
+              </div>
+              <button onClick={() => void openReceipt(selected.original_admin_receipt_url)} className="mt-4 w-full rounded-xl bg-[#0f6fb8] px-4 py-3 font-black text-white">Open Existing Admin Payout Receipt</button>
+              {selected.resolution_note && <div className="mt-4 rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-black uppercase text-emerald-800">Final Investigation Note</p><p className="mt-2 text-sm font-bold">{selected.resolution_note}</p></div>}
+            </> : <div className="grid min-h-[520px] place-items-center text-center"><div><h2 className="text-2xl font-black">No report selected</h2><p className="mt-2 text-sm font-bold text-[#667267]">Customer payout disputes will appear here automatically.</p></div></div>}
+          </Card>
+          <Card className="min-h-[620px]">
+            <h2 className="text-lg font-black">Manual Resolution</h2>
+            <p className="mt-2 text-xs font-bold leading-5 text-[#667267]">Check the customer payout method and amount against the existing Admin reference and receipt. FarmConnect does not verify external e-wallet or bank transfers automatically.</p>
+            {selected?.status === "under_investigation" ? <>
+              <button onClick={() => setResolution("farm_corrected_payout")} className={"mt-5 w-full rounded-2xl px-4 py-4 font-black text-white " + (resolution === "farm_corrected_payout" ? "bg-red-700 ring-4 ring-red-200" : "bg-red-600")}>Farm Fault — Correct Payout</button>
+              <button onClick={() => setResolution("customer_fault_explained")} className={"mt-3 w-full rounded-2xl px-4 py-4 font-black text-white " + (resolution === "customer_fault_explained" ? "bg-[#145a38] ring-4 ring-emerald-200" : "bg-[#1f6b45]")}>Customer Detail Fault — Send Explanation</button>
+              {resolution === "farm_corrected_payout" && <div className="mt-4 grid gap-3"><input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="New corrected payout reference" className="rounded-xl border border-[#ded8c9] p-3 font-black" /><label className="rounded-xl border-2 border-dashed border-[#d8cfbd] p-3 text-sm font-black">New corrected payout receipt<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setReceiptFile(event.target.files?.[0] || null)} className="mt-2 block w-full text-xs" /></label></div>}
+              <textarea value={resolutionNote} onChange={(event) => setResolutionNote(event.target.value)} placeholder="Write the manual investigation finding and why this resolution is correct..." className="mt-4 h-32 w-full resize-none rounded-2xl border border-[#ded8c9] p-3 text-sm font-bold" />
+              <button disabled={!resolution || saving} onClick={() => void submitResolution()} className="mt-3 w-full rounded-2xl bg-[#111827] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">{saving ? "Saving Resolution..." : "Confirm Manual Resolution"}</button>
+            </> : <p className="mt-5 rounded-2xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">This case is no longer open for a new resolution.</p>}
+            <p className="mt-4 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{message}</p>
           </Card>
         </div>
       )}

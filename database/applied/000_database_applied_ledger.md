@@ -842,6 +842,25 @@ Expected success output:
 - `admin_kyc_guard = true`
 - `ledger_trigger = true`
 
+## 073_manual_withdrawal_dispute_investigation.sql
+
+Status: **APPLIED / OWNER VERIFIED 2026-08-19**
+
+Purpose:
+
+- Route a customer `Report a Problem` action into a locked manual Issue Management case.
+- Preserve the original payout method, amount, Admin reference, and receipt for investigation.
+- Prevent direct customer correction or repeated payout while investigation is open.
+- Allow only two guarded Admin resolutions: corrected external payout with new evidence, or customer-detail fault with the existing evidence and a professional explanation.
+- Keep external GCash, Maya, and bank verification manual; FarmConnect records evidence and decisions but does not claim provider access.
+
+Expected success output:
+
+- `dispute_table = true`
+- `customer_report_rpc = true`
+- `admin_resolution_rpc = true`
+- `direct_customer_resubmit_revoked = true`
+
 ## 058_care_plan_mission_engine_foundation.sql
 
 Status: **APPLIED / CONTROLLED E2E VERIFIED (2026-08-14 ASIA/MANILA)**

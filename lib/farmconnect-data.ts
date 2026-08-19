@@ -1127,27 +1127,43 @@ export async function confirmWithdrawalResult(withdrawalRequestId: string, recei
   return data as string;
 }
 
-export async function resubmitWithdrawalRequest(payload: {
-  withdrawalRequestId: string;
-  payoutMethod: string;
-  payoutHolder: string;
-  payoutAccount: string;
-  customerNote: string;
-  walletPin: string;
-}) {
-  const { data, error } = await supabase.rpc("customer_resubmit_withdrawal_request", {
-    p_withdrawal_request_id: payload.withdrawalRequestId,
-    p_payout_method: payload.payoutMethod,
-    p_payout_holder: payload.payoutHolder,
-    p_payout_account: payload.payoutAccount,
-    p_customer_note: payload.customerNote,
-    p_wallet_pin: payload.walletPin,
+export async function reportWithdrawalProblem(withdrawalRequestId: string, note: string) {
+  const { data, error } = await supabase.rpc("customer_report_withdrawal_problem", {
+    p_withdrawal_request_id: withdrawalRequestId,
+    p_customer_note: note,
   });
   if (error) throw error;
-  const result = data as GuardedWorkflowResult;
-  if (result?.error) throw new Error(result.error);
-  if (!result?.id) throw new Error("WORKFLOW_RESULT_MISSING");
-  return result;
+  return data as string;
+}
+
+export async function getAdminWithdrawalDisputes() {
+  const { data, error } = await supabase
+    .from("withdrawal_disputes")
+    .select("*,withdrawal_requests(*,profiles!withdrawal_requests_profile_id_fkey(id,email,full_name,display_name))")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function resolveWithdrawalDispute(payload: {
+  disputeId: string;
+  resolutionType: "farm_corrected_payout" | "customer_fault_explained";
+  resolutionNote: string;
+  correctedReference?: string | null;
+  correctedReceiptUrl?: string | null;
+  correctedReceiptFileName?: string | null;
+}) {
+  const { data, error } = await supabase.rpc("admin_resolve_withdrawal_dispute", {
+    p_dispute_id: payload.disputeId,
+    p_resolution_type: payload.resolutionType,
+    p_resolution_note: payload.resolutionNote,
+    p_corrected_reference: payload.correctedReference || null,
+    p_corrected_receipt_url: payload.correctedReceiptUrl || null,
+    p_corrected_receipt_file_name: payload.correctedReceiptFileName || null,
+  });
+  if (error) throw error;
+  return data as string;
 }
 
 export async function getCaretakerApplications(statuses?: string[]) {
