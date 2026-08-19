@@ -199,6 +199,7 @@ with expected(migration, kind, object_name) as (
     ,('066_care_plan_task_checklist_compatibility.sql','function','care_plan_task_checklist_compatibility_version')
     ,('069_care_plan_customer_feed_balance_pricing_contract.sql','function','care_plan_customer_inventory_contract_version')
     ,('070_kafarm_care_plan_health_qr_classification.sql','function','kafarm_care_plan_health_classifier_version')
+    ,('071_customer_kyc_risk_review_guard.sql','function','kyc_risk_review_guard_version')
 ),
 object_status as (
   select

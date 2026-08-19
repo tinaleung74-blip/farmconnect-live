@@ -28,6 +28,7 @@ const customerAppSource = read(path.join(root, "lib", "farmconnect-v1.tsx"));
 const customerAuthSource = read(path.join(root, "lib", "customer-auth.ts"));
 const verificationAppSource = read(path.join(root, "lib", "farmconnect-unified-account-verification.tsx"));
 const kycReviewGuardSource = read(path.join(root, "database", "applied", "052_customer_kyc_review_status_guard.sql"));
+const kycRiskReviewGuardSource = read(path.join(root, "database", "applied", "071_customer_kyc_risk_review_guard.sql"));
 const isolatedTargetGuardSource = read(path.join(root, "scripts", "qa", "isolated-supabase-guard.mjs"));
 const rateLimitSource = read(path.join(root, "lib", "security", "farmconnect-rate-limit.ts"));
 const guardianApiSource = read(path.join(root, "app", "api", "kafarm", "guardian", "route.ts"));
@@ -59,7 +60,9 @@ const checks = [
   { name: "Customer KYC settings distinguish pending rejected and approved", ok: /Your KYC is in review/.test(customerAppSource) && /KYC rejected for resubmission/.test(customerAppSource) && /Approved and locked/.test(customerAppSource) },
   { name: "Admin KYC rejection explicitly reopens resubmission", ok: /Reject for Resubmission/.test(verificationAppSource) && /upload corrected KYC evidence/.test(verificationAppSource) },
   { name: "Admin KYC queue keeps risk-flagged submissions reviewable", ok: /customerQueueStatuses[\s\S]*?"high_risk"[\s\S]*?"duplicate_risk"/.test(verificationAppSource) },
-  { name: "Admin KYC risk badge falls back to the submitted status", ok: /const status = normalizedVerificationStatus\([\s\S]*?valueText\(recordValue\(row, "auto_check_status"\), status\)/.test(verificationAppSource) },
+  { name: "Admin KYC risk badge prioritizes risk-flagged submission status", ok: /status === "high_risk" \|\| status === "duplicate_risk"[\s\S]*?\? status/.test(verificationAppSource) },
+  { name: "Guarded Admin KYC review accepts risk-flagged queue states", ok: /admin_review_customer_kyc_guarded/.test(kycRiskReviewGuardSource) && /'high_risk'/.test(kycRiskReviewGuardSource) && /'duplicate_risk'/.test(kycRiskReviewGuardSource) && /REJECTION_NOTE_REQUIRED/.test(kycRiskReviewGuardSource) },
+  { name: "Guarded Admin KYC review enforces risk-flag minimums", ok: /when v_kyc_status = 'high_risk' then 'high'/.test(kycRiskReviewGuardSource) && /when v_kyc_status = 'duplicate_risk' then 'medium'/.test(kycRiskReviewGuardSource) && /v_effective_risk_level/.test(kycRiskReviewGuardSource) },
   { name: "Customer identity resolves by Auth UID only", ok: /\.eq\("auth_user_id", user\.id\)/.test(customerAuthSource) && !/\.eq\("email",/.test(customerAuthSource) && !/profileByEmail/.test(customerAuthSource) },
   { name: "Rate-limit readiness defaults to honest OFF mode", ok: /effectiveMode:\s*"off"/.test(rateLimitSource) && /businessRpcEnforcement:\s*false/.test(rateLimitSource) && /persistentBackendInstalled:\s*false/.test(rateLimitSource) },
   { name: "Rate-limit activation is deployment controlled and Admin visible", ok: /deployment_environment_only/.test(rateLimitSource) && /getFarmConnectRateLimitReadiness/.test(guardianApiSource) && /Rate Limit OFF · Deployment Controlled/.test(guardianClientSource) },

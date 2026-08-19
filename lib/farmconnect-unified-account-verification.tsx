@@ -176,10 +176,12 @@ function mapCustomerRows(rows: UnknownRow[]): VerificationRow[] {
     const status = normalizedVerificationStatus(
       recordValue(row, "status") || recordValue(row, "verification_status") || recordValue(row, "review_status"),
     );
-    const riskSource = valueText(
-      recordValue(profile, "kyc_risk_level"),
-      valueText(recordValue(row, "auto_check_status"), status),
-    ).toLowerCase();
+    const riskSource = status === "high_risk" || status === "duplicate_risk"
+      ? status
+      : valueText(
+          recordValue(profile, "kyc_risk_level"),
+          valueText(recordValue(row, "auto_check_status"), status),
+        ).toLowerCase();
     const risk: RiskLevel = riskSource.includes("high") || riskSource.includes("failed")
       ? "High"
       : riskSource.includes("medium") || riskSource.includes("review") || riskSource.includes("duplicate")

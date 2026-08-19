@@ -978,3 +978,21 @@ Purpose:
 - Count only authoritative `manual_standard_mission` care requests against an open paid Care Plan.
 - Preserve every other read-only Care Plan and manual-care health key.
 - Change no customer, request, task, payment, inventory, or Care Plan record.
+
+## 071_customer_kyc_risk_review_guard.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-19 (Asia/Manila)**
+
+Verification:
+
+- `guard_accepts_high_risk = true`
+- `guard_accepts_duplicate_risk = true`
+- `guard_enforces_risk_floor = true`
+- `risk_rows_waiting_for_admin = 2` (read-only count; no decision was created)
+
+Purpose:
+
+- Treat `high_risk` and `duplicate_risk` as review-required KYC queue states, not completed decisions.
+- Keep the active-admin guard, row lock, rejection-note requirement, idempotent completed decisions, and canonical KYC review RPC.
+- Allow only an authenticated active Admin to approve or reject a risk-flagged submission.
+- Change no existing KYC decision or customer profile during migration application.
