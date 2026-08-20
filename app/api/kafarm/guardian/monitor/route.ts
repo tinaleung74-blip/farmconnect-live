@@ -17,7 +17,7 @@ type MonitorFinding = {
   sourceRecordId?: string | null;
 };
 
-const TRUTH_MODEL_VERSION = "current-deployment-v2";
+const TRUTH_MODEL_VERSION = "current-deployment-v3";
 
 function json(status: number, body: Record<string, unknown>) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", "X-KaFarm-Monitor": "guarded-observer" } });
@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
   }
 
   const findings: MonitorFinding[] = [];
+  let snapshotMeta = { demoBaselineAt: null as string | null, demoHistoryIgnored: 0 };
   let snapshotOk = true;
   const map = getKaFarmSystemMapStatus();
   if (map.commitMatchesDeployment === false) {
@@ -74,8 +75,17 @@ export async function GET(request: NextRequest) {
     snapshotOk = false;
     findings.push({ code: "monitor_snapshot_unavailable", severity: "high", workflow: "monitoring", message: error.message, source: "rpc:kafarm_guardian_monitor_snapshot" });
   } else {
-    const row = (Array.isArray(data) ? data[0] : data) as { findings?: MonitorFinding[]; generated_at?: string } | null;
+    const row = (Array.isArray(data) ? data[0] : data) as {
+      findings?: MonitorFinding[];
+      generated_at?: string;
+      demo_baseline_at?: string | null;
+      demo_history_ignored?: number;
+    } | null;
     for (const item of row?.findings || []) findings.push({ ...item, source: item.source || "rpc:kafarm_guardian_monitor_snapshot" });
+    snapshotMeta = {
+      demoBaselineAt: row?.demo_baseline_at || null,
+      demoHistoryIgnored: Math.max(0, Number(row?.demo_history_ignored || 0)),
+    };
   }
 
   const deduplicated = Array.from(new Map(findings.map((item) => [fingerprint(item), { ...item, fingerprint: fingerprint(item) }])).values());
@@ -137,6 +147,7 @@ export async function GET(request: NextRequest) {
       monitorMode: "guarded-proactive-monitor",
       truthModelVersion: TRUTH_MODEL_VERSION,
       findingSummary,
+      ...snapshotMeta,
       businessMutationAttempted: false,
       incidentLoggingAttempted: persistableFindings.length > 0,
     },
@@ -151,6 +162,7 @@ export async function GET(request: NextRequest) {
     truthModelVersion: TRUTH_MODEL_VERSION,
     findingCount: deduplicated.length,
     findingSummary,
+    ...snapshotMeta,
     findings: deduplicated,
     mutationAttempted: persistableFindings.length > 0,
     businessMutationAttempted: false,

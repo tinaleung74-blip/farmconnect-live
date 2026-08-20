@@ -37,7 +37,7 @@ type MonitorFindingSummary = {
 };
 
 const FRESH_MONITOR_MS = 48 * 60 * 60 * 1000;
-const TRUTH_MODEL_VERSION = "current-deployment-v2";
+const TRUTH_MODEL_VERSION = "current-deployment-v3";
 const severityRank: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
 
 function validDate(value?: string | null) {
@@ -160,6 +160,8 @@ export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Pr
   const runTimestamp = validDate(runAt);
   const monitorFresh = runTimestamp !== null && Date.now() - runTimestamp <= FRESH_MONITOR_MS;
   const currentTruthModel = run?.metadata?.truthModelVersion === TRUTH_MODEL_VERSION;
+  const demoBaselineAt = typeof run?.metadata?.demoBaselineAt === "string" ? run.metadata.demoBaselineAt : null;
+  const demoHistoryIgnored = Math.max(0, Number(run?.metadata?.demoHistoryIgnored || 0));
   const monitorHealthy = monitorFresh && currentTruthModel && run?.snapshot_ok === true && run?.persistence_ok === true;
   let deploymentBoundary: number | null = null;
   if (deploymentCommit) {
@@ -219,6 +221,8 @@ export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Pr
       persistenceOk: run?.persistence_ok === true,
       rawFindingCount: Number(run?.finding_count || 0),
       persistedIncidentCount: Number(run?.persisted_incident_count || 0),
+      demoBaselineAt,
+      demoHistoryIgnored,
       classification: monitorHealthy ? "CONFIRMED_HEALTHY" : "UNPROVEN",
     },
     incidentSummary: {
@@ -235,6 +239,7 @@ export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Pr
       "Missing evidence is UNPROVEN, not healthy and not broken.",
       "Stale evidence is ignored until reproduced on the current deployment.",
       "A monitor observation about a stuck record is UNPROVEN until the source record is reconciled; it is not automatically a software bug.",
+      "Owner-confirmed pre-rollout demo history is preserved for audit but excluded from current operational leads after the recorded baseline.",
     ],
     limitations: [
       ...limitations,

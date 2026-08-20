@@ -93,6 +93,8 @@ export type KaFarmTruthReference = {
     persistenceOk: boolean;
     rawFindingCount: number;
     persistedIncidentCount: number;
+    demoBaselineAt: string | null;
+    demoHistoryIgnored: number;
     classification: KaFarmTruthClassification;
   };
   incidentSummary: {
