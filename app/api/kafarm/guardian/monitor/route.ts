@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
   }
 
   const findings: MonitorFinding[] = [];
+  let snapshotOk = true;
   const map = getKaFarmSystemMapStatus();
   if (map.commitMatchesDeployment === false) {
     findings.push({ code: "source_deployment_drift", severity: "high", workflow: "deployment", message: "Generated system map commit does not match the deployed commit.", source: "guardian_system_map" });
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
   const service = createClient(projectUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await service.rpc("kafarm_guardian_monitor_snapshot");
   if (error) {
+    snapshotOk = false;
     findings.push({ code: "monitor_snapshot_unavailable", severity: "high", workflow: "monitoring", message: error.message, source: "rpc:kafarm_guardian_monitor_snapshot" });
   } else {
     const row = (Array.isArray(data) ? data[0] : data) as { findings?: MonitorFinding[]; generated_at?: string } | null;
@@ -97,8 +99,24 @@ export async function GET(request: NextRequest) {
     else persistedCount = persistedRows?.length || 0;
   }
 
+  const deploymentCommit = (process.env.VERCEL_GIT_COMMIT_SHA || "").trim() || null;
+  const { error: heartbeatError } = await service.from("kafarm_guardian_monitor_runs").insert({
+    deployment_commit: deploymentCommit,
+    finding_count: deduplicated.length,
+    persisted_incident_count: persistedCount,
+    snapshot_ok: snapshotOk,
+    persistence_ok: !persistenceError,
+    metadata: {
+      monitorMode: "guarded-proactive-monitor",
+      businessMutationAttempted: false,
+      incidentLoggingAttempted: deduplicated.length > 0,
+    },
+  });
+
+  const monitorHealthy = snapshotOk && !persistenceError && !heartbeatError;
+
   return json(200, {
-    ok: !persistenceError,
+    ok: monitorHealthy,
     mode: "guarded-proactive-monitor",
     generatedAt: new Date().toISOString(),
     findingCount: deduplicated.length,
@@ -108,6 +126,9 @@ export async function GET(request: NextRequest) {
     incidentLoggingAttempted: deduplicated.length > 0,
     persistedCount,
     persistenceError,
+    heartbeatPersisted: !heartbeatError,
+    heartbeatError: heartbeatError?.message || null,
+    deploymentCommit,
     persistence: "Findings are deduplicated into the Admin KaFarm incident queue. No business workflow, money, KYC, ownership, approval, or recovery action is executed.",
   });
 }

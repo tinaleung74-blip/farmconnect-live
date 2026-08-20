@@ -1100,3 +1100,47 @@ Purpose:
 - Give the scheduled KaFarm Guardian a service-role-only read snapshot of stuck workflows, recent runtime incidents, and overdue Care Plan missions.
 - Allow the server route to preserve deduplicated findings in the existing Admin incident queue.
 - Perform no approval, payment, KYC, ownership, refund, deletion, or automatic business repair.
+
+## 078_persistent_business_rate_limit.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-20 (Asia/Manila)**
+
+Verification:
+
+- `event_table = true`
+- `guard_function = true`
+- `trigger_function = true`
+- `business_trigger_count = 7`
+
+Purpose:
+
+- Persist authenticated mutation-attempt counters in Supabase instead of relying on one Vercel process or browser memory.
+- Serialize concurrent attempts per actor/workflow so parallel retries cannot race around the limit.
+- Guard canonical payment, KYC, caretaker application, care request, Care Plan, sale, and withdrawal tables with deliberately generous hourly thresholds.
+- Preserve trusted service jobs and all existing business records.
+- Move no money, approve no request, change no ownership, and make no KYC decision during migration application.
+
+Activation rule:
+
+- Apply the migration and confirm `business_trigger_count` is at least 7.
+- Set `FARMCONNECT_RATE_LIMIT_MODE=enforce` and `FARMCONNECT_RATE_LIMIT_PRODUCTION_VERIFIED=true` in the production deployment only after the verification result is reviewed.
+
+## 079_kafarm_monitor_run_ledger.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-20 (Asia/Manila)**
+
+Verification immediately after application:
+
+- `run_table = true`
+- `latest_run_at = null`
+- `runs_last_48_hours = 0`
+- `latest_run_ok = false`
+
+The empty run history is expected before the updated monitor route is deployed and invoked. It is not treated as proof that production monitoring has run.
+
+Purpose:
+
+- Persist one operational heartbeat for every authorized KaFarm Guardian cron invocation, including clean runs with zero findings.
+- Record the deployment commit, finding count, incident persistence count, snapshot status, and persistence status.
+- Let production monitoring be verified from durable evidence instead of assuming that a Vercel schedule fired.
+- Perform no payment, approval, KYC, ownership, inventory, refund, or workflow mutation.

@@ -11,6 +11,7 @@ const tools = read("lib/kafarm/guardian/evidence-tools.ts");
 const gate = read("lib/kafarm/guardian/logic-gate.ts");
 const auth = read("lib/kafarm/guardian/admin-auth.ts");
 const monitor = read("app/api/kafarm/guardian/monitor/route.ts");
+const monitorRunLedger = read("database/applied/079_kafarm_monitor_run_ledger.sql");
 const guardianRoute = read("app/api/kafarm/guardian/route.ts");
 const blueprint = JSON.parse(read("config/kafarm/farmconnect-blueprint.v1.json"));
 const map = JSON.parse(read("lib/kafarm/guardian/system-map.generated.json"));
@@ -29,6 +30,7 @@ const checks = [
   { name: "Proactive monitor is disabled by default and never mutates business workflows", ok: /KAFARM_MONITOR_ENABLED \|\| "false"/.test(monitor) && /businessMutationAttempted: false/.test(monitor) && /automaticRepairAttempted: false/.test(monitor) },
   { name: "Monitor findings persist only as deduplicated Admin incidents", ok: /from\("kafarm_incidents"\)/.test(monitor) && /ignoreDuplicates: true/.test(monitor) && /guardian_monitor/.test(monitor) },
   { name: "Durable monitor SQL is explicit and service-role guarded", ok: exists("database/applied/077_kafarm_guardian_durable_monitor.sql") && /KAFARM_MONITOR_AUTH_REQUIRED/.test(read("database/applied/077_kafarm_guardian_durable_monitor.sql")) && /grant execute.*service_role/i.test(read("database/applied/077_kafarm_guardian_durable_monitor.sql")) },
+  { name: "Every authorized monitor run writes a durable heartbeat", ok: /kafarm_guardian_monitor_runs/.test(monitor) && /heartbeatPersisted/.test(monitor) && /businessMutationAttempted: false/.test(monitor) && /kafarm_guardian_monitor_health/.test(monitorRunLedger) },
   { name: "Living system map is generated and explicitly caveated", ok: map.application === "FarmConnect" && map.counts.pages > 0 && map.counts.edges > 0 && Array.isArray(map.limitations) && map.limitations.length > 0 },
   { name: "Guardian Admin page exists", ok: exists("app/admin/kafarm/guardian/page.tsx") && exists("app/admin/kafarm/guardian/_components/GuardianClient.tsx") },
 ];

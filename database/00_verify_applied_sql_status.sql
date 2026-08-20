@@ -210,6 +210,12 @@ with expected(migration, kind, object_name) as (
     ,('069_care_plan_customer_feed_balance_pricing_contract.sql','function','care_plan_customer_inventory_contract_version')
     ,('070_kafarm_care_plan_health_qr_classification.sql','function','kafarm_care_plan_health_classifier_version')
     ,('071_customer_kyc_risk_review_guard.sql','function','kyc_risk_review_guard_version')
+    ,('078_persistent_business_rate_limit.sql','table','farmconnect_rate_limit_events')
+    ,('078_persistent_business_rate_limit.sql','function','farmconnect_enforce_rate_limit')
+    ,('078_persistent_business_rate_limit.sql','function','farmconnect_business_rate_limit_trigger')
+    ,('078_persistent_business_rate_limit.sql','function','farmconnect_rate_limit_version')
+    ,('079_kafarm_monitor_run_ledger.sql','table','kafarm_guardian_monitor_runs')
+    ,('079_kafarm_monitor_run_ledger.sql','function','kafarm_guardian_monitor_health')
 ),
 object_status as (
   select
