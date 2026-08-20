@@ -27,6 +27,7 @@
         "test:accounts:delete": "node scripts/qa/test-accounts.mjs delete",
         "test:report": "node scripts/qa/build-readiness-report.mjs",
         "test:readiness": "node scripts/qa/run-readiness.mjs",
+        "test:public-rollout": "node scripts/qa/public-rollout-gate.mjs",
         "kafarm:snapshot": "node scripts/kafarm/build-system-snapshot.mjs && node scripts/kafarm/build-guardian-map.mjs",
         "kafarm:cleanup-audit": "node scripts/kafarm/guardian-cleanup-audit.mjs",
         "predev": "npm run kafarm:snapshot",

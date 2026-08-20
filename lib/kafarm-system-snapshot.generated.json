@@ -1,25 +1,16 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-19T11:49:13.216Z",
-  "sourceFingerprint": "4f165554882378d1eaa8f3b7afcd90137d93bc0fe30e9b629118321b810e0ce1",
+  "generatedAt": "2026-08-20T00:07:25.985Z",
+  "sourceFingerprint": "ea4aeb6c8f01c8fa78be6df3899fafe3580e46591dec7ce9c1921ed21ffaf955",
   "git": {
-    "commit": "bd000fc90e9af183919da3a7c44e019d89852e17",
-    "branch": "agent/legacy-withdrawal-investigation",
+    "commit": "72678e5cb2c085d556e8cd24fda5f7697ad300b8",
+    "branch": "agent/independent-operations",
     "dirtyFiles": [
-      "app/api/kafarm/guardian/monitor/route.ts",
-      "app/forgot-password/page.tsx",
-      "database/00_verify_applied_sql_status.sql",
-      "database/applied/000_database_applied_ledger.md",
       "lib/kafarm-system-snapshot.generated.json",
       "lib/kafarm/guardian/system-map.generated.json",
-      "scripts/qa/kafarm-guardian-contract.mjs",
-      "scripts/qa/security-contract.mjs",
-      "scripts/qa/withdrawal-recovery-contract.mjs",
-      "app/reset-password/",
-      "database/FARMCONNECT_INDEPENDENT_OPERATIONS_RUNBOOK.md",
-      "database/applied/075_withdrawal_dispute_inbox_schema_fix.sql",
-      "database/applied/076_withdrawal_dispute_reopen_cycle.sql",
-      "database/applied/077_kafarm_guardian_durable_monitor.sql"
+      "package.json",
+      "tests/e2e/public-smoke.spec.ts",
+      "scripts/qa/public-rollout-gate.mjs"
     ]
   },
   "safety": {
@@ -4815,7 +4806,7 @@
     },
     {
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "sha256": "4fa24f2b6a2985726e6a1d7f6fe2d683f5871750f705ff882e648568443bf2a3"
+      "sha256": "eef0fe907211b4e0f664c685039b82d6aca3393e9dfe35362ac89778db8e348f"
     },
     {
       "file": "app/api/kafarm/guardian/route.ts",

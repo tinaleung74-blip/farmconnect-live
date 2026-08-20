@@ -4,6 +4,7 @@ import { monitorPage } from "./helpers";
 const publicRoutes = [
   { route: "/", heading: "Sign in to your account" },
   { route: "/forgot-password", heading: /forgot|reset/i },
+  { route: "/reset-password", heading: /reset password/i },
   { route: "/view-farm", heading: /farm/i },
   { route: "/caretaker/signup", heading: /caretaker/i },
 ];
