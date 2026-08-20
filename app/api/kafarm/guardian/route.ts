@@ -33,11 +33,18 @@ function withinRateLimit(profileId: string) {
 export async function GET(request: NextRequest) {
   const auth = await authenticateKaFarmAdmin(request);
   if (!auth.ok) return json(auth.status, { ok: false, error: auth.error, detail: auth.detail });
+  const { data: rateLimitVerification } = await auth.context.privilegedReadClient.rpc("farmconnect_rate_limit_version");
+  const verifiedRateLimit = (Array.isArray(rateLimitVerification) ? rateLimitVerification[0] : rateLimitVerification) as {
+    event_table?: boolean;
+    guard_function?: boolean;
+    trigger_function?: boolean;
+    business_trigger_count?: number;
+  } | null;
   return json(200, {
     ok: true,
     mode: "read-only",
     capabilities: getKaFarmGuardianCapabilities(),
-    rateLimit: getFarmConnectRateLimitReadiness(),
+    rateLimit: getFarmConnectRateLimitReadiness(process.env, verifiedRateLimit),
     systemMap: getKaFarmSystemMapStatus(),
     invariants: kaFarmInvariantRegistry,
   });

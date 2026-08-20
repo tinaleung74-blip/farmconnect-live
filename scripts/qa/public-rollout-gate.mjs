@@ -59,6 +59,7 @@ const staticGates = [
   ["build", "Production build"],
   ["test:lint-critical", "Runtime-critical lint"],
   ["test:security", "Security contract"],
+  ["test:rate-limit", "Persistent rate-limit contract"],
   ["test:dependencies", "Dependency vulnerability contract"],
   ["test:kafarm-guardian", "KaFarm Guardian safety"],
   ["test:kafarm-gate", "KaFarm protected-action gate"],
@@ -100,12 +101,18 @@ if (isolated.passed) {
 const rateLimitSource = fs.readFileSync(path.join(root, "lib", "security", "farmconnect-rate-limit.ts"), "utf8");
 const persistentRateLimitReady = /persistentBackendInstalled:\s*true/.test(rateLimitSource)
   && /businessRpcEnforcement:\s*true/.test(rateLimitSource);
+const rateLimitProductionVerified = env.FARMCONNECT_RATE_LIMIT_PRODUCTION_VERIFIED === "true"
+  && env.FARMCONNECT_RATE_LIMIT_MODE === "enforce";
 gates.push({
   id: "persistent-rate-limit",
   label: "Persistent abuse/rate-limit enforcement",
   kind: "code-readiness",
-  passed: persistentRateLimitReady,
-  detail: persistentRateLimitReady ? "persistent backend and business RPC enforcement declared ready" : "not installed/enforced; controlled pilot only",
+  passed: persistentRateLimitReady && rateLimitProductionVerified,
+  detail: !persistentRateLimitReady
+    ? "persistent backend is not implemented"
+    : rateLimitProductionVerified
+      ? "migration 078 and deployment enforcement externally verified"
+      : "implemented but not production-verified; set FARMCONNECT_RATE_LIMIT_MODE=enforce and FARMCONNECT_RATE_LIMIT_PRODUCTION_VERIFIED=true only after applying migration 078",
 });
 
 for (const [key, label] of [

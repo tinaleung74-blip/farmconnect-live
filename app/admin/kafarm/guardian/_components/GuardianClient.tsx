@@ -9,13 +9,15 @@ type GuardianStatus = {
   ok: boolean;
   rateLimit?: {
     requestedMode: "off" | "observe" | "enforce";
-    effectiveMode: "off";
+    effectiveMode: "unverified" | "enforce";
     switchPrepared: boolean;
     persistentBackendInstalled: boolean;
     businessRpcEnforcement: boolean;
-    activationAuthority: "deployment_environment_only";
+    productionVerified: boolean;
+    databaseVerified: boolean;
+    activationAuthority: "database_migration_and_deployment_verification";
     environmentKey: string;
-    status: "PREPARED_NOT_ENFORCING";
+    status: "READY_NOT_VERIFIED" | "ENFORCING";
     warning: string;
   };
   capabilities?: {
@@ -136,11 +138,11 @@ export function GuardianClient() {
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-4">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Full-app rate-limit switch</p>
-              <p className="mt-1 text-sm font-black text-[#0f3f2c]">{status?.rateLimit ? `${status.rateLimit.effectiveMode.toUpperCase()} · Switch prepared` : "Checking status..."}</p>
+              <p className="mt-1 text-sm font-black text-[#0f3f2c]">{status?.rateLimit ? `${status.rateLimit.effectiveMode.toUpperCase()} · Persistent guard ${status.rateLimit.persistentBackendInstalled ? "installed" : "missing"}` : "Checking status..."}</p>
               <p className="mt-1 max-w-3xl text-xs font-bold leading-5 text-[#637064]">{status?.rateLimit?.warning || "Status is available only after active Admin verification."}</p>
             </div>
             <button type="button" disabled data-kafarm-monitor-ignore="true" title="Activation is controlled by the deployment environment, not by the browser." className="cursor-not-allowed rounded-2xl bg-slate-200 px-5 py-3 text-xs font-black text-slate-600">
-              Rate Limit OFF · Deployment Controlled
+              {status?.rateLimit?.effectiveMode === "enforce" ? "Rate Limit ON · Database Enforced" : "Rate Limit · Awaiting Database Verification"}
             </button>
           </div>
         </header>

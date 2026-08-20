@@ -1,24 +1,33 @@
 {
   "schemaVersion": "1.0.0",
   "application": "FarmConnect",
-  "generatedAt": "2026-08-20T00:07:26.246Z",
+  "generatedAt": "2026-08-20T01:01:31.789Z",
   "sourceSnapshot": {
-    "generatedAt": "2026-08-20T00:07:25.985Z",
-    "sourceFingerprint": "ea4aeb6c8f01c8fa78be6df3899fafe3580e46591dec7ce9c1921ed21ffaf955",
+    "generatedAt": "2026-08-20T01:01:31.694Z",
+    "sourceFingerprint": "827c14a872da49d22fe562b14975d375b101b7df756a561100750e543f89a2e9",
     "schemaVersion": "2.2.0"
   },
   "git": {
-    "commit": "72678e5cb2c085d556e8cd24fda5f7697ad300b8",
+    "commit": "ed3bcbb0a2d03176b913d993a862c71436e7cced",
     "branch": "agent/independent-operations",
     "dirtyFiles": [
-      "M lib/kafarm-system-snapshot.generated.json",
+      "M app/admin/kafarm/guardian/_components/GuardianClient.tsx",
+      " M app/api/kafarm/guardian/monitor/route.ts",
+      " M app/api/kafarm/guardian/route.ts",
+      " M database/00_verify_applied_sql_status.sql",
+      " M database/applied/000_database_applied_ledger.md",
+      " M docs/PUBLIC_ROLLOUT_TEST_PLAN.md",
+      " M lib/kafarm-system-snapshot.generated.json",
       " M lib/kafarm/guardian/system-map.generated.json",
+      " M lib/security/farmconnect-rate-limit.ts",
       " M package.json",
-      " M tests/e2e/public-smoke.spec.ts",
-      "?? docs/ISOLATED_PUBLIC_ROLLOUT_TEST_DATA.md",
-      "?? docs/OWNER_OPERATOR_REHEARSAL.md",
-      "?? docs/PUBLIC_ROLLOUT_TEST_PLAN.md",
-      "?? scripts/qa/public-rollout-gate.mjs"
+      " M scripts/qa/kafarm-guardian-contract.mjs",
+      " M scripts/qa/public-rollout-gate.mjs",
+      " M scripts/qa/security-contract.mjs",
+      "?? database/applied/078_persistent_business_rate_limit.sql",
+      "?? database/applied/079_kafarm_monitor_run_ledger.sql",
+      "?? scripts/qa/rate-limit-contract.mjs",
+      "?? scripts/qa/verify-production-monitor.mjs"
     ]
   },
   "blueprint": {
@@ -30,9 +39,9 @@
     "pages": 111,
     "apiRoutes": 4,
     "actions": 141,
-    "backendReferences": 126,
+    "backendReferences": 128,
     "edges": 252,
-    "tests": 21
+    "tests": 23
   },
   "nodes": [
     {
@@ -2486,20 +2495,20 @@
       "route": "/admin/kafarm"
     },
     {
-      "id": "backend:api:/api/kafarm/guardian:app/admin/kafarm/guardian/_components/GuardianClient.tsx:70:9",
+      "id": "backend:api:/api/kafarm/guardian:app/admin/kafarm/guardian/_components/GuardianClient.tsx:72:9",
       "type": "api",
       "name": "/api/kafarm/guardian",
       "file": "app/admin/kafarm/guardian/_components/GuardianClient.tsx",
-      "line": 70,
+      "line": 72,
       "role": "admin",
       "route": "/admin/kafarm/guardian"
     },
     {
-      "id": "backend:api:/api/kafarm/guardian:app/admin/kafarm/guardian/_components/GuardianClient.tsx:94:10",
+      "id": "backend:api:/api/kafarm/guardian:app/admin/kafarm/guardian/_components/GuardianClient.tsx:96:10",
       "type": "api",
       "name": "/api/kafarm/guardian",
       "file": "app/admin/kafarm/guardian/_components/GuardianClient.tsx",
-      "line": 94,
+      "line": 96,
       "role": "admin",
       "route": "/admin/kafarm/guardian"
     },
@@ -2540,25 +2549,43 @@
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_incidents:app/api/kafarm/guardian/monitor/route.ts:93:15",
+      "id": "backend:table:kafarm_incidents:app/api/kafarm/guardian/monitor/route.ts:95:15",
       "type": "table",
       "name": "kafarm_incidents",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 93,
+      "line": 95,
       "role": "system",
       "route": "/"
     },
     {
-      "id": "backend:rpc:kafarm_guardian_monitor_snapshot:app/api/kafarm/guardian/monitor/route.ts:52:16",
+      "id": "backend:table:kafarm_guardian_monitor_runs:app/api/kafarm/guardian/monitor/route.ts:103:16",
+      "type": "table",
+      "name": "kafarm_guardian_monitor_runs",
+      "file": "app/api/kafarm/guardian/monitor/route.ts",
+      "line": 103,
+      "role": "system",
+      "route": "/"
+    },
+    {
+      "id": "backend:rpc:kafarm_guardian_monitor_snapshot:app/api/kafarm/guardian/monitor/route.ts:53:17",
       "type": "rpc",
       "name": "kafarm_guardian_monitor_snapshot",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 52,
+      "line": 53,
       "role": "system",
       "route": "/"
     },
     {
-      "id": "backend:table:profiles:app/api/kafarm/whole-app-reader/route.ts:75:17",
+      "id": "backend:rpc:farmconnect_rate_limit_version:app/api/kafarm/guardian/route.ts:36:18",
+      "type": "rpc",
+      "name": "farmconnect_rate_limit_version",
+      "file": "app/api/kafarm/guardian/route.ts",
+      "line": 36,
+      "role": "system",
+      "route": "/"
+    },
+    {
+      "id": "backend:table:profiles:app/api/kafarm/whole-app-reader/route.ts:75:19",
       "type": "table",
       "name": "profiles",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2567,7 +2594,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_incidents:app/api/kafarm/whole-app-reader/route.ts:97:18",
+      "id": "backend:table:kafarm_incidents:app/api/kafarm/whole-app-reader/route.ts:97:20",
       "type": "table",
       "name": "kafarm_incidents",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2576,7 +2603,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:admin_kafarm_incident_queue:app/api/kafarm/whole-app-reader/route.ts:97:19",
+      "id": "backend:table:admin_kafarm_incident_queue:app/api/kafarm/whole-app-reader/route.ts:97:21",
       "type": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2585,7 +2612,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_device_usage_logs:app/api/kafarm/whole-app-reader/route.ts:127:20",
+      "id": "backend:table:kafarm_device_usage_logs:app/api/kafarm/whole-app-reader/route.ts:127:22",
       "type": "table",
       "name": "kafarm_device_usage_logs",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2594,7 +2621,7 @@
       "route": "/"
     },
     {
-      "id": "backend:rpc:kafarm_workflow_chain_snapshot:app/api/kafarm/whole-app-reader/route.ts:106:21",
+      "id": "backend:rpc:kafarm_workflow_chain_snapshot:app/api/kafarm/whole-app-reader/route.ts:106:23",
       "type": "rpc",
       "name": "kafarm_workflow_chain_snapshot",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2603,7 +2630,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:profiles:app/page.tsx:49:22",
+      "id": "backend:table:profiles:app/page.tsx:49:24",
       "type": "table",
       "name": "profiles",
       "file": "app/page.tsx",
@@ -2612,7 +2639,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:support_chat_messages:lib/backend/support-chat.ts:8:23",
+      "id": "backend:table:support_chat_messages:lib/backend/support-chat.ts:8:25",
       "type": "table",
       "name": "support_chat_messages",
       "file": "lib/backend/support-chat.ts",
@@ -2621,7 +2648,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:table:support_chat_sessions:lib/backend/support-chat.ts:16:24",
+      "id": "backend:table:support_chat_sessions:lib/backend/support-chat.ts:16:26",
       "type": "table",
       "name": "support_chat_sessions",
       "file": "lib/backend/support-chat.ts",
@@ -2630,7 +2657,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:table:support_chat_sessions:lib/backend/support-chat.ts:24:25",
+      "id": "backend:table:support_chat_sessions:lib/backend/support-chat.ts:24:27",
       "type": "table",
       "name": "support_chat_sessions",
       "file": "lib/backend/support-chat.ts",
@@ -2639,7 +2666,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:table:admin_support_escalated_chats:lib/backend/support-chat.ts:64:26",
+      "id": "backend:table:admin_support_escalated_chats:lib/backend/support-chat.ts:64:28",
       "type": "table",
       "name": "admin_support_escalated_chats",
       "file": "lib/backend/support-chat.ts",
@@ -2648,7 +2675,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:rpc:kafarm_support_send_message:lib/backend/support-chat.ts:55:27",
+      "id": "backend:rpc:kafarm_support_send_message:lib/backend/support-chat.ts:55:29",
       "type": "rpc",
       "name": "kafarm_support_send_message",
       "file": "lib/backend/support-chat.ts",
@@ -2657,7 +2684,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:table:profiles:lib/customer-signup.ts:42:28",
+      "id": "backend:table:profiles:lib/customer-signup.ts:42:30",
       "type": "table",
       "name": "profiles",
       "file": "lib/customer-signup.ts",
@@ -2666,7 +2693,7 @@
       "route": "/"
     },
     {
-      "id": "backend:rpc:customer_ensure_signup_profile:lib/customer-signup.ts:32:29",
+      "id": "backend:rpc:customer_ensure_signup_profile:lib/customer-signup.ts:32:31",
       "type": "rpc",
       "name": "customer_ensure_signup_profile",
       "file": "lib/customer-signup.ts",
@@ -2675,7 +2702,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:19:30",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:19:32",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -2684,7 +2711,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:29:31",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:29:33",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -2693,7 +2720,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_products:lib/farmconnect-data.ts:36:32",
+      "id": "backend:table:farm_products:lib/farmconnect-data.ts:36:34",
       "type": "table",
       "name": "farm_products",
       "file": "lib/farmconnect-data.ts",
@@ -2702,7 +2729,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:73:33",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:73:35",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -2711,7 +2738,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:77:34",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:77:36",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -2720,7 +2747,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:77:35",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:77:37",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -2729,7 +2756,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:89:36",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:89:38",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -2738,7 +2765,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:89:37",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:89:39",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -2747,7 +2774,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:animals:lib/farmconnect-data.ts:105:38",
+      "id": "backend:table:animals:lib/farmconnect-data.ts:105:40",
       "type": "table",
       "name": "animals",
       "file": "lib/farmconnect-data.ts",
@@ -2756,7 +2783,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_animals:lib/farmconnect-data.ts:115:39",
+      "id": "backend:table:customer_animals:lib/farmconnect-data.ts:115:41",
       "type": "table",
       "name": "customer_animals",
       "file": "lib/farmconnect-data.ts",
@@ -2765,7 +2792,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_inventory_items:lib/farmconnect-data.ts:125:40",
+      "id": "backend:table:customer_inventory_items:lib/farmconnect-data.ts:125:42",
       "type": "table",
       "name": "customer_inventory_items",
       "file": "lib/farmconnect-data.ts",
@@ -2774,7 +2801,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_care_requests:lib/farmconnect-data.ts:162:41",
+      "id": "backend:table:farm_care_requests:lib/farmconnect-data.ts:162:43",
       "type": "table",
       "name": "farm_care_requests",
       "file": "lib/farmconnect-data.ts",
@@ -2783,7 +2810,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_care_requests:lib/farmconnect-data.ts:169:42",
+      "id": "backend:table:farm_care_requests:lib/farmconnect-data.ts:169:44",
       "type": "table",
       "name": "farm_care_requests",
       "file": "lib/farmconnect-data.ts",
@@ -2792,7 +2819,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:197:43",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:197:45",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -2801,7 +2828,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:204:44",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:204:46",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -2810,7 +2837,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:211:45",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:211:47",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -2819,7 +2846,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:221:46",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:221:48",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -2828,7 +2855,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:227:47",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:227:49",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -2837,7 +2864,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:240:48",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:240:50",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -2846,7 +2873,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:rooster_care_plans:lib/farmconnect-data.ts:249:49",
+      "id": "backend:table:rooster_care_plans:lib/farmconnect-data.ts:249:51",
       "type": "table",
       "name": "rooster_care_plans",
       "file": "lib/farmconnect-data.ts",
@@ -2855,7 +2882,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:care_mission_templates:lib/farmconnect-data.ts:306:50",
+      "id": "backend:table:care_mission_templates:lib/farmconnect-data.ts:306:52",
       "type": "table",
       "name": "care_mission_templates",
       "file": "lib/farmconnect-data.ts",
@@ -2864,7 +2891,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:rooster_care_plans:lib/farmconnect-data.ts:358:51",
+      "id": "backend:table:rooster_care_plans:lib/farmconnect-data.ts:358:53",
       "type": "table",
       "name": "rooster_care_plans",
       "file": "lib/farmconnect-data.ts",
@@ -2873,7 +2900,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_inventory_items:lib/farmconnect-data.ts:364:52",
+      "id": "backend:table:customer_inventory_items:lib/farmconnect-data.ts:364:54",
       "type": "table",
       "name": "customer_inventory_items",
       "file": "lib/farmconnect-data.ts",
@@ -2882,7 +2909,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_products:lib/farmconnect-data.ts:370:53",
+      "id": "backend:table:farm_products:lib/farmconnect-data.ts:370:55",
       "type": "table",
       "name": "farm_products",
       "file": "lib/farmconnect-data.ts",
@@ -2891,7 +2918,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:594:54",
+      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:594:56",
       "type": "table",
       "name": "task_proofs",
       "file": "lib/farmconnect-data.ts",
@@ -2900,7 +2927,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:603:55",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:603:57",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -2909,7 +2936,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:610:56",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:610:58",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -2918,7 +2945,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:624:57",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:624:59",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -2927,7 +2954,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:rooster_sale_requests:lib/farmconnect-data.ts:659:58",
+      "id": "backend:table:rooster_sale_requests:lib/farmconnect-data.ts:659:60",
       "type": "table",
       "name": "rooster_sale_requests",
       "file": "lib/farmconnect-data.ts",
@@ -2936,7 +2963,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:rooster_sale_requests:lib/farmconnect-data.ts:683:59",
+      "id": "backend:table:rooster_sale_requests:lib/farmconnect-data.ts:683:61",
       "type": "table",
       "name": "rooster_sale_requests",
       "file": "lib/farmconnect-data.ts",
@@ -2945,7 +2972,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:wallet_transactions:lib/farmconnect-data.ts:711:60",
+      "id": "backend:table:wallet_transactions:lib/farmconnect-data.ts:711:62",
       "type": "table",
       "name": "wallet_transactions",
       "file": "lib/farmconnect-data.ts",
@@ -2954,7 +2981,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:inbox_items:lib/farmconnect-data.ts:718:61",
+      "id": "backend:table:inbox_items:lib/farmconnect-data.ts:718:63",
       "type": "table",
       "name": "inbox_items",
       "file": "lib/farmconnect-data.ts",
@@ -2963,7 +2990,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:inventory_usage_logs:lib/farmconnect-data.ts:779:62",
+      "id": "backend:table:inventory_usage_logs:lib/farmconnect-data.ts:779:64",
       "type": "table",
       "name": "inventory_usage_logs",
       "file": "lib/farmconnect-data.ts",
@@ -2972,7 +2999,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:825:63",
+      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:825:65",
       "type": "table",
       "name": "task_proofs",
       "file": "lib/farmconnect-data.ts",
@@ -2981,7 +3008,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:836:64",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:836:66",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -2990,7 +3017,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:842:65",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:842:67",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -2999,7 +3026,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:888:66",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:888:68",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -3008,7 +3035,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:support_conversations:lib/farmconnect-data.ts:897:67",
+      "id": "backend:table:support_conversations:lib/farmconnect-data.ts:897:69",
       "type": "table",
       "name": "support_conversations",
       "file": "lib/farmconnect-data.ts",
@@ -3017,7 +3044,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:manual_payment_requests:lib/farmconnect-data.ts:958:68",
+      "id": "backend:table:manual_payment_requests:lib/farmconnect-data.ts:958:70",
       "type": "table",
       "name": "manual_payment_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3026,7 +3053,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:manual_payment_requests:lib/farmconnect-data.ts:965:69",
+      "id": "backend:table:manual_payment_requests:lib/farmconnect-data.ts:965:71",
       "type": "table",
       "name": "manual_payment_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3035,7 +3062,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:972:70",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:972:72",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3044,7 +3071,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_payout_methods:lib/farmconnect-data.ts:1015:71",
+      "id": "backend:table:customer_payout_methods:lib/farmconnect-data.ts:1015:73",
       "type": "table",
       "name": "customer_payout_methods",
       "file": "lib/farmconnect-data.ts",
@@ -3053,7 +3080,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:withdrawal_requests:lib/farmconnect-data.ts:1055:72",
+      "id": "backend:table:withdrawal_requests:lib/farmconnect-data.ts:1055:74",
       "type": "table",
       "name": "withdrawal_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3062,7 +3089,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:withdrawal_requests:lib/farmconnect-data.ts:1062:73",
+      "id": "backend:table:withdrawal_requests:lib/farmconnect-data.ts:1062:75",
       "type": "table",
       "name": "withdrawal_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3071,7 +3098,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:withdrawal_disputes:lib/farmconnect-data.ts:1141:74",
+      "id": "backend:table:withdrawal_disputes:lib/farmconnect-data.ts:1141:76",
       "type": "table",
       "name": "withdrawal_disputes",
       "file": "lib/farmconnect-data.ts",
@@ -3080,7 +3107,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_applications:lib/farmconnect-data.ts:1170:75",
+      "id": "backend:table:caretaker_applications:lib/farmconnect-data.ts:1170:77",
       "type": "table",
       "name": "caretaker_applications",
       "file": "lib/farmconnect-data.ts",
@@ -3089,7 +3116,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_kyc_profiles:lib/farmconnect-data.ts:1208:76",
+      "id": "backend:table:customer_kyc_profiles:lib/farmconnect-data.ts:1208:78",
       "type": "table",
       "name": "customer_kyc_profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3098,7 +3125,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_kyc_profiles:lib/farmconnect-data.ts:1252:77",
+      "id": "backend:table:customer_kyc_profiles:lib/farmconnect-data.ts:1252:79",
       "type": "table",
       "name": "customer_kyc_profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3107,7 +3134,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:1260:78",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:1260:80",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3116,7 +3143,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:kyc_documents:lib/farmconnect-data.ts:1264:79",
+      "id": "backend:table:kyc_documents:lib/farmconnect-data.ts:1264:81",
       "type": "table",
       "name": "kyc_documents",
       "file": "lib/farmconnect-data.ts",
@@ -3125,7 +3152,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_buy_cart:lib/farmconnect-data.ts:99:80",
+      "id": "backend:rpc:customer_buy_cart:lib/farmconnect-data.ts:99:82",
       "type": "rpc",
       "name": "customer_buy_cart",
       "file": "lib/farmconnect-data.ts",
@@ -3134,7 +3161,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_create_care_request:lib/farmconnect-data.ts:143:81",
+      "id": "backend:rpc:customer_create_care_request:lib/farmconnect-data.ts:143:83",
       "type": "rpc",
       "name": "customer_create_care_request",
       "file": "lib/farmconnect-data.ts",
@@ -3143,7 +3170,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_assign_care_request:lib/farmconnect-data.ts:186:82",
+      "id": "backend:rpc:admin_assign_care_request:lib/farmconnect-data.ts:186:84",
       "type": "rpc",
       "name": "admin_assign_care_request",
       "file": "lib/farmconnect-data.ts",
@@ -3152,7 +3179,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_request_care_plan:lib/farmconnect-data.ts:330:83",
+      "id": "backend:rpc:customer_request_care_plan:lib/farmconnect-data.ts:330:85",
       "type": "rpc",
       "name": "customer_request_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3161,7 +3188,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_prepare_fixed_care_plan_payment:lib/farmconnect-data.ts:340:84",
+      "id": "backend:rpc:customer_prepare_fixed_care_plan_payment:lib/farmconnect-data.ts:340:86",
       "type": "rpc",
       "name": "customer_prepare_fixed_care_plan_payment",
       "file": "lib/farmconnect-data.ts",
@@ -3170,7 +3197,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_prepare_care_plan_quote_v2:lib/farmconnect-data.ts:376:85",
+      "id": "backend:rpc:admin_prepare_care_plan_quote_v2:lib/farmconnect-data.ts:376:87",
       "type": "rpc",
       "name": "admin_prepare_care_plan_quote_v2",
       "file": "lib/farmconnect-data.ts",
@@ -3179,7 +3206,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_activate_care_plan:lib/farmconnect-data.ts:400:86",
+      "id": "backend:rpc:admin_activate_care_plan:lib/farmconnect-data.ts:400:88",
       "type": "rpc",
       "name": "admin_activate_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3188,7 +3215,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_assign_care_plan:lib/farmconnect-data.ts:409:87",
+      "id": "backend:rpc:admin_assign_care_plan:lib/farmconnect-data.ts:409:89",
       "type": "rpc",
       "name": "admin_assign_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3197,7 +3224,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_cancel_care_plan:lib/farmconnect-data.ts:423:88",
+      "id": "backend:rpc:customer_cancel_care_plan:lib/farmconnect-data.ts:423:90",
       "type": "rpc",
       "name": "customer_cancel_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3206,7 +3233,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_control_care_plan:lib/farmconnect-data.ts:432:89",
+      "id": "backend:rpc:admin_control_care_plan:lib/farmconnect-data.ts:432:91",
       "type": "rpc",
       "name": "admin_control_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3215,7 +3242,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_record_care_plan_refund:lib/farmconnect-data.ts:443:90",
+      "id": "backend:rpc:admin_record_care_plan_refund:lib/farmconnect-data.ts:443:92",
       "type": "rpc",
       "name": "admin_record_care_plan_refund",
       "file": "lib/farmconnect-data.ts",
@@ -3224,7 +3251,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:generate_due_care_plan_missions:lib/farmconnect-data.ts:456:91",
+      "id": "backend:rpc:generate_due_care_plan_missions:lib/farmconnect-data.ts:456:93",
       "type": "rpc",
       "name": "generate_due_care_plan_missions",
       "file": "lib/farmconnect-data.ts",
@@ -3233,7 +3260,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:kafarm_care_plan_health_snapshot:lib/farmconnect-data.ts:462:92",
+      "id": "backend:rpc:kafarm_care_plan_health_snapshot:lib/farmconnect-data.ts:462:94",
       "type": "rpc",
       "name": "kafarm_care_plan_health_snapshot",
       "file": "lib/farmconnect-data.ts",
@@ -3242,7 +3269,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:caretaker_get_task_inventory:lib/farmconnect-data.ts:491:93",
+      "id": "backend:rpc:caretaker_get_task_inventory:lib/farmconnect-data.ts:491:95",
       "type": "rpc",
       "name": "caretaker_get_task_inventory",
       "file": "lib/farmconnect-data.ts",
@@ -3251,7 +3278,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:caretaker_submit_mission_proof:lib/farmconnect-data.ts:518:94",
+      "id": "backend:rpc:caretaker_submit_mission_proof:lib/farmconnect-data.ts:518:96",
       "type": "rpc",
       "name": "caretaker_submit_mission_proof",
       "file": "lib/farmconnect-data.ts",
@@ -3260,7 +3287,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:caretaker_submit_manual_mission_proof:lib/farmconnect-data.ts:552:95",
+      "id": "backend:rpc:caretaker_submit_manual_mission_proof:lib/farmconnect-data.ts:552:97",
       "type": "rpc",
       "name": "caretaker_submit_manual_mission_proof",
       "file": "lib/farmconnect-data.ts",
@@ -3269,7 +3296,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_manual_mission_proof_guarded:lib/farmconnect-data.ts:567:96",
+      "id": "backend:rpc:admin_review_manual_mission_proof_guarded:lib/farmconnect-data.ts:567:98",
       "type": "rpc",
       "name": "admin_review_manual_mission_proof_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3278,7 +3305,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:caretaker_submit_task_proof_v3:lib/farmconnect-data.ts:578:97",
+      "id": "backend:rpc:caretaker_submit_task_proof_v3:lib/farmconnect-data.ts:578:99",
       "type": "rpc",
       "name": "caretaker_submit_task_proof_v3",
       "file": "lib/farmconnect-data.ts",
@@ -3287,7 +3314,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_task_proof_guarded:lib/farmconnect-data.ts:638:98",
+      "id": "backend:rpc:admin_review_task_proof_guarded:lib/farmconnect-data.ts:638:100",
       "type": "rpc",
       "name": "admin_review_task_proof_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3296,7 +3323,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_mission_proof_guarded:lib/farmconnect-data.ts:649:99",
+      "id": "backend:rpc:admin_review_mission_proof_guarded:lib/farmconnect-data.ts:649:101",
       "type": "rpc",
       "name": "admin_review_mission_proof_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3305,7 +3332,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_request_rooster_sale_price:lib/farmconnect-data.ts:665:100",
+      "id": "backend:rpc:customer_request_rooster_sale_price:lib/farmconnect-data.ts:665:102",
       "type": "rpc",
       "name": "customer_request_rooster_sale_price",
       "file": "lib/farmconnect-data.ts",
@@ -3314,7 +3341,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_confirm_rooster_sale:lib/farmconnect-data.ts:674:101",
+      "id": "backend:rpc:customer_confirm_rooster_sale:lib/farmconnect-data.ts:674:103",
       "type": "rpc",
       "name": "customer_confirm_rooster_sale",
       "file": "lib/farmconnect-data.ts",
@@ -3323,7 +3350,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_rooster_sale_guarded:lib/farmconnect-data.ts:689:102",
+      "id": "backend:rpc:admin_review_rooster_sale_guarded:lib/farmconnect-data.ts:689:104",
       "type": "rpc",
       "name": "admin_review_rooster_sale_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3332,7 +3359,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:caretaker_submit_rooster_sale_task:lib/farmconnect-data.ts:699:103",
+      "id": "backend:rpc:caretaker_submit_rooster_sale_task:lib/farmconnect-data.ts:699:105",
       "type": "rpc",
       "name": "caretaker_submit_rooster_sale_task",
       "file": "lib/farmconnect-data.ts",
@@ -3341,7 +3368,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_mark_inbox_item_read:lib/farmconnect-data.ts:725:104",
+      "id": "backend:rpc:customer_mark_inbox_item_read:lib/farmconnect-data.ts:725:106",
       "type": "rpc",
       "name": "customer_mark_inbox_item_read",
       "file": "lib/farmconnect-data.ts",
@@ -3350,7 +3377,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_submit_manual_payment_guarded:lib/farmconnect-data.ts:935:105",
+      "id": "backend:rpc:customer_submit_manual_payment_guarded:lib/farmconnect-data.ts:935:107",
       "type": "rpc",
       "name": "customer_submit_manual_payment_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3359,7 +3386,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_manual_payment_guarded:lib/farmconnect-data.ts:982:106",
+      "id": "backend:rpc:admin_review_manual_payment_guarded:lib/farmconnect-data.ts:982:108",
       "type": "rpc",
       "name": "admin_review_manual_payment_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3368,7 +3395,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_save_payout_method:lib/farmconnect-data.ts:1022:107",
+      "id": "backend:rpc:customer_save_payout_method:lib/farmconnect-data.ts:1022:109",
       "type": "rpc",
       "name": "customer_save_payout_method",
       "file": "lib/farmconnect-data.ts",
@@ -3377,7 +3404,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_submit_withdrawal_request_guarded:lib/farmconnect-data.ts:1034:108",
+      "id": "backend:rpc:customer_submit_withdrawal_request_guarded:lib/farmconnect-data.ts:1034:110",
       "type": "rpc",
       "name": "customer_submit_withdrawal_request_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3386,7 +3413,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_withdrawal_request_guarded:lib/farmconnect-data.ts:1069:109",
+      "id": "backend:rpc:admin_review_withdrawal_request_guarded:lib/farmconnect-data.ts:1069:111",
       "type": "rpc",
       "name": "admin_review_withdrawal_request_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3395,7 +3422,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:submit_caretaker_application:lib/farmconnect-data.ts:1099:110",
+      "id": "backend:rpc:submit_caretaker_application:lib/farmconnect-data.ts:1099:112",
       "type": "rpc",
       "name": "submit_caretaker_application",
       "file": "lib/farmconnect-data.ts",
@@ -3404,7 +3431,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_confirm_withdrawal_result:lib/farmconnect-data.ts:1121:111",
+      "id": "backend:rpc:customer_confirm_withdrawal_result:lib/farmconnect-data.ts:1121:113",
       "type": "rpc",
       "name": "customer_confirm_withdrawal_result",
       "file": "lib/farmconnect-data.ts",
@@ -3413,7 +3440,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_report_withdrawal_problem:lib/farmconnect-data.ts:1131:112",
+      "id": "backend:rpc:customer_report_withdrawal_problem:lib/farmconnect-data.ts:1131:114",
       "type": "rpc",
       "name": "customer_report_withdrawal_problem",
       "file": "lib/farmconnect-data.ts",
@@ -3422,7 +3449,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_resolve_withdrawal_dispute:lib/farmconnect-data.ts:1157:113",
+      "id": "backend:rpc:admin_resolve_withdrawal_dispute:lib/farmconnect-data.ts:1157:115",
       "type": "rpc",
       "name": "admin_resolve_withdrawal_dispute",
       "file": "lib/farmconnect-data.ts",
@@ -3431,7 +3458,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_caretaker_application_guarded:lib/farmconnect-data.ts:1181:114",
+      "id": "backend:rpc:admin_review_caretaker_application_guarded:lib/farmconnect-data.ts:1181:116",
       "type": "rpc",
       "name": "admin_review_caretaker_application_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3440,7 +3467,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_customer_kyc_guarded:lib/farmconnect-data.ts:1286:115",
+      "id": "backend:rpc:admin_review_customer_kyc_guarded:lib/farmconnect-data.ts:1286:117",
       "type": "rpc",
       "name": "admin_review_customer_kyc_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3449,7 +3476,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:118:116",
+      "id": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:118:118",
       "type": "rpc",
       "name": "admin_session_guard_status",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -3458,7 +3485,7 @@
       "route": "lib/farmconnect-unified-account-verification.tsx"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:5787:117",
+      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:5787:119",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
@@ -3467,7 +3494,7 @@
       "route": "/customer/settings"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:12154:118",
+      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:12154:120",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
@@ -3476,7 +3503,7 @@
       "route": "lib/farmconnect-v1.tsx"
     },
     {
-      "id": "backend:rpc:customer_record_kyc_consent:lib/farmconnect-v1.tsx:5659:119",
+      "id": "backend:rpc:customer_record_kyc_consent:lib/farmconnect-v1.tsx:5659:121",
       "type": "rpc",
       "name": "customer_record_kyc_consent",
       "file": "lib/farmconnect-v1.tsx",
@@ -3485,7 +3512,7 @@
       "route": "/customer/settings"
     },
     {
-      "id": "backend:rpc:customer_submit_kyc:lib/farmconnect-v1.tsx:5665:120",
+      "id": "backend:rpc:customer_submit_kyc:lib/farmconnect-v1.tsx:5665:122",
       "type": "rpc",
       "name": "customer_submit_kyc",
       "file": "lib/farmconnect-v1.tsx",
@@ -3494,7 +3521,7 @@
       "route": "/customer/settings"
     },
     {
-      "id": "backend:rpc:change_wallet_pin:lib/farmconnect-v1.tsx:5741:121",
+      "id": "backend:rpc:change_wallet_pin:lib/farmconnect-v1.tsx:5741:123",
       "type": "rpc",
       "name": "change_wallet_pin",
       "file": "lib/farmconnect-v1.tsx",
@@ -3503,7 +3530,7 @@
       "route": "/customer/settings"
     },
     {
-      "id": "backend:table:profiles:lib/kafarm/guardian/admin-auth.ts:48:122",
+      "id": "backend:table:profiles:lib/kafarm/guardian/admin-auth.ts:48:124",
       "type": "table",
       "name": "profiles",
       "file": "lib/kafarm/guardian/admin-auth.ts",
@@ -3512,7 +3539,7 @@
       "route": "lib/kafarm/guardian/admin-auth.ts"
     },
     {
-      "id": "backend:rpc:kafarm_database_health_snapshot:lib/kafarm/guardian/evidence-tools.ts:100:123",
+      "id": "backend:rpc:kafarm_database_health_snapshot:lib/kafarm/guardian/evidence-tools.ts:100:125",
       "type": "rpc",
       "name": "kafarm_database_health_snapshot",
       "file": "lib/kafarm/guardian/evidence-tools.ts",
@@ -3521,7 +3548,7 @@
       "route": "lib/kafarm/guardian/evidence-tools.ts"
     },
     {
-      "id": "backend:rpc:kafarm_workflow_chain_snapshot:lib/kafarm/guardian/evidence-tools.ts:106:124",
+      "id": "backend:rpc:kafarm_workflow_chain_snapshot:lib/kafarm/guardian/evidence-tools.ts:106:126",
       "type": "rpc",
       "name": "kafarm_workflow_chain_snapshot",
       "file": "lib/kafarm/guardian/evidence-tools.ts",
@@ -3530,7 +3557,7 @@
       "route": "lib/kafarm/guardian/evidence-tools.ts"
     },
     {
-      "id": "backend:api:https://api.openai.com/v1/responses:lib/kafarm/guardian/reasoning.ts:278:125",
+      "id": "backend:api:https://api.openai.com/v1/responses:lib/kafarm/guardian/reasoning.ts:278:127",
       "type": "api",
       "name": "https://api.openai.com/v1/responses",
       "file": "lib/kafarm/guardian/reasoning.ts",
@@ -3766,7 +3793,7 @@
     },
     {
       "from": "action:app/page.tsx:188:15",
-      "to": "backend:table:profiles:app/page.tsx:49:22",
+      "to": "backend:table:profiles:app/page.tsx:49:24",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/page.tsx:188 near app/page.tsx:49"
@@ -3780,7 +3807,7 @@
     },
     {
       "from": "action:app/page.tsx:197:16",
-      "to": "backend:table:profiles:app/page.tsx:49:22",
+      "to": "backend:table:profiles:app/page.tsx:49:24",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/page.tsx:197 near app/page.tsx:49"
@@ -3794,7 +3821,7 @@
     },
     {
       "from": "action:app/page.tsx:200:17",
-      "to": "backend:table:profiles:app/page.tsx:49:22",
+      "to": "backend:table:profiles:app/page.tsx:49:24",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/page.tsx:200 near app/page.tsx:49"
@@ -3836,7 +3863,7 @@
     },
     {
       "from": "action:lib/farmconnect-unified-account-verification.tsx:165:22",
-      "to": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:118:116",
+      "to": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:118:118",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:165 near lib/farmconnect-unified-account-verification.tsx:118"
@@ -4291,7 +4318,7 @@
     },
     {
       "from": "action:lib/farmconnect-v1.tsx:5943:86",
-      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:5787:117",
+      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:5787:119",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:5943 near lib/farmconnect-v1.tsx:5787"
@@ -4676,7 +4703,7 @@
     },
     {
       "from": "action:lib/farmconnect-v1.tsx:12307:140",
-      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:12154:118",
+      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:12154:120",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:12307 near lib/farmconnect-v1.tsx:12154"
@@ -4749,21 +4776,21 @@
       "to": "route:/admin/kafarm/whole-app-reader",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:124"
+      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:126"
     },
     {
       "from": "route:/admin/kafarm/guardian",
       "to": "route:/admin/kafarm",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:125"
+      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:127"
     },
     {
       "from": "route:/admin/kafarm/guardian",
       "to": "route:/admin",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:126"
+      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:128"
     },
     {
       "from": "route:/admin/kafarm/troubleshooting",
@@ -5810,6 +5837,18 @@
       "command": "node scripts/qa/public-rollout-gate.mjs",
       "exists": true,
       "currentReleaseStatus": "NOT_RUN_CURRENT_RELEASE"
+    },
+    {
+      "name": "test:production-monitor",
+      "command": "node scripts/qa/verify-production-monitor.mjs",
+      "exists": true,
+      "currentReleaseStatus": "NOT_RUN_CURRENT_RELEASE"
+    },
+    {
+      "name": "test:rate-limit",
+      "command": "node scripts/qa/rate-limit-contract.mjs",
+      "exists": true,
+      "currentReleaseStatus": "NOT_RUN_CURRENT_RELEASE"
     }
   ],
   "limitations": [
@@ -5818,5 +5857,5 @@
     "A test script existing does not mean it passed on this commit or deployment.",
     "The generated map contains source references, not unrestricted runtime source-code access."
   ],
-  "fingerprint": "6358681a2cb82142bfb81d54438d15dc0bde1483401ce3e26160f49dbfdbe0c6"
+  "fingerprint": "3546f8e7ce10aaf6c580f1f8154fa0d880442e982168069486eef2c726f1c3b7"
 }

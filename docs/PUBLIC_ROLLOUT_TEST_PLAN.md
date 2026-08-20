@@ -42,3 +42,11 @@ Never set an attestation merely to make the report green. Preserve screenshots, 
 - Any failed or skipped role/device workflow.
 - No named incident owner.
 - Owner cannot operate the Admin queues without developer intervention.
+
+## Technical activation order
+
+1. Apply migration 078 and verify `business_trigger_count >= 7`.
+2. Set `FARMCONNECT_RATE_LIMIT_MODE=enforce` and `FARMCONNECT_RATE_LIMIT_PRODUCTION_VERIFIED=true` in Vercel only after reviewing the migration result.
+3. Apply migration 079, confirm the Guardian cron is enabled, then run `npm.cmd run test:production-monitor` with `CRON_SECRET` available only in the local terminal environment.
+4. Set `PRODUCTION_MONITOR_VERIFIED=true` only after the command reports `heartbeatPersisted: true` and `businessMutationAttempted: false`.
+5. Never paste `CRON_SECRET`, service-role keys, passwords, PINs, or private KYC evidence into a report or chat.
