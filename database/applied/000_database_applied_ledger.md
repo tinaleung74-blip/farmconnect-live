@@ -1144,3 +1144,21 @@ Purpose:
 - Record the deployment commit, finding count, incident persistence count, snapshot status, and persistence status.
 - Let production monitoring be verified from durable evidence instead of assuming that a Vercel schedule fired.
 - Perform no payment, approval, KYC, ownership, inventory, refund, or workflow mutation.
+
+## 080_kafarm_truth_reference_current_evidence.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-20 (Asia/Manila)**
+
+Verification:
+
+- `snapshot_rpc = true`
+- `incident_shadow_copy_removed = true`
+- `business_mutation = false`
+
+Purpose:
+
+- Stop the monitor from creating a fresh shadow incident for an already-existing runtime incident.
+- Keep direct browser/API incidents in their original record with their original timestamp.
+- Limit monitor-generated leads to unresolved source workflow records and overdue Care Plan missions.
+- Require current-deployment evidence before Truth Reference labels a runtime incident as confirmed.
+- Perform no approval, payment, KYC, ownership, inventory, refund, deletion, or workflow mutation.

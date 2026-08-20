@@ -25,10 +25,11 @@ type MonitorRun = {
   persisted_incident_count?: number | null;
   snapshot_ok?: boolean | null;
   persistence_ok?: boolean | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 const FRESH_MONITOR_MS = 48 * 60 * 60 * 1000;
-const CURRENT_EVIDENCE_MS = 7 * 24 * 60 * 60 * 1000;
+const TRUTH_MODEL_VERSION = "current-deployment-v2";
 const severityRank: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
 
 function validDate(value?: string | null) {
@@ -51,12 +52,17 @@ function normalizedRootKey(row: IncidentRow) {
   return [monitorCode || title, clean(row.category, "unknown").toLowerCase(), clean(row.route, "unmapped")].join("|");
 }
 
-function classifyIncident(lastSeenAt: string | null): KaFarmTruthClassification {
-  const lastSeen = validDate(lastSeenAt);
-  return lastSeen !== null && Date.now() - lastSeen <= CURRENT_EVIDENCE_MS ? "CONFIRMED_ISSUE" : "STALE_IGNORE";
+function classifyIncident(row: IncidentRow, deploymentBoundary: number | null): KaFarmTruthClassification {
+  const observed = validDate(row.created_at);
+  if (deploymentBoundary === null || observed === null) return "UNPROVEN";
+  if (observed < deploymentBoundary) return "STALE_IGNORE";
+  // Direct browser/API incidents created on this deployment are current runtime
+  // evidence. Guardian monitor records are operational leads until the source
+  // workflow record is reconciled or the behavior is reproduced.
+  return row.source === "guardian_monitor" ? "UNPROVEN" : "CONFIRMED_ISSUE";
 }
 
-function groupIncidents(rows: IncidentRow[]) {
+function groupIncidents(rows: IncidentRow[], deploymentBoundary: number | null) {
   const grouped = new Map<string, IncidentRow[]>();
   for (const row of rows) {
     const key = normalizedRootKey(row);
@@ -69,7 +75,10 @@ function groupIncidents(rows: IncidentRow[]) {
     const timestamps = items.map((item) => validDate(item.updated_at || item.created_at)).filter((item): item is number => item !== null);
     const firstSeenAt = timestamps.length ? new Date(Math.min(...timestamps)).toISOString() : null;
     const lastSeenAt = timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null;
-    const classification = classifyIncident(lastSeenAt);
+    const classifications = items.map((item) => classifyIncident(item, deploymentBoundary));
+    const classification: KaFarmTruthClassification = classifications.includes("CONFIRMED_ISSUE")
+      ? "CONFIRMED_ISSUE"
+      : classifications.includes("UNPROVEN") ? "UNPROVEN" : "STALE_IGNORE";
     const severity = items.map((item) => clean(item.severity, "MEDIUM").toUpperCase()).sort((left, right) => (severityRank[right] || 0) - (severityRank[left] || 0))[0] || "MEDIUM";
     return {
       key,
@@ -85,10 +94,15 @@ function groupIncidents(rows: IncidentRow[]) {
       evidenceSource: clean(newest.source, "kafarm_incidents"),
       safeNextAction: classification === "STALE_IGNORE"
         ? "Do not act on this history unless the same behavior is reproduced on the current deployment."
-        : "Open the grouped evidence, confirm the affected record, and investigate the first broken official workflow step without repeating the transaction.",
+        : classification === "UNPROVEN"
+          ? "Reconcile the source workflow record or reproduce the behavior on the current deployment before calling this a bug."
+          : "Open the grouped evidence, confirm the affected record, and investigate the first broken official workflow step without repeating the transaction.",
     };
   }).sort((left, right) => {
-    if (left.classification !== right.classification) return left.classification === "CONFIRMED_ISSUE" ? -1 : 1;
+    if (left.classification !== right.classification) {
+      const rank: Record<KaFarmTruthClassification, number> = { CONFIRMED_ISSUE: 3, UNPROVEN: 2, STALE_IGNORE: 1, CONFIRMED_HEALTHY: 0 };
+      return rank[right.classification] - rank[left.classification];
+    }
     return (severityRank[right.severity] || 0) - (severityRank[left.severity] || 0) || (validDate(right.lastSeenAt) || 0) - (validDate(left.lastSeenAt) || 0);
   });
 }
@@ -101,7 +115,7 @@ export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Pr
   const [runResult, incidentResult] = await Promise.all([
     context.privilegedReadClient
       .from("kafarm_guardian_monitor_runs")
-      .select("ran_at,deployment_commit,finding_count,persisted_incident_count,snapshot_ok,persistence_ok")
+      .select("ran_at,deployment_commit,finding_count,persisted_incident_count,snapshot_ok,persistence_ok,metadata")
       .order("ran_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -119,9 +133,24 @@ export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Pr
   const runAt = run?.ran_at ? String(run.ran_at) : null;
   const runTimestamp = validDate(runAt);
   const monitorFresh = runTimestamp !== null && Date.now() - runTimestamp <= FRESH_MONITOR_MS;
-  const monitorHealthy = monitorFresh && run?.snapshot_ok === true && run?.persistence_ok === true;
-  const groups = groupIncidents((incidentResult.data || []) as IncidentRow[]);
+  const currentTruthModel = run?.metadata?.truthModelVersion === TRUTH_MODEL_VERSION;
+  const monitorHealthy = monitorFresh && currentTruthModel && run?.snapshot_ok === true && run?.persistence_ok === true;
+  let deploymentBoundary: number | null = null;
+  if (deploymentCommit) {
+    const boundaryResult = await context.privilegedReadClient
+      .from("kafarm_guardian_monitor_runs")
+      .select("ran_at")
+      .eq("deployment_commit", deploymentCommit)
+      .contains("metadata", { truthModelVersion: TRUTH_MODEL_VERSION })
+      .order("ran_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (boundaryResult.error) limitations.push(`Deployment evidence boundary unavailable: ${boundaryResult.error.message}`);
+    deploymentBoundary = validDate(boundaryResult.data?.ran_at ? String(boundaryResult.data.ran_at) : null);
+  }
+  const groups = groupIncidents((incidentResult.data || []) as IncidentRow[], deploymentBoundary);
   const currentGroups = groups.filter((item) => item.classification === "CONFIRMED_ISSUE");
+  const unprovenGroups = groups.filter((item) => item.classification === "UNPROVEN");
   const staleGroups = groups.filter((item) => item.classification === "STALE_IGNORE");
 
   let verdict: KaFarmTruthReference["verdict"] = "UNPROVEN";
@@ -129,7 +158,9 @@ export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Pr
   if (currentGroups.length) {
     verdict = "CONFIRMED_ISSUE";
     verdictReason = `${currentGroups.length} current root-cause group(s) remain open. ${incidentResult.data?.length || 0} raw records were grouped so repeated records are not counted as separate bugs.`;
-  } else if (monitorHealthy && !incidentResult.error) {
+  } else if (unprovenGroups.length) {
+    verdictReason = `${unprovenGroups.length} operational lead group(s) require source-record reconciliation or current-deployment reproduction before they can be called bugs.`;
+  } else if (monitorHealthy && !incidentResult.error && deploymentBoundary !== null) {
     verdict = "CONFIRMED_HEALTHY";
     verdictReason = "The latest monitor heartbeat passed and no current open incident group was found. This is bounded to the workflows and evidence read by the monitor.";
   }
@@ -160,11 +191,12 @@ export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Pr
       persistenceOk: run?.persistence_ok === true,
       rawFindingCount: Number(run?.finding_count || 0),
       persistedIncidentCount: Number(run?.persisted_incident_count || 0),
-      classification: monitorHealthy ? "CONFIRMED_HEALTHY" : runAt ? "CONFIRMED_ISSUE" : "UNPROVEN",
+      classification: monitorHealthy ? "CONFIRMED_HEALTHY" : "UNPROVEN",
     },
     incidentSummary: {
       rawOpenRecordsRead: incidentResult.data?.length || 0,
       groupedRootCauses: currentGroups.length,
+      unprovenGroups: unprovenGroups.length,
       staleGroups: staleGroups.length,
       groups,
     },
@@ -174,10 +206,12 @@ export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Pr
       "Newer direct production evidence overrides older tests and locked history.",
       "Missing evidence is UNPROVEN, not healthy and not broken.",
       "Stale evidence is ignored until reproduced on the current deployment.",
+      "A monitor observation about a stuck record is UNPROVEN until the source record is reconciled; it is not automatically a software bug.",
     ],
     limitations: [
       ...limitations,
       "The incident read is capped at the latest 1,000 open records.",
+      currentTruthModel ? "The latest heartbeat uses the current-deployment truth model." : "Run the production monitor after deploying this truth-model revision before relying on the verdict.",
       "Truth Reference is read-only and cannot approve, reject, pay, transfer, change ownership, decide KYC, repair data, or execute SQL.",
     ],
     safety: { readOnly: true, businessMutationAttempted: false, automaticRepairAttempted: false },
