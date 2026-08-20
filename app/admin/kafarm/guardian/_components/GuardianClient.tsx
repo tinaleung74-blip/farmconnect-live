@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import type { KaFarmGuardianDiagnosis } from "@/lib/kafarm/guardian/types";
+import type { KaFarmGuardianDiagnosis, KaFarmTruthReference } from "@/lib/kafarm/guardian/types";
 
 type GuardianStatus = {
   ok: boolean;
@@ -35,14 +35,16 @@ type GuardianStatus = {
     commitMatchesDeployment: boolean | null;
     limitations: string[];
   };
+  truthReference?: KaFarmTruthReference;
   error?: string;
 };
 
 type DiagnosisResponse = { ok: boolean; diagnosis?: KaFarmGuardianDiagnosis; error?: string; execution?: { attempted: boolean; allowed: boolean; reason: string } };
 
 function badgeClass(value: string) {
-  if (/PASS|CONFIRMED|green/i.test(value)) return "bg-emerald-100 text-emerald-900 ring-emerald-300";
+  if (/PASS|CONFIRMED_HEALTHY|green/i.test(value)) return "bg-emerald-100 text-emerald-900 ring-emerald-300";
   if (/BLOCK|FAIL|red|CONTRADICTORY/i.test(value)) return "bg-red-100 text-red-900 ring-red-300";
+  if (/CONFIRMED_ISSUE/i.test(value)) return "bg-red-100 text-red-900 ring-red-300";
   if (/APPROVAL|HOLD|orange|yellow|LIKELY|HIGH/i.test(value)) return "bg-amber-100 text-amber-950 ring-amber-300";
   return "bg-slate-100 text-slate-800 ring-slate-300";
 }
@@ -112,6 +114,30 @@ export function GuardianClient() {
   }
 
   const capabilities = status?.capabilities;
+  const truth = status?.truthReference;
+
+  async function copyTruthReference() {
+    if (!truth) return;
+    const lines = [
+      "KAFARM TRUTH REFERENCE",
+      `Generated: ${truth.generatedAt}`,
+      `Verdict: ${truth.verdict}`,
+      `Reason: ${truth.verdictReason}`,
+      `Deployment: ${truth.deployment.classification} · ${truth.deployment.commit || "unknown commit"}`,
+      `Monitor: ${truth.monitor.classification} · latest ${truth.monitor.latestRunAt || "not proven"}`,
+      `Raw open records read: ${truth.incidentSummary.rawOpenRecordsRead}`,
+      `Grouped current root causes: ${truth.incidentSummary.groupedRootCauses}`,
+      `Stale groups ignored: ${truth.incidentSummary.staleGroups}`,
+      "",
+      "CURRENT GROUPS",
+      ...truth.incidentSummary.groups.map((item, index) => `${index + 1}. [${item.classification} / ${item.severity}] ${item.title}\nWorkflow: ${item.workflow}\nEvidence records: ${item.evidenceCount}\nLast seen: ${item.lastSeenAt || "unknown"}\nNext: ${item.safeNextAction}`),
+      "",
+      "RULE: Newer direct production evidence overrides older tests and locked history. UNPROVEN is never presented as healthy.",
+      "Safety: read-only; no business mutation or automatic repair was attempted.",
+    ];
+    await navigator.clipboard.writeText(lines.join("\n"));
+    setStatusNote("KaFarm Truth Reference copied. It contains grouped evidence and no credentials.");
+  }
   return (
     <main className="min-h-screen bg-[linear-gradient(135deg,#e9f7e9_0%,#fff8dc_52%,#e9f3ff_100%)] p-4 text-[#14241b]">
       <div className="mx-auto max-w-7xl space-y-4">
@@ -146,6 +172,48 @@ export function GuardianClient() {
             </button>
           </div>
         </header>
+
+        <section className="rounded-[28px] border border-white bg-white/90 p-5 shadow-xl shadow-[#163d8f]/10">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-[#163d8f]">Single source of operational truth</p>
+              <h2 className="mt-1 text-2xl font-black text-[#0f3f2c]">KaFarm Truth Reference</h2>
+              <p className="mt-2 max-w-4xl text-sm font-bold leading-6 text-[#637064]">Groups repeated records into root causes and separates current proof from prediction and stale history.</p>
+            </div>
+            <button type="button" data-kafarm-monitor-ignore="true" onClick={copyTruthReference} disabled={!truth} className="rounded-2xl bg-[#163d8f] px-5 py-3 text-xs font-black text-white disabled:opacity-50">Copy Truth Reference</button>
+          </div>
+
+          {truth ? <>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${badgeClass(truth.verdict)}`}>{truth.verdict.replaceAll("_", " ")}</span>
+              <p className="text-sm font-bold leading-6">{truth.verdictReason}</p>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl bg-[#f4f8f2] p-4"><p className="text-[10px] font-black uppercase text-slate-500">Raw records</p><p className="mt-1 text-2xl font-black">{truth.incidentSummary.rawOpenRecordsRead}</p></div>
+              <div className="rounded-2xl bg-[#f4f8f2] p-4"><p className="text-[10px] font-black uppercase text-slate-500">Current root causes</p><p className="mt-1 text-2xl font-black">{truth.incidentSummary.groupedRootCauses}</p></div>
+              <div className="rounded-2xl bg-[#f4f8f2] p-4"><p className="text-[10px] font-black uppercase text-slate-500">Stale groups ignored</p><p className="mt-1 text-2xl font-black">{truth.incidentSummary.staleGroups}</p></div>
+              <div className="rounded-2xl bg-[#f4f8f2] p-4"><p className="text-[10px] font-black uppercase text-slate-500">Latest monitor</p><p className="mt-1 text-sm font-black">{truth.monitor.latestRunAt ? new Date(truth.monitor.latestRunAt).toLocaleString() : "UNPROVEN"}</p></div>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+              <div className="rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-4">
+                <p className="text-xs font-black uppercase text-[#1d7a45]">Authority order</p>
+                <ol className="mt-3 space-y-2 text-xs font-bold leading-5">{truth.authorityOrder.map((item) => <li key={item.rank} className="rounded-xl bg-white p-3"><span className="font-black">{item.rank}. {item.source}</span><br /><span className="text-[#637064]">{item.rule}</span></li>)}</ol>
+              </div>
+              <div className="rounded-2xl border border-[#dbe6d7] bg-[#fbfbf6] p-4">
+                <p className="text-xs font-black uppercase text-[#163d8f]">Grouped evidence</p>
+                {truth.incidentSummary.groups.length ? <div className="mt-3 max-h-[520px] space-y-3 overflow-y-auto pr-1">{truth.incidentSummary.groups.map((item) => <article key={item.key} className="rounded-xl bg-white p-4">
+                  <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-1 text-[10px] font-black ring-1 ${badgeClass(item.classification)}`}>{item.classification.replaceAll("_", " ")}</span><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black">{item.severity}</span><span className="text-[10px] font-black text-slate-500">{item.evidenceCount} record(s) grouped</span></div>
+                  <p className="mt-2 text-sm font-black">{item.title}</p>
+                  <p className="mt-1 text-xs font-bold leading-5 text-[#637064]">{item.message}</p>
+                  <p className="mt-2 text-[10px] font-bold text-slate-500">Workflow: {item.workflow} · Last seen: {item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString() : "unknown"}</p>
+                  <p className="mt-2 rounded-lg bg-[#eef8ec] p-2 text-xs font-bold">Next: {item.safeNextAction}</p>
+                </article>)}</div> : <p className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm font-bold">No current or stale open incident group was returned.</p>}
+              </div>
+            </div>
+            <p className="mt-4 rounded-2xl bg-[#fff8dc] p-4 text-xs font-bold leading-5">Proof rule: {truth.proofRules.join(" ")}</p>
+          </> : <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm font-bold">Truth Reference is unavailable until the active Admin session and authoritative evidence reads succeed.</p>}
+        </section>
 
         <section className="rounded-[28px] border border-white bg-white/90 p-5 shadow-xl shadow-[#1d7a45]/10">
           <h2 className="text-xl font-black text-[#0f3f2c]">Evidence Investigation</h2>

@@ -13,6 +13,8 @@ const auth = read("lib/kafarm/guardian/admin-auth.ts");
 const monitor = read("app/api/kafarm/guardian/monitor/route.ts");
 const monitorRunLedger = read("database/applied/079_kafarm_monitor_run_ledger.sql");
 const guardianRoute = read("app/api/kafarm/guardian/route.ts");
+const truthReference = read("lib/kafarm/guardian/truth-reference.ts");
+const guardianClient = read("app/admin/kafarm/guardian/_components/GuardianClient.tsx");
 const blueprint = JSON.parse(read("config/kafarm/farmconnect-blueprint.v1.json"));
 const map = JSON.parse(read("lib/kafarm/guardian/system-map.generated.json"));
 
@@ -31,6 +33,10 @@ const checks = [
   { name: "Monitor findings persist only as deduplicated Admin incidents", ok: /from\("kafarm_incidents"\)/.test(monitor) && /ignoreDuplicates: true/.test(monitor) && /guardian_monitor/.test(monitor) },
   { name: "Durable monitor SQL is explicit and service-role guarded", ok: exists("database/applied/077_kafarm_guardian_durable_monitor.sql") && /KAFARM_MONITOR_AUTH_REQUIRED/.test(read("database/applied/077_kafarm_guardian_durable_monitor.sql")) && /grant execute.*service_role/i.test(read("database/applied/077_kafarm_guardian_durable_monitor.sql")) },
   { name: "Every authorized monitor run writes a durable heartbeat", ok: /kafarm_guardian_monitor_runs/.test(monitor) && /heartbeatPersisted/.test(monitor) && /businessMutationAttempted: false/.test(monitor) && /kafarm_guardian_monitor_health/.test(monitorRunLedger) },
+  { name: "Truth Reference uses the live monitor ledger and open incident evidence", ok: /kafarm_guardian_monitor_runs/.test(truthReference) && /kafarm_incidents/.test(truthReference) && /groupIncidents/.test(truthReference) },
+  { name: "Truth Reference separates confirmed, unproven, and stale evidence", ok: /CONFIRMED_HEALTHY/.test(truthReference) && /CONFIRMED_ISSUE/.test(truthReference) && /UNPROVEN/.test(truthReference) && /STALE_IGNORE/.test(truthReference) },
+  { name: "Truth Reference is explicitly read-only", ok: /businessMutationAttempted: false/.test(truthReference) && /automaticRepairAttempted: false/.test(truthReference) && !/\.insert\(|\.update\(|\.upsert\(|\.delete\(/.test(truthReference) },
+  { name: "Guardian page exposes one copyable Truth Reference", ok: /KaFarm Truth Reference/.test(guardianClient) && /Copy Truth Reference/.test(guardianClient) && /groupedRootCauses/.test(guardianClient) },
   { name: "Living system map is generated and explicitly caveated", ok: map.application === "FarmConnect" && map.counts.pages > 0 && map.counts.edges > 0 && Array.isArray(map.limitations) && map.limitations.length > 0 },
   { name: "Guardian Admin page exists", ok: exists("app/admin/kafarm/guardian/page.tsx") && exists("app/admin/kafarm/guardian/_components/GuardianClient.tsx") },
 ];

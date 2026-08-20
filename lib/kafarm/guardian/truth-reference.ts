@@ -1,0 +1,185 @@
+import "server-only";
+
+import type { KaFarmAdminContext } from "./admin-auth";
+import { getKaFarmSystemMapStatus } from "./system-map";
+import type { KaFarmTruthClassification, KaFarmTruthReference } from "./types";
+
+type IncidentRow = {
+  id?: string | null;
+  source?: string | null;
+  title?: string | null;
+  category?: string | null;
+  severity?: string | null;
+  status?: string | null;
+  route?: string | null;
+  message?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+type MonitorRun = {
+  ran_at?: string | null;
+  deployment_commit?: string | null;
+  finding_count?: number | null;
+  persisted_incident_count?: number | null;
+  snapshot_ok?: boolean | null;
+  persistence_ok?: boolean | null;
+};
+
+const FRESH_MONITOR_MS = 48 * 60 * 60 * 1000;
+const CURRENT_EVIDENCE_MS = 7 * 24 * 60 * 60 * 1000;
+const severityRank: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+
+function validDate(value?: string | null) {
+  const parsed = value ? Date.parse(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function clean(value?: string | null, fallback = "Unknown") {
+  return String(value || "").trim() || fallback;
+}
+
+function normalizedRootKey(row: IncidentRow) {
+  const monitorCode = typeof row.metadata?.monitorCode === "string" ? row.metadata.monitorCode : "";
+  const title = clean(row.title, "incident")
+    .toLowerCase()
+    .replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/g, "record")
+    .replace(/\b\d+\b/g, "number")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return [monitorCode || title, clean(row.category, "unknown").toLowerCase(), clean(row.route, "unmapped")].join("|");
+}
+
+function classifyIncident(lastSeenAt: string | null): KaFarmTruthClassification {
+  const lastSeen = validDate(lastSeenAt);
+  return lastSeen !== null && Date.now() - lastSeen <= CURRENT_EVIDENCE_MS ? "CONFIRMED_ISSUE" : "STALE_IGNORE";
+}
+
+function groupIncidents(rows: IncidentRow[]) {
+  const grouped = new Map<string, IncidentRow[]>();
+  for (const row of rows) {
+    const key = normalizedRootKey(row);
+    grouped.set(key, [...(grouped.get(key) || []), row]);
+  }
+
+  return [...grouped.entries()].map(([key, items]) => {
+    const sorted = [...items].sort((left, right) => (validDate(right.updated_at || right.created_at) || 0) - (validDate(left.updated_at || left.created_at) || 0));
+    const newest = sorted[0] || {};
+    const timestamps = items.map((item) => validDate(item.updated_at || item.created_at)).filter((item): item is number => item !== null);
+    const firstSeenAt = timestamps.length ? new Date(Math.min(...timestamps)).toISOString() : null;
+    const lastSeenAt = timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null;
+    const classification = classifyIncident(lastSeenAt);
+    const severity = items.map((item) => clean(item.severity, "MEDIUM").toUpperCase()).sort((left, right) => (severityRank[right] || 0) - (severityRank[left] || 0))[0] || "MEDIUM";
+    return {
+      key,
+      classification,
+      severity,
+      workflow: clean(newest.category),
+      title: clean(newest.title),
+      message: clean(newest.message, "No incident message was recorded."),
+      route: newest.route ? String(newest.route) : null,
+      evidenceCount: items.length,
+      firstSeenAt,
+      lastSeenAt,
+      evidenceSource: clean(newest.source, "kafarm_incidents"),
+      safeNextAction: classification === "STALE_IGNORE"
+        ? "Do not act on this history unless the same behavior is reproduced on the current deployment."
+        : "Open the grouped evidence, confirm the affected record, and investigate the first broken official workflow step without repeating the transaction.",
+    };
+  }).sort((left, right) => {
+    if (left.classification !== right.classification) return left.classification === "CONFIRMED_ISSUE" ? -1 : 1;
+    return (severityRank[right.severity] || 0) - (severityRank[left.severity] || 0) || (validDate(right.lastSeenAt) || 0) - (validDate(left.lastSeenAt) || 0);
+  });
+}
+
+export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Promise<KaFarmTruthReference> {
+  const map = getKaFarmSystemMapStatus();
+  const deploymentCommit = (process.env.VERCEL_GIT_COMMIT_SHA || "").trim() || null;
+  const limitations: string[] = [];
+
+  const [runResult, incidentResult] = await Promise.all([
+    context.privilegedReadClient
+      .from("kafarm_guardian_monitor_runs")
+      .select("ran_at,deployment_commit,finding_count,persisted_incident_count,snapshot_ok,persistence_ok")
+      .order("ran_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    context.privilegedReadClient
+      .from(context.serviceRoleAvailable ? "kafarm_incidents" : "admin_kafarm_incident_queue")
+      .select("id,source,title,category,severity,status,route,message,created_at,updated_at,metadata")
+      .not("status", "in", '("Resolved","Ignored","Completed")')
+      .order("updated_at", { ascending: false })
+      .limit(1000),
+  ]);
+
+  if (runResult.error) limitations.push(`Monitor ledger unavailable: ${runResult.error.message}`);
+  if (incidentResult.error) limitations.push(`Incident evidence unavailable: ${incidentResult.error.message}`);
+  const run = (runResult.data || null) as MonitorRun | null;
+  const runAt = run?.ran_at ? String(run.ran_at) : null;
+  const runTimestamp = validDate(runAt);
+  const monitorFresh = runTimestamp !== null && Date.now() - runTimestamp <= FRESH_MONITOR_MS;
+  const monitorHealthy = monitorFresh && run?.snapshot_ok === true && run?.persistence_ok === true;
+  const groups = groupIncidents((incidentResult.data || []) as IncidentRow[]);
+  const currentGroups = groups.filter((item) => item.classification === "CONFIRMED_ISSUE");
+  const staleGroups = groups.filter((item) => item.classification === "STALE_IGNORE");
+
+  let verdict: KaFarmTruthReference["verdict"] = "UNPROVEN";
+  let verdictReason = "Current authoritative evidence is incomplete; do not claim the app is healthy or broken.";
+  if (currentGroups.length) {
+    verdict = "CONFIRMED_ISSUE";
+    verdictReason = `${currentGroups.length} current root-cause group(s) remain open. ${incidentResult.data?.length || 0} raw records were grouped so repeated records are not counted as separate bugs.`;
+  } else if (monitorHealthy && !incidentResult.error) {
+    verdict = "CONFIRMED_HEALTHY";
+    verdictReason = "The latest monitor heartbeat passed and no current open incident group was found. This is bounded to the workflows and evidence read by the monitor.";
+  }
+
+  const commitMatches = deploymentCommit ? deploymentCommit === map.git.commit : null;
+  return {
+    generatedAt: new Date().toISOString(),
+    verdict,
+    verdictReason,
+    authorityOrder: [
+      { rank: 1, source: "Live Supabase records and schema", rule: "Authoritative for current business and database state." },
+      { rank: 2, source: "Current production deployment commit", rule: "Authoritative for the code actually deployed." },
+      { rank: 3, source: "Current runtime and API evidence", rule: "Confirms behavior only for the captured route, record, and time." },
+      { rank: 4, source: "Latest passed targeted tests", rule: "A test counts only when it passed against the relevant release and environment." },
+      { rank: 5, source: "Locked live-test history", rule: "Historical proof remains valid only until newer conflicting evidence appears." },
+      { rank: 6, source: "Static code prediction", rule: "Useful for investigation, but never proof that production is healthy or broken." },
+    ],
+    deployment: {
+      commit: deploymentCommit,
+      systemMapCommit: map.git.commit || null,
+      commitMatches,
+      classification: commitMatches === true ? "CONFIRMED_HEALTHY" : commitMatches === false ? "CONFIRMED_ISSUE" : "UNPROVEN",
+    },
+    monitor: {
+      latestRunAt: runAt,
+      fresh: monitorFresh,
+      snapshotOk: run?.snapshot_ok === true,
+      persistenceOk: run?.persistence_ok === true,
+      rawFindingCount: Number(run?.finding_count || 0),
+      persistedIncidentCount: Number(run?.persisted_incident_count || 0),
+      classification: monitorHealthy ? "CONFIRMED_HEALTHY" : runAt ? "CONFIRMED_ISSUE" : "UNPROVEN",
+    },
+    incidentSummary: {
+      rawOpenRecordsRead: incidentResult.data?.length || 0,
+      groupedRootCauses: currentGroups.length,
+      staleGroups: staleGroups.length,
+      groups,
+    },
+    proofRules: [
+      "One repeated root cause is one grouped issue, even when it affects many records.",
+      "A successful monitor heartbeat proves the monitor ran; it does not prove every FarmConnect feature passed.",
+      "Newer direct production evidence overrides older tests and locked history.",
+      "Missing evidence is UNPROVEN, not healthy and not broken.",
+      "Stale evidence is ignored until reproduced on the current deployment.",
+    ],
+    limitations: [
+      ...limitations,
+      "The incident read is capped at the latest 1,000 open records.",
+      "Truth Reference is read-only and cannot approve, reject, pay, transfer, change ownership, decide KYC, repair data, or execute SQL.",
+    ],
+    safety: { readOnly: true, businessMutationAttempted: false, automaticRepairAttempted: false },
+  };
+}

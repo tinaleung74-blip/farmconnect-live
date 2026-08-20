@@ -4,6 +4,7 @@ import { diagnoseWithKaFarmGuardian, getKaFarmGuardianCapabilities } from "@/lib
 import { getKaFarmSystemMapStatus } from "@/lib/kafarm/guardian/system-map";
 import { kaFarmInvariantRegistry } from "@/lib/kafarm/guardian/invariants";
 import { getFarmConnectRateLimitReadiness } from "@/lib/security/farmconnect-rate-limit";
+import { buildKaFarmTruthReference } from "@/lib/kafarm/guardian/truth-reference";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +34,7 @@ function withinRateLimit(profileId: string) {
 export async function GET(request: NextRequest) {
   const auth = await authenticateKaFarmAdmin(request);
   if (!auth.ok) return json(auth.status, { ok: false, error: auth.error, detail: auth.detail });
+  const truthReference = await buildKaFarmTruthReference(auth.context);
   const { data: rateLimitVerification } = await auth.context.privilegedReadClient.rpc("farmconnect_rate_limit_version");
   const verifiedRateLimit = (Array.isArray(rateLimitVerification) ? rateLimitVerification[0] : rateLimitVerification) as {
     event_table?: boolean;
@@ -47,6 +49,7 @@ export async function GET(request: NextRequest) {
     rateLimit: getFarmConnectRateLimitReadiness(process.env, verifiedRateLimit),
     systemMap: getKaFarmSystemMapStatus(),
     invariants: kaFarmInvariantRegistry,
+    truthReference,
   });
 }
 
