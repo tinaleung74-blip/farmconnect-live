@@ -1162,3 +1162,23 @@ Purpose:
 - Limit monitor-generated leads to unresolved source workflow records and overdue Care Plan missions.
 - Require current-deployment evidence before Truth Reference labels a runtime incident as confirmed.
 - Perform no approval, payment, KYC, ownership, inventory, refund, deletion, or workflow mutation.
+
+## 081_kafarm_demo_history_baseline.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-20 (Asia/Manila)**
+
+Verification:
+
+- `baseline_at = 2026-08-20T04:21:08.150444+00:00`
+- `baseline_table = true`
+- `snapshot_rpc = true`
+- `business_records_changed = false`
+- `business_records_deleted = false`
+
+Purpose:
+
+- Record one immutable public-rollout cutoff after the owner confirmed that earlier customer and caretaker records were demo/test data.
+- Preserve every historical business record and exclude only pre-cutoff unfinished workflow-chain rows from current production alerts.
+- Keep post-cutoff workflows under normal KaFarm monitoring.
+- Report the ignored demo-record count and baseline time in the monitor heartbeat and Truth Reference.
+- Perform no approval, payment, KYC, ownership, inventory, refund, business-record update, or deletion.
