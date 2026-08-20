@@ -63,6 +63,8 @@ with expected(migration, kind, object_name) as (
     ('011_care_task_safe_backend.sql','function','caretaker_submit_task_proof'),
     ('011_care_task_safe_backend.sql','function','admin_review_task_proof'),
 
+    ('082_admin_realtime_queue_publication.sql','function','kafarm_admin_realtime_status'),
+
     ('012_manual_payment_care_request_sync.sql','function','customer_create_paid_farm_request'),
 
     ('020_withdrawal_review_flow.sql','table','withdrawal_requests'),

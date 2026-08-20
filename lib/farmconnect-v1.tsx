@@ -13,6 +13,7 @@ import { adminReviewManualMissionProof } from "@/lib/farmconnect-data";
 import { prepareCustomerCarePlanPayment } from "@/lib/farmconnect-data";
 import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { supabase } from "@/lib/supabase";
+import { AdminRealtimeStatus, useAdminRealtime } from "@/lib/admin-realtime";
 
 type Role = "customer" | "caretaker" | "admin";
 type IconName = "home" | "rooster" | "bag" | "clipboard" | "wallet" | "inbox" | "support" | "settings" | "logout" | "check" | "camera" | "qr" | "upload" | "download" | "user" | "users" | "coins" | "shield" | "search" | "chat" | "file" | "alert" | "eye" | "eyeOff" | "trash";
@@ -8587,6 +8588,7 @@ function AdminRoosterSaleQueue() {
   useEffect(() => {
     void load();
   }, []);
+  const realtime = useAdminRealtime({ tables: ["rooster_sale_requests"], refresh: load });
   async function decide(decision: "approved" | "rejected") {
     if (!selected || saving) return;
     if (adminNote.trim().length < 5) {
@@ -8608,7 +8610,7 @@ function AdminRoosterSaleQueue() {
   const animal = selected?.customer_animals;
   const customer = selected?.profiles;
   return (
-    <div className="grid gap-4 xl:grid-cols-[280px_minmax(460px,1fr)_320px]">
+    <><AdminRealtimeStatus {...realtime} /><div className="mt-4 grid gap-4 xl:grid-cols-[280px_minmax(460px,1fr)_320px]">
       <Card className="min-h-[620px]">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -8676,7 +8678,7 @@ function AdminRoosterSaleQueue() {
         </button>
         <p className="mt-4 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{note}</p>
       </Card>
-    </div>
+    </div></>
   );
 }
 
@@ -8715,6 +8717,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
   useEffect(() => {
     load();
   }, []);
+  const realtime = useAdminRealtime({ tables: ["manual_payment_requests"], refresh: load });
 
   async function submitDecision() {
     if (!selected || !decision || saving) return;
@@ -8757,7 +8760,8 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
   };
   return (
     <>
-      <div className="grid gap-4 xl:grid-cols-[280px_minmax(480px,1fr)_320px]">
+      <AdminRealtimeStatus {...realtime} />
+      <div className="mt-4 grid gap-4 xl:grid-cols-[280px_minmax(480px,1fr)_320px]">
         <Card className="min-h-[620px]">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -9462,6 +9466,7 @@ function AdminWithdrawalReviewQueue() {
   useEffect(() => {
     void load();
   }, []);
+  const realtime = useAdminRealtime({ tables: ["withdrawal_requests"], refresh: load });
   useEffect(
     () => () => {
       if (receiptPreview) URL.revokeObjectURL(receiptPreview);
@@ -9528,6 +9533,7 @@ function AdminWithdrawalReviewQueue() {
   }
   return (
     <>
+      <AdminRealtimeStatus {...realtime} />
       <div className="grid gap-4 xl:grid-cols-[280px_minmax(480px,1fr)_320px]">
         <Card className="min-h-[620px]">
           <div className="flex items-start justify-between gap-3">
@@ -9729,6 +9735,7 @@ function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } =
   useEffect(() => {
     load();
   }, []);
+  const realtime = useAdminRealtime({ tables: ["farm_care_requests", "rooster_care_plans", "caretaker_tasks"], refresh: load });
   async function assign() {
     if (!selected || !selectedCaretakerId) {
       setNote("Select one active caretaker before assigning this task.");
@@ -9751,7 +9758,7 @@ function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } =
     }
   }
   return (
-    <div className="grid gap-4 xl:grid-cols-[280px_minmax(480px,1fr)_320px]">
+    <><AdminRealtimeStatus {...realtime} /><div className="mt-4 grid gap-4 xl:grid-cols-[280px_minmax(480px,1fr)_320px]">
       <Card className="min-h-[620px]">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -9835,7 +9842,7 @@ function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } =
           {note}
         </p>
       </Card>
-    </div>
+    </div></>
   );
 }
 
@@ -9880,6 +9887,7 @@ function AdminLiveTaskProofQueue() {
   useEffect(() => {
     load();
   }, []);
+  const realtime = useAdminRealtime({ tables: ["task_proofs", "caretaker_tasks"], refresh: load });
   async function review(row: any, decision: "approved" | "rejected" | "backjob") {
     if (decision !== "approved" && !adminNote.trim()) {
       setNote("Write a clear correction note before returning this task to the caretaker.");
@@ -9911,7 +9919,7 @@ function AdminLiveTaskProofQueue() {
   const isSaleReleaseProof = task?.workflow_type === "sale_release_confirmation";
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[280px_minmax(460px,1fr)_300px]">
+    <><AdminRealtimeStatus {...realtime} /><div className="mt-4 grid gap-4 xl:grid-cols-[280px_minmax(460px,1fr)_300px]">
       <Card className="min-h-[620px]">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -10055,7 +10063,7 @@ function AdminLiveTaskProofQueue() {
         </div>
         <p className="mt-4 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">{note}</p>
       </Card>
-    </div>
+    </div></>
   );
 }
 
@@ -11231,6 +11239,7 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
   useEffect(() => {
     void loadIssues();
   }, []);
+  const realtime = useAdminRealtime({ tables: ["withdrawal_disputes", "withdrawal_requests"], refresh: async () => { await loadIssues({ preserveMessage: true }); } });
 
   async function openReceipt(path?: string | null) {
     if (!path) return setMessage("No payout receipt was recorded for this withdrawal.");
@@ -11287,6 +11296,7 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
   return (
     <Shell role="admin" title={config[0]}>
       <PageTitle title="Issue Management" text="Manually investigate reported withdrawal payouts using the original customer request, Admin reference, and existing receipt." icon="alert" />
+      <div className="mt-4"><AdminRealtimeStatus {...realtime} /></div>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <button type="button" onClick={() => setMode("customer")} className={"rounded-2xl border p-4 text-left " + (mode === "customer" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95")}>
           <b>Customer Reports</b>
