@@ -27,6 +27,23 @@ function fingerprint(item: MonitorFinding) {
   return createHash("sha256").update(`${item.code}|${item.workflow}|${item.sourceRecordId || "global"}`).digest("hex").slice(0, 24);
 }
 
+function summarizeFindings(findings: MonitorFinding[]) {
+  const groups = new Map<string, { code: string; workflow: string; severity: MonitorFinding["severity"]; count: number; sources: Set<string> }>();
+  const rank = { critical: 4, high: 3, medium: 2, low: 1 };
+  for (const finding of findings) {
+    const key = `${finding.code}|${finding.workflow}`;
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, { code: finding.code, workflow: finding.workflow, severity: finding.severity, count: 1, sources: new Set([finding.source]) });
+      continue;
+    }
+    existing.count += 1;
+    existing.sources.add(finding.source);
+    if (rank[finding.severity] > rank[existing.severity]) existing.severity = finding.severity;
+  }
+  return [...groups.values()].map((group) => ({ ...group, sources: [...group.sources].sort() })).sort((left, right) => rank[right.severity] - rank[left.severity] || right.count - left.count).slice(0, 50);
+}
+
 export async function GET(request: NextRequest) {
   const cronSecret = (process.env.CRON_SECRET || "").trim();
   if (!cronSecret) return json(503, { ok: false, error: "CRON_SECRET_NOT_CONFIGURED" });
@@ -109,6 +126,7 @@ export async function GET(request: NextRequest) {
   }
 
   const deploymentCommit = (process.env.VERCEL_GIT_COMMIT_SHA || "").trim() || null;
+  const findingSummary = summarizeFindings(deduplicated);
   const { error: heartbeatError } = await service.from("kafarm_guardian_monitor_runs").insert({
     deployment_commit: deploymentCommit,
     finding_count: deduplicated.length,
@@ -118,6 +136,7 @@ export async function GET(request: NextRequest) {
     metadata: {
       monitorMode: "guarded-proactive-monitor",
       truthModelVersion: TRUTH_MODEL_VERSION,
+      findingSummary,
       businessMutationAttempted: false,
       incidentLoggingAttempted: persistableFindings.length > 0,
     },
@@ -131,6 +150,7 @@ export async function GET(request: NextRequest) {
     generatedAt: new Date().toISOString(),
     truthModelVersion: TRUTH_MODEL_VERSION,
     findingCount: deduplicated.length,
+    findingSummary,
     findings: deduplicated,
     mutationAttempted: persistableFindings.length > 0,
     businessMutationAttempted: false,

@@ -39,6 +39,7 @@ const checks = [
   { name: "Truth Reference is explicitly read-only", ok: /businessMutationAttempted: false/.test(truthReference) && /automaticRepairAttempted: false/.test(truthReference) && !/\.insert\(|\.update\(|\.upsert\(|\.delete\(/.test(truthReference) },
   { name: "Truth Reference requires a current deployment evidence boundary", ok: /deploymentBoundary/.test(truthReference) && /current-deployment-v2/.test(truthReference) && /source === "guardian_monitor" \? "UNPROVEN"/.test(truthReference) },
   { name: "Monitor never wraps an existing runtime incident as a new incident", ok: /persistableFindings/.test(monitor) && /item\.code !== "open_runtime_incident"/.test(monitor) && !/open_runtime_incident/.test(truthEvidenceMigration) },
+  { name: "Monitor heartbeat preserves grouped current leads even when no new incident is inserted", ok: /summarizeFindings/.test(monitor) && /findingSummary/.test(monitor) && /monitorLeadGroups/.test(truthReference) },
   { name: "Guardian page exposes one copyable Truth Reference", ok: /KaFarm Truth Reference/.test(guardianClient) && /Copy Truth Reference/.test(guardianClient) && /groupedRootCauses/.test(guardianClient) },
   { name: "Living system map is generated and explicitly caveated", ok: map.application === "FarmConnect" && map.counts.pages > 0 && map.counts.edges > 0 && Array.isArray(map.limitations) && map.limitations.length > 0 },
   { name: "Guardian Admin page exists", ok: exists("app/admin/kafarm/guardian/page.tsx") && exists("app/admin/kafarm/guardian/_components/GuardianClient.tsx") },

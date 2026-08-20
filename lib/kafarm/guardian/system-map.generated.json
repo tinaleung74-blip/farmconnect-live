@@ -1,27 +1,21 @@
 {
   "schemaVersion": "1.0.0",
   "application": "FarmConnect",
-  "generatedAt": "2026-08-20T03:44:44.545Z",
+  "generatedAt": "2026-08-20T04:03:22.299Z",
   "sourceSnapshot": {
-    "generatedAt": "2026-08-20T03:44:44.247Z",
-    "sourceFingerprint": "c997191e7ed1ccb69f442125db6ea8bdc9338a99b5eec7d8b826315dbd35d125",
+    "generatedAt": "2026-08-20T04:03:22.219Z",
+    "sourceFingerprint": "1df4ada8434fc2e4bedfdff8244d563578121e1ecc481157bd807f6b0ba39335",
     "schemaVersion": "2.2.0"
   },
   "git": {
-    "commit": "614547abccb8e503f319e9ab67ae67c2e4ebe142",
+    "commit": "1ab47ad89013578d494598b7af7d8507eed6592e",
     "branch": "agent/independent-operations",
     "dirtyFiles": [
-      "M app/admin/kafarm/guardian/_components/GuardianClient.tsx",
-      " M app/api/kafarm/guardian/monitor/route.ts",
-      " M database/00_verify_applied_sql_status.sql",
-      " M database/applied/000_database_applied_ledger.md",
+      "M app/api/kafarm/guardian/monitor/route.ts",
       " M lib/kafarm-system-snapshot.generated.json",
-      " M lib/kafarm/guardian/system-map.generated.json",
       " M lib/kafarm/guardian/truth-reference.ts",
-      " M lib/kafarm/guardian/types.ts",
       " M scripts/qa/kafarm-guardian-contract.mjs",
-      " M scripts/qa/verify-production-monitor.mjs",
-      "?? database/applied/080_kafarm_truth_reference_current_evidence.sql"
+      " M scripts/qa/verify-production-monitor.mjs"
     ]
   },
   "blueprint": {
@@ -2543,29 +2537,29 @@
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_incidents:app/api/kafarm/guardian/monitor/route.ts:104:15",
+      "id": "backend:table:kafarm_incidents:app/api/kafarm/guardian/monitor/route.ts:121:15",
       "type": "table",
       "name": "kafarm_incidents",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 104,
+      "line": 121,
       "role": "system",
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_guardian_monitor_runs:app/api/kafarm/guardian/monitor/route.ts:112:16",
+      "id": "backend:table:kafarm_guardian_monitor_runs:app/api/kafarm/guardian/monitor/route.ts:130:16",
       "type": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 112,
+      "line": 130,
       "role": "system",
       "route": "/"
     },
     {
-      "id": "backend:rpc:kafarm_guardian_monitor_snapshot:app/api/kafarm/guardian/monitor/route.ts:55:17",
+      "id": "backend:rpc:kafarm_guardian_monitor_snapshot:app/api/kafarm/guardian/monitor/route.ts:72:17",
       "type": "rpc",
       "name": "kafarm_guardian_monitor_snapshot",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 55,
+      "line": 72,
       "role": "system",
       "route": "/"
     },
@@ -3560,20 +3554,20 @@
       "route": "lib/kafarm/guardian/reasoning.ts"
     },
     {
-      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:117:128",
+      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:143:128",
       "type": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "lib/kafarm/guardian/truth-reference.ts",
-      "line": 117,
+      "line": 143,
       "role": "system",
       "route": "lib/kafarm/guardian/truth-reference.ts"
     },
     {
-      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:141:129",
+      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:167:129",
       "type": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "lib/kafarm/guardian/truth-reference.ts",
-      "line": 141,
+      "line": 167,
       "role": "system",
       "route": "lib/kafarm/guardian/truth-reference.ts"
     }
@@ -5869,5 +5863,5 @@
     "A test script existing does not mean it passed on this commit or deployment.",
     "The generated map contains source references, not unrestricted runtime source-code access."
   ],
-  "fingerprint": "4dfaef927a18ae4f823824a44b64e3b72908ae59d3d9c044090ff8d114480d20"
+  "fingerprint": "b4e16d1a7986647c5cf60b2153fcb85185ea7fa3167c8e552f14cbe2d8e9e7b7"
 }
