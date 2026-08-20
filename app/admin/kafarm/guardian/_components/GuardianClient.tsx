@@ -127,6 +127,7 @@ export function GuardianClient() {
       `Monitor: ${truth.monitor.classification} · latest ${truth.monitor.latestRunAt || "not proven"}`,
       `Raw open records read: ${truth.incidentSummary.rawOpenRecordsRead}`,
       `Grouped current root causes: ${truth.incidentSummary.groupedRootCauses}`,
+      `Unproven groups: ${truth.incidentSummary.unprovenGroups}`,
       `Stale groups ignored: ${truth.incidentSummary.staleGroups}`,
       "",
       "CURRENT GROUPS",
@@ -188,9 +189,10 @@ export function GuardianClient() {
               <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${badgeClass(truth.verdict)}`}>{truth.verdict.replaceAll("_", " ")}</span>
               <p className="text-sm font-bold leading-6">{truth.verdictReason}</p>
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="rounded-2xl bg-[#f4f8f2] p-4"><p className="text-[10px] font-black uppercase text-slate-500">Raw records</p><p className="mt-1 text-2xl font-black">{truth.incidentSummary.rawOpenRecordsRead}</p></div>
               <div className="rounded-2xl bg-[#f4f8f2] p-4"><p className="text-[10px] font-black uppercase text-slate-500">Current root causes</p><p className="mt-1 text-2xl font-black">{truth.incidentSummary.groupedRootCauses}</p></div>
+              <div className="rounded-2xl bg-[#f4f8f2] p-4"><p className="text-[10px] font-black uppercase text-slate-500">Unproven leads</p><p className="mt-1 text-2xl font-black">{truth.incidentSummary.unprovenGroups}</p></div>
               <div className="rounded-2xl bg-[#f4f8f2] p-4"><p className="text-[10px] font-black uppercase text-slate-500">Stale groups ignored</p><p className="mt-1 text-2xl font-black">{truth.incidentSummary.staleGroups}</p></div>
               <div className="rounded-2xl bg-[#f4f8f2] p-4"><p className="text-[10px] font-black uppercase text-slate-500">Latest monitor</p><p className="mt-1 text-sm font-black">{truth.monitor.latestRunAt ? new Date(truth.monitor.latestRunAt).toLocaleString() : "UNPROVEN"}</p></div>
             </div>

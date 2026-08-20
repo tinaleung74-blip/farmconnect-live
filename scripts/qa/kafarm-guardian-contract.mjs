@@ -12,6 +12,7 @@ const gate = read("lib/kafarm/guardian/logic-gate.ts");
 const auth = read("lib/kafarm/guardian/admin-auth.ts");
 const monitor = read("app/api/kafarm/guardian/monitor/route.ts");
 const monitorRunLedger = read("database/applied/079_kafarm_monitor_run_ledger.sql");
+const truthEvidenceMigration = read("database/applied/080_kafarm_truth_reference_current_evidence.sql");
 const guardianRoute = read("app/api/kafarm/guardian/route.ts");
 const truthReference = read("lib/kafarm/guardian/truth-reference.ts");
 const guardianClient = read("app/admin/kafarm/guardian/_components/GuardianClient.tsx");
@@ -36,6 +37,8 @@ const checks = [
   { name: "Truth Reference uses the live monitor ledger and open incident evidence", ok: /kafarm_guardian_monitor_runs/.test(truthReference) && /kafarm_incidents/.test(truthReference) && /groupIncidents/.test(truthReference) },
   { name: "Truth Reference separates confirmed, unproven, and stale evidence", ok: /CONFIRMED_HEALTHY/.test(truthReference) && /CONFIRMED_ISSUE/.test(truthReference) && /UNPROVEN/.test(truthReference) && /STALE_IGNORE/.test(truthReference) },
   { name: "Truth Reference is explicitly read-only", ok: /businessMutationAttempted: false/.test(truthReference) && /automaticRepairAttempted: false/.test(truthReference) && !/\.insert\(|\.update\(|\.upsert\(|\.delete\(/.test(truthReference) },
+  { name: "Truth Reference requires a current deployment evidence boundary", ok: /deploymentBoundary/.test(truthReference) && /current-deployment-v2/.test(truthReference) && /source === "guardian_monitor" \? "UNPROVEN"/.test(truthReference) },
+  { name: "Monitor never wraps an existing runtime incident as a new incident", ok: /persistableFindings/.test(monitor) && /item\.code !== "open_runtime_incident"/.test(monitor) && !/open_runtime_incident/.test(truthEvidenceMigration) },
   { name: "Guardian page exposes one copyable Truth Reference", ok: /KaFarm Truth Reference/.test(guardianClient) && /Copy Truth Reference/.test(guardianClient) && /groupedRootCauses/.test(guardianClient) },
   { name: "Living system map is generated and explicitly caveated", ok: map.application === "FarmConnect" && map.counts.pages > 0 && map.counts.edges > 0 && Array.isArray(map.limitations) && map.limitations.length > 0 },
   { name: "Guardian Admin page exists", ok: exists("app/admin/kafarm/guardian/page.tsx") && exists("app/admin/kafarm/guardian/_components/GuardianClient.tsx") },

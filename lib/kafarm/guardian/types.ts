@@ -98,6 +98,7 @@ export type KaFarmTruthReference = {
   incidentSummary: {
     rawOpenRecordsRead: number;
     groupedRootCauses: number;
+    unprovenGroups: number;
     staleGroups: number;
     groups: Array<{
       key: string;

@@ -1,22 +1,27 @@
 {
   "schemaVersion": "1.0.0",
   "application": "FarmConnect",
-  "generatedAt": "2026-08-20T03:24:41.193Z",
+  "generatedAt": "2026-08-20T03:44:44.545Z",
   "sourceSnapshot": {
-    "generatedAt": "2026-08-20T03:24:41.103Z",
-    "sourceFingerprint": "b97dbf5defffdc0e0102e5963560b9a5876cd4bfd8461715d954b77e41476ab9",
+    "generatedAt": "2026-08-20T03:44:44.247Z",
+    "sourceFingerprint": "c997191e7ed1ccb69f442125db6ea8bdc9338a99b5eec7d8b826315dbd35d125",
     "schemaVersion": "2.2.0"
   },
   "git": {
-    "commit": "56b37b70177b407594b34f4febc650c61257a405",
+    "commit": "614547abccb8e503f319e9ab67ae67c2e4ebe142",
     "branch": "agent/independent-operations",
     "dirtyFiles": [
       "M app/admin/kafarm/guardian/_components/GuardianClient.tsx",
-      " M app/api/kafarm/guardian/route.ts",
+      " M app/api/kafarm/guardian/monitor/route.ts",
+      " M database/00_verify_applied_sql_status.sql",
+      " M database/applied/000_database_applied_ledger.md",
       " M lib/kafarm-system-snapshot.generated.json",
+      " M lib/kafarm/guardian/system-map.generated.json",
+      " M lib/kafarm/guardian/truth-reference.ts",
       " M lib/kafarm/guardian/types.ts",
       " M scripts/qa/kafarm-guardian-contract.mjs",
-      "?? lib/kafarm/guardian/truth-reference.ts"
+      " M scripts/qa/verify-production-monitor.mjs",
+      "?? database/applied/080_kafarm_truth_reference_current_evidence.sql"
     ]
   },
   "blueprint": {
@@ -28,7 +33,7 @@
     "pages": 111,
     "apiRoutes": 4,
     "actions": 141,
-    "backendReferences": 129,
+    "backendReferences": 130,
     "edges": 252,
     "tests": 23
   },
@@ -2538,29 +2543,29 @@
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_incidents:app/api/kafarm/guardian/monitor/route.ts:95:15",
+      "id": "backend:table:kafarm_incidents:app/api/kafarm/guardian/monitor/route.ts:104:15",
       "type": "table",
       "name": "kafarm_incidents",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 95,
+      "line": 104,
       "role": "system",
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_guardian_monitor_runs:app/api/kafarm/guardian/monitor/route.ts:103:16",
+      "id": "backend:table:kafarm_guardian_monitor_runs:app/api/kafarm/guardian/monitor/route.ts:112:16",
       "type": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 103,
+      "line": 112,
       "role": "system",
       "route": "/"
     },
     {
-      "id": "backend:rpc:kafarm_guardian_monitor_snapshot:app/api/kafarm/guardian/monitor/route.ts:53:17",
+      "id": "backend:rpc:kafarm_guardian_monitor_snapshot:app/api/kafarm/guardian/monitor/route.ts:55:17",
       "type": "rpc",
       "name": "kafarm_guardian_monitor_snapshot",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 53,
+      "line": 55,
       "role": "system",
       "route": "/"
     },
@@ -3555,11 +3560,20 @@
       "route": "lib/kafarm/guardian/reasoning.ts"
     },
     {
-      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:103:128",
+      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:117:128",
       "type": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "lib/kafarm/guardian/truth-reference.ts",
-      "line": 103,
+      "line": 117,
+      "role": "system",
+      "route": "lib/kafarm/guardian/truth-reference.ts"
+    },
+    {
+      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:141:129",
+      "type": "table",
+      "name": "kafarm_guardian_monitor_runs",
+      "file": "lib/kafarm/guardian/truth-reference.ts",
+      "line": 141,
       "role": "system",
       "route": "lib/kafarm/guardian/truth-reference.ts"
     }
@@ -4774,21 +4788,21 @@
       "to": "route:/admin/kafarm/whole-app-reader",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:152"
+      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:153"
     },
     {
       "from": "route:/admin/kafarm/guardian",
       "to": "route:/admin/kafarm",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:153"
+      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:154"
     },
     {
       "from": "route:/admin/kafarm/guardian",
       "to": "route:/admin",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:154"
+      "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:155"
     },
     {
       "from": "route:/admin/kafarm/troubleshooting",
@@ -5855,5 +5869,5 @@
     "A test script existing does not mean it passed on this commit or deployment.",
     "The generated map contains source references, not unrestricted runtime source-code access."
   ],
-  "fingerprint": "19447e31a03cf6cb8908a66a54f59f96094b33be8e96a94f418ad4f705461871"
+  "fingerprint": "4dfaef927a18ae4f823824a44b64e3b72908ae59d3d9c044090ff8d114480d20"
 }

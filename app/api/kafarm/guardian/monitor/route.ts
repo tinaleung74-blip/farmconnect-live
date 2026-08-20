@@ -17,6 +17,8 @@ type MonitorFinding = {
   sourceRecordId?: string | null;
 };
 
+const TRUTH_MODEL_VERSION = "current-deployment-v2";
+
 function json(status: number, body: Record<string, unknown>) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", "X-KaFarm-Monitor": "guarded-observer" } });
 }
@@ -65,8 +67,12 @@ export async function GET(request: NextRequest) {
 
   let persistedCount = 0;
   let persistenceError: string | null = null;
-  if (deduplicated.length) {
-    const incidentRows = deduplicated.map((item) => ({
+  // Runtime incidents already live in kafarm_incidents. Persisting an incident
+  // about another incident refreshes old evidence and creates a false current
+  // signal. Only first-party monitor findings may create a monitor incident.
+  const persistableFindings = deduplicated.filter((item) => item.code !== "open_runtime_incident" && item.source !== "kafarm_incidents");
+  if (persistableFindings.length) {
+    const incidentRows = persistableFindings.map((item) => ({
       incident_key: `guardian:${item.fingerprint}`,
       source: "guardian_monitor",
       title: `KaFarm Guardian: ${item.code.replaceAll("_", " ")}`,
@@ -87,6 +93,9 @@ export async function GET(request: NextRequest) {
       metadata: {
         monitorFingerprint: item.fingerprint,
         monitorCode: item.code,
+        sourceRecordId: item.sourceRecordId || null,
+        truthModelVersion: TRUTH_MODEL_VERSION,
+        deploymentCommit: (process.env.VERCEL_GIT_COMMIT_SHA || "").trim() || null,
         observedAt: new Date().toISOString(),
         automaticRepairAttempted: false,
       },
@@ -108,8 +117,9 @@ export async function GET(request: NextRequest) {
     persistence_ok: !persistenceError,
     metadata: {
       monitorMode: "guarded-proactive-monitor",
+      truthModelVersion: TRUTH_MODEL_VERSION,
       businessMutationAttempted: false,
-      incidentLoggingAttempted: deduplicated.length > 0,
+      incidentLoggingAttempted: persistableFindings.length > 0,
     },
   });
 
@@ -119,16 +129,17 @@ export async function GET(request: NextRequest) {
     ok: monitorHealthy,
     mode: "guarded-proactive-monitor",
     generatedAt: new Date().toISOString(),
+    truthModelVersion: TRUTH_MODEL_VERSION,
     findingCount: deduplicated.length,
     findings: deduplicated,
-    mutationAttempted: deduplicated.length > 0,
+    mutationAttempted: persistableFindings.length > 0,
     businessMutationAttempted: false,
-    incidentLoggingAttempted: deduplicated.length > 0,
+    incidentLoggingAttempted: persistableFindings.length > 0,
     persistedCount,
     persistenceError,
     heartbeatPersisted: !heartbeatError,
     heartbeatError: heartbeatError?.message || null,
     deploymentCommit,
-    persistence: "Findings are deduplicated into the Admin KaFarm incident queue. No business workflow, money, KYC, ownership, approval, or recovery action is executed.",
+    persistence: "Only first-party monitor findings are deduplicated into the Admin queue. Existing runtime incidents are read directly and are never wrapped as new incidents. No business workflow, money, KYC, ownership, approval, or recovery action is executed.",
   });
 }

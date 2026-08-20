@@ -34,6 +34,7 @@ console.log(JSON.stringify({
   persistedCount: body.persistedCount ?? null,
   heartbeatPersisted: body.heartbeatPersisted ?? false,
   deploymentCommit: body.deploymentCommit ?? null,
+  truthModelVersion: body.truthModelVersion ?? null,
   error: body.error || body.heartbeatError || body.persistenceError || null,
 }, null, 2));
 

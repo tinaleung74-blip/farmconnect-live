@@ -1,16 +1,22 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-20T03:24:41.103Z",
-  "sourceFingerprint": "b97dbf5defffdc0e0102e5963560b9a5876cd4bfd8461715d954b77e41476ab9",
+  "generatedAt": "2026-08-20T03:44:44.247Z",
+  "sourceFingerprint": "c997191e7ed1ccb69f442125db6ea8bdc9338a99b5eec7d8b826315dbd35d125",
   "git": {
-    "commit": "56b37b70177b407594b34f4febc650c61257a405",
+    "commit": "614547abccb8e503f319e9ab67ae67c2e4ebe142",
     "branch": "agent/independent-operations",
     "dirtyFiles": [
       "app/admin/kafarm/guardian/_components/GuardianClient.tsx",
-      "app/api/kafarm/guardian/route.ts",
+      "app/api/kafarm/guardian/monitor/route.ts",
+      "database/00_verify_applied_sql_status.sql",
+      "database/applied/000_database_applied_ledger.md",
+      "lib/kafarm-system-snapshot.generated.json",
+      "lib/kafarm/guardian/system-map.generated.json",
+      "lib/kafarm/guardian/truth-reference.ts",
       "lib/kafarm/guardian/types.ts",
       "scripts/qa/kafarm-guardian-contract.mjs",
-      "lib/kafarm/guardian/truth-reference.ts"
+      "scripts/qa/verify-production-monitor.mjs",
+      "database/applied/080_kafarm_truth_reference_current_evidence.sql"
     ]
   },
   "safety": {
@@ -47,7 +53,7 @@
     "activeFiles": 140,
     "unreachableFiles": 2,
     "actions": 141,
-    "backendReferences": 129,
+    "backendReferences": 130,
     "findings": 0
   },
   "routes": [
@@ -2335,7 +2341,7 @@
       "kind": "table",
       "name": "kafarm_incidents",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 95,
+      "line": 104,
       "role": "system",
       "route": "/",
       "exportName": "GET"
@@ -2344,7 +2350,7 @@
       "kind": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 103,
+      "line": 112,
       "role": "system",
       "route": "/",
       "exportName": "GET"
@@ -2353,7 +2359,7 @@
       "kind": "rpc",
       "name": "kafarm_guardian_monitor_snapshot",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "line": 53,
+      "line": 55,
       "role": "system",
       "route": "/",
       "exportName": "GET"
@@ -3352,7 +3358,16 @@
       "kind": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "lib/kafarm/guardian/truth-reference.ts",
-      "line": 103,
+      "line": 117,
+      "role": "system",
+      "route": "lib/kafarm/guardian/truth-reference.ts",
+      "exportName": "buildKaFarmTruthReference"
+    },
+    {
+      "kind": "table",
+      "name": "kafarm_guardian_monitor_runs",
+      "file": "lib/kafarm/guardian/truth-reference.ts",
+      "line": 141,
       "role": "system",
       "route": "lib/kafarm/guardian/truth-reference.ts",
       "exportName": "buildKaFarmTruthReference"
@@ -3433,7 +3448,7 @@
     },
     {
       "source": "app/admin/kafarm/guardian/_components/GuardianClient.tsx",
-      "line": 152,
+      "line": 153,
       "ownerRoute": "/admin/kafarm/guardian",
       "target": "/admin/kafarm/whole-app-reader",
       "exists": true,
@@ -3441,7 +3456,7 @@
     },
     {
       "source": "app/admin/kafarm/guardian/_components/GuardianClient.tsx",
-      "line": 153,
+      "line": 154,
       "ownerRoute": "/admin/kafarm/guardian",
       "target": "/admin/kafarm",
       "exists": true,
@@ -3449,7 +3464,7 @@
     },
     {
       "source": "app/admin/kafarm/guardian/_components/GuardianClient.tsx",
-      "line": 154,
+      "line": 155,
       "ownerRoute": "/admin/kafarm/guardian",
       "target": "/admin",
       "exists": true,
@@ -4741,7 +4756,7 @@
     },
     {
       "file": "app/admin/kafarm/guardian/_components/GuardianClient.tsx",
-      "sha256": "b612997d9662f75a5ee6481ca66019aaa163efa1089fd02080f9848803431438"
+      "sha256": "f07fdcf4b9eb5e0b8d4c934ad07b230b0dabffe706bcc1a88e1bc0ea73dc8616"
     },
     {
       "file": "app/admin/kafarm/guardian/page.tsx",
@@ -4833,7 +4848,7 @@
     },
     {
       "file": "app/api/kafarm/guardian/monitor/route.ts",
-      "sha256": "febdaecc3eaaf380c5963e55498ebcfbd9bab1c7052e293bbab6a1cd2c92e610"
+      "sha256": "0cbad552e7229ed4cb4efba43922a74a0fadd38755806b6f3dacfb65023d14b7"
     },
     {
       "file": "app/api/kafarm/guardian/route.ts",
@@ -5141,11 +5156,11 @@
     },
     {
       "file": "lib/kafarm/guardian/truth-reference.ts",
-      "sha256": "35f89061c11a6d6a67736fad758e48cbfa502d76e1c53416ec95de66b822fb2f"
+      "sha256": "3b6447c69b3b849196dccf54591cf90f8d761d1b74eb86824696229ea60bee4d"
     },
     {
       "file": "lib/kafarm/guardian/types.ts",
-      "sha256": "3e79d01a9aec8941a560697cd2ec5809565fbbd7f3bb2f0a3d3247de578ac50b"
+      "sha256": "b0a27d5956b55affc3daf7d184343de596fca5dc9f571ea73dd13b2df6286348"
     },
     {
       "file": "lib/security/farmconnect-rate-limit.ts",

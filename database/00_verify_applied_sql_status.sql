@@ -216,6 +216,7 @@ with expected(migration, kind, object_name) as (
     ,('078_persistent_business_rate_limit.sql','function','farmconnect_rate_limit_version')
     ,('079_kafarm_monitor_run_ledger.sql','table','kafarm_guardian_monitor_runs')
     ,('079_kafarm_monitor_run_ledger.sql','function','kafarm_guardian_monitor_health')
+    ,('080_kafarm_truth_reference_current_evidence.sql','function','kafarm_guardian_monitor_snapshot')
 ),
 object_status as (
   select
