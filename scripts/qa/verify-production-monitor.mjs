@@ -31,6 +31,7 @@ console.log(JSON.stringify({
   httpStatus: response.status,
   passed,
   findingCount: body.findingCount ?? null,
+  findingSummary: body.findingSummary ?? null,
   persistedCount: body.persistedCount ?? null,
   heartbeatPersisted: body.heartbeatPersisted ?? false,
   deploymentCommit: body.deploymentCommit ?? null,

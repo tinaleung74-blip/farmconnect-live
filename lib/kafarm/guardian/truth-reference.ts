@@ -28,6 +28,14 @@ type MonitorRun = {
   metadata?: Record<string, unknown> | null;
 };
 
+type MonitorFindingSummary = {
+  code?: string;
+  workflow?: string;
+  severity?: string;
+  count?: number;
+  sources?: string[];
+};
+
 const FRESH_MONITOR_MS = 48 * 60 * 60 * 1000;
 const TRUTH_MODEL_VERSION = "current-deployment-v2";
 const severityRank: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
@@ -107,6 +115,24 @@ function groupIncidents(rows: IncidentRow[], deploymentBoundary: number | null) 
   });
 }
 
+function monitorLeadGroups(run: MonitorRun | null, runAt: string | null) {
+  const summary = Array.isArray(run?.metadata?.findingSummary) ? run?.metadata?.findingSummary as MonitorFindingSummary[] : [];
+  return summary.map((item) => ({
+    key: `monitor|${clean(item.code, "unknown").toLowerCase()}|${clean(item.workflow, "unknown").toLowerCase()}`,
+    classification: "UNPROVEN" as const,
+    severity: clean(item.severity, "MEDIUM").toUpperCase(),
+    workflow: clean(item.workflow),
+    title: `Monitor lead: ${clean(item.code).replaceAll("_", " ")}`,
+    message: `${Math.max(0, Number(item.count || 0))} current source record(s) require reconciliation. This is an operational lead, not a confirmed software bug.`,
+    route: null,
+    evidenceCount: Math.max(0, Number(item.count || 0)),
+    firstSeenAt: runAt,
+    lastSeenAt: runAt,
+    evidenceSource: Array.isArray(item.sources) && item.sources.length ? item.sources.join(", ") : "kafarm_guardian_monitor_snapshot",
+    safeNextAction: "Reconcile the source workflow records or reproduce the behavior on this deployment before calling it a bug.",
+  }));
+}
+
 export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Promise<KaFarmTruthReference> {
   const map = getKaFarmSystemMapStatus();
   const deploymentCommit = (process.env.VERCEL_GIT_COMMIT_SHA || "").trim() || null;
@@ -148,7 +174,9 @@ export async function buildKaFarmTruthReference(context: KaFarmAdminContext): Pr
     if (boundaryResult.error) limitations.push(`Deployment evidence boundary unavailable: ${boundaryResult.error.message}`);
     deploymentBoundary = validDate(boundaryResult.data?.ran_at ? String(boundaryResult.data.ran_at) : null);
   }
-  const groups = groupIncidents((incidentResult.data || []) as IncidentRow[], deploymentBoundary);
+  const historicalAndRuntimeGroups = groupIncidents((incidentResult.data || []) as IncidentRow[], deploymentBoundary);
+  const currentMonitorLeads = currentTruthModel ? monitorLeadGroups(run, runAt) : [];
+  const groups = [...currentMonitorLeads, ...historicalAndRuntimeGroups];
   const currentGroups = groups.filter((item) => item.classification === "CONFIRMED_ISSUE");
   const unprovenGroups = groups.filter((item) => item.classification === "UNPROVEN");
   const staleGroups = groups.filter((item) => item.classification === "STALE_IGNORE");
