@@ -1182,3 +1182,19 @@ Purpose:
 - Keep post-cutoff workflows under normal KaFarm monitoring.
 - Report the ignored demo-record count and baseline time in the monitor heartbeat and Truth Reference.
 - Perform no approval, payment, KYC, ownership, inventory, refund, business-record update, or deletion.
+
+## 082_admin_realtime_queue_publication.sql
+
+Status: **APPLIED — PRODUCTION SQL VERIFIED 2026-08-20 (Asia/Manila)**
+
+Verification:
+
+- `published_count = 10`
+- Published: `caretaker_applications`, `caretaker_tasks`, `customer_kyc_profiles`, `farm_care_requests`, `manual_payment_requests`, `rooster_care_plans`, `rooster_sale_requests`, `task_proofs`, `withdrawal_disputes`, `withdrawal_requests`
+
+Purpose:
+
+- Publish the protected Admin queue tables to Supabase Realtime while preserving their existing RLS policies.
+- Let KYC, payment, care, task proof, sell, withdrawal, and issue queues refresh without manual page reloads.
+- Support reconnect reconciliation plus a 45-second read-only polling fallback in the Admin UI.
+- Perform no approval, payment, KYC, ownership, inventory, payout, deletion, or workflow mutation.

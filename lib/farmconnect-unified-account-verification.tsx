@@ -14,6 +14,7 @@ import {
 } from "@/lib/farmconnect-data";
 import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { createIsolatedSupabaseClient, supabase } from "@/lib/supabase";
+import { AdminRealtimeStatus, useAdminRealtime } from "@/lib/admin-realtime";
 
 type VerificationMode = "customer" | "caretaker";
 type VerificationTab = "queue" | "verified";
@@ -275,6 +276,7 @@ export function UnifiedAccountVerificationPage() {
   }
 
   useEffect(()=>{ initialize(); }, []);
+  const realtime = useAdminRealtime({ tables: ["customer_kyc_profiles", "caretaker_applications"], refresh: async () => { if (adminGate.status === "allowed") await load(); } });
 
   const queueRows = useMemo(() => mode === "customer"
     ? customers.filter(row => customerQueueStatuses.has(row.status))
@@ -363,6 +365,7 @@ export function UnifiedAccountVerificationPage() {
   return <AdminVerificationShell>
     <section className="rounded-[28px] border border-[#e3ded0] bg-white/95 p-5 shadow-sm"><p className="text-xs font-black uppercase text-[#1f6b45]">FarmConnect Operations</p><h1 className="mt-1 text-4xl font-black">Account Verification</h1><p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-[#27577c]">One approval page for customer KYC and caretaker activation. KaFarm may explain findings, but only admin can approve or reject.</p></section>
     <section className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-900">KaFarm: {verificationNote}</section>
+    <div className="mt-4"><AdminRealtimeStatus {...realtime} /></div>
     <div className="mt-4 grid gap-3 md:grid-cols-2"><button onClick={()=>setTab("queue")} className={`rounded-2xl border p-4 text-left ${tab === "queue" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95"}`}><b>Verification Queue</b><p className="text-xs font-bold text-[#667267]">Waiting for a real admin decision.</p></button><button onClick={()=>setTab("verified")} className={`rounded-2xl border p-4 text-left ${tab === "verified" ? "border-[#1f6b45] bg-emerald-50" : "border-[#e3ded0] bg-white/95"}`}><b>Verified Accounts</b><p className="text-xs font-bold text-[#667267]">Approved customers and caretakers.</p></button></div>
     <div className="mt-4 grid gap-4 xl:grid-cols-[300px_minmax(520px,1fr)_340px]">
       <section className={`${cardClass} min-h-[620px]`}><div className="flex items-center justify-between"><h2 className="text-lg font-black">{tab === "queue" ? "Accounts On Queue" : "Verified Type"}</h2><Badge tone={tab === "queue" ? "warn" : "good"}>{activeRows.length}</Badge></div><div className="mt-3 grid grid-cols-2 gap-2"><button onClick={()=>setMode("customer")} className={`rounded-xl px-3 py-3 text-sm font-black ${mode === "customer" ? "bg-[#1f6b45] text-white" : "bg-[#f6f3e8]"}`}>Customers</button><button onClick={()=>setMode("caretaker")} className={`rounded-xl px-3 py-3 text-sm font-black ${mode === "caretaker" ? "bg-[#1f6b45] text-white" : "bg-[#f6f3e8]"}`}>Caretakers</button></div><div className="mt-4 max-h-[500px] space-y-3 overflow-y-auto pr-2">{activeRows.map(row=><button key={row.id} onClick={()=>setSelectedId(row.id)} className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left ${selected?.id === row.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]"}`}><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#1f6b45] font-black text-white">{initials(row.name)}</span><span className="min-w-0 flex-1"><b className="block truncate">{row.name}</b><span className="block truncate text-xs font-bold text-[#667267]">{row.submitted}</span></span><Badge tone={tab === "verified" ? "good" : row.risk === "High" ? "bad" : row.risk === "Medium" ? "warn" : "neutral"}>{tab === "verified" ? "Approved" : row.risk}</Badge></button>)}{loading && <p className="rounded-xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">Loading live records...</p>}{!loading && activeRows.length === 0 && <p className="rounded-xl bg-[#f6f3e8] p-4 text-sm font-bold text-[#667267]">{tab === "queue" ? "No account waiting in this queue." : "No approved account in this list yet."}</p>}</div></section>
