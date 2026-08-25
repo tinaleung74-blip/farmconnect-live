@@ -685,11 +685,17 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
         </div>
       </main>
     );
+  const roleArtwork = {
+    customer: "/farmconnect/role-assets/customer-hero-v1.png",
+    caretaker: "/farmconnect/role-assets/caretaker-hero-v1.png",
+    admin: "/farmconnect/role-assets/admin-hero-v1.png",
+  }[role];
   return (
     <main
-      className="min-h-screen overflow-x-clip bg-[#f6f3e8] bg-cover bg-center bg-no-repeat text-[#17251d]"
+      data-farmconnect-role={role}
+      className="min-h-screen overflow-x-clip bg-[#f6f3e8] bg-cover bg-[center_top] bg-no-repeat text-[#17251d] lg:bg-fixed"
       style={{
-        backgroundImage: "linear-gradient(180deg, rgba(255,253,247,0.20), rgba(246,243,232,0.14)), linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.09)), radial-gradient(circle at top left, rgba(255,191,55,0.12), transparent 34%), radial-gradient(circle at bottom right, rgba(31,107,69,0.12), transparent 38%), url('/farmconnect/farmconnect-hero-wallpaper.jpg')",
+        backgroundImage: `linear-gradient(180deg, rgba(255,253,247,0.50), rgba(246,243,232,0.66)), radial-gradient(circle at top left, rgba(255,191,55,0.14), transparent 36%), radial-gradient(circle at bottom right, rgba(31,107,69,0.16), transparent 40%), url('${roleArtwork}')`,
       }}
     >
       <header className="sticky top-0 z-40 border-b-4 border-[#ffd43b] bg-gradient-to-r from-[#075c3a]/95 via-[#0b6fba]/94 to-[#075c3a]/95 text-white shadow-[0_12px_35px_rgba(7,92,58,0.24)] backdrop-blur-md">
@@ -1734,6 +1740,87 @@ export function CustomerRoostersResponsive() {
         )}
       </section>
     </Shell>
+  );
+}
+
+export function CustomerRoostersV2() {
+  const [roosters, setRoosters] = useState<RoosterCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [qrRooster, setQrRooster] = useState<RoosterCard | null>(null);
+  const [careChoice, setCareChoice] = useState<{ id: string; type: "daily" | "monthly" } | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews()])
+      .then(([items, careOverviews]) => {
+        if (!mounted) return;
+        setLoadError("");
+        const careByAnimal = new Map(careOverviews.map((overview) => [overview.customerAnimalId, overview]));
+        setRoosters(items.filter(isRealOwnedAnimal).map((row, index) => {
+          const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Bloodline";
+          const metadata = (row.ownership_metadata || {}) as Record<string, unknown>;
+          return { id: row.id, name: row.animal_name || `${breed} Rooster`, breed, tag: row.animal_code || `FC-${index + 1}`, stage: row.acquired_from === "farm_buy" ? "Growing" : "Owned Rooster", status: row.status === "sold" ? "Sold" : "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: row.approved_sale_price == null ? "Waiting for reviewed price" : peso(Number(row.approved_sale_price)), image: String(metadata.image_url || metadata.photo_url || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg"), pen: String(metadata.pen || metadata.pen_name || "Pending assignment"), caretaker: String(metadata.caretaker_name || "Pending assignment"), saleStatus: row.sale_status || "not_listed", approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price), ownershipMetadata: metadata, careOverview: careByAnimal.get(row.id) || null } as RoosterCard;
+        }));
+      })
+      .catch((error: unknown) => {
+        if (!mounted) return;
+        const detail = error && typeof error === "object"
+          ? String((error as { message?: unknown; details?: unknown; code?: unknown }).message || (error as { details?: unknown }).details || (error as { code?: unknown }).code || "Customer records could not be loaded.")
+          : error instanceof Error ? error.message : String(error || "Customer records could not be loaded.");
+        setRoosters([]);
+        setLoadError(detail);
+      })
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
+  }, []);
+
+  function moveRooster(direction: number) {
+    const next = Math.max(0, Math.min(roosters.length - 1, activeIndex + direction));
+    setActiveIndex(next);
+    railRef.current?.children[next]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+  }
+  function qrValue(rooster: RoosterCard) {
+    const metadata = rooster.ownershipMetadata || {};
+    return String(metadata.qr_payload || metadata.qrPayload || rooster.tag);
+  }
+
+  return (
+    <main
+      className="min-h-screen bg-[#f8f5e8] bg-cover bg-[center_top] bg-no-repeat text-[#10251d] lg:bg-fixed"
+      style={{
+        backgroundImage: "linear-gradient(145deg, rgba(248,245,232,.82), rgba(231,245,235,.78)), url('/farmconnect/role-assets/customer-hero-v1.png')",
+      }}
+    >
+      <header className="sticky top-0 z-30 border-b-2 border-amber-300 bg-[#07563f]/98 text-white shadow-lg">
+        <div className="mx-auto flex max-w-[1180px] items-center gap-2 px-2 py-2.5 sm:gap-3 sm:px-5 sm:py-3 lg:px-6">
+          <div className="flex shrink-0 items-center gap-2 font-black"><img src="/farmconnect/icons/my-rooster.png" alt="" className="h-9 w-9 rounded-xl bg-white object-contain sm:h-10 sm:w-10" /><span className="hidden md:inline">FarmConnect</span></div>
+          <nav className="ml-auto grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-2" aria-label="Customer tools">
+            {([ ["Wallet", "/customer-v2/wallet", "/farmconnect/customer-v2-icons/wallet.png"], ["Inbox", "/customer-v2/inbox", "/farmconnect/customer-v2-icons/inbox.png"], ["Support", "/customer-v2/support", "/farmconnect/customer-v2-icons/support.png"], ["Settings", "/customer-v2/settings", "/farmconnect/customer-v2-icons/settings.png"] ] as const).map(([label, href, icon]) => (
+              <Link key={label} href={href} className="grid min-h-11 min-w-11 place-items-center rounded-full border border-white/25 bg-white/10 p-1 text-xs font-black transition hover:bg-white hover:text-[#07563f] sm:flex sm:min-h-12 sm:gap-2 sm:px-2.5" aria-label={label}><span className="grid h-8 w-8 place-items-center rounded-full bg-white shadow sm:h-9 sm:w-9"><img src={icon} alt="" className="h-7 w-7 object-contain sm:h-8 sm:w-8" /></span><span className="hidden lg:inline">{label}</span></Link>
+            ))}
+          </nav>
+        </div>
+      </header>
+      <section className="mx-auto max-w-[1180px] px-3 py-4 sm:px-5 sm:py-6 lg:px-6 lg:py-8">
+        <div className="mb-4 grid gap-4 rounded-[22px] border border-white/80 bg-white/95 p-4 shadow-xl sm:grid-cols-[1fr_auto] sm:items-center sm:rounded-[26px] sm:p-6"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#24724d]">Your farm assets</p><h1 className="mt-1 text-3xl font-black sm:text-4xl">Your Roosters</h1><p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-[#65746b]">Ownership, growth, care, QR, logs, and selling journey in one place.</p></div><button type="button" onClick={() => setCareChoice({ id: "__add__", type: "daily" })} className="min-h-12 w-full rounded-xl bg-[#0a7654] px-5 py-3 text-sm font-black text-white sm:w-auto">+ Add Rooster</button></div>
+        {careChoice?.id === "__add__" && <div className="mb-4 rounded-[24px] border border-emerald-200 bg-white p-5 shadow-xl"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#24724d]">Add a rooster</p><h2 className="mt-1 text-2xl font-black">Choose your rooster, then choose care</h2><p className="mt-2 text-sm font-bold text-[#65746b]">The next screen shows available breeds, Daily Care or Monthly Care, and one combined payment review.</p></div><button type="button" onClick={() => setCareChoice(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black">×</button></div><Link href="/customer/farm-buy?category=Breed%20Chicks" className="mt-4 inline-flex rounded-xl bg-[#0a7654] px-5 py-3 text-sm font-black text-white">Choose Rooster Breed</Link></div>}
+        {loading && <div className="rounded-3xl bg-white p-10 text-center font-black shadow-xl">Loading your rooster records...</div>}
+        {!loading && loadError && <div role="alert" className="mb-4 rounded-3xl border border-amber-300 bg-amber-50 p-5 shadow-xl"><h2 className="text-lg font-black text-amber-950">We could not load your rooster records yet.</h2><p className="mt-2 text-sm font-bold text-amber-900">{loadError}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-xl bg-amber-300 px-4 py-2 text-sm font-black text-amber-950">Try Again</button></div>}
+        {!loading && !loadError && roosters.length === 0 && <div className="rounded-3xl border border-dashed border-[#b9cdbf] bg-white p-10 text-center shadow-xl"><img src="/farmconnect/icons/my-rooster.png" alt="" className="mx-auto h-24 w-24 object-contain" /><h2 className="mt-3 text-2xl font-black">No approved rooster yet</h2><p className="mt-2 font-bold text-[#65746b]">Use Add Rooster above. Your rooster appears here after Admin verifies the payment and ownership.</p></div>}
+        {roosters.length > 0 && <><div className="mb-3 flex items-center justify-between text-sm font-black text-[#65746b]"><span>Rooster {activeIndex + 1} of {roosters.length}</span><div className="hidden gap-2 [@media(pointer:fine)]:flex"><button type="button" onClick={() => moveRooster(-1)} disabled={activeIndex === 0} className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl shadow disabled:opacity-35">←</button><button type="button" onClick={() => moveRooster(1)} disabled={activeIndex === roosters.length - 1} className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl shadow disabled:opacity-35">→</button></div><span className="hidden [@media(pointer:coarse)]:inline">Swipe to view</span></div>
+          <div ref={railRef} onScroll={(event) => { const el = event.currentTarget; setActiveIndex(Math.max(0, Math.min(roosters.length - 1, Math.round(el.scrollLeft / (el.clientWidth || 1))))); }} className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden">
+            {roosters.map((rooster) => { const care = carePlanBox(rooster.careOverview); const paid = rooster.careOverview?.planStatus === "active"; const day = Number(rooster.ownershipMetadata?.growth_day || rooster.careOverview?.catalogDay || 1); const weight = rooster.ownershipMetadata?.weight_kg == null ? "Awaiting verified weight" : `${Number(rooster.ownershipMetadata.weight_kg).toFixed(2)} kg`; return <article key={rooster.id} className="min-w-full snap-start overflow-hidden rounded-[22px] border border-white/80 bg-white/96 shadow-xl sm:rounded-[28px]"><div className="grid md:grid-cols-[minmax(250px,36%)_1fr] lg:grid-cols-[330px_1fr]"><img src={rooster.image} alt={rooster.name} className="h-56 w-full object-cover sm:h-72 md:h-full md:min-h-[560px]" /><div className="p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase text-[#07563f]">Owned rooster</span><h2 className="mt-3 truncate text-2xl font-black sm:text-3xl">{rooster.name}</h2><p className="truncate font-black text-[#24724d]">{rooster.breed}</p></div><button type="button" onClick={() => setQrRooster(rooster)} className="shrink-0 rounded-2xl border border-[#dce7df] bg-white p-1.5 shadow-sm sm:p-2" aria-label={`Open ${rooster.name} QR`}><QRCodeSVG value={qrValue(rooster)} size={56} level="H" marginSize={1} /></button></div>
+              <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4"><Info label="Growth" value={`Day ${day} of 180`} /><Info label="Weight" value={weight} /><Info label="Condition" value={rooster.health} /><Info label="Care" value={paid ? care.detail : "Daily care available"} /></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-[#dce7df]"><div className="h-full rounded-full bg-[#0a7654]" style={{ width: `${Math.min(100, Math.max(1, (day / 180) * 100))}%` }} /></div><p className="mt-2 text-xs font-bold text-[#65746b]">{Math.round((day / 180) * 100)}% of the 180-day growth guide</p><div className="mt-4 rounded-2xl bg-[#eaf8ef] p-4 text-sm"><b>Latest diagnosis:</b> {rooster.health}. Caretaker observations and Admin-approved proof update this record.</div>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"><button type="button" onClick={() => setCareChoice({ id: rooster.id, type: "daily" })} className="min-h-12 rounded-xl bg-sky-100 px-3 py-3 text-sm font-black text-sky-900 sm:px-4">Daily Care</button><button type="button" onClick={() => setCareChoice({ id: rooster.id, type: "monthly" })} className="min-h-12 rounded-xl bg-amber-100 px-3 py-3 text-sm font-black text-amber-900 sm:px-4">Monthly Care</button><Link href={`/customer/sell-rooster?id=${rooster.id}`} className="col-span-2 grid min-h-12 place-items-center rounded-xl bg-amber-300 px-4 py-3 text-sm font-black sm:col-span-1">Sell Rooster</Link></div>
+              {careChoice?.id === rooster.id && <div className="mt-4 rounded-2xl border border-[#dce7df] bg-[#fafcf9] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase text-[#24724d]">{careChoice.type === "daily" ? "One-day service" : "30-day coverage"}</p><h3 className="mt-1 text-xl font-black">{careChoice.type === "daily" ? "Today’s Standard Care" : paid ? "Monthly Care is active" : "Start Monthly Care"}</h3></div><button type="button" onClick={() => setCareChoice(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black">×</button></div><p className="mt-2 text-sm font-bold leading-6 text-[#65746b]">Feed and water, pen cleaning, condition observation, safety guidance, caretaker documentation, and Admin-verified Care Log.</p>{careChoice.type === "monthly" && paid ? <p className="mt-3 rounded-xl bg-emerald-100 p-3 text-sm font-black text-emerald-900">Active coverage: {care.detail}. Daily missions continue automatically.</p> : <Link href={`/customer/farm-requests?rooster=${encodeURIComponent(rooster.id)}&service=${careChoice.type}`} className="mt-3 inline-flex rounded-xl bg-[#0a7654] px-4 py-3 text-sm font-black text-white">Review and Continue</Link>}</div>}
+              <div className="mt-5 border-t border-[#dce7df] pt-4"><h3 className="text-lg font-black">Recent Care Logs</h3><p className="mt-3 rounded-xl bg-[#f5f8f5] p-4 text-sm font-bold text-[#65746b]">Latest approved caretaker work, proof, weight, and health notes appear here for this rooster. No separate Care Logs page is needed.</p></div></div></div></article>; })}
+          </div></>}
+      </section>
+      {qrRooster && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setQrRooster(null)}><div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex justify-between"><h2 className="text-2xl font-black">{qrRooster.name} QR</h2><button type="button" onClick={() => setQrRooster(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black">×</button></div><div className="mx-auto mt-5 inline-block rounded-2xl border border-[#dce7df] bg-white p-4"><QRCodeSVG value={qrValue(qrRooster)} size={220} level="H" marginSize={2} /></div><p className="mt-4 text-sm font-bold text-[#65746b]">The assigned caretaker scans this QR to verify the correct rooster before submitting work.</p></div></div>}
+    </main>
   );
 }
 

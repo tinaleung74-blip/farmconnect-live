@@ -1198,3 +1198,25 @@ Purpose:
 - Let KYC, payment, care, task proof, sell, withdrawal, and issue queues refresh without manual page reloads.
 - Support reconnect reconciliation plus a 45-second read-only polling fallback in the Admin UI.
 - Perform no approval, payment, KYC, ownership, inventory, payout, deletion, or workflow mutation.
+
+## 083_supabase_api_surface_security_hardening.sql
+
+Status: **PREPARED — NOT YET APPLIED TO PRODUCTION**
+
+Expected verification after application:
+
+- `anonymous_security_definer_execute_count = 0`
+- `authenticated_internal_execute_count = 0`
+- `security_definer_view_count = 0`
+- `business_records_changed = false`
+
+Purpose:
+
+- Remove PostgreSQL's implicit `PUBLIC EXECUTE` privilege from every public-schema `SECURITY DEFINER` function.
+- Preserve service-role execution and existing authenticated access only for intentional browser-facing RPCs.
+- Remove direct browser execution from trigger, synchronization, evidence, inventory-posting, and system-link helpers.
+- Change the 14 Supabase-linter-flagged views to caller-context RLS and remove anonymous view access.
+- Lock the 19 linter-flagged mutable function search paths.
+- Make KaFarm SQL audit insertion service-role-only.
+- Preserve deny-all browser behavior for rate-limit, Guardian-run, and monitor-baseline tables.
+- Perform no approval, payment, KYC, ownership, inventory, payout, deletion, or workflow mutation.
