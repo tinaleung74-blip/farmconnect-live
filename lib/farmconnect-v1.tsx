@@ -197,7 +197,7 @@ function FCCoin({ className = "h-12 w-12" }: { className?: string }) {
 const nav = {
   customer: [
     ["My Roosters", "/customer/roosters", "rooster"],
-    ["Farm Buy", "/customer/farm-buy", "bag"],
+    ["Add Rooster", "/customer-v2/add-rooster", "bag"],
     ["Farm Requests", "/customer/farm-requests", "clipboard"],
     ["Wallet", "/customer/wallet", "wallet"],
   ],
@@ -656,7 +656,7 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
       : ([
           ["Home", "/customer/dashboard", "home"],
           ["Roosters", "/customer/roosters", "rooster"],
-          ["Farm Buy", "/customer/farm-buy", "bag"],
+          ["Add Rooster", "/customer-v2/add-rooster", "bag"],
           ["Requests", "/customer/farm-requests", "clipboard"],
         ] as const)),
   ] as const;
@@ -673,7 +673,7 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
       : ([
           ["Dashboard", "/customer/dashboard", "home"],
           ["My Roosters", "/customer/roosters", "rooster"],
-          ["Farm Buy", "/customer/farm-buy", "bag"],
+          ["Add Rooster", "/customer-v2/add-rooster", "bag"],
           ["Requests", "/customer/farm-requests", "clipboard"],
           ["Wallet", "/customer/wallet", "wallet"],
           ["Inbox", "/customer/inbox", "inbox"],
@@ -1262,7 +1262,7 @@ export function CustomerHome() {
           ) : (
             <div className="mt-3 rounded-2xl bg-[#f6f5ee] p-6 text-center">
               <p className="text-sm font-bold text-[#708078]">Approved rooster purchases will appear here.</p>
-              <Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">
+              <Link href="/customer-v2/add-rooster" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">
                 Open Farm Buy
               </Link>
             </div>
@@ -1484,7 +1484,7 @@ export function CustomerHome() {
                     <CustomerDashboardIcon name="camera" className="mx-auto h-10 w-10 text-white/45" />
                     <h3 className="mt-3 text-lg font-black">No rooster selected</h3>
                     <p className="mt-1 text-sm text-white/65">Approved rooster purchases will appear here.</p>
-                    <Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-lg bg-amber-300 px-4 py-2 text-sm font-black text-[#173126]">
+                    <Link href="/customer-v2/add-rooster" className="mt-4 inline-flex rounded-lg bg-amber-300 px-4 py-2 text-sm font-black text-[#173126]">
                       Open Farm Buy
                     </Link>
                   </div>
@@ -1731,7 +1731,7 @@ export function CustomerRoostersResponsive() {
         {!loading && !selected && (
           <div className="rounded-[22px] bg-white/95 p-6 text-center shadow-lg">
             <h2 className="text-xl font-black">No roosters yet</h2>
-            <Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">
+            <Link href="/customer-v2/add-rooster" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">
               Open Farm Buy
             </Link>
           </div>
@@ -2089,7 +2089,7 @@ export function CustomerRoosters() {
               <div className="rounded-2xl border border-dashed border-[#d8d0bd] bg-[#fffdf7] p-5 text-center">
                 <h3 className="text-lg font-black">No roosters yet</h3>
                 <p className="mt-2 text-sm font-bold text-[#667267]">Approved Farm Buy purchases or admin-assigned roosters will appear here.</p>
-                <Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
+                <Link href="/customer-v2/add-rooster" className="mt-4 inline-flex rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
                   Go to Farm Buy
                 </Link>
               </div>
@@ -2167,7 +2167,7 @@ export function CustomerRoosters() {
                 <RoosterPhoto src="/farmconnect/icons/my-rooster.png" alt="" size="thumb" />
                 <h2 className="mt-4 text-3xl font-black">Your rooster record is empty</h2>
                 <p className="mx-auto mt-3 max-w-md font-bold text-[#667267]">Once admin approves a Farm Buy payment or assigns a rooster to your account, the rooster card, breed, care status, and value will show here.</p>
-                <Link href="/customer/farm-buy" className="mt-5 inline-flex rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">
+                <Link href="/customer-v2/add-rooster" className="mt-5 inline-flex rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">
                   Buy First Rooster
                 </Link>
               </div>
@@ -2470,8 +2470,6 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 export function FarmBuy() {
   const router = useRouter();
-  const pathname = usePathname();
-  const isCustomerV2 = pathname.startsWith("/customer-v2");
   const [cat, setCat] = useState("All");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [liveProducts, setLiveProducts] = useState<FarmProductCard[]>(products);
@@ -2525,7 +2523,7 @@ export function FarmBuy() {
               .replaceAll("_", " ")
               .replace(/\b\w/g, (c) => c.toUpperCase()),
           );
-          if (category !== "Breed Chicks" && row.product_type !== "breed_chick") return true;
+          if (category !== "Breed Chicks" && row.product_type !== "breed_chick") return false;
           const nameBloodline = String(row.name || "").match(/\(([^)]+)\)/)?.[1];
           const bloodline = String(row.bloodline || row.breed || nameBloodline || "")
             .trim()
@@ -2564,8 +2562,9 @@ export function FarmBuy() {
     };
   }, []);
 
-  const cats = ["All", ...Array.from(new Set(liveProducts.map((p) => p.category)))];
-  const visible = cat === "All" ? liveProducts : liveProducts.filter((p) => p.category === cat);
+  const roosterProducts = liveProducts.filter((p) => p.category === "Breed Chicks" || p.product_type === "breed_chick");
+  const cats = ["All", ...Array.from(new Set(roosterProducts.map((p) => p.category)))];
+  const visible = cat === "All" ? roosterProducts : roosterProducts.filter((p) => p.category === cat);
   const cartEntries = Object.entries(cart)
     .filter(([, qty]) => qty > 0)
     .map(([id, qty]) => ({
@@ -2627,7 +2626,7 @@ export function FarmBuy() {
           summary,
         }),
       );
-      router.push(isCustomerV2 ? "/customer-v2/payment?type=farm_buy" : "/customer/payment?type=farm_buy");
+      router.push("/customer-v2/payment?type=farm_buy");
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       setMarketNote(message === "login_required" || message.toLowerCase().includes("login") ? "Please login first so we can save the order before payment." : "We could not prepare payment yet. Your cart is still here.");
@@ -2635,8 +2634,8 @@ export function FarmBuy() {
   }
 
   return (
-    <Shell role="customer" title={isCustomerV2 ? "Add Rooster" : "Farm Buy"}>
-      <PageTitle title={isCustomerV2 ? "Add Rooster" : "Farm Buy"} text={isCustomerV2 ? "Choose an available rooster breed, review the care option, then continue to one payment review." : "Choose quantity with plus and minus. Selected items appear in your cart."} icon="bag" />
+    <Shell role="customer" title="Add Rooster">
+      <PageTitle title="Add Rooster" text="Choose your rooster, then continue to payment." icon="bag" />
       <KaFarm>{marketNote}</KaFarm>
       {carePurpose && (
         <Card className="mb-5 border-2 border-amber-300 bg-amber-50">
@@ -2792,7 +2791,7 @@ export function InventoryPage() {
       qty: need.qty,
       reason: need.reason,
     });
-    return `/customer/farm-buy?${params.toString()}`;
+    return `/customer-v2/add-rooster?${params.toString()}`;
   }
   const totalStock = ownedItems.reduce((sum, product) => sum + product.stock, 0);
   const lowStock = ownedItems.filter((product) => product.stock <= 2).length;
@@ -5446,7 +5445,7 @@ export function CustomerPaymentPage() {
               <Link href={isCustomerV2 ? "/customer-v2/inbox" : "/customer/inbox"} className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">
                 Open Inbox
               </Link>
-              <Link href={isCustomerV2 ? (context.sourceType === "farm_buy" ? "/customer-v2/add-rooster" : "/customer-v2/care") : (context.sourceType === "farm_buy" ? "/customer/farm-buy" : "/customer/farm-requests")} className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">
+              <Link href={isCustomerV2 ? (context.sourceType === "farm_buy" ? "/customer-v2/add-rooster" : "/customer-v2/care") : (context.sourceType === "farm_buy" ? "/customer-v2/add-rooster" : "/customer/farm-requests")} className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">
                 Back
               </Link>
             </div>
@@ -5685,7 +5684,7 @@ export function CustomerInvoicePage({ type = "farm-buy" }: { type?: "farm-buy" |
           <Link href={isCustomerV2 ? "/customer-v2/inbox" : "/customer/inbox"} className="rounded-2xl bg-[#eee8d9] px-4 py-3 font-black">
             Back to Inbox
           </Link>
-          {!isCustomerV2 && <Link href="/customer/farm-buy" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">Farm Buy</Link>}
+          {!isCustomerV2 && <Link href="/customer-v2/add-rooster" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">Add Rooster</Link>}
           {!isCustomerV2 && <Link href="/customer/inventory" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">Inventory</Link>}
           <Link href={isCustomerV2 ? "/customer-v2/roosters" : "/customer/roosters"} className="rounded-2xl bg-[#1f6b45] px-4 py-3 font-black text-white">
             My Roosters

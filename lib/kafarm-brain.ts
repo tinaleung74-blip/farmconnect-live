@@ -116,7 +116,7 @@ const rules: Rule[] = [
     risk: "low",
     keywords: [/farm buy|buy|bili|cart|product|feed|feeds|vitamin|vaccine|supplement|electrolyte|equipment|sisiw|chick/i],
     reply: "For Farm Buy: pili ng product, plus/minus quantity, check Cart, then Buy kapag enough ang FC balance. Kung kulang funds, Add Cash muna; cart should stay saved.",
-    routes: { customer: "/customer/farm-buy" },
+    routes: { customer: "/customer-v2/add-rooster" },
     followUp: ["Anong product?", "Ilang quantity?", "Kulang ba wallet balance?", "May item bang hindi pumasok sa inventory?"],
   },
   {

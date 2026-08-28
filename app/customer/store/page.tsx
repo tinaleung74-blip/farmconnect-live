@@ -1,2 +1,5 @@
-import { FarmBuy } from "@/lib/farmconnect-v1";
-export default FarmBuy;
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/customer-v2/add-rooster");
+}
