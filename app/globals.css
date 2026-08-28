@@ -54,6 +54,51 @@ body {
   box-shadow: 0 12px 30px rgba(4, 31, 34, 0.28) !important;
 }
 
+/* A quiet customer canvas keeps the rooster photo, not wallpaper, in focus.
+   Override the shared legacy shell's inline artwork on customer pages only. */
+main[data-farmconnect-v2="true"] {
+  background-color: #faf8f0;
+  background-image:
+    radial-gradient(ellipse at 100% 0%, rgba(8, 127, 131, 0.08), transparent 48%),
+    radial-gradient(ellipse at 0% 100%, rgba(244, 196, 48, 0.10), transparent 48%) !important;
+  background-attachment: scroll;
+}
+
+.fc-rooster-detail-layout {
+  display: grid;
+  align-items: start;
+}
+
+.fc-rooster-portrait {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 12px;
+  background: #edf3ef;
+}
+
+.fc-rooster-portrait-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  max-height: 480px;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 16px;
+}
+
+@media (min-width: 768px) {
+  .fc-rooster-detail-layout {
+    grid-template-columns: minmax(260px, 42%) minmax(0, 1fr);
+  }
+
+  .fc-rooster-portrait {
+    align-self: stretch;
+    padding: 16px;
+  }
+}
+
 [data-farmconnect-v2="true"] [class*="bg-[#1f6b45]"],
 [data-farmconnect-v2="true"] [class*="bg-[#0a7654]"],
 [data-farmconnect-v2="true"] [class*="bg-[#145f3e]"],

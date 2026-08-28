@@ -1,50 +1,19 @@
 {
   "schemaVersion": "1.0.0",
   "application": "FarmConnect",
-  "generatedAt": "2026-08-28T05:24:08.754Z",
+  "generatedAt": "2026-08-28T05:27:26.218Z",
   "sourceSnapshot": {
-    "generatedAt": "2026-08-28T05:24:08.637Z",
-    "sourceFingerprint": "ad750b4ee3e5e91fda306f16f1cf81c4e7f64136966d00eebd5d1ef1ebb96012",
+    "generatedAt": "2026-08-28T05:27:26.132Z",
+    "sourceFingerprint": "f1ba2bbbce7be5b55f693d076c3994feb66438be1069663d4b6b44719dbc5b46",
     "schemaVersion": "2.2.0"
   },
   "git": {
-    "commit": "0f2c1f1c2d7d7158a6cbd58b93b4b4f3b4e06757",
+    "commit": "40a887551caf95fefacfac8b227106c57f581f16",
     "branch": "agent/independent-operations",
     "dirtyFiles": [
-      "M app/customer/care-logs/page.tsx",
-      " M app/customer/care-plans/page.tsx",
-      " M app/customer/caretakers/dashboard/page.tsx",
-      " M app/customer/caretakers/page.tsx",
-      " M app/customer/cashin/bpi/page.tsx",
-      " M app/customer/cashin/gcash/page.tsx",
-      " M app/customer/cashin/maya/page.tsx",
-      " M app/customer/cashin/page.tsx",
-      " M app/customer/chicks/page.tsx",
-      " M app/customer/customer-service/page.tsx",
-      " M app/customer/dashboard/page.tsx",
-      " M app/customer/farm-requests/page.tsx",
-      " M app/customer/inbox/invoice/care-request/page.tsx",
-      " M app/customer/inbox/invoice/cashin/page.tsx",
-      " M app/customer/inbox/invoice/farm-buy/page.tsx",
-      " M app/customer/inbox/page.tsx",
-      " M app/customer/inventory/page.tsx",
-      " M app/customer/live-camera/page.tsx",
-      " M app/customer/membership/page.tsx",
-      " M app/customer/notifications/page.tsx",
-      " M app/customer/page.tsx",
-      " M app/customer/payment/page.tsx",
-      " M app/customer/photo-updates/page.tsx",
-      " M app/customer/roosters/page.tsx",
-      " M app/customer/settings/page.tsx",
-      " M app/customer/support/page.tsx",
-      " M app/customer/wallet/page.tsx",
-      " M app/customer/weight-updates/page.tsx",
-      " M app/customer/withdraw/add-payout/page.tsx",
-      " M app/customer/withdraw/page.tsx",
+      "M app/globals.css",
       " M lib/farmconnect-v1.tsx",
-      " M lib/kafarm-system-snapshot.generated.json",
-      "?? lib/customer-route-redirect.ts",
-      "?? scripts/qa/customer-navigation-regression.test.mjs"
+      " M lib/kafarm-system-snapshot.generated.json"
     ]
   },
   "blueprint": {
@@ -6420,5 +6389,5 @@
     "A test script existing does not mean it passed on this commit or deployment.",
     "The generated map contains source references, not unrestricted runtime source-code access."
   ],
-  "fingerprint": "808c18a0c915fdd8cc850e0a9fdf10ab494dcc176c48d35c499a5ad150abe17c"
+  "fingerprint": "c2d88132f7aecd2e213befed9978c6cb3b3cb55e8b7505b43198cb8e66b6a5f9"
 }

@@ -1,44 +1,13 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-28T05:24:08.637Z",
-  "sourceFingerprint": "ad750b4ee3e5e91fda306f16f1cf81c4e7f64136966d00eebd5d1ef1ebb96012",
+  "generatedAt": "2026-08-28T05:27:26.132Z",
+  "sourceFingerprint": "f1ba2bbbce7be5b55f693d076c3994feb66438be1069663d4b6b44719dbc5b46",
   "git": {
-    "commit": "0f2c1f1c2d7d7158a6cbd58b93b4b4f3b4e06757",
+    "commit": "40a887551caf95fefacfac8b227106c57f581f16",
     "branch": "agent/independent-operations",
     "dirtyFiles": [
-      "app/customer/care-logs/page.tsx",
-      "app/customer/care-plans/page.tsx",
-      "app/customer/caretakers/dashboard/page.tsx",
-      "app/customer/caretakers/page.tsx",
-      "app/customer/cashin/bpi/page.tsx",
-      "app/customer/cashin/gcash/page.tsx",
-      "app/customer/cashin/maya/page.tsx",
-      "app/customer/cashin/page.tsx",
-      "app/customer/chicks/page.tsx",
-      "app/customer/customer-service/page.tsx",
-      "app/customer/dashboard/page.tsx",
-      "app/customer/farm-requests/page.tsx",
-      "app/customer/inbox/invoice/care-request/page.tsx",
-      "app/customer/inbox/invoice/cashin/page.tsx",
-      "app/customer/inbox/invoice/farm-buy/page.tsx",
-      "app/customer/inbox/page.tsx",
-      "app/customer/inventory/page.tsx",
-      "app/customer/live-camera/page.tsx",
-      "app/customer/membership/page.tsx",
-      "app/customer/notifications/page.tsx",
-      "app/customer/page.tsx",
-      "app/customer/payment/page.tsx",
-      "app/customer/photo-updates/page.tsx",
-      "app/customer/roosters/page.tsx",
-      "app/customer/settings/page.tsx",
-      "app/customer/support/page.tsx",
-      "app/customer/wallet/page.tsx",
-      "app/customer/weight-updates/page.tsx",
-      "app/customer/withdraw/add-payout/page.tsx",
-      "app/customer/withdraw/page.tsx",
-      "lib/farmconnect-v1.tsx",
-      "lib/customer-route-redirect.ts",
-      "scripts/qa/customer-navigation-regression.test.mjs"
+      "app/globals.css",
+      "lib/farmconnect-v1.tsx"
     ]
   },
   "safety": {
@@ -5622,7 +5591,7 @@
     },
     {
       "file": "lib/farmconnect-v1.tsx",
-      "sha256": "a4a40ad2c4377a146e39768eae11d24e9208de4c3649215a9588ea26d67e88e9"
+      "sha256": "2049fc481e77a3827f74f2071d3e7b28ff350ab90c5b1a649afddc09dea5c52b"
     },
     {
       "file": "lib/kafarm-brain.ts",
