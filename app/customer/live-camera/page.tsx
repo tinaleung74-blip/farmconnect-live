@@ -1,2 +1,3 @@
-import { FarmRequests } from "@/lib/farmconnect-v1";
-export default FarmRequests;
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
+
+export default customerRouteRedirect("roosters");

@@ -1,2 +1,3 @@
-import { SupportPage } from "@/lib/farmconnect-v1";
-export default SupportPage;
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
+
+export default customerRouteRedirect("support");

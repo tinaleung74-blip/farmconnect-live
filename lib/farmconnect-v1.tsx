@@ -1,22 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAdminEscalatedChats, getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, runAdminSupportAction, saveKaFarmSupportMessage, sendSupportMessage } from "@/lib/backend/support-chat";
 import { getEscalationNotice, getKaFarmReply, shouldEscalateToAdmin } from "@/lib/kafarm-brain";
-import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, assignAdminCarePlan, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAdminWithdrawalDisputes, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterCareOverviews, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, reportWithdrawalProblem, requestCustomerCarePlan, requestRoosterSalePrice, resolveWithdrawalDispute, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerManualMissionProof, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem, type CustomerRoosterCareOverview } from "@/lib/farmconnect-data";
+import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerApplication, adminReviewManualPayment, adminReviewMissionProof, adminReviewRoosterSale, adminReviewTaskProof, assignAdminCarePlan, cancelCustomerCarePlan, confirmRoosterSale, confirmWithdrawalResult, controlAdminCarePlan, createCareRequest, createPrivateEvidenceUrl, generateTodayCarePlanMissions, getActiveCaretakersForAssignment, getAdminCarePlans, getAdminCareRequests, getAdminCaretakerDirectory, getAdminCaretakerTasks, getAdminCustomerInventory, getAdminManualPaymentRequests, getAdminRoosterSaleRequests, getAdminTaskProofs, getAdminWithdrawalDisputes, getAvailableFarmFeedProducts, getCareLogRecords, getCaretakerActiveTasks, getCaretakerApplications, getCaretakerTaskInventory, getCurrentCaretakerProfile, getCurrentCustomerKycSubmission, getCurrentProfile, getCustomerCarePlans, getCustomerCareRequests, getCustomerInventoryItems, getCustomerManualPaymentRequests, getCustomerOwnedRoosters, getCustomerPayoutMethods, getCustomerRoosterCareOverviews, getCustomerRoosterDiary, getCustomerRoosterSaleRequest, getFarmProducts, getInboxItems, getWalletTransactions, markInboxItemRead, prepareAdminCarePlanQuote, recordAdminCarePlanRefund, renameCustomerRooster, reportWithdrawalProblem, requestCustomerCarePlan, requestRoosterSalePrice, resolveWithdrawalDispute, saveCartItem, saveCustomerPayoutMethod, submitCaretakerApplication, submitCaretakerManualMissionProof, submitCaretakerMissionProof, submitCaretakerRoosterSaleTask, submitCaretakerTaskProof, submitManualPaymentRequest, submitWithdrawalRequest, getCustomerWithdrawalRequests, getAdminWithdrawalRequests, adminReviewWithdrawalRequest, uploadPrivateEvidenceFile, type CareLogRecord, type CareTaskInventoryItem, type CustomerRoosterCareOverview } from "@/lib/farmconnect-data";
 import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/customer-signup";
 import { adminReviewManualMissionProof } from "@/lib/farmconnect-data";
 import { prepareCustomerCarePlanPayment } from "@/lib/farmconnect-data";
 import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { supabase } from "@/lib/supabase";
 import { AdminRealtimeStatus, useAdminRealtime } from "@/lib/admin-realtime";
+import { pendingOperation } from "@/lib/pending-operation";
+import { SupportConversation } from "@/lib/support-conversation";
 
 type Role = "customer" | "caretaker" | "admin";
-type IconName = "home" | "rooster" | "bag" | "clipboard" | "wallet" | "inbox" | "support" | "settings" | "logout" | "check" | "camera" | "qr" | "upload" | "download" | "user" | "users" | "coins" | "shield" | "search" | "chat" | "file" | "alert" | "eye" | "eyeOff" | "trash";
+type IconName = "home" | "rooster" | "bag" | "clipboard" | "wallet" | "inbox" | "support" | "settings" | "logout" | "check" | "camera" | "qr" | "upload" | "download" | "user" | "users" | "coins" | "shield" | "search" | "sort" | "chat" | "file" | "alert" | "eye" | "eyeOff" | "trash";
 
 const peso = (value: number) =>
   value.toLocaleString("en-PH", {
@@ -89,6 +91,7 @@ const iconPath: Record<IconName, string> = {
   coins: "M12 6c4 0 7-1 7-3s-3-3-7-3-7 1-7 3 3 3 7 3z M5 6v4c0 2 3 3 7 3s7-1 7-3V6 M5 13v4c0 2 3 3 7 3s7-1 7-3v-4",
   shield: "M12 3l8 4v6c0 5-3 8-8 10-5-2-8-5-8-10V7z",
   search: "M10 18a8 8 0 1 1 6-3l5 5",
+  sort: "M8 6h12 M8 12h9 M8 18h6 M4 4v16 M1 17l3 3 3-3",
   chat: "M4 5h16v11H8l-4 4z",
   file: "M6 3h9l3 3v15H6z M15 3v4h4 M9 12h6 M9 16h6",
   alert: "M12 3l10 18H2z M12 9v5 M12 17h.01",
@@ -193,10 +196,10 @@ function FCCoin({ className = "h-12 w-12" }: { className?: string }) {
 
 const nav = {
   customer: [
-    ["My Roosters", "/customer/roosters", "rooster"],
-    ["Farm Buy", "/customer/farm-buy", "bag"],
-    ["Farm Requests", "/customer/farm-requests", "clipboard"],
-    ["Wallet", "/customer/wallet", "wallet"],
+    ["Wallet", "/customer-v2/wallet", "wallet"],
+    ["Inbox", "/customer-v2/inbox", "inbox"],
+    ["Support", "/customer-v2/support", "support"],
+    ["Settings", "/customer-v2/settings", "settings"],
   ],
   caretaker: [
     ["Active Tasks", "/caretaker/tasks", "clipboard"],
@@ -436,8 +439,52 @@ type CaretakerTaskView = {
   qrScanRequired: boolean;
   qrPayload: string;
   taskMetadata: Record<string, unknown>;
+  backjobProof: null | {
+    free_note?: string | null;
+    preset_note?: string | null;
+    daily_report?: DailyCareEntry[] | null;
+    health_status?: "pass" | "watch" | "isolate_and_escalate" | null;
+    checklist_results?: Record<string, Array<{ label: string; checked: boolean }>>;
+    inventory_usage?: Array<{ inventory_item_id: string; quantity: number; unit: string }>;
+    feed_quantity_used?: number | null;
+    actual_remaining_feed?: number | null;
+    stored_paths?: string[];
+    signed_urls?: string[];
+    admin_note?: string | null;
+  };
   db: true;
 };
+
+type DailyCareEntry = {
+  period: "Morning" | "Midday" | "Afternoon" | "Evening";
+  time: string;
+  work: string;
+  findings: string;
+};
+
+const dailyReportMarker = "[FARMCONNECT_DAILY_REPORT_V1]";
+
+function serializeDailyCareReport(entries: DailyCareEntry[]) {
+  return `${dailyReportMarker}\n${JSON.stringify(entries)}`;
+}
+
+function parseDailyCareReport(value?: string | null): DailyCareEntry[] {
+  if (!value?.startsWith(dailyReportMarker)) return [];
+  try {
+    const parsed = JSON.parse(value.slice(dailyReportMarker.length).trim().split("\n")[0]);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry) => entry && entry.period && entry.time && entry.work && entry.findings);
+  } catch {
+    return [];
+  }
+}
+
+function formatCareEntryTime(value: string) {
+  const [hourText, minute = "00"] = value.split(":");
+  const hour = Number(hourText);
+  if (!Number.isFinite(hour)) return value;
+  return `${hour % 12 || 12}:${minute} ${hour >= 12 ? "PM" : "AM"}`;
+}
 
 function mapCaretakerTaskRow(row: any): CaretakerTaskView {
   return {
@@ -464,6 +511,7 @@ function mapCaretakerTaskRow(row: any): CaretakerTaskView {
     qrScanRequired: row.qr_scan_required !== false,
     qrPayload: row.qr_payload || "",
     taskMetadata: row.task_metadata || {},
+    backjobProof: row.backjob_proof || null,
     db: true,
   };
 }
@@ -564,78 +612,19 @@ function submittedProofToCareLog(record: SubmittedTaskProof): CareLogRecord {
   };
 }
 
-const customerNavCardStyle: Record<string, { bg: string; border: string; chip: string; text: string }> = {
-  "My Roosters": {
-    bg: "linear-gradient(135deg, #e8ffdc 0%, #fff17a 56%, #dff0ff 100%)",
-    border: "#f6b64a",
-    chip: "#fff1b7",
-    text: "#173021",
-  },
-  "Farm Buy": {
-    bg: "linear-gradient(135deg, #dff0ff 0%, #fff17a 52%, #e7ffe0 100%)",
-    border: "#1f5db8",
-    chip: "#dceaff",
-    text: "#102b4a",
-  },
-  "Farm Requests": {
-    bg: "linear-gradient(135deg, #e7fff0 0%, #dff0ff 48%, #fff17a 100%)",
-    border: "#d92525",
-    chip: "#ffe2de",
-    text: "#302018",
-  },
-  Wallet: {
-    bg: "linear-gradient(135deg, #dff0ff 0%, #e7ffe0 52%, #fff17a 100%)",
-    border: "#0d4fb3",
-    chip: "#dceaff",
-    text: "#102b4a",
-  },
-};
 function Shell({ role, title, children }: { role: Role; title: string; children: React.ReactNode }) {
   const router = useRouter();
-  const links = nav[role];
+  const isCustomerV2 = role === "customer";
+  const customerV2Links = [
+    ["Roosters", "/customer-v2/roosters", "rooster"],
+    ["Inbox", "/customer-v2/inbox", "inbox"],
+    ["Support", "/customer-v2/support", "support"],
+    ["Settings", "/customer-v2/settings", "settings"],
+  ] as const;
+  const links = isCustomerV2 ? customerV2Links : nav[role];
   const headerLinks = role === "admin" ? links.filter(([label]) => ["Dashboard", "Customer Requests", "Caretaker Management", "Farm Operations", "Issue Management", "Account Verification"].includes(label)) : links;
-  const customerPhoneLinks = [
-    ["Home", "/customer/dashboard", "home"],
-    ["Roosters", "/customer/roosters", "rooster"],
-    ["Farm Buy", "/customer/farm-buy", "bag"],
-    ["Requests", "/customer/farm-requests", "clipboard"],
-  ] as const;
-  const customerMoreLinks = [
-    ["Wallet", "/customer/wallet", "wallet"],
-    ["Inbox", "/customer/inbox", "inbox"],
-    ["Support", "/customer/support", "support"],
-    ["Inventory", "/customer/inventory", "bag"],
-    ["Settings", "/customer/settings", "settings"],
-  ] as const;
-  const customerTabletLinks = [
-    ["Dashboard", "/customer/dashboard", "home"],
-    ["My Roosters", "/customer/roosters", "rooster"],
-    ["Farm Buy", "/customer/farm-buy", "bag"],
-    ["Requests", "/customer/farm-requests", "clipboard"],
-    ["Wallet", "/customer/wallet", "wallet"],
-    ["Inbox", "/customer/inbox", "inbox"],
-  ] as const;
   const [inboxCount, setInboxCount] = useState(0);
   const [accessReady, setAccessReady] = useState(false);
-  const [customerMoreOpen, setCustomerMoreOpen] = useState(false);
-  useEffect(() => {
-    if (!customerMoreOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setCustomerMoreOpen(false);
-    };
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [customerMoreOpen]);
-  const logoutCustomer = async () => {
-    setCustomerMoreOpen(false);
-    await supabase.auth.signOut().catch(() => undefined);
-    router.replace("/");
-  };
   useEffect(() => {
     let mounted = true;
     getCurrentProfile()
@@ -685,16 +674,23 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
         </div>
       </main>
     );
+  const roleArtwork = {
+    customer: "/farmconnect/role-assets/customer-hero-v1.png",
+    caretaker: "/farmconnect/role-assets/caretaker-hero-v1.png",
+    admin: "/farmconnect/role-assets/admin-hero-v1.png",
+  }[role];
   return (
     <main
-      className="min-h-screen overflow-x-clip bg-[#f6f3e8] bg-cover bg-center bg-no-repeat text-[#17251d]"
+      data-farmconnect-role={role}
+      data-farmconnect-v2={isCustomerV2 ? "true" : undefined}
+      className="min-h-screen overflow-x-clip bg-[#f6f3e8] bg-cover bg-[center_top] bg-no-repeat text-[#17251d] lg:bg-fixed"
       style={{
-        backgroundImage: "linear-gradient(180deg, rgba(255,253,247,0.20), rgba(246,243,232,0.14)), linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.09)), radial-gradient(circle at top left, rgba(255,191,55,0.12), transparent 34%), radial-gradient(circle at bottom right, rgba(31,107,69,0.12), transparent 38%), url('/farmconnect/farmconnect-hero-wallpaper.jpg')",
+        backgroundImage: `linear-gradient(180deg, rgba(255,253,247,0.50), rgba(246,243,232,0.66)), radial-gradient(circle at top left, rgba(255,191,55,0.14), transparent 36%), radial-gradient(circle at bottom right, rgba(31,107,69,0.16), transparent 40%), url('${roleArtwork}')`,
       }}
     >
       <header className="sticky top-0 z-40 border-b-4 border-[#ffd43b] bg-gradient-to-r from-[#075c3a]/95 via-[#0b6fba]/94 to-[#075c3a]/95 text-white shadow-[0_12px_35px_rgba(7,92,58,0.24)] backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
-          <Link href={role === "admin" ? "/admin" : role === "caretaker" ? "/caretaker/dashboard" : "/customer/dashboard"} className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Link href={role === "admin" ? "/admin" : role === "caretaker" ? "/caretaker/dashboard" : "/customer-v2/roosters"} className="flex min-w-0 items-center gap-2 sm:gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-white shadow-sm sm:h-12 sm:w-12">
               <FarmImageIcon name="rooster" className="h-9 w-9 sm:h-11 sm:w-11" />
             </span>
@@ -703,85 +699,32 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
               <small className="block max-w-32 truncate text-[10px] font-bold text-white/78 sm:max-w-48 sm:text-xs">{title}</small>
             </span>
           </Link>
-          <nav className="fc-desktop-header-nav hidden items-center gap-2 lg:flex">
-            {headerLinks.map(([label, href, icon]) => {
-              const navCard = role === "customer" ? customerNavCardStyle[label] : undefined;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  style={
-                    navCard
-                      ? {
-                          background: navCard.bg,
-                          borderColor: navCard.border,
-                          color: navCard.text,
-                        }
-                      : undefined
-                  }
-                  className={navCard ? "group flex min-h-[48px] items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black shadow-sm ring-1 ring-white/35 transition hover:-translate-y-0.5 hover:shadow-md xl:px-3.5" : "flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-black text-white transition hover:bg-white/16 xl:px-3 xl:text-sm"}
-                >
-                  <span className={navCard ? "grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-white/78 p-0.5 shadow-sm ring-1 ring-white/80" : "contents"}>
-                    <FarmImageIcon name={icon as IconName} className={navCard ? "h-7 w-7 rounded-lg object-contain transition group-hover:scale-105" : "h-5 w-5 rounded-md"} fallbackClassName={navCard ? "h-5 w-5" : "h-4 w-4"} />
-                  </span>
-                  <span className="leading-tight">{label}</span>
+          {role !== "customer" && <nav className="fc-desktop-header-nav hidden items-center gap-2 lg:flex">
+            {headerLinks.map(([label, href, icon]) => (
+              <Link key={href} href={href} className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-black text-white hover:bg-white/16">
+                <FarmImageIcon name={icon as IconName} className="h-5 w-5 rounded-md" />
+                <span>{label}</span>
+              </Link>
+            ))}
+          </nav>}
+          {isCustomerV2 ? (
+            <nav className="ml-auto grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-2" aria-label="Customer tools">
+              {([ ["Wallet", "/customer-v2/wallet", "/farmconnect/customer-v2-icons/wallet-v2.png"], ["Inbox", "/customer-v2/inbox", "/farmconnect/customer-v2-icons/inbox-v2.png"], ["Support", "/customer-v2/support", "/farmconnect/customer-v2-icons/support-v2.png"], ["Settings", "/customer-v2/settings", "/farmconnect/customer-v2-icons/settings-v2.png"] ] as const).map(([label, href, image]) => (
+                <Link key={href} href={href} aria-label={label} className="relative grid min-h-11 min-w-11 place-items-center rounded-full border border-[#f4c430]/70 bg-white/10 p-1 text-xs font-black transition hover:bg-[#f4c430] hover:text-[#041f22] sm:flex sm:min-h-12 sm:gap-2 sm:px-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-[#fff8e7] shadow sm:h-9 sm:w-9"><img src={image} alt="" className="h-7 w-7 object-contain sm:h-8 sm:w-8" /></span>
+                  <span className="hidden lg:inline">{label}</span>
+                  {label === "Inbox" && inboxCount > 0 && <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-[#c9232d] px-1 text-[9px] font-black text-white">{inboxCount > 9 ? "9+" : inboxCount}</span>}
                 </Link>
-              );
-            })}
-          </nav>
-          <div className="flex items-center gap-2">
-            {role === "customer" && <TopIcon href="/customer/inbox" name="inbox" label="Inbox" imageSrc="/farmconnect/icons/farm-inbox.png" badge={inboxCount} />}
-            {role === "customer" && (
-              <span className="hidden sm:contents">
-                <TopIcon href="/customer/support" name="support" label="Support" imageSrc="/farmconnect/icons/support.png" />
-              </span>
-            )}
-            {role === "customer" && (
-              <span className="hidden md:contents">
-                <TopIcon href="/customer/inventory" name="bag" label="Inventory" imageSrc="/farmconnect/icons/farm-bag.png" />
-              </span>
-            )}
-            <span className="hidden sm:contents">
-              <TopIcon href={role === "customer" ? "/customer/settings" : role === "caretaker" ? "/caretaker/profile" : "/admin/kafarm"} name="settings" label={role === "admin" ? "Ka-Farm" : "Settings"} imageSrc={role === "customer" ? "/farmconnect/icons/farm-settings.png" : undefined} />
-            </span>
-            {role === "customer" && (
-              <span className="sm:hidden">
-                <TopIcon href="/customer/settings" name="settings" label="Profile" imageSrc="/farmconnect/icons/farm-settings.png" />
-              </span>
-            )}
-            <span className={role === "customer" ? "hidden sm:contents" : "contents"}>
-              <TopIcon href="/" name="logout" label="Logout" />
-            </span>
-          </div>
+              ))}
+            </nav>
+          ) : <div className="flex items-center gap-2">
+            <TopIcon href={role === "caretaker" ? "/caretaker/profile" : "/admin/kafarm"} name="settings" label={role === "admin" ? "Ka-Farm" : "Settings"} />
+            <TopIcon href="/" name="logout" label="Logout" />
+          </div>}
         </div>
       </header>
-      {role === "customer" && (
-        <nav aria-label="Customer tablet navigation" className="fc-customer-tablet-nav sticky top-[72px] z-30 mx-auto hidden max-w-5xl items-center justify-center gap-2 border-b border-[#d7e2d5] bg-white/94 px-3 py-2 shadow-md backdrop-blur">
-          {customerTabletLinks.map(([label, href, icon]) => (
-            <Link key={href} href={href} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-[#dbe6d7] bg-[#fbfbf6] px-3 py-2 text-center text-xs font-black text-[#174d36] transition hover:border-[#1f6b45] hover:bg-emerald-50">
-              <FarmImageIcon name={icon as IconName} className="h-7 w-7 rounded-md" fallbackClassName="h-5 w-5" />
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
-      )}
-      <div className={`fc-shell-content mx-auto max-w-7xl px-3 py-4 drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] sm:px-4 sm:py-6 ${role === "customer" ? "pb-40 sm:pb-6 lg:pb-28" : "pb-28"}`}>{children}</div>
-      {role === "customer" ? (
-        <nav aria-label="Customer phone navigation" className="fc-customer-mobile-nav fixed bottom-2 left-1/2 z-40 flex w-[calc(100%-16px)] max-w-md -translate-x-1/2 gap-1 rounded-2xl border border-[#ded8c9] bg-white/96 p-2 shadow-xl backdrop-blur sm:hidden">
-          {customerPhoneLinks.map(([label, href, icon]) => (
-            <Link key={href} href={href} className="grid min-w-0 flex-1 place-items-center rounded-xl px-1 py-2 text-center text-[10px] font-black text-[#174d36]">
-              <FarmImageIcon name={icon as IconName} className="mb-1 h-7 w-7 rounded-md" fallbackClassName="mb-1 h-5 w-5" />
-              <span className="truncate">{label}</span>
-            </Link>
-          ))}
-          <button type="button" aria-expanded={customerMoreOpen} aria-controls="customer-more-tools" onClick={() => setCustomerMoreOpen(true)} className="grid min-w-0 flex-1 place-items-center rounded-xl px-1 py-2 text-center text-[10px] font-black text-[#174d36]">
-            <span className="mb-1 grid h-7 w-7 place-items-center rounded-md bg-[#eef5ec] text-base leading-none" aria-hidden="true">
-              •••
-            </span>
-            <span className="truncate">More</span>
-          </button>
-        </nav>
-      ) : (
+      <div className={`fc-shell-content mx-auto max-w-7xl px-3 py-4 drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] sm:px-4 sm:py-6 ${role === "customer" ? "pb-8" : "pb-28"}`}>{children}</div>
+      {role !== "customer" ? (
         <nav aria-label={`${role} mobile navigation`} className="fc-scroll-row fixed bottom-2 left-1/2 z-40 flex w-[calc(100%-16px)] max-w-3xl -translate-x-1/2 snap-x gap-1 overflow-x-auto rounded-2xl border border-[#ded8c9] bg-white/96 p-2 shadow-xl backdrop-blur lg:hidden">
           {headerLinks.map(([label, href, icon]) => (
             <Link key={href} href={href} aria-label={label} title={label} className="grid min-w-[76px] flex-1 snap-start place-items-center rounded-xl px-2 py-2 text-center text-[10px] font-bold sm:min-w-[92px] sm:text-[11px]">
@@ -789,36 +732,7 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
             </Link>
           ))}
         </nav>
-      )}
-      {role === "customer" && customerMoreOpen && (
-        <div className="fixed inset-0 z-[70] sm:hidden">
-          <button type="button" aria-label="Close menu" onClick={() => setCustomerMoreOpen(false)} className="absolute inset-0 h-full w-full bg-[#082d20]/55 backdrop-blur-[2px]" />
-          <aside id="customer-more-tools" aria-label="More pages" className="absolute inset-x-2 bottom-2 rounded-[26px] border border-[#d7e0d4] bg-[#fffdf8] p-4 pb-3 text-[#174d36] shadow-[0_22px_60px_rgba(6,45,31,0.34)]">
-            <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-[#cad2c8]" />
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-[#278354]">FarmConnect</p>
-                <h2 className="mt-1 text-xl font-black">More tools</h2>
-              </div>
-              <button type="button" aria-label="Close menu" onClick={() => setCustomerMoreOpen(false)} className="grid h-9 w-9 place-items-center rounded-full bg-[#edf2e9] text-xl font-medium text-[#174d36]">
-                ×
-              </button>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {customerMoreLinks.map(([label, href, icon]) => (
-                <Link key={href} href={href} onClick={() => setCustomerMoreOpen(false)} className="relative grid min-h-[84px] place-items-center rounded-2xl border border-[#dde5da] bg-white px-2 py-3 text-center shadow-sm">
-                  <FarmImageIcon name={icon as IconName} className="h-10 w-10 rounded-xl object-contain" fallbackClassName="h-6 w-6" />
-                  {label === "Inbox" && inboxCount > 0 && <span className="absolute right-2 top-2 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white">{inboxCount > 9 ? "9+" : inboxCount}</span>}
-                  <span className="mt-1 text-[11px] font-black">{label}</span>
-                </Link>
-              ))}
-            </div>
-            <button type="button" onClick={logoutCustomer} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-black text-red-700">
-              <Icon name="logout" className="h-4 w-4" /> Logout safely
-            </button>
-          </aside>
-        </div>
-      )}
+      ) : null}
     </main>
   );
 }
@@ -1179,7 +1093,7 @@ export function CustomerHome() {
           ) : (
             <div className="mt-3 rounded-2xl bg-[#f6f5ee] p-6 text-center">
               <p className="text-sm font-bold text-[#708078]">Approved rooster purchases will appear here.</p>
-              <Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">
+              <Link href="/customer-v2/add-rooster" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">
                 Open Farm Buy
               </Link>
             </div>
@@ -1401,7 +1315,7 @@ export function CustomerHome() {
                     <CustomerDashboardIcon name="camera" className="mx-auto h-10 w-10 text-white/45" />
                     <h3 className="mt-3 text-lg font-black">No rooster selected</h3>
                     <p className="mt-1 text-sm text-white/65">Approved rooster purchases will appear here.</p>
-                    <Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-lg bg-amber-300 px-4 py-2 text-sm font-black text-[#173126]">
+                    <Link href="/customer-v2/add-rooster" className="mt-4 inline-flex rounded-lg bg-amber-300 px-4 py-2 text-sm font-black text-[#173126]">
                       Open Farm Buy
                     </Link>
                   </div>
@@ -1648,7 +1562,7 @@ export function CustomerRoostersResponsive() {
         {!loading && !selected && (
           <div className="rounded-[22px] bg-white/95 p-6 text-center shadow-lg">
             <h2 className="text-xl font-black">No roosters yet</h2>
-            <Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">
+            <Link href="/customer-v2/add-rooster" className="mt-4 inline-flex rounded-xl bg-[#145f3e] px-4 py-3 text-sm font-black text-white">
               Open Farm Buy
             </Link>
           </div>
@@ -1726,7 +1640,7 @@ export function CustomerRoostersResponsive() {
               <Link href="/customer/care-logs" className="rounded-xl bg-[#f0ecdf] px-2 py-3 text-center text-[10px] font-black">
                 Care Logs
               </Link>
-              <Link href={`/customer/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-2 py-3 text-center text-[10px] font-black">
+              <Link href={`/customer-v2/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-2 py-3 text-center text-[10px] font-black">
                 Sell
               </Link>
             </div>
@@ -1735,6 +1649,212 @@ export function CustomerRoostersResponsive() {
       </section>
     </Shell>
   );
+}
+
+export function CustomerRoostersV2() {
+  const [roosters, setRoosters] = useState<RoosterCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [qrRooster, setQrRooster] = useState<RoosterCard | null>(null);
+  const [renameRooster, setRenameRooster] = useState<RoosterCard | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
+  const [renameError, setRenameError] = useState("");
+  const [careChoice, setCareChoice] = useState<{ id: string; type: "daily" | "monthly" } | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews()])
+      .then(([items, careOverviews]) => {
+        if (!mounted) return;
+        setLoadError("");
+        const careByAnimal = new Map(careOverviews.map((overview) => [overview.customerAnimalId, overview]));
+        setRoosters(items.filter(isRealOwnedAnimal).map((row, index) => {
+          const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Bloodline";
+          const metadata = (row.ownership_metadata || {}) as Record<string, unknown>;
+          return { id: row.id, name: row.animal_name || `${breed} Rooster`, breed, tag: row.animal_code || `FC-${index + 1}`, stage: row.acquired_from === "farm_buy" ? "Growing" : "Owned Rooster", status: row.status === "sold" ? "Sold" : "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: row.approved_sale_price == null ? "Waiting for reviewed price" : peso(Number(row.approved_sale_price)), image: String(metadata.image_url || metadata.photo_url || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg"), pen: String(metadata.pen || metadata.pen_name || "Pending assignment"), caretaker: String(metadata.caretaker_name || "Pending assignment"), saleStatus: row.sale_status || "not_listed", approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price), ownershipMetadata: metadata, careOverview: careByAnimal.get(row.id) || null } as RoosterCard;
+        }));
+      })
+      .catch((error: unknown) => {
+        if (!mounted) return;
+        const detail = error && typeof error === "object"
+          ? String((error as { message?: unknown; details?: unknown; code?: unknown }).message || (error as { details?: unknown }).details || (error as { code?: unknown }).code || "Customer records could not be loaded.")
+          : error instanceof Error ? error.message : String(error || "Customer records could not be loaded.");
+        setRoosters([]);
+        setLoadError(detail);
+      })
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
+  }, []);
+
+  function moveRooster(direction: number) {
+    const next = Math.max(0, Math.min(roosters.length - 1, activeIndex + direction));
+    setActiveIndex(next);
+    railRef.current?.children[next]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+  }
+  function qrValue(rooster: RoosterCard) {
+    const metadata = rooster.ownershipMetadata || {};
+    return String(metadata.qr_payload || metadata.qrPayload || rooster.tag);
+  }
+  async function saveRoosterName() {
+    if (!renameRooster || renaming) return;
+    const name = renameValue.trim().replace(/\s+/g, " ");
+    if (name.length < 2 || name.length > 40) {
+      setRenameError("Enter a name with 2 to 40 characters.");
+      return;
+    }
+    try {
+      setRenaming(true);
+      setRenameError("");
+      await renameCustomerRooster(renameRooster.id, name);
+      setRoosters((current) => current.map((rooster) => rooster.id === renameRooster.id ? { ...rooster, name } : rooster));
+      setQrRooster((current) => current?.id === renameRooster.id ? { ...current, name } : current);
+      setRenameRooster(null);
+    } catch (error) {
+      setRenameError(readableAppError(error) || "The rooster name could not be saved. Please try again.");
+    } finally {
+      setRenaming(false);
+    }
+  }
+
+  return (
+    <main
+      data-farmconnect-v2="true"
+      className="min-h-screen bg-[#f8f5e8] bg-cover bg-[center_top] bg-no-repeat text-[#10251d] lg:bg-fixed"
+      style={{
+        backgroundImage: "linear-gradient(145deg, rgba(248,245,232,.82), rgba(231,245,235,.78)), url('/farmconnect/role-assets/customer-hero-v1.png')",
+      }}
+    >
+      <header className="sticky top-0 z-30 border-b-4 border-[#f4c430] bg-[linear-gradient(110deg,#041f22_0%,#087f83_54%,#063b3f_100%)] text-white shadow-[0_12px_30px_rgba(4,31,34,.28)]">
+        <div className="mx-auto flex max-w-[1180px] items-center gap-2 px-2 py-2.5 sm:gap-3 sm:px-5 sm:py-3 lg:px-6">
+          <div className="flex shrink-0 items-center gap-2 font-black"><img src="/farmconnect/icons/my-rooster.png" alt="" className="h-9 w-9 rounded-xl bg-white object-contain sm:h-10 sm:w-10" /><span className="hidden md:inline">FarmConnect</span></div>
+          <nav className="ml-auto grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-2" aria-label="Customer tools">
+            {([ ["Wallet", "/customer-v2/wallet", "/farmconnect/customer-v2-icons/wallet-v2.png"], ["Inbox", "/customer-v2/inbox", "/farmconnect/customer-v2-icons/inbox-v2.png"], ["Support", "/customer-v2/support", "/farmconnect/customer-v2-icons/support-v2.png"], ["Settings", "/customer-v2/settings", "/farmconnect/customer-v2-icons/settings-v2.png"] ] as const).map(([label, href, icon]) => (
+              <Link key={label} href={href} className="grid min-h-11 min-w-11 place-items-center rounded-full border border-[#f4c430]/70 bg-white/10 p-1 text-xs font-black transition hover:bg-[#f4c430] hover:text-[#041f22] sm:flex sm:min-h-12 sm:gap-2 sm:px-2.5" aria-label={label}><span className="grid h-8 w-8 place-items-center rounded-full bg-[#fff8e7] shadow sm:h-9 sm:w-9"><img src={icon} alt="" className="h-7 w-7 object-contain sm:h-8 sm:w-8" /></span><span className="hidden lg:inline">{label}</span></Link>
+            ))}
+          </nav>
+        </div>
+      </header>
+      <section className="mx-auto max-w-[1180px] px-3 py-4 sm:px-5 sm:py-6 lg:px-6 lg:py-8">
+        <div className="mb-4 grid gap-4 rounded-[22px] border border-[#f4c430]/55 border-l-4 border-l-[#c9232d] bg-[#fffdf7]/96 p-4 shadow-xl sm:grid-cols-[1fr_auto] sm:items-center sm:rounded-[26px] sm:p-6"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#087f83]">Your farm assets</p><h1 className="mt-1 text-3xl font-black text-[#041f22] sm:text-4xl">Your Roosters</h1><p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-[#536a68]">Ownership, growth, care, QR, logs, and selling journey in one place.</p></div><button type="button" onClick={() => setCareChoice({ id: "__add__", type: "daily" })} className="min-h-12 w-full rounded-xl bg-[#f4c430] px-5 py-3 text-sm font-black text-[#041f22] shadow-[0_8px_18px_rgba(244,196,48,.25)] sm:w-auto">+ Add Rooster</button></div>
+        {careChoice?.id === "__add__" && <div className="mb-4 rounded-[24px] border border-emerald-200 bg-white p-5 shadow-xl"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#24724d]">Add a rooster</p><h2 className="mt-1 text-2xl font-black">Choose your rooster, then choose care</h2><p className="mt-2 text-sm font-bold text-[#65746b]">The next screen shows available breeds, Daily Care or Monthly Care, and one combined payment review.</p></div><button type="button" onClick={() => setCareChoice(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black">×</button></div><Link href="/customer-v2/add-rooster?category=Breed%20Chicks" className="mt-4 inline-flex rounded-xl bg-[#0a7654] px-5 py-3 text-sm font-black text-white">Choose Rooster Breed</Link></div>}
+        {loading && <div className="rounded-3xl bg-white p-10 text-center font-black shadow-xl">Loading your rooster records...</div>}
+        {!loading && loadError && <div role="alert" className="mb-4 rounded-3xl border border-amber-300 bg-amber-50 p-5 shadow-xl"><h2 className="text-lg font-black text-amber-950">We could not load your rooster records yet.</h2><p className="mt-2 text-sm font-bold text-amber-900">{loadError}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-xl bg-amber-300 px-4 py-2 text-sm font-black text-amber-950">Try Again</button></div>}
+        {!loading && !loadError && roosters.length === 0 && <div className="rounded-3xl border border-dashed border-[#b9cdbf] bg-white p-10 text-center shadow-xl"><img src="/farmconnect/icons/my-rooster.png" alt="" className="mx-auto h-24 w-24 object-contain" /><h2 className="mt-3 text-2xl font-black">No approved rooster yet</h2><p className="mt-2 font-bold text-[#65746b]">Use Add Rooster above. Your rooster appears here after Admin verifies the payment and ownership.</p></div>}
+        {roosters.length > 0 && <><div className="mb-3 flex items-center justify-between text-sm font-black text-[#65746b]"><span>Rooster {activeIndex + 1} of {roosters.length}</span><div className="hidden gap-2 [@media(pointer:fine)]:flex"><button type="button" onClick={() => moveRooster(-1)} disabled={activeIndex === 0} className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl shadow disabled:opacity-35">←</button><button type="button" onClick={() => moveRooster(1)} disabled={activeIndex === roosters.length - 1} className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl shadow disabled:opacity-35">→</button></div><span className="hidden [@media(pointer:coarse)]:inline">Swipe to view</span></div>
+          <div ref={railRef} onScroll={(event) => { const el = event.currentTarget; setActiveIndex(Math.max(0, Math.min(roosters.length - 1, Math.round(el.scrollLeft / (el.clientWidth || 1))))); }} className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden">
+            {roosters.map((rooster) => { const day = Number(rooster.ownershipMetadata?.growth_day || rooster.careOverview?.catalogDay || 1); const weight = rooster.ownershipMetadata?.weight_kg == null ? "Awaiting verified weight" : `${Number(rooster.ownershipMetadata.weight_kg).toFixed(2)} kg`; return <article key={rooster.id} className="min-w-full snap-start overflow-hidden rounded-[22px] border border-white/80 bg-white/96 shadow-xl sm:rounded-[28px]"><div className="fc-rooster-detail-layout"><div className="fc-rooster-portrait"><img src={rooster.image} alt={rooster.name} className="fc-rooster-portrait-image" decoding="async" onError={(event) => { const fallback = "/farmconnect/icons/my-rooster.png"; if (!event.currentTarget.src.endsWith(fallback)) event.currentTarget.src = fallback; }} /></div><div className="p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase text-[#07563f]">Owned rooster</span><h2 className="mt-3 truncate text-2xl font-black sm:text-3xl">{rooster.name}</h2><p className="truncate font-black text-[#24724d]">{rooster.breed}</p></div><div className="shrink-0 text-center"><button type="button" onClick={() => setQrRooster(rooster)} className="rounded-2xl border border-[#dce7df] bg-white p-1.5 shadow-sm sm:p-2" aria-label={`Open ${rooster.name} QR`}><QRCodeSVG value={qrValue(rooster)} size={56} level="H" marginSize={1} /></button><button type="button" onClick={() => { setRenameRooster(rooster); setRenameValue(rooster.name); setRenameError(""); }} className="mt-1 block w-full text-xs font-black text-[#087f83] hover:underline">Rename</button></div></div>
+              <section className="mt-5 rounded-[22px] border border-[#dce7df] bg-[linear-gradient(145deg,#fbfdf9,#f0f7f2)] p-4 shadow-[0_10px_28px_rgba(4,31,34,.06)] sm:p-5">
+                <div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-[.12em] text-[#07563f]"><img src="/farmconnect/customer-v2-icons/status-verified.png" alt="" className="h-8 w-8 object-contain" />Status</h3><span className="text-lg font-black text-[#087f83]">{Math.round((day / 180) * 100)}%</span></div>
+                <div className="mt-4 grid grid-cols-3 divide-x divide-[#dce7df] rounded-2xl border border-[#e1ebe4] bg-white/90 py-3 shadow-sm">
+                  {([
+                    ["Weight", weight === "Awaiting verified weight" ? "Not recorded" : weight, "/farmconnect/customer-v2-icons/status-weight.png"],
+                    ["Day", `Day ${day}`, "/farmconnect/customer-v2-icons/status-day.png"],
+                    ["Condition", rooster.health, "/farmconnect/customer-v2-icons/status-condition.png"],
+                  ] as const).map(([label, value, icon]) => <div key={label} className="min-w-0 px-2 text-center sm:px-4"><img src={icon} alt="" className="mx-auto h-10 w-10 object-contain sm:h-12 sm:w-12" /><p className="mt-1 text-[9px] font-black uppercase tracking-[.1em] text-[#65746b] sm:text-[10px]">{label}</p><p className="mt-1 break-words text-xs font-black text-[#10251d] sm:text-base">{value}</p></div>)}
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#dce7df]"><div className="h-full rounded-full bg-[#0a7654]" style={{ width: `${Math.min(100, Math.max(1, (day / 180) * 100))}%` }} /></div>
+              </section>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <Link href={`/customer-v2/roosters/diary?id=${rooster.id}`} className="flex min-h-20 items-center gap-2 rounded-2xl border border-[#cfe2d7] bg-[#edf6ef] p-3 text-left text-[#07563f] transition hover:-translate-y-0.5 hover:shadow-md sm:gap-3 sm:p-4"><img src="/farmconnect/customer-v2-icons/rooster-diary.png" alt="" className="h-11 w-11 shrink-0 object-contain sm:h-14 sm:w-14" /><span><b className="block text-xs font-black sm:text-sm">Rooster Diary</b><small className="mt-1 hidden text-xs font-bold text-[#536a68] sm:block">Updates, photos, and care journey</small></span></Link>
+                <Link href={`/customer-v2/sell-rooster?id=${rooster.id}`} className="flex min-h-20 items-center gap-2 rounded-2xl border border-[#f0d48a] bg-[#fff3cf] p-3 text-left text-[#6a3b00] transition hover:-translate-y-0.5 hover:shadow-md sm:gap-3 sm:p-4"><img src="/farmconnect/customer-v2-icons/sell-rooster.png" alt="" className="h-11 w-11 shrink-0 object-contain sm:h-14 sm:w-14" /><span><b className="block text-xs font-black sm:text-sm">Sell Rooster</b><small className="mt-1 hidden text-xs font-bold text-[#76551e] sm:block">Evaluate price or view your offer</small></span></Link>
+              </div>
+              </div></div></article>; })}
+          </div></>}
+      </section>
+      {renameRooster && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => !renaming && setRenameRooster(null)}><form className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); void saveRoosterName(); }}><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-[#087f83]">Rooster name</p><h2 className="mt-1 text-2xl font-black">Rename your rooster</h2></div><button type="button" disabled={renaming} onClick={() => setRenameRooster(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black disabled:opacity-50">×</button></div><input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} maxLength={40} placeholder="Enter rooster name" className="mt-5 w-full rounded-xl border border-[#dce7df] px-4 py-3 font-bold outline-none focus:border-[#087f83]" />{renameError && <p role="alert" className="mt-2 text-sm font-bold text-red-700">{renameError}</p>}<button type="submit" disabled={renaming || renameValue.trim().length < 2} className="mt-4 w-full rounded-xl bg-[#f4c430] px-4 py-3 font-black text-[#041f22] disabled:opacity-50">{renaming ? "Saving..." : "Save Name"}</button></form></div>}
+      {qrRooster && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setQrRooster(null)}><div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex justify-between"><h2 className="text-2xl font-black">{qrRooster.name} QR</h2><button type="button" onClick={() => setQrRooster(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black">×</button></div><div className="mx-auto mt-5 inline-block rounded-2xl border border-[#dce7df] bg-white p-4"><QRCodeSVG value={qrValue(qrRooster)} size={220} level="H" marginSize={2} /></div><p className="mt-4 text-sm font-bold text-[#65746b]">The assigned caretaker scans this QR to verify the correct rooster before submitting work.</p></div></div>}
+    </main>
+  );
+}
+
+export function CustomerRoosterDiaryV2() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const roosterId = searchParams.get("id") || "";
+  const [rooster, setRooster] = useState<RoosterCard | null>(null);
+  const [overview, setOverview] = useState<CustomerRoosterCareOverview | null>(null);
+  const [logs, setLogs] = useState<CareLogRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [diaryError, setDiaryError] = useState("");
+  const [careOpen, setCareOpen] = useState(false);
+  const [selectedCare, setSelectedCare] = useState<"daily" | "monthly" | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    setDiaryError("");
+    const diaryPromise = roosterId
+      ? getCustomerRoosterDiary(roosterId).then((rows) => ({ rows, exact: true }))
+      : Promise.resolve({ rows: [] as CareLogRecord[], exact: true });
+    Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews(), diaryPromise])
+      .then(([animals, overviews, diary]) => {
+        if (!mounted) return;
+        const row: any = animals.find((item: any) => item.id === roosterId) || animals[0] || null;
+        if (!row) return;
+        const metadata = (row.ownership_metadata || {}) as Record<string, unknown>;
+        const mapped: RoosterCard = { id: row.id, name: row.animal_name || "Rooster", breed: row.breed_snapshot || row.bloodline_snapshot || "Recorded Breed", tag: row.animal_code || "", stage: "Owned Rooster", status: row.status || "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: "", image: String(metadata.image_url || metadata.photo_url || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg"), pen: "", caretaker: "", ownershipMetadata: metadata };
+        setRooster(mapped);
+        setOverview(overviews.find((item) => item.customerAnimalId === row.id) || null);
+        setLogs(diary.rows);
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setLogs([]);
+        setDiaryError(readableAppError(error) || "The diary could not be loaded. Please try again.");
+      })
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
+  }, [roosterId]);
+
+  const coverageLabel = overview?.paid ? `${overview.planDay || 1} of ${overview.durationDays || 30} days` : overview?.planStatus ? String(overview.planStatus).replaceAll("_", " ") : "No active monthly coverage";
+  async function startCarePayment() {
+    if (!rooster || !selectedCare || paying) return;
+    if (selectedCare === "daily" && overview?.paid) {
+      setPaymentError("Daily care is already included in the active Monthly Care coverage.");
+      return;
+    }
+    try {
+      setPaying(true);
+      setPaymentError("");
+      if (selectedCare === "monthly") {
+        const carePlanId = await requestCustomerCarePlan(rooster.id, 30, overview?.catalogDay || 1);
+        const prepared = await prepareCustomerCarePlanPayment(carePlanId);
+        window.localStorage.setItem("farmconnect_payment_context", JSON.stringify({ sourceType: "care_plan", sourceRef: carePlanId, amountExpected: 5000, summary: { source: "30-Day Care Plan", care_plan_id: carePlanId, rooster: { id: rooster.id, name: rooster.name, tag: rooster.tag, breed: rooster.breed }, duration_days: 30, requested_start_day: Number(prepared.requested_start_day || overview?.catalogDay || 1), feed_required_kg: Number(prepared.feed_required_kg || 0), average_daily_feed_kg: Number(prepared.average_daily_feed_kg || 0), feed_inventory_item_id: prepared.feed_inventory_item_id, feed_product_name: prepared.feed_product_name, daily_service_rate: Number(prepared.daily_service_rate || 0), package_total: 5000 } }));
+        router.push("/customer-v2/payment?type=care_plan");
+        return;
+      }
+      const dailyService = services[1];
+      const careRequestId = await createCareRequest({ customerAnimalId: rooster.id, roosterName: rooster.name, roosterTag: rooster.tag, serviceName: dailyService.name, serviceCategory: dailyService.category, servicePrice: dailyService.price, requiredProof: dailyService.proof, customerNote: null });
+      window.localStorage.setItem("farmconnect_payment_context", JSON.stringify({ sourceType: "care_request", sourceRef: careRequestId, amountExpected: dailyService.price, summary: { source: "Daily Care", care_request_id: careRequestId, rooster: { id: rooster.id, name: rooster.name, tag: rooster.tag, breed: rooster.breed }, service: dailyService, total: dailyService.price } }));
+      router.push("/customer-v2/payment?type=care_request");
+    } catch (error) {
+      setPaymentError(readableAppError(error) || "Payment could not be prepared. Please try again.");
+    } finally {
+      setPaying(false);
+    }
+  }
+  return <main className="min-h-screen bg-[#f8f5e8] text-[#10251d]">
+    <header className="sticky top-0 z-30 border-b-4 border-[#f4c430] bg-[linear-gradient(110deg,#041f22,#087f83_54%,#063b3f)] text-white shadow-lg"><div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3"><Link href="/customer-v2/roosters" className="grid h-11 w-11 place-items-center rounded-full bg-white/15 text-xl font-black" aria-label="Back to roosters">←</Link><img src="/farmconnect/customer-v2-icons/rooster-diary.png" alt="" className="h-11 w-11 object-contain" /><div><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#f4c430]">Care journey</p><h1 className="text-xl font-black">{rooster ? `${rooster.name}'s Diary` : "Rooster Diary"}</h1></div></div></header>
+    <section className="mx-auto max-w-3xl space-y-4 px-3 py-5 sm:px-5">
+      {loading ? <div className="rounded-3xl bg-white p-8 text-center font-black shadow">Loading diary...</div> : !rooster ? <div className="rounded-3xl bg-white p-8 text-center shadow"><h2 className="text-xl font-black">Rooster not found</h2><Link href="/customer-v2/roosters" className="mt-4 inline-flex rounded-xl bg-[#087f83] px-4 py-3 font-black text-white">Back to Roosters</Link></div> : <>
+        <article className="overflow-hidden rounded-[26px] bg-white shadow-xl"><img src={rooster.image} alt={rooster.name} className="h-52 w-full object-cover sm:h-72" /><div className="p-5"><p className="text-xs font-black uppercase tracking-[.12em] text-[#087f83]">{rooster.breed}</p><h2 className="mt-1 text-3xl font-black">{rooster.name}'s Diary</h2><div className="mt-4 rounded-2xl bg-[#edf6ef] p-4"><div className="flex items-center justify-between gap-3"><span className="font-black text-[#07563f]">Current coverage</span><span className={`rounded-full px-3 py-1 text-xs font-black ${overview?.paid ? "bg-emerald-200 text-emerald-950" : "bg-white text-[#65746b]"}`}>{overview?.paid ? "Monthly Active" : "No Active Plan"}</span></div><p className="mt-2 text-sm font-bold text-[#536a68]">{coverageLabel}</p></div></div></article>
+
+        <section className="rounded-[26px] bg-white p-4 shadow-xl sm:p-5"><button type="button" onClick={() => setCareOpen((open) => !open)} aria-expanded={careOpen} className="flex w-full items-center justify-between gap-4 text-left"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#087f83]">Care options</p><h2 className="mt-1 text-2xl font-black">Choose care for {rooster.name}</h2><p className="mt-2 text-sm font-bold text-[#65746b]">{careOpen ? "Select a package and review its coverage." : "Tap to view Daily and Monthly Care."}</p></div><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#edf6ef] text-xl font-black text-[#075f61] transition-transform ${careOpen ? "rotate-180" : ""}`}>⌄</span></button>
+          {careOpen && <div><div className="mt-4 grid grid-cols-2 gap-3"><button type="button" onClick={() => setSelectedCare("daily")} className={`rounded-2xl border p-4 text-left transition ${selectedCare === "daily" ? "border-[#087f83] bg-[#dff3ee] ring-2 ring-[#087f83]/20" : "border-[#dce7df] bg-[#f8fbf9]"}`}><img src="/farmconnect/customer-v2-icons/status-day.png" alt="" className="h-12 w-12 object-contain" /><b className="mt-2 block">Daily Care</b><span className="mt-1 block text-xl font-black text-[#075f61]">₱160</span><small className="font-bold text-[#65746b]">One-day care</small></button><button type="button" onClick={() => setSelectedCare("monthly")} className={`rounded-2xl border p-4 text-left transition ${selectedCare === "monthly" ? "border-[#d6a600] bg-[#fff3cf] ring-2 ring-[#f4c430]/30" : "border-[#eadfbf] bg-[#fffaf0]"}`}><img src="/farmconnect/customer-v2-icons/status-verified.png" alt="" className="h-12 w-12 object-contain" /><b className="mt-2 block">Monthly Care</b><span className="mt-1 block text-xl font-black text-[#6a3b00]">₱5,000</span><small className="font-bold text-[#76551e]">30-day coverage</small></button></div>
+          {selectedCare && <div className="mt-4 rounded-2xl border border-[#dce7df] bg-[#fbfcf8] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.12em] text-[#087f83]">Package breakdown</p><h3 className="mt-1 text-xl font-black">{selectedCare === "daily" ? "Daily Care" : "Monthly Care · 30 Days"}</h3></div><b className="text-xl text-[#07563f]">{selectedCare === "daily" ? "₱160" : "₱5,000"}</b></div><ul className="mt-4 space-y-2 text-sm font-bold text-[#536a68]">{(selectedCare === "daily" ? ["Today’s standard care procedure", "Safety and condition check", "Photo documentation after care", "Verified update saved in this Diary"] : ["Daily care for 30 days", "Consistent care throughout the coverage", "Daily photos and documentation", "Coverage status shown in this Diary", "Age-based feed requirement uses your available feed"]).map((item) => <li key={item} className="flex gap-2"><span className="text-[#087f83]">✓</span><span>{item}</span></li>)}</ul>{paymentError && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">{paymentError}</p>}<button type="button" disabled={paying} onClick={() => void startCarePayment()} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-[#f4c430] px-5 py-3 text-center font-black text-[#041f22] disabled:opacity-60">{paying ? "Preparing Payment..." : `Pay ${selectedCare === "daily" ? "₱160" : "₱5,000"}`}</button><p className="mt-2 text-center text-xs font-bold text-[#65746b]">You will go directly to payment details and receipt upload.</p></div>}</div>}
+        </section>
+
+        <div className="flex items-center justify-between px-1"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#087f83]">Documentation</p><h2 className="text-xl font-black">Photos & Updates</h2></div><span className="text-xs font-black text-[#65746b]">Newest first</span></div>
+        {diaryError && <div role="alert" className="rounded-[24px] border border-amber-300 bg-amber-50 p-5"><h3 className="font-black text-amber-950">Diary temporarily unavailable</h3><p className="mt-2 text-sm font-bold text-amber-900">{diaryError}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-xl bg-[#087f83] px-4 py-3 font-black text-white">Try Again</button></div>}
+        {logs.map((log, index) => { const dailyEntries = parseDailyCareReport(log.detail); const images = log.images?.length ? log.images : log.image ? [log.image] : []; return <article key={`${log.uploaded}-${log.time}-${index}`} className="rounded-[24px] bg-white p-4 shadow-lg sm:p-5"><div className="flex gap-3"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#dff3ee]"><img src="/farmconnect/customer-v2-icons/status-verified.png" alt="" className="h-8 w-8 object-contain" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-black">{dailyEntries.length ? `${rooster.name}'s Daily Update` : log.title}</h3><p className="text-xs font-bold text-[#65746b]">{log.uploaded}{log.time ? ` · ${log.time}` : ""}</p></div><span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase text-emerald-900">{log.status}</span></div>{dailyEntries.length ? <div className="mt-4 space-y-4">{dailyEntries.map((entry, entryIndex) => <section key={`${entry.time}-${entryIndex}`} className="overflow-hidden rounded-2xl border border-[#dce7df] bg-[#fbfcf8]">{images[entryIndex] && <img src={images[entryIndex]} alt={`${entry.period} care update`} className="max-h-96 w-full object-cover" />}<div className="p-4"><h4 className="font-black text-[#07563f]">{formatCareEntryTime(entry.time)} · {entry.period}</h4><p className="mt-2 text-sm font-bold leading-6 text-[#536a68]">{entry.work}</p><p className="mt-1 text-sm font-bold leading-6 text-[#536a68]"><span className="text-[#10251d]">Findings:</span> {entry.findings}</p></div></section>)}</div> : <><p className="mt-3 text-sm font-bold leading-6 text-[#536a68]">{log.detail}</p>{log.image && <img src={log.image} alt="Care documentation" className="mt-3 max-h-96 w-full rounded-2xl object-cover" />}</>}</div></div></article>; })}
+        {!diaryError && logs.length === 0 && <div className="rounded-[24px] border border-dashed border-[#b9cdbf] bg-white p-8 text-center"><img src="/farmconnect/customer-v2-icons/rooster-diary.png" alt="" className="mx-auto h-20 w-20 object-contain" /><h3 className="mt-3 text-xl font-black">No diary update yet</h3><p className="mt-2 text-sm font-bold text-[#65746b]">Verified care updates will appear here in date order.</p></div>}
+      </>}
+    </section>
+  </main>;
 }
 
 export function CustomerRoosters() {
@@ -1800,7 +1920,7 @@ export function CustomerRoosters() {
               <div className="rounded-2xl border border-dashed border-[#d8d0bd] bg-[#fffdf7] p-5 text-center">
                 <h3 className="text-lg font-black">No roosters yet</h3>
                 <p className="mt-2 text-sm font-bold text-[#667267]">Approved Farm Buy purchases or admin-assigned roosters will appear here.</p>
-                <Link href="/customer/farm-buy" className="mt-4 inline-flex rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
+                <Link href="/customer-v2/add-rooster" className="mt-4 inline-flex rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
                   Go to Farm Buy
                 </Link>
               </div>
@@ -1866,7 +1986,7 @@ export function CustomerRoosters() {
                   <Link href="/customer/care-logs" className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">
                     Care Logs
                   </Link>
-                  <Link href={`/customer/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-4 py-3 font-black">
+                  <Link href={`/customer-v2/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-4 py-3 font-black">
                     Sell
                   </Link>
                 </div>
@@ -1878,7 +1998,7 @@ export function CustomerRoosters() {
                 <RoosterPhoto src="/farmconnect/icons/my-rooster.png" alt="" size="thumb" />
                 <h2 className="mt-4 text-3xl font-black">Your rooster record is empty</h2>
                 <p className="mx-auto mt-3 max-w-md font-bold text-[#667267]">Once admin approves a Farm Buy payment or assigns a rooster to your account, the rooster card, breed, care status, and value will show here.</p>
-                <Link href="/customer/farm-buy" className="mt-5 inline-flex rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">
+                <Link href="/customer-v2/add-rooster" className="mt-5 inline-flex rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white">
                   Buy First Rooster
                 </Link>
               </div>
@@ -1892,129 +2012,102 @@ export function CustomerRoosters() {
 
 export function CustomerSellRooster() {
   const search = useSearchParams();
-  const router = useRouter();
+  const animalId = search.get("id") || "";
   const [animal, setAnimal] = useState<any>(null);
   const [sale, setSale] = useState<any>(null);
-  const [note, setNote] = useState("");
-  const [statusNote, setStatusNote] = useState("Loading rooster sale record...");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [renderedAt] = useState(() => Date.now());
-  const animalId = search.get("id") || "";
+  const actionLock = useRef(false);
+  const sequence = useRef(0);
 
   async function load() {
+    const current = ++sequence.current;
+    setLoading(true);
+    setLoadError(false);
     try {
       const rows = await getCustomerOwnedRoosters();
-      const selectedAnimal = rows.find((row: any) => row.id === animalId) || rows[0] || null;
-      setAnimal(selectedAnimal);
-      if (!selectedAnimal) {
-        setSale(null);
-        setStatusNote("No owned rooster was found for this sale request.");
-        return;
-      }
-      const activeSale = await getCustomerRoosterSaleRequest(selectedAnimal.id);
-      setSale(activeSale);
-      const statusMessages: Record<string, string> = {
-        price_requested: "Price inspection requested. Waiting for admin to assign a caretaker.",
-        price_assigned: "A caretaker is checking the rooster price.",
-        price_submitted: "Caretaker price proof submitted. Waiting for admin verification.",
-        price_backjob: "Admin returned the price inspection to the caretaker for correction.",
-        price_ready: "The approved price is ready. Review it below, then press Sell to send the final request.",
-        sale_requested: "Sell request received. It is now waiting in the admin Sell Requests queue.",
-        sale_rejected: "Admin returned the sell request. Review the note and submit again when ready.",
-        release_pending_assignment: "Sale approved. Waiting for admin to assign the final caretaker release task.",
-        release_assigned: "Final release task assigned to a caretaker.",
-        release_submitted: "Caretaker submitted final release confirmation. Waiting for admin approval.",
-        release_backjob: "Final release confirmation was returned to the caretaker for correction.",
-      };
-      setStatusNote(activeSale ? statusMessages[String(activeSale.status || "")] || "The price inspection and sale release are tracked step by step." : "Request a caretaker price inspection first. The final Sell button unlocks only after admin approval.");
-    } catch (error) {
-      setStatusNote(`Sale record could not load: ${readableAppError(error) || "Check login and SQL 040."}`);
+      const selected = rows.find((row: any) => row.id === animalId) || null;
+      const request = selected ? await getCustomerRoosterSaleRequest(selected.id) : null;
+      if (current !== sequence.current) return;
+      setAnimal(selected);
+      setSale(request);
+      setMessage(selected ? "" : "Choose a rooster from your roosters page.");
+    } catch {
+      if (current !== sequence.current) return;
+      setAnimal(null);
+      setSale(null);
+      setLoadError(true);
+      setMessage("Could not load this rooster. Please try again.");
+    } finally {
+      if (current === sequence.current) setLoading(false);
     }
   }
-
   useEffect(() => {
     void load();
+    return () => { sequence.current++; };
   }, [animalId]);
 
-  async function requestPrice() {
-    if (!animal || busy) return;
+  const status = String(sale?.status || "not_requested");
+  const approvedPrice = Number(sale?.approved_sale_price || 0);
+  const canSell = ["price_ready", "sale_rejected"].includes(status) && approvedPrice > 0;
+  const labels: Record<string, string> = {
+    not_requested: "Not evaluated", price_requested: "Evaluation pending",
+    price_assigned: "Evaluation in progress", price_submitted: "Evaluation pending",
+    price_backjob: "Evaluation in progress", price_ready: "Offer ready",
+    sale_requested: "Sale pending", sale_rejected: "Needs attention",
+    release_pending_assignment: "Sale in progress", release_assigned: "Sale in progress",
+    release_submitted: "Sale in progress", release_backjob: "Sale in progress",
+    completed: "Sold",
+  };
+
+  async function act(kind: "evaluate" | "sell") {
+    if (actionLock.current || loading || loadError || !animal) return;
+    if (kind === "evaluate" && sale) return;
+    if (kind === "sell" && (!sale || !canSell)) return;
+    actionLock.current = true;
     setBusy(true);
     try {
-      await requestRoosterSalePrice(animal.id, note);
-      setStatusNote("Price inspection requested. Admin must assign the special task to a caretaker.");
+      if (kind === "evaluate") await requestRoosterSalePrice(animal.id);
+      else await confirmRoosterSale(sale.id);
       await load();
-    } catch (error) {
-      setStatusNote(`Price request failed: ${readableAppError(error) || "Check SQL 040 and customer ownership."}`);
+    } catch {
+      // A lost response is not proof of failure. Reload before allowing a retry.
+      await load();
+      setMessage("Please check the latest status before trying again.");
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   }
 
-  async function confirmSaleRequest() {
-    if (!sale || busy) return;
-    setBusy(true);
-    try {
-      await confirmRoosterSale(sale.id, note);
-      setStatusNote("Sale request sent to admin. The approved price is locked while admin reviews the release.");
-      await load();
-    } catch (error) {
-      setStatusNote(`Sell request failed: ${readableAppError(error) || "Check SQL 040 and approved price."}`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const meta = animal?.ownership_metadata || {};
-  const breed = animal?.breed_snapshot || animal?.bloodline_snapshot || "Recorded breed";
-  const acquired = animal?.acquired_at ? new Date(animal.acquired_at) : null;
-  const age = acquired && !Number.isNaN(acquired.getTime()) ? `${Math.max(0, Math.floor((renderedAt - acquired.getTime()) / 86400000))} days in your account` : String(meta.age || "Not recorded");
-  const weight = String(meta.weight || meta.latest_weight || "Pending caretaker inspection");
-  const approvedPrice = Number(sale?.approved_sale_price || animal?.approved_sale_price || 0);
-  const currentStatus = String(sale?.status || "not_requested");
-  const canConfirm = ["price_ready", "sale_rejected"].includes(currentStatus) && approvedPrice > 0;
-  const waiting = sale && !canConfirm;
-  const buttonLabel = !sale ? "Request Price Inspection" : canConfirm ? `Sell for ${peso(approvedPrice)}` : currentStatus === "completed" ? "Sale Completed" : "Waiting for Farm Review";
-
-  return (
-    <Shell role="customer" title="Sell Rooster">
-      <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={() => router.push("/customer/roosters")} className="rounded-xl bg-white px-4 py-3 font-black shadow-sm">
-          Back
-        </button>
-        <Badge tone={canConfirm ? "good" : waiting ? "warn" : "neutral"}>{currentStatus.replaceAll("_", " ")}</Badge>
-      </div>
-      <div className="mx-auto mt-5 grid max-w-5xl gap-5 lg:grid-cols-[minmax(320px,0.9fr)_1.1fr]">
-        <Card className="overflow-hidden p-0">
-          <div className="bg-[#eef2ea] p-5">
-            <img src="/farmconnect/roosters/fc-stage-4-adult-rooster-base.jpg" alt={animal?.animal_name || "Owned rooster"} className="aspect-square w-full rounded-2xl bg-white object-cover" />
+  return <Shell role="customer" title="Sell Rooster">
+    <div className="mx-auto max-w-3xl space-y-4">
+      <Link href="/customer-v2/roosters" className="inline-flex rounded-xl bg-white px-4 py-3 font-bold">Back to roosters</Link>
+      <Card className="overflow-hidden">
+        {loading ? <p role="status">Loading rooster…</p> : animal ? <>
+          <div className="grid items-center gap-5 sm:grid-cols-[180px_1fr]">
+            <img src="/farmconnect/roosters/fc-stage-4-adult-rooster-base.jpg" alt={animal.animal_name || "Rooster"} className="aspect-square w-full max-w-64 rounded-2xl object-cover" />
+            <div>
+              <h1 className="text-3xl font-black text-[#073b3d]">{animal.animal_name || animal.breed_snapshot || "Rooster"}</h1>
+              <p className="mt-1 text-sm text-[#526567]">{animal.breed_snapshot || animal.bloodline_snapshot || ""}</p>
+              <div className="mt-3"><Badge tone={canSell || status === "completed" ? "good" : "neutral"}>{labels[status] || "Status unavailable"}</Badge></div>
+              <p className="mt-5 text-sm text-[#526567]">Offer</p>
+              <p className="text-3xl font-bold text-[#087f83]">{approvedPrice > 0 ? peso(approvedPrice) : "—"}</p>
+            </div>
           </div>
-          <div className="border-t border-[#ded8c9] p-5">
-            <p className="text-xs font-black uppercase text-[#667267]">Owned Rooster</p>
-            <h1 className="mt-1 text-3xl font-black">{animal?.animal_name || "Select a rooster"}</h1>
-            <p className="mt-1 font-black text-[#1f6b45]">{animal?.animal_code || "No serial"}</p>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button type="button" disabled={busy || Boolean(sale)} onClick={() => void act("evaluate")} className="rounded-2xl bg-[#087f83] px-4 py-4 font-bold text-white disabled:opacity-40">Evaluate Price</button>
+            <button type="button" disabled={busy || !canSell} onClick={() => void act("sell")} className="rounded-2xl bg-[#f6c72b] px-4 py-4 font-bold text-[#073b3d] disabled:opacity-40">{status === "completed" ? "Sold" : "Sell"}</button>
           </div>
-        </Card>
-        <Card>
-          <h2 className="text-2xl font-black">Sale Details</h2>
-          <p className="mt-1 text-sm font-bold text-[#667267]">The approved price comes from caretaker inspection and admin verification.</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <Info label="Name" value={animal?.animal_name || "Not recorded"} />
-            <Info label="Breed" value={breed} />
-            <Info label="Weight" value={weight} />
-            <Info label="Age" value={age} />
-            <Info label="Serial ID" value={animal?.animal_code || "Not tagged"} />
-            <Info label="Approved Price" value={approvedPrice > 0 ? peso(approvedPrice) : "Waiting for inspection"} />
-          </div>
-          <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional note for caretaker/admin..." className="mt-5 h-28 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-4 text-sm font-bold" />
-          <div className="mt-4 rounded-2xl bg-[#f4efe4] p-4 text-sm font-bold leading-6 text-[#667267]">{statusNote}</div>
-          <button type="button" disabled={!animal || busy || Boolean(sale && !canConfirm)} onClick={() => (canConfirm ? void confirmSaleRequest() : void requestPrice())} className="mt-5 w-full rounded-2xl bg-amber-300 px-5 py-4 text-lg font-black disabled:cursor-not-allowed disabled:bg-[#c9c3b6]">
-            {busy ? "Saving..." : buttonLabel}
-          </button>
-          {canConfirm && <p className="mt-3 text-center text-xs font-bold text-[#667267]">After confirmation, admin creates the final caretaker release task. Wallet credit happens only after final proof approval.</p>}
-        </Card>
-      </div>
-    </Shell>
-  );
+          {!canSell && status !== "completed" && <p className="mt-3 text-sm text-[#526567]">{sale ? "Your request is being processed." : "Evaluate your rooster to receive an offer."}</p>}
+        </> : null}
+        {message && <p role="status" className="mt-4 text-sm">{message}</p>}
+        <button type="button" disabled={busy || loading} onClick={() => void load()} className="mt-4 text-sm font-bold text-[#087f83] underline disabled:opacity-40">{busy ? "Sending…" : "Refresh status"}</button>
+      </Card>
+    </div>
+  </Shell>;
 }
 export function CareLogsPage() {
   const [selected, setSelected] = useState<RoosterCard | null>(null);
@@ -2261,7 +2354,7 @@ export function FarmBuy() {
               .replaceAll("_", " ")
               .replace(/\b\w/g, (c) => c.toUpperCase()),
           );
-          if (category !== "Breed Chicks" && row.product_type !== "breed_chick") return true;
+          if (category !== "Breed Chicks" && row.product_type !== "breed_chick") return false;
           const nameBloodline = String(row.name || "").match(/\(([^)]+)\)/)?.[1];
           const bloodline = String(row.bloodline || row.breed || nameBloodline || "")
             .trim()
@@ -2300,8 +2393,9 @@ export function FarmBuy() {
     };
   }, []);
 
-  const cats = ["All", ...Array.from(new Set(liveProducts.map((p) => p.category)))];
-  const visible = cat === "All" ? liveProducts : liveProducts.filter((p) => p.category === cat);
+  const roosterProducts = liveProducts.filter((p) => p.category === "Breed Chicks" || p.product_type === "breed_chick");
+  const cats = ["All", ...Array.from(new Set(roosterProducts.map((p) => p.category)))];
+  const visible = cat === "All" ? roosterProducts : roosterProducts.filter((p) => p.category === cat);
   const cartEntries = Object.entries(cart)
     .filter(([, qty]) => qty > 0)
     .map(([id, qty]) => ({
@@ -2363,7 +2457,7 @@ export function FarmBuy() {
           summary,
         }),
       );
-      router.push("/customer/payment?type=farm_buy");
+      router.push("/customer-v2/payment?type=farm_buy");
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       setMarketNote(message === "login_required" || message.toLowerCase().includes("login") ? "Please login first so we can save the order before payment." : "We could not prepare payment yet. Your cart is still here.");
@@ -2371,8 +2465,8 @@ export function FarmBuy() {
   }
 
   return (
-    <Shell role="customer" title="Farm Buy">
-      <PageTitle title="Farm Buy" text="Choose quantity with plus and minus. Selected items appear in your cart." icon="bag" />
+    <Shell role="customer" title="Add Rooster">
+      <PageTitle title="Add Rooster" text="Choose your rooster, then continue to payment." icon="bag" />
       <KaFarm>{marketNote}</KaFarm>
       {carePurpose && (
         <Card className="mb-5 border-2 border-amber-300 bg-amber-50">
@@ -2528,7 +2622,7 @@ export function InventoryPage() {
       qty: need.qty,
       reason: need.reason,
     });
-    return `/customer/farm-buy?${params.toString()}`;
+    return `/customer-v2/add-rooster?${params.toString()}`;
   }
   const totalStock = ownedItems.reduce((sum, product) => sum + product.stock, 0);
   const lowStock = ownedItems.filter((product) => product.stock <= 2).length;
@@ -2674,8 +2768,13 @@ export function InventoryPage() {
 }
 export function FarmRequests() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isCustomerV2 = pathname.startsWith("/customer-v2");
+  const requestedRoosterId = searchParams.get("id");
+  const requestedPlan = searchParams.get("plan");
   const [rooster, setRooster] = useState<RoosterCard | null>(null);
-  const [service, setService] = useState(services[0]);
+  const [service, setService] = useState(requestedPlan === "daily" ? services[1] : services[0]);
   const [note, setNote] = useState("");
   const [requestNote, setRequestNote] = useState("Choose a rooster, choose a service, add a note, then submit. Paid services create an invoice automatically.");
   const [careRows, setCareRows] = useState<any[]>([]);
@@ -2702,7 +2801,7 @@ export function FarmRequests() {
           caretaker: row.caretaker_name || "Assigning",
         }));
         setOwnedRoosters(mapped);
-        setRooster(mapped[0] || null);
+        setRooster(mapped.find((item) => item.id === requestedRoosterId) || mapped[0] || null);
       })
       .catch(() => setRequestNote("Owned rooster records could not load yet. Buy a rooster first and wait for admin approval."));
     Promise.all([getCustomerCareRequests(), getCustomerCarePlans(), getCustomerRoosterCareOverviews()])
@@ -2717,7 +2816,7 @@ export function FarmRequests() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [requestedRoosterId]);
   async function submitRequest() {
     if (submitting) return;
     if (!rooster) {
@@ -2756,7 +2855,7 @@ export function FarmRequests() {
         setCarePlans(plans);
         setCareOverviews(overviews);
         setRequestNote(`30-day Care Plan prepared for ${rooster.name}: ${Number(prepared.feed_required_kg || 0).toFixed(3)} kg total (${Number(prepared.average_daily_feed_kg || 0).toFixed(3)} kg/day average) of ${prepared.feed_product_name || "customer-owned feed"} reserved. Service total is ₱5,000 (₱166.67 average/day).`);
-        router.push("/customer/payment?type=care_plan");
+        router.push(isCustomerV2 ? "/customer-v2/payment?type=care_plan" : "/customer/payment?type=care_plan");
         return;
       }
       if (overview?.paid) {
@@ -2796,7 +2895,7 @@ export function FarmRequests() {
             summary,
           }),
         );
-        router.push("/customer/payment?type=care_request");
+        router.push(isCustomerV2 ? "/customer-v2/payment?type=care_request" : "/customer/payment?type=care_request");
         return;
       }
       setRequestNote(`Request sent for ${rooster.name}. Admin will assign this to a caretaker; your note is included.`);
@@ -2837,7 +2936,7 @@ export function FarmRequests() {
           },
         }),
       );
-      router.push("/customer/payment?type=care_plan");
+      router.push(isCustomerV2 ? "/customer-v2/payment?type=care_plan" : "/customer/payment?type=care_plan");
     } catch (error) {
       setRequestNote(`Care Plan payment could not continue: ${readableAppError(error)}`);
     } finally {
@@ -2845,8 +2944,8 @@ export function FarmRequests() {
     }
   }
   return (
-    <Shell role="customer" title="Farm Requests">
-      <PageTitle title="Farm Requests" text="Choose a rooster, choose a service, add a note, then Pay or Send Request." icon="clipboard" />
+    <Shell role="customer" title={isCustomerV2 ? "Rooster Care" : "Farm Requests"}>
+      <PageTitle title={isCustomerV2 ? "Rooster Care" : "Farm Requests"} text={isCustomerV2 ? "Choose Daily Care or Monthly Care for one rooster, review the coverage, then continue." : "Choose a rooster, choose a service, add a note, then Pay or Send Request."} icon="clipboard" />
       <KaFarm>{requestNote}</KaFarm>
       <div className="mt-5 grid gap-4 lg:grid-cols-[0.9fr_1.15fr_0.9fr]">
         <Card>
@@ -3630,6 +3729,8 @@ function SavingsModalFc({ lockedSavings, balance, onClose, onLock, onUnlock }: {
   );
 }
 export function WalletPage() {
+  const pathname = usePathname();
+  const isCustomerV2 = pathname.startsWith("/customer-v2");
   const [balance, setBalance] = useState(0);
   const [lockedSavings, setLockedSavings] = useState(0);
   const [showSavings, setShowSavings] = useState(false);
@@ -3668,6 +3769,76 @@ export function WalletPage() {
       mounted = false;
     };
   }, []);
+  if (isCustomerV2) {
+    return (
+      <Shell role="customer" title="Wallet">
+        <section className="mx-auto max-w-5xl space-y-4">
+          <header className="flex flex-col gap-4 rounded-[26px] border border-[#f4c430]/55 border-l-4 border-l-[#c9232d] bg-[#fffdf7]/96 p-5 shadow-xl sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div className="flex items-center gap-4">
+              <span className="grid h-20 w-20 shrink-0 place-items-center rounded-[22px] bg-[#dff5f3] p-2 shadow-inner ring-1 ring-[#087f83]/20 sm:h-24 sm:w-24">
+                <img src="/farmconnect/customer-v2-icons/wallet-v2.png" alt="FarmConnect Wallet" className="h-full w-full object-contain" />
+              </span>
+            </div>
+            <button type="button" onClick={() => setShowAmounts((current) => !current)} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#087f83]/20 bg-[#dff5f3] px-4 font-black text-[#063b3f]">
+              <Icon name={showAmounts ? "eyeOff" : "eye"} className="h-5 w-5" />
+              {showAmounts ? "Hide Balance" : "Show Balance"}
+            </button>
+          </header>
+
+          <section className="overflow-hidden rounded-[26px] border border-white/80 bg-[#fffdf7]/96 shadow-xl">
+            <div className="bg-[linear-gradient(115deg,#041f22_0%,#087f83_62%,#063b3f_100%)] p-5 text-white sm:p-7">
+              <div className="flex items-end gap-3">
+                <span className="pb-1 text-xl font-black text-white/75">FC</span>
+                <strong className="text-5xl font-black tracking-tight sm:text-6xl">{showAmounts ? fcCoin(availableBalance) : "••••••"}</strong>
+              </div>
+            </div>
+            <div className="p-4 sm:p-5">
+              <Link href="/customer-v2/withdraw" className="flex min-h-16 items-center justify-between rounded-[18px] bg-[#087f83] px-4 text-white shadow-[0_8px_20px_rgba(8,127,131,.22)] transition hover:bg-[#063b3f] sm:px-5">
+                <span className="flex items-center gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#f4c430] p-1.5">
+                    <img src="/farmconnect/customer-v2-icons/wallet-v2.png" alt="" className="h-full w-full object-contain" />
+                  </span>
+                  <span>
+                    <b className="block text-base">Withdraw Funds</b>
+                  </span>
+                </span>
+                <span className="text-xl" aria-hidden="true">›</span>
+              </Link>
+            </div>
+          </section>
+
+          <section className="rounded-[26px] border border-[#f4c430]/35 bg-[#fffdf7]/96 p-4 shadow-xl sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-black text-[#041f22]">Transaction History</h2>
+              </div>
+              <span className="rounded-full bg-[#dff5f3] px-3 py-1 text-[10px] font-black uppercase text-[#063b3f]">Live</span>
+            </div>
+            <div className="mt-4 space-y-2">
+              {walletRows.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-[#087f83]/25 bg-[#f4fbfa] p-6 text-center">
+                  <p className="font-black text-[#063b3f]">No transactions yet</p>
+                  <p className="mt-1 text-sm font-bold text-[#536a68]">Approved payments and withdrawals will appear here.</p>
+                </div>
+              )}
+              {walletRows.map((transaction) => (
+                <article key={`v2-${transaction.receipt}`} className="flex flex-col gap-3 rounded-2xl border border-[#087f83]/12 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <b className="block truncate text-[#041f22]">{transaction.type}</b>
+                    <p className="mt-1 text-xs font-bold text-[#536a68]">{transaction.date} · {transaction.status}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 sm:justify-end">
+                    <b className="text-[#063b3f]">{showAmounts ? `FC ${fcCoin(transaction.amount)}` : "••••••"}</b>
+                    <Link href="/customer-v2/inbox" className="rounded-xl bg-[#f4c430] px-3 py-2 text-xs font-black text-[#041f22]">Receipt</Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </section>
+      </Shell>
+    );
+  }
   return (
     <Shell role="customer" title="Wallet">
       <PageTitle title="Wallet" text="Withdraw FarmConnect Coin and review transaction records." icon="wallet" />
@@ -3731,7 +3902,7 @@ export function WalletPage() {
             </button>
           </div>
         </section>
-        <Link href="/customer/withdraw" className="flex min-h-16 items-center justify-between rounded-[20px] bg-[#14613f] px-4 text-white shadow-lg">
+        <Link href={isCustomerV2 ? "/customer-v2/withdraw" : "/customer/withdraw"} className="flex min-h-16 items-center justify-between rounded-[20px] bg-[#14613f] px-4 text-white shadow-lg">
           <span className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15">
               <Icon name="wallet" />
@@ -3761,7 +3932,7 @@ export function WalletPage() {
                   </div>
                   <b className="shrink-0 text-sm">{showAmounts ? `FC ${fcCoin(t.amount)}` : "******"}</b>
                 </div>
-                <Link href="/customer/inbox" className="mt-2 inline-flex text-xs font-black text-[#197044]">
+                <Link href={isCustomerV2 ? "/customer-v2/inbox" : "/customer/inbox"} className="mt-2 inline-flex text-xs font-black text-[#197044]">
                   Open receipt &gt;
                 </Link>
               </div>
@@ -3811,7 +3982,7 @@ export function WalletPage() {
           </div>
         </section>
         <div className="mt-5 grid gap-3">
-          <Link href="/customer/withdraw" className="rounded-2xl bg-white/10 p-4 text-left font-black text-white shadow-sm ring-1 ring-white/10">
+          <Link href={isCustomerV2 ? "/customer-v2/withdraw" : "/customer/withdraw"} className="rounded-2xl bg-white/10 p-4 text-left font-black text-white shadow-sm ring-1 ring-white/10">
             <Icon name="wallet" className="mb-3 h-7 w-7" />
             Withdraw Funds
           </Link>
@@ -4073,6 +4244,8 @@ type LivePayoutAccount = {
 };
 
 export function WithdrawPageV2() {
+  const pathname = usePathname();
+  const isCustomerV2 = pathname.startsWith("/customer-v2");
   const [accounts, setAccounts] = useState<LivePayoutAccount[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -4191,7 +4364,7 @@ export function WithdrawPageV2() {
 
   return (
     <Shell role="customer" title="Withdraw">
-      <PageTitle title="Withdraw Funds" text="Choose payout details, request an amount, then confirm the admin payout proof." icon="wallet" />
+      <PageTitle title="Withdraw Funds" text="" icon="wallet" />
       {pinOpen && selected && <PinGate title="Confirm Withdrawal Request" onClose={() => setPinOpen(false)} onConfirm={(pin) => void sendWithdrawal(pin)} />}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="grid gap-5">
@@ -4199,9 +4372,8 @@ export function WithdrawPageV2() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black">Payout Method</h2>
-                <p className="mt-1 text-sm font-bold text-[#667267]">The selected method is copied into the admin request and permanent evidence log.</p>
               </div>
-              <Link href="/customer/withdraw/add-payout" className="rounded-xl bg-[#0f6fb8] px-4 py-3 font-black text-white">
+              <Link href={isCustomerV2 ? "/customer-v2/withdraw/add-payout" : "/customer/withdraw/add-payout"} className="rounded-xl bg-[#0f6fb8] px-4 py-3 font-black text-white">
                 Add Method
               </Link>
             </div>
@@ -4226,7 +4398,7 @@ export function WithdrawPageV2() {
             {!withdrawalAccess.kycReady && (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">
                 KYC approval is required before withdrawal. Complete verification in{" "}
-                <Link href="/customer/settings" className="font-black underline">
+                <Link href={isCustomerV2 ? "/customer-v2/settings" : "/customer/settings"} className="font-black underline">
                   Settings
                 </Link>
                 .
@@ -4238,7 +4410,6 @@ export function WithdrawPageV2() {
                 Request Withdrawal
               </button>
             </div>
-            <p className="mt-3 text-sm font-bold text-[#667267]">The amount is deducted from available balance and placed on hold immediately. A rejected request is refunded automatically.</p>
           </Card>
         </div>
         <Card className="h-fit">
@@ -4247,7 +4418,6 @@ export function WithdrawPageV2() {
             <Badge tone="neutral">{requests.length}</Badge>
           </div>
           <p className="mt-2 rounded-xl bg-[#f4efe4] p-3 text-sm font-bold leading-6 text-[#667267]">{note}</p>
-          <p className="mt-2 text-xs font-bold text-[#667267]">After admin sends proof: confirm payout or report incorrect payout.</p>
           <div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto pr-2">
             {requests.map((row, index) => (
               <article key={`${row.id}-${row.status}-${row.created_at || "no-date"}-${index}`} className="rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4">
@@ -4314,6 +4484,8 @@ export function WithdrawPageV2() {
 }
 
 export function AddPayoutPageV2() {
+  const pathname = usePathname();
+  const isCustomerV2 = pathname.startsWith("/customer-v2");
   const [provider, setProvider] = useState<PayoutProvider>(payoutProviders[0]);
   const [holder, setHolder] = useState("");
   const [account, setAccount] = useState("");
@@ -4374,7 +4546,7 @@ export function AddPayoutPageV2() {
           <button type="button" disabled={!ready || saving} onClick={() => void save()} className="mt-4 w-full rounded-xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">
             {saving ? "Saving..." : "Save Method"}
           </button>
-          <Link href="/customer/withdraw" className="mt-3 block rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">
+          <Link href={isCustomerV2 ? "/customer-v2/withdraw" : "/customer/withdraw"} className="mt-3 block rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">
             Back to Withdraw
           </Link>
         </Card>
@@ -4382,30 +4554,101 @@ export function AddPayoutPageV2() {
     </Shell>
   );
 }
+
+function customerInboxCopy(title: string, body: string) {
+  const titleMap: Record<string, string> = {
+    "Farm Buy Approved": "Rooster Purchase Approved",
+    "Farm Buy Payment For Review": "Payment Under Review",
+    "Farm Buy Payment Rejected": "Payment Needs Correction",
+    "Care Request Submitted": "Care Request Received",
+    "Care Request Payment For Review": "Care Payment Under Review",
+    "Care Request Approved": "Care Payment Approved",
+    "Care Request Assigned": "Caretaker Assigned",
+    "Rooster QR Tagging Scheduled": "Rooster Tagging Scheduled",
+    "Care Update Needs Correction": "Care Update Delayed",
+    "Care Update Approved": "New Care Update",
+    "Sale Price Inspection Requested": "Price Evaluation Started",
+    "Premium Care Request Submitted": "Monthly Care Requested",
+    "Care Plan Requested": "Monthly Care Requested",
+    "Care Inventory Updated": "Care Supplies Updated",
+  };
+  let friendlyBody = body
+    .replace(/Receipt ID:\s*[a-f0-9-]+\.?\s*/gi, "")
+    .replace(/Source:\s*[a-z_]+\.?\s*/gi, "")
+    .replace(/Payment Request:\s*[a-f0-9-]+\.?\s*/gi, "")
+    .replace(/Status:\s*For admin review\.?/gi, "It is now under review.")
+    .replace(/Items are now in My Roosters or Inventory\.?/gi, "Your purchase is now available on your rooster page.")
+    .replace(/Your purchased rooster now has reserved QR\s+[A-Z0-9-]+\.?\s*Admin will assign a caretaker to attach and verify the tag\.?/gi, "Your rooster tag is being prepared. We’ll notify you when it has been attached and verified.")
+    .replace(/Admin needs more info\.\s*Note:/gi, "Please update your payment details. Note:")
+    .replace(/Payment was rejected\.\s*Reason:/gi, "Your payment needs correction. Reason:")
+    .replace(/Open this notice to explain and resubmit corrected evidence\.?/gi, "Open the receipt to review and submit the corrected details.")
+    .replace(/Admin approved your care request payment\./gi, "Your care payment was approved.")
+    .replace(/Admin assigned your care request to the farm team\./gi, "A caretaker has been assigned to your request.")
+    .replace(/Admin assigned your premium-standard manual care request\.\s*The caretaker received the complete procedure and safety guide\.?/gi, "A caretaker has been assigned. You’ll receive an update when the work is completed.")
+    .replace(/Admin approved the caretaker proof\.\s*Your care log is ready\.?/gi, "Your rooster’s latest care details are ready to view.")
+    .replace(/Admin approved the caretaker proof\.\s*/gi, "Your rooster’s latest care details are ready to view. ")
+    .replace(/The final Sell button stays locked until admin approves the submitted price\.?/gi, "You can choose Sell after the evaluated price is approved.")
+    .replace(/Premium Rooster Feeds:\s*[\d.]+\s*-\s*[\d.]+\s*=\s*[\d.]+\s*per kg\.\s*Actual mission use:\s*[\d.]+\s*kg\.?/gi, "Care supplies were updated after the caretaker’s approved work.")
+    .replace(/Day\s+\d+\s+standard care was requested for ([^\.]+)\.\s*Required customer inventory was checked and reserved before submission\.?/gi, "We received the monthly care request for $1. It is ready for review.")
+    .replace(/Admin will verify the rooster stage, caretaker coverage, food requirement, and locked package price before payment\.?/gi, "Your monthly care request is being reviewed before payment.")
+    .replace(/\.\./g, ".")
+    .replace(/\s+/g, " ")
+    .trim();
+  friendlyBody = friendlyBody
+    .replace(/Farm Buy payment approved\.\s*Total:\s*([\d,]+(?:\.\d+)?)/i, "Your rooster purchase payment of ₱$1 was approved.")
+    .replace(/Payment proof submitted\.\s*Amount:\s*([\d,]+(?:\.\d+)?)\.\s*Method:\s*([^\.]+)\./i, "We received your ₱$1 payment through $2.")
+    .replace(/Your request for ([^\.]+) is recorded\.\s*Service:\s*([^\.]+)\./i, "We received the $2 care request for $1.");
+  return { title: titleMap[title] || title.replaceAll("Farm Buy", "Rooster Purchase"), body: friendlyBody };
+}
+
+function inboxDateTime(value: unknown) {
+  if (!value) return "";
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function maskedPayoutAccount(value: string) {
+  const compact = value.replace(/\s+/g, "").trim();
+  if (!compact) return "";
+  const lastFour = compact.slice(-4);
+  return `•••• ••• ${lastFour}`;
+}
+
 export function InboxPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isCustomerV2 = pathname.startsWith("/customer-v2");
+  const showLocalSamples = process.env.NODE_ENV !== "production" && isCustomerV2;
+  const previewTime = useMemo(() => new Date().toISOString(), []);
   const categories = [
     {
       name: "All",
-      label: "All Inbox",
+      label: "All Messages",
       note: "Everything pending or recorded",
       icon: "inbox" as IconName,
     },
     {
       name: "Receipts",
-      label: "Receipts",
+      label: "Payments & Receipts",
       note: "Farm Buy invoices and wallet receipts",
       icon: "file" as IconName,
     },
     {
       name: "Caretaker Updates",
-      label: "Caretaker Updates",
+      label: "Rooster Updates",
       note: "Proof updates that open Care Logs",
       icon: "rooster" as IconName,
     },
     {
       name: "Alerts",
-      label: "Wallet Alerts",
+      label: "Withdrawals",
       note: "Cash-in, withdrawal, and review notices",
       icon: "alert" as IconName,
     },
@@ -4419,38 +4662,100 @@ export function InboxPage() {
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("Newest first");
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [removed, setRemoved] = useState<string[]>([]);
   const [read, setRead] = useState<string[]>([]);
   const [liveInbox, setLiveInbox] = useState<any[]>([]);
-  const [note, setNote] = useState("Loading inbox records...");
+  const [note, setNote] = useState("");
+  const [expandedInboxKey, setExpandedInboxKey] = useState<string | null>(null);
+  const [receiptUrls, setReceiptUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let mounted = true;
     const refreshInbox = () =>
       getCurrentProfile()
-        .then((profile) => (profile ? getInboxItems(profile.id) : []))
-        .then((rows) => {
+        .then((profile) => (profile ? Promise.all([getInboxItems(profile.id), getCustomerWithdrawalRequests()]) : Promise.resolve([[], []] as [any[], any[]])))
+        .then(([rows, withdrawalRows]: any[]) => {
           if (!mounted) return;
           const mapped = (rows || []).map((row: any) => {
             const rawCategory = String(row.category || "message").toLowerCase();
             const title = row.title || "Inbox item";
             const text = row.body || row.message || row.description || "Open this record for details.";
-            const searchable = `${title} ${text}`.toLowerCase();
+            const displayCopy = isCustomerV2 ? customerInboxCopy(title, text) : { title, body: text };
+            const searchable = `${title} ${text} ${displayCopy.title} ${displayCopy.body}`.toLowerCase();
             const isPaymentRecord = rawCategory === "receipt" || rawCategory === "invoice" || /payment|receipt|invoice|amount:|reference:/.test(searchable);
             const isWithdrawalRecord = rawCategory === "withdraw" || searchable.includes("withdrawal");
-            const isCarePayment = isPaymentRecord && (searchable.includes("care request") || searchable.includes("source: care_request"));
+            const withdrawalMethod = text.match(/Method:\s*([^\.]+)/i)?.[1]?.trim() || "Payout Method";
+            const withdrawalAmount = text.match(/Amount:\s*([\d,.]+)/i)?.[1]?.replaceAll(",", "") || "";
+            const withdrawalAccount = text.match(/(?:Account(?: Number)?|Mobile Number|Number):\s*([+\d][\d\s-]{5,})/i)?.[1]?.trim() || "";
+            const rowTime = new Date(String(row.created_at || 0)).getTime();
+            const matchingWithdrawal = isWithdrawalRecord
+              ? (withdrawalRows || [])
+                  .filter((request: any) => {
+                    const methodMatches = !withdrawalMethod || withdrawalMethod === "Payout Method" || String(request.payout_method || "").toLowerCase() === withdrawalMethod.toLowerCase();
+                    const amountMatches = !withdrawalAmount || Number(request.amount || 0) === Number(withdrawalAmount);
+                    return methodMatches && amountMatches;
+                  })
+                  .sort((a: any, b: any) => {
+                    const aTime = new Date(String(a.created_at || 0)).getTime();
+                    const bTime = new Date(String(b.created_at || 0)).getTime();
+                    const aDistance = Number.isFinite(rowTime) ? Math.abs(rowTime - aTime) : 0;
+                    const bDistance = Number.isFinite(rowTime) ? Math.abs(rowTime - bTime) : 0;
+                    return aDistance - bDistance;
+                  })[0] || (withdrawalRows || [])[0]
+              : null;
+            const isMonthlyCare = /care plan|monthly care|premium-standard|30-day/.test(searchable);
+            const isCarePayment = isPaymentRecord && (searchable.includes("care request") || searchable.includes("source: care_request") || isMonthlyCare);
             const isCashPayment = isPaymentRecord && /cash[ -]?in/.test(searchable);
             const tab = isWithdrawalRecord ? "Alerts" : isPaymentRecord ? "Receipts" : rawCategory === "farm_update" || rawCategory === "care" ? "Caretaker Updates" : rawCategory === "wallet" || rawCategory === "cashin" || rawCategory === "alert" ? "Alerts" : "Messages";
+            const cardTitle = isCustomerV2 && isWithdrawalRecord
+              ? withdrawalMethod
+              : isCustomerV2 && tab === "Receipts"
+                ? isMonthlyCare ? "Monthly Care" : isCarePayment ? "Daily Care" : isCashPayment ? "Payment" : "Rooster"
+                : displayCopy.title;
             const reference = text.match(/Reference:\s*([^\.]+)/i)?.[1]?.trim();
             const paymentRequestId = text.match(/Payment Request:\s*([a-f0-9-]+)/i)?.[1]?.trim();
-            const invoicePath = isCarePayment ? "/customer/inbox/invoice/care-request" : isCashPayment ? "/customer/inbox/invoice/cashin" : "/customer/inbox/invoice/farm-buy";
+            const invoiceRoot = isCustomerV2 ? "/customer-v2/inbox/invoice" : "/customer/inbox/invoice";
+            const invoicePath = isCarePayment ? `${invoiceRoot}/care-request` : isCashPayment ? `${invoiceRoot}/cashin` : `${invoiceRoot}/farm-buy`;
             const invoiceQuery = paymentRequestId ? `?payment=${encodeURIComponent(paymentRequestId)}` : reference ? `?reference=${encodeURIComponent(reference)}` : "";
-            const href = isWithdrawalRecord ? "/customer/withdraw" : tab === "Receipts" ? `${invoicePath}${invoiceQuery}` : tab === "Caretaker Updates" ? "/customer/care-logs" : undefined;
-            const status = searchable.includes("for admin review") || searchable.includes("waiting for admin") ? "Pending" : searchable.includes("rejected") ? "Rejected" : searchable.includes("needs more info") || searchable.includes("needs correction") || searchable.includes("problem was sent back") ? "Needs Info" : searchable.includes("completed") || searchable.includes("complete and remains") ? "Completed" : searchable.includes("approved") ? "Approved" : searchable.includes("submitted") || searchable.includes("recorded") ? "Recorded" : String(row.status || "Recorded").replaceAll("_", " ");
+            const href = isWithdrawalRecord ? (isCustomerV2 ? "/customer-v2/wallet" : "/customer/withdraw") : tab === "Receipts" ? `${invoicePath}${invoiceQuery}` : tab === "Caretaker Updates" ? (isCustomerV2 ? "/customer-v2/roosters" : "/customer/care-logs") : tab === "Messages" ? (isCustomerV2 ? "/customer-v2/support" : "/customer/support") : tab === "Alerts" && isCustomerV2 ? "/customer-v2/wallet" : undefined;
+            const status = searchable.includes("for admin review") || searchable.includes("waiting for admin") || searchable.includes("under review")
+              ? "Pending"
+              : searchable.includes("rejected")
+                ? "Rejected"
+                : searchable.includes("needs more info") || searchable.includes("needs correction") || searchable.includes("problem was sent back")
+                  ? "Needs Info"
+                  : searchable.includes("completed") || searchable.includes("complete and remains") || searchable.includes("care update approved") || searchable.includes("caretaker proof") && searchable.includes("approved")
+                    ? "Completed"
+                    : searchable.includes("approved") || searchable.includes("assigned") || searchable.includes("scheduled")
+                      ? "In Progress"
+                      : searchable.includes("submitted") || searchable.includes("recorded") || searchable.includes("requested")
+                        ? "Sent"
+                        : String(row.status || "Sent").replaceAll("_", " ");
             return {
               id: row.id,
-              title,
-              text,
+              title: cardTitle,
+              accountDisplay: isCustomerV2 && isWithdrawalRecord ? maskedPayoutAccount(withdrawalAccount) : "",
+              amountDisplay: isCustomerV2 && isWithdrawalRecord && withdrawalAmount ? peso(Number(withdrawalAmount)) : "",
+              withdrawalDetails: matchingWithdrawal ? {
+                amount: Number(matchingWithdrawal.amount || withdrawalAmount || 0),
+                method: String(matchingWithdrawal.payout_method || withdrawalMethod || "Payout Method"),
+                account: String(matchingWithdrawal.payout_account || withdrawalAccount || ""),
+                accountName: String(matchingWithdrawal.payout_holder || ""),
+                reference: String(matchingWithdrawal.admin_reference_number || reference || ""),
+                receiptUrl: String(matchingWithdrawal.admin_receipt_url || ""),
+                receiptFileName: String(matchingWithdrawal.admin_receipt_file_name || ""),
+              } : isWithdrawalRecord ? {
+                amount: Number(withdrawalAmount || 0),
+                method: withdrawalMethod,
+                account: withdrawalAccount,
+                accountName: "",
+                reference: reference || "",
+                receiptUrl: "",
+                receiptFileName: "",
+              } : null,
+              text: displayCopy.body,
               status,
               tab,
               action: isWithdrawalRecord ? "withdrawal" : href?.includes("invoice") ? "invoice" : href ? "carelogs" : "read",
@@ -4461,7 +4766,7 @@ export function InboxPage() {
           });
           setLiveInbox(mapped);
           setRead(mapped.filter((row: any) => row.is_read).map((row: any) => String(row.id)));
-          setNote(mapped.length ? "Live Supabase inbox loaded." : "No live inbox records yet. Receipts will appear here after Farm Buy checkout.");
+          setNote("");
         })
         .catch(() => {
           setLiveInbox([]);
@@ -4476,9 +4781,48 @@ export function InboxPage() {
       window.clearInterval(interval);
       window.removeEventListener("focus", refreshOnFocus);
     };
-  }, []);
+  }, [isCustomerV2]);
 
-  const list = liveInbox
+  const previewSamples = showLocalSamples ? [
+    {
+      id: "local-preview-withdrawal",
+      title: "GCash",
+      accountDisplay: "•••• ••• 1234",
+      amountDisplay: "₱500",
+      text: "Preview only",
+      status: "Pending",
+      tab: "Alerts",
+      action: "withdrawal",
+      href: "/customer-v2/withdraw",
+      created_at: previewTime,
+      is_read: false,
+      isLocalPreview: true,
+      withdrawalDetails: {
+        amount: 500,
+        method: "GCash",
+        account: "0912 345 1234",
+        accountName: "Juan Dela Cruz",
+        reference: "",
+        receiptUrl: "",
+        receiptFileName: "",
+      },
+    },
+    {
+      id: "local-preview-message",
+      title: "FarmConnect Support",
+      accountDisplay: "",
+      amountDisplay: "",
+      text: "Preview only",
+      status: "New",
+      tab: "Messages",
+      action: "message",
+      href: "/customer-v2/support",
+      created_at: previewTime,
+      is_read: false,
+      isLocalPreview: true,
+    },
+  ] : [];
+  const list = [...previewSamples, ...liveInbox]
     .map((item, index) => ({
       ...item,
       inboxKey: String(item.id || `${item.created_at || "live"}-${item.title}-${index}`),
@@ -4488,9 +4832,12 @@ export function InboxPage() {
     .filter((i) => category === "All" || i.tab === category)
     .filter((i) => (i.title + " " + i.text + " " + i.status).toLowerCase().includes(query.toLowerCase()))
     .sort((a, b) => (sort === "Unread first" ? Number(read.includes(a.inboxKey)) - Number(read.includes(b.inboxKey)) : sort === "Oldest first" ? String(a.created_at || a.title).localeCompare(String(b.created_at || b.title)) : String(b.created_at || b.title).localeCompare(String(a.created_at || a.title))));
-  const actionLabel = (item: any) => (item.action === "withdrawal" ? "Open Withdrawal" : item.action === "invoice" ? "Open Receipt" : item.action === "carelogs" ? "Open Care Logs" : "Mark Read");
   async function markItemRead(item: any) {
     if (!read.includes(item.inboxKey)) {
+      if (item.isLocalPreview) {
+        setRead((current) => (current.includes(item.inboxKey) ? current : [...current, item.inboxKey]));
+        return true;
+      }
       try {
         await markInboxItemRead(item.id);
         setRead((current) => (current.includes(item.inboxKey) ? current : [...current, item.inboxKey]));
@@ -4505,62 +4852,87 @@ export function InboxPage() {
   async function openOrMarkRead(item: any) {
     const marked = await markItemRead(item);
     if (!marked) return;
+    if (item.action === "withdrawal") {
+      setExpandedInboxKey((current) => current === item.inboxKey ? null : item.inboxKey);
+      const storedReceipt = String(item.withdrawalDetails?.receiptUrl || "").trim();
+      if (storedReceipt && !receiptUrls[item.inboxKey]) {
+        try {
+          const signedUrl = await createPrivateEvidenceUrl("withdrawal-proofs", storedReceipt);
+          setReceiptUrls((current) => ({ ...current, [item.inboxKey]: signedUrl }));
+        } catch {
+          setNote("The payout details are available, but the receipt image could not be opened.");
+        }
+      }
+      return;
+    }
+    if (item.tab === "Messages" || item.tab === "Caretaker Updates") return;
     if (item.href) router.push(item.href);
   }
   async function markAllRead() {
     const unread = list.filter((item) => !read.includes(item.inboxKey));
-    if (!unread.length) {
-      setNote("All Inbox notifications are already read.");
-      return;
-    }
-    setNote(`Marking ${unread.length} notification${unread.length === 1 ? "" : "s"} as read...`);
+    if (!unread.length) return;
     const results = await Promise.all(unread.map((item) => markItemRead(item)));
-    setNote(results.every(Boolean) ? "All Inbox notifications are now read." : "Some notifications could not be marked as read. Please retry.");
+    if (!results.every(Boolean)) setNote("Some notifications could not be marked as read. Please try again.");
   }
   return (
     <Shell role="customer" title="Inbox">
-      <PageTitle title="Inbox" text="Notifications only: receipts, caretaker updates, wallet alerts, and support messages." icon="inbox" />
-      <KaFarm>{note}</KaFarm>
-      <section className="min-w-0 overflow-hidden rounded-3xl bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-black">Inbox Categories</h2>
-            <p className="text-xs font-bold text-[#667267]">Swipe or scroll sideways to view every category.</p>
+      <PageTitle title="Inbox" text="" icon="inbox" />
+      <section className="min-w-0 rounded-3xl bg-white p-4 shadow-sm">
+        <div className="flex min-w-0 flex-wrap gap-3">
+          <div
+            className="relative min-w-[220px] flex-1"
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setCategoryMenuOpen(false);
+            }}
+          >
+            <Icon name="search" className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#667267]" />
+            <input
+              value={query}
+              onFocus={() => setCategoryMenuOpen(true)}
+              onClick={() => setCategoryMenuOpen(true)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setCategoryMenuOpen(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  setCategoryMenuOpen(false);
+                  e.currentTarget.blur();
+                }
+                if (e.key === "Escape") setCategoryMenuOpen(false);
+              }}
+              placeholder={category === "All" ? "Search inbox" : `Search ${category}`}
+              className="w-full min-w-0 rounded-2xl border border-[#ded8c9] bg-[#fffdf7] py-3 pl-12 pr-4 font-bold"
+            />
+            {categoryMenuOpen && (
+              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-2xl border border-[#ded8c9] bg-white p-2 shadow-xl">
+                {categories.map((c) => (
+                  <button key={c.name} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setCategory(c.name); setQuery(""); setCategoryMenuOpen(false); }} className={"flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-black " + (category === c.name ? "bg-[#e7f3ec] text-[#145f43]" : "hover:bg-[#fff8db]")}>
+                    <Icon name={c.icon} className="h-5 w-5" />
+                    <span>{c.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="relative" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSortMenuOpen(false); }}>
+            <button type="button" aria-label={`Sort inbox: ${sort}`} title={`Sort: ${sort}`} aria-expanded={sortMenuOpen} onClick={() => setSortMenuOpen((open) => !open)} className="grid h-12 w-14 place-items-center rounded-2xl border border-[#ded8c9] bg-white text-[#075f61] shadow-sm hover:bg-[#fff8db]">
+              <Icon name="sort" className="h-6 w-6" />
+            </button>
+            {sortMenuOpen && (
+              <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-44 rounded-2xl border border-[#ded8c9] bg-white p-2 shadow-xl">
+                {["Newest first", "Oldest first", "Unread first"].map((option) => (
+                  <button key={option} type="button" onClick={() => { setSort(option); setSortMenuOpen(false); }} className={"w-full rounded-xl px-3 py-2.5 text-left text-sm font-black " + (sort === option ? "bg-[#e7f3ec] text-[#145f43]" : "hover:bg-[#fff8db]")}>{option}</button>
+                ))}
+              </div>
+            )}
           </div>
           <button type="button" onClick={() => void markAllRead()} disabled={!list.some((item) => !read.includes(item.inboxKey))} className="shrink-0 rounded-xl bg-[#1f6b45] px-4 py-2.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-[#b9b3a4]">
             Mark All as Read
           </button>
         </div>
-        <div className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-2">
-          {categories.map((c) => {
-            const count = c.name === "All" ? list.filter((i) => !read.includes(i.inboxKey)).length : list.filter((i) => i.tab === c.name && !read.includes(i.inboxKey)).length;
-            return (
-              <button key={c.name} onClick={() => setCategory(c.name)} className={"flex min-w-[190px] shrink-0 items-center gap-3 rounded-2xl px-3 py-3 text-left transition sm:min-w-[215px] " + (category === c.name ? "bg-[#1f6b45] text-white shadow-sm" : "bg-[#fffdf7] ring-1 ring-[#ece6d8] hover:bg-[#f6f3e8]")}>
-                <span className={"grid h-11 w-11 shrink-0 place-items-center rounded-2xl " + (category === c.name ? "bg-white/15" : "bg-[#f1eadb] text-[#1f6b45]")}>
-                  <Icon name={c.icon} className="h-5 w-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-black">{c.label}</span>
-                  <span className={"block truncate text-xs font-bold " + (category === c.name ? "text-white/75" : "text-[#667267]")}>{c.note}</span>
-                </span>
-                {count > 0 && <span className={"shrink-0 rounded-full px-2 py-1 text-xs font-black " + (category === c.name ? "bg-white/20" : "bg-[#f6f3e8] text-[#667267]")}>{count}</span>}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-      <section className="mt-5 min-w-0 rounded-3xl bg-white p-4 shadow-sm">
-        <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
-          <div className="relative min-w-0">
-            <Icon name="search" className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#667267]" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search inbox" className="w-full min-w-0 rounded-2xl border border-[#ded8c9] bg-[#fffdf7] py-3 pl-12 pr-4 font-bold" />
-          </div>
-          <select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full rounded-2xl border border-[#ded8c9] bg-white px-4 py-3 font-black">
-            <option>Newest first</option>
-            <option>Oldest first</option>
-            <option>Unread first</option>
-          </select>
-        </div>
+        {note && <p role="status" className="mt-3 text-sm font-bold text-[#667267]">{note}</p>}
         <div className="mt-4 max-h-[680px] space-y-3 overflow-y-auto pr-1 sm:pr-2">
           {filtered.map((i) => {
             const isRead = read.includes(i.inboxKey);
@@ -4568,27 +4940,61 @@ export function InboxPage() {
               <article key={i.inboxKey} className={"rounded-2xl border p-4 transition " + (isRead ? "border-[#ece6d8] bg-white" : "border-[#d6ead9] bg-[#fffdf7]")}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-black uppercase tracking-wide text-[#667267]">{i.tab}</p>
-                    <h3 className="mt-1 break-words text-lg font-black">{i.title}</h3>
+                    <p className="truncate text-xs font-black uppercase tracking-wide text-[#667267]">{categories.find((c) => c.name === i.tab)?.label || i.tab}</p>
+                    {inboxDateTime(i.created_at) && <time dateTime={String(i.created_at)} className="mt-0.5 block text-[10px] font-bold text-[#879189]">{inboxDateTime(i.created_at)}</time>}
+                    <h3 className="mt-1 break-words text-lg font-black">{i.title === "New Care Update" && isRead ? "Care Updated" : i.title}</h3>
+                    {i.accountDisplay && <p className="mt-0.5 text-xs font-normal tracking-wide text-[#657169]">{i.accountDisplay}</p>}
+                    {i.amountDisplay && <p className="mt-0.5 text-sm font-normal text-[#536159]">{i.amountDisplay}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge tone={i.status === "Pending" || i.status === "Needs Info" ? "warn" : i.status === "Rejected" ? "bad" : "good"}>{i.status}</Badge>
                     {!isRead && <span className="h-2.5 w-2.5 rounded-full bg-[#1f6b45]" />}
                   </div>
                 </div>
-                <p className="mt-2 break-words text-sm font-bold leading-6 text-[#667267]">{i.text}</p>
+                {i.action === "withdrawal" && expandedInboxKey === i.inboxKey && (
+                  <div className="mt-4 space-y-3 rounded-2xl bg-[#f7f3e8] p-4">
+                    {(i.withdrawalDetails?.reference || i.withdrawalDetails?.receiptUrl) && (
+                      <section className="rounded-xl border border-[#ded8c9] bg-white p-3">
+                        <p className="text-xs font-black uppercase tracking-wide text-[#667267]">Payout Receipt</p>
+                        {receiptUrls[i.inboxKey] && (
+                          <a href={receiptUrls[i.inboxKey]} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-xl border border-[#ece6d8] bg-[#faf8f2]">
+                            <img src={receiptUrls[i.inboxKey]} alt="Admin payout receipt" className="max-h-72 w-full object-contain" />
+                          </a>
+                        )}
+                        {i.withdrawalDetails?.reference && (
+                          <div className="mt-3">
+                            <p className="text-xs font-bold text-[#667267]">Reference number</p>
+                            <p className="break-all font-black text-[#173f34]">{i.withdrawalDetails.reference}</p>
+                          </div>
+                        )}
+                      </section>
+                    )}
+                    <section className="grid gap-3 rounded-xl border border-[#ded8c9] bg-white p-3 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-bold text-[#667267]">Amount</p>
+                        <p className="font-black">{peso(Number(i.withdrawalDetails?.amount || 0))}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-[#667267]">Payout method</p>
+                        <p className="font-black">{i.withdrawalDetails?.method || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-[#667267]">Account number</p>
+                        <p className="break-all font-black">{i.withdrawalDetails?.account || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-[#667267]">Account name</p>
+                        <p className="font-black">{i.withdrawalDetails?.accountName || "—"}</p>
+                      </div>
+                    </section>
+                  </div>
+                )}
                 <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#ece6d8] pt-3">
                   {i.href && (
-                    <button type="button" onClick={() => void openOrMarkRead(i)} className="rounded-xl bg-[#1f6b45] px-3 py-2 text-sm font-black text-white">
-                      {actionLabel(i)}
+                    <button type="button" onClick={() => void openOrMarkRead(i)} aria-expanded={i.action === "withdrawal" ? expandedInboxKey === i.inboxKey : undefined} className="rounded-xl bg-[#1f6b45] px-3 py-2 text-sm font-black text-white">
+                      {i.tab === "Caretaker Updates" || i.tab === "Messages" ? "Read" : i.action === "withdrawal" && expandedInboxKey === i.inboxKey ? "Close" : "View"}
                     </button>
                   )}
-                  {!isRead && (
-                    <button type="button" onClick={() => void markItemRead(i)} className="rounded-xl bg-[#eee8d9] px-3 py-2 text-sm font-black">
-                      Mark as Read
-                    </button>
-                  )}
-                  {isRead && <span className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-800">Read</span>}
                   <button onClick={() => setRemoved([...removed, i.inboxKey])} title="Move to recycle bin" aria-label="Move to recycle bin" className="grid h-9 w-9 place-items-center rounded-xl bg-white text-red-700 shadow-sm ring-1 ring-[#f0d8d8]">
                     <Icon name="trash" className="h-4 w-4" />
                   </button>
@@ -4642,6 +5048,8 @@ const paymentReceivers = [
 
 export function CustomerPaymentPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isCustomerV2 = pathname.startsWith("/customer-v2");
   const paymentOperationKey = useRef("");
   const [context, setContext] = useState<PaymentContext>({
     sourceType: "other",
@@ -4656,6 +5064,8 @@ export function CustomerPaymentPage() {
   const [receipt, setReceipt] = useState("");
   const [note, setNote] = useState("Upload payment proof with sender name and reference number. Admin approval is required before anything is completed.");
   const [submittedId, setSubmittedId] = useState("");
+  const paymentTerminal = useRef(false);
+  const paymentBusy = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const ready = sender.trim().length > 2 && reference.trim().length >= 4 && Boolean(receipt);
 
@@ -4682,21 +5092,35 @@ export function CustomerPaymentPage() {
   }
 
   async function submitPayment() {
-    if (submitting) return;
+    if (paymentBusy.current || paymentTerminal.current || submittedId) return;
     if (!ready) {
       setNote("Please complete sender name, reference number, and receipt image first.");
       return;
     }
     try {
+      paymentBusy.current = true;
       setSubmitting(true);
       const profile = await getCurrentProfile();
       if (!profile) {
         throw new Error("LOGIN_REQUIRED");
       }
       setNote("Saving payment proof for admin review...");
-      if (!paymentOperationKey.current) {
-        paymentOperationKey.current = globalThis.crypto?.randomUUID?.() || `payment-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const operationScope = `payment.${profile.id}.${context.sourceType}.${context.sourceRef}`;
+      const savedOperation = localStorage.getItem(`farmconnect.pending.${operationScope}`);
+      if (savedOperation) {
+        const savedKey = JSON.parse(savedOperation).key;
+        const saved = await supabase.from("workflow_operation_keys").select("source_record_id").eq("profile_id", profile.id).eq("workflow_type", "manual_payment_submit").eq("idempotency_key", savedKey).maybeSingle();
+        if (saved.error) throw saved.error;
+        if (saved.data?.source_record_id) {
+          paymentTerminal.current = true;
+          setSubmittedId(saved.data.source_record_id);
+          localStorage.removeItem(`farmconnect.pending.${operationScope}`);
+          setNote("Your previous payment proof was already received. Check Inbox for its status.");
+          return;
+        }
       }
+      const operation = await pendingOperation(`payment.${profile.id}.${context.sourceType}.${context.sourceRef}`, { context, method: method.method, receiver: method.account, sender, reference, receipt });
+      paymentOperationKey.current = operation.key;
       const result = await submitManualPaymentRequest({
         sourceType: context.sourceType,
         sourceRef: context.sourceRef,
@@ -4708,23 +5132,31 @@ export function CustomerPaymentPage() {
         referenceNumber: reference,
         receiptImageUrl: receipt,
         idempotencyKey: paymentOperationKey.current,
+      }).catch((error) => {
+        if (!savedOperation && /^(P0001|22\w{3}|23\w{3})$/.test(String(error?.code || ""))) localStorage.removeItem(operation.storageKey);
+        throw error;
       });
+      paymentTerminal.current = true;
       setSubmittedId(result.id);
+      localStorage.removeItem(operation.storageKey);
       setNote(result.duplicate ? "This payment was already received. Returning to dashboard without creating a duplicate request." : "Payment proof submitted. Returning to dashboard. Check Inbox for the review notice.");
       window.localStorage.removeItem("farmconnect_payment_context");
-      window.setTimeout(() => router.push("/customer/dashboard"), 900);
+      window.setTimeout(() => router.push(isCustomerV2 ? "/customer-v2/roosters" : "/customer/dashboard"), 900);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "";
+      const message = readableAppError(error);
       setSubmittedId("");
       const normalizedMessage = message.toLowerCase();
-      setNote(normalizedMessage.includes("failed to fetch") || normalizedMessage.includes("network") ? "Connection was interrupted. Nothing was submitted to admin. Check your connection, then tap Submit again." : message === "LOGIN_REQUIRED" || message.includes("401") || normalizedMessage.includes("unauthorized") || normalizedMessage.includes("jwt") ? "Payment was not submitted. Please login as customer first, then submit again." : "Payment was not submitted to admin. Check the error, then submit again after DB/RLS is fixed.");
+      setNote(normalizedMessage.includes("failed to fetch") || normalizedMessage.includes("network") ? "Payment confirmation is pending. Retry the same details to check safely, or check Inbox. A missing response does not mean the request was lost." : `Payment could not be confirmed: ${message || "Please retry the same details or check Inbox."}`);
     } finally {
+      paymentBusy.current = false;
       setSubmitting(false);
     }
   }
 
   const lines = Array.isArray(context.summary?.lines) ? context.summary.lines : [];
   const title = context.sourceType === "farm_buy" ? "Farm Buy Payment" : context.sourceType === "care_request" ? "Care Request Payment" : context.sourceType === "care_plan" ? "Care Plan Payment" : "Manual Payment";
+  const careRoosterName = String(context.summary?.rooster?.name || "Rooster");
+  const customerV2Title = context.sourceType === "care_plan" ? `Monthly Care: ${careRoosterName}` : context.sourceType === "care_request" ? `Daily Care: ${careRoosterName}` : title;
   return (
     <Shell role="customer" title="Payment">
       {qrOpen && (
@@ -4747,11 +5179,12 @@ export function CustomerPaymentPage() {
           </section>
         </div>
       )}
-      <PageTitle title={title} text="Send payment externally, then upload reference number and receipt for admin approval." icon="coins" />
-      <KaFarm>{note}</KaFarm>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_380px]">
+      {isCustomerV2 ? <section className="rounded-[26px] border border-[#f4c430]/55 border-l-4 border-l-[#c9232d] bg-[#fffdf7]/96 p-5 shadow-xl sm:p-6"><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#087f83]">Payment</p><h1 className="mt-1 text-3xl font-black text-[#041f22] sm:text-4xl">{customerV2Title}</h1></section> : <PageTitle title={title} text="Send payment externally, then upload reference number and receipt for admin approval." icon="coins" />}
+      {!isCustomerV2 && <KaFarm>{note}</KaFarm>}
+      {isCustomerV2 && note !== "Upload payment proof with sender name and reference number. Admin approval is required before anything is completed." && <p role="status" className="mt-4 rounded-2xl bg-[#fffdf7] p-4 text-sm font-bold text-[#536a68] shadow">{note}</p>}
+      <div className={`mt-5 grid gap-5 ${isCustomerV2 ? "mx-auto max-w-4xl" : "xl:grid-cols-[1fr_380px]"}`}>
         <div className="grid gap-5">
-          <Card>
+          {!isCustomerV2 && <Card>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase text-[#667267]">Amount To Pay</p>
@@ -4790,45 +5223,32 @@ export function CustomerPaymentPage() {
                 <Info label="Status" value="Payment for review" />
               </div>
             )}
-          </Card>
+          </Card>}
           <Card>
-            <h2 className="text-xl font-black">1. Choose Where You Paid</h2>
+            <h2 className="text-xl font-black">Payout Method</h2>
+            <p className="mt-1 text-sm font-bold text-[#667267]">Choose the account where you will send the payment.</p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               {paymentReceivers.map((row) => (
-                <div key={row.method} className={"overflow-hidden rounded-3xl bg-gradient-to-br p-4 shadow-sm transition " + row.color + " " + row.text + (method.method === row.method ? " ring-4 ring-white" : "")}>
-                  <button onClick={() => setMethod(row)} className="w-full text-left">
+                <button key={row.method} type="button" onClick={() => setMethod(row)} className={"relative aspect-[1.58/1] w-full overflow-hidden rounded-[22px] bg-gradient-to-br p-4 text-left shadow-[0_12px_24px_rgba(4,31,34,.18)] transition hover:-translate-y-1 " + row.color + " " + row.text + (method.method === row.method ? " ring-4 ring-[#f4c430]" : "")}>
+                  <span className="absolute -right-8 -top-10 h-32 w-32 rounded-full border-[18px] border-white/10" />
+                  <span className="absolute -bottom-16 -left-8 h-36 w-36 rounded-full bg-black/10" />
+                  <div className="relative flex h-full flex-col justify-between">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-black uppercase opacity-75">Payment channel</p>
-                        <b className="mt-1 block text-xl">{row.method}</b>
+                        <p className="text-[10px] font-black uppercase tracking-[.16em] opacity-75">FarmConnect</p>
+                        <b className="mt-1 block text-2xl">{row.method}</b>
                       </div>
-                      <span className={"rounded-full px-3 py-1 text-xs font-black " + row.badge}>{method.method === row.method ? "Selected" : "Select"}</span>
+                      <span className={"rounded-full px-3 py-1 text-[10px] font-black uppercase " + row.badge}>{method.method === row.method ? "Selected" : "Select"}</span>
                     </div>
-                    <p className="mt-5 text-sm font-black">{row.account}</p>
-                    <p className="text-xs font-bold opacity-80">{row.detail}</p>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMethod(row);
-                      setQrOpen(row);
-                    }}
-                    className="mt-4 w-full rounded-2xl bg-white/90 px-4 py-3 text-sm font-black text-[#123229] shadow-sm"
-                  >
-                    View QR
-                  </button>
-                </div>
+                    <div><span className="mb-2 block h-8 w-11 rounded-md bg-[linear-gradient(135deg,#f8d875,#c89a2c)] shadow-inner" /><p className="text-sm font-black tracking-wide">{row.detail}</p></div>
+                  </div>
+                </button>
               ))}
             </div>
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-[#ded8c9] bg-[#f6f3e8] p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#667267]">Selected payout account</p><p className="mt-1 text-xl font-black">{method.account}</p><p className="text-sm font-bold text-[#667267]">{method.method} · {method.detail}</p></div><button type="button" onClick={() => setQrOpen(method)} className="min-h-11 rounded-xl bg-[#087f83] px-5 py-3 font-black text-white">View QR</button></div>
           </Card>
           <Card>
-            <h2 className="text-xl font-black">2. Payment Proof</h2>
-            <div className="mt-4 rounded-2xl border border-[#ded8c9] bg-[#f6f3e8] p-4">
-              <p className="text-xs font-black uppercase text-[#667267]">Sent To / Admin Check</p>
-              <p className="mt-1 text-xl font-black">{method.account}</p>
-              <p className="text-sm font-bold text-[#667267]">
-                {method.method} - {method.detail}
-              </p>
-            </div>
+            <h2 className="text-xl font-black">Payment Details</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <input value={sender} onChange={(e) => setSender(e.target.value)} placeholder="Sender name shown on receipt" className="rounded-2xl border border-[#ded8c9] px-4 py-3 font-bold" />
               <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Reference number" className="rounded-2xl border border-[#ded8c9] px-4 py-3 font-bold" />
@@ -4838,12 +5258,12 @@ export function CustomerPaymentPage() {
               </label>
               {receipt && <img src={receipt} alt="Receipt preview" className="md:col-span-2 max-h-72 w-full rounded-2xl object-contain bg-white p-2" />}
             </div>
-            <button type="button" onClick={submitPayment} className={"mt-4 w-full rounded-2xl px-4 py-4 font-black text-white " + (submitting ? "bg-[#7f9b8d]" : "bg-[#1f6b45]")}>
-              {submitting ? "Submitting..." : "Submit For Admin Review"}
+            <button type="button" onClick={submitPayment} disabled={submitting || Boolean(submittedId)} className={"mt-4 w-full rounded-2xl px-4 py-4 font-black text-white " + (submitting || submittedId ? "bg-[#7f9b8d]" : "bg-[#1f6b45]")}>
+              {submittedId ? "Submitted" : submitting ? "Submitting..." : "Submit For Admin Review"}
             </button>
           </Card>
         </div>
-        <Card className="h-fit">
+        {!isCustomerV2 && <Card className="h-fit">
           <h2 className="text-xl font-black">What Happens Next</h2>
           <div className="mt-4 grid gap-3 text-sm font-bold text-[#667267]">
             <p className="rounded-xl bg-[#f6f3e8] p-3">1. Your reference number and receipt become evidence.</p>
@@ -4853,21 +5273,23 @@ export function CustomerPaymentPage() {
           </div>
           {submittedId && (
             <div className="mt-5 grid gap-2">
-              <Link href="/customer/inbox" className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">
+              <Link href={isCustomerV2 ? "/customer-v2/inbox" : "/customer/inbox"} className="rounded-xl bg-[#1f6b45] px-4 py-3 text-center font-black text-white">
                 Open Inbox
               </Link>
-              <Link href={context.sourceType === "farm_buy" ? "/customer/farm-buy" : "/customer/farm-requests"} className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">
+              <Link href={isCustomerV2 ? (context.sourceType === "farm_buy" ? "/customer-v2/add-rooster" : "/customer-v2/care") : (context.sourceType === "farm_buy" ? "/customer-v2/add-rooster" : "/customer/farm-requests")} className="rounded-xl bg-[#eee8d9] px-4 py-3 text-center font-black">
                 Back
               </Link>
             </div>
           )}
-        </Card>
+        </Card>}
       </div>
     </Shell>
   );
 }
 
 export function CustomerInvoicePage({ type = "farm-buy" }: { type?: "farm-buy" | "cashin" | "care-request" }) {
+  const pathname = usePathname();
+  const isCustomerV2 = pathname.startsWith("/customer-v2");
   const isFarmBuy = type === "farm-buy";
   const isCareRequest = type === "care-request";
   const [requestedPaymentId, setRequestedPaymentId] = useState("");
@@ -5090,16 +5512,12 @@ export function CustomerInvoicePage({ type = "farm-buy" }: { type?: "farm-buy" |
           </section>
         )}
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/customer/inbox" className="rounded-2xl bg-[#eee8d9] px-4 py-3 font-black">
+          <Link href={isCustomerV2 ? "/customer-v2/inbox" : "/customer/inbox"} className="rounded-2xl bg-[#eee8d9] px-4 py-3 font-black">
             Back to Inbox
           </Link>
-          <Link href="/customer/farm-buy" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">
-            Farm Buy
-          </Link>
-          <Link href="/customer/inventory" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">
-            Inventory
-          </Link>
-          <Link href="/customer/roosters" className="rounded-2xl bg-[#1f6b45] px-4 py-3 font-black text-white">
+          {!isCustomerV2 && <Link href="/customer-v2/add-rooster" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">Add Rooster</Link>}
+          {!isCustomerV2 && <Link href="/customer/inventory" className="rounded-2xl bg-white px-4 py-3 font-black shadow-sm">Inventory</Link>}
+          <Link href={isCustomerV2 ? "/customer-v2/roosters" : "/customer/roosters"} className="rounded-2xl bg-[#1f6b45] px-4 py-3 font-black text-white">
             My Roosters
           </Link>
         </div>
@@ -5108,225 +5526,11 @@ export function CustomerInvoicePage({ type = "farm-buy" }: { type?: "farm-buy" |
   );
 }
 export function SupportPage() {
-  type ChatMsg = {
-    from: "customer" | "caretaker" | "kafarm" | "admin";
-    text: string;
-    at: string;
-  };
-  const [messages, setMessages] = useState<ChatMsg[]>([
-    {
-      from: "kafarm",
-      text: "Hi buddy. Ka-Farm muna ang kausap mo. Sabihin mo yung concern mo, then ipapasa ko sa live admin kapag sensitive or kailangan ng account review.",
-      at: "Now",
-    },
-  ]);
-  const [text, setText] = useState("");
-  const [escalated, setEscalated] = useState(false);
-  const [caseId, setCaseId] = useState("");
-  const [dbNote, setDbNote] = useState("Connecting support chat records...");
-  function mapMessages(rows: any[]): ChatMsg[] {
-    if (!rows.length)
-      return [
-        {
-          from: "kafarm",
-          text: "Hi buddy. Ka-Farm muna ang kausap mo. Sabihin mo yung concern mo, then ipapasa ko sa live admin kapag sensitive or kailangan ng account review.",
-          at: "Now",
-        },
-      ];
-    return rows.map((row) => ({
-      from: row.sender_role === "customer" ? "customer" : row.sender_role === "admin" ? "admin" : "kafarm",
-      text: row.body,
-      at: new Date(row.created_at).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    })) as ChatMsg[];
-  }
-  async function loadSession(sessionId?: string) {
-    try {
-      const id = sessionId || caseId;
-      if (!id) {
-        setDbNote("No active DB chat yet. Send a message to start.");
-        return;
-      }
-      const { data, error } = await getSupportMessages(id);
-      if (error) throw error;
-      setMessages(mapMessages(data || []));
-      const { data: session } = await getSupportSessionStatus(id);
-      setEscalated(["escalated", "admin_joined", "ended", "completed"].includes(session?.status || ""));
-      setDbNote("Chat trail saved to database.");
-    } catch {
-      setDbNote("Chat is still usable, but database sync needs admin/Buddy check.");
-    }
-  }
-  async function loadLatestSession() {
-    try {
-      const { data, error } = await getLatestSupportSessionId();
-      if (error) throw error;
-      if (data?.id) {
-        setCaseId(data.id);
-        await loadSession(data.id);
-      } else {
-        setDbNote("No active DB chat yet. Send a message to start.");
-      }
-    } catch {
-      setDbNote("Could not load previous support chat. Send a new message or ask admin.");
-    }
-  }
-  useEffect(() => {
-    loadLatestSession();
-  }, []);
-  useEffect(() => {
-    if (caseId) loadSession(caseId);
-  }, [caseId]);
-  function needsAdmin(q: string) {
-    return shouldEscalateToAdmin(q, "customer");
-  }
-  function aiReply(q: string) {
-    return getKaFarmReply(q, "customer");
-  }
-  async function saveKaFarmReply(sessionId: string, body: string, metadata: Record<string, any> = {}) {
-    const { error } = await saveKaFarmSupportMessage(sessionId, body, metadata);
-    if (error) throw error;
-  }
-  async function send() {
-    if (!text.trim()) return;
-    const q = text.trim();
-    if (escalated) {
-      setMessages((current) => [...current, { from: "customer", text: q, at: "Now" }]);
-      setText("");
-      try {
-        const { data, error } = await sendSupportMessage({
-          role: "customer",
-          sessionId: caseId || null,
-          body: q,
-          forceEscalate: true,
-        });
-        if (error) throw error;
-        setCaseId(data);
-        await loadSession(data);
-      } catch {
-        setDbNote("Message shown here, but DB save failed. Please try again or ask admin.");
-      }
-      return;
-    }
-    const reply = aiReply(q);
-    setMessages((current) => [...current, { from: "customer", text: q, at: "Now" }, { from: "kafarm", text: reply, at: "Now" }]);
-    setText("");
-    try {
-      const { data, error } = await sendSupportMessage({
-        role: "customer",
-        sessionId: caseId || null,
-        body: q,
-        forceEscalate: needsAdmin(q),
-      });
-      if (error) throw error;
-      setCaseId(data);
-      await saveKaFarmReply(data, reply, {
-        mode: "customer_support",
-        rule_based: true,
-      });
-      if (needsAdmin(q))
-        await saveKaFarmReply(data, getEscalationNotice(q, "customer"), {
-          mode: "customer_support",
-          escalation_notice: true,
-        });
-      await loadSession(data);
-    } catch {
-      setDbNote("Ka-Farm replied here. Please login again so the chat can be saved to your official support record.");
-    }
-  }
-  async function openLiveChat() {
-    setEscalated(true);
-    const lastUser = [...messages].reverse().find((m) => m.from === "customer")?.text || "Customer requested admin help";
-    setMessages((current) => [
-      ...current,
-      {
-        from: "kafarm",
-        text: "I escalated this to live admin. I included your issue summary, risk reason, and chat trail. Admin must approve any sensitive action.",
-        at: "Now",
-      },
-    ]);
-    try {
-      const { data, error } = await sendSupportMessage({
-        role: "customer",
-        sessionId: caseId || null,
-        body: lastUser,
-        forceEscalate: true,
-      });
-      if (error) throw error;
-      setCaseId(data);
-      await saveKaFarmReply(data, "I escalated this to live admin. I included your issue summary, risk reason, and chat trail. Admin must approve any sensitive action.", { mode: "customer_support", escalation_notice: true });
-      await loadSession(data);
-    } catch {
-      setDbNote("Escalation shown here, but DB sync failed. Admin may need to check account setup.");
-    }
-  }
-  const showEscalate = !escalated && messages.some((m, i) => i > 0 && m.from === "kafarm" && /open live admin|live admin chat|needs admin|I escalated|cannot approve|move money|fraud|wrong rooster|account safety/i.test(m.text));
-  return (
-    <Shell role="customer" title="Support">
-      <PageTitle title="Support" text="Chat with Ka-Farm first. Live admin appears only when the concern needs review." icon="support" />
-      <section className="mx-auto max-w-4xl overflow-hidden rounded-[28px] border border-[#e3ded0] bg-white shadow-sm">
-        <div className="grid gap-4 border-b border-[#ece6d8] bg-[#fffdf7] p-4 md:grid-cols-[136px_1fr] md:items-center">
-          <div className="mx-auto h-40 w-32 overflow-hidden rounded-[28px] border-4 border-white bg-[#eef4ea] shadow-sm">
-            <img src="/farmconnect/kafarm/ka-farm-mascot.png" alt="KaFarm mascot" className="h-full w-full object-contain p-1" />
-          </div>
-          <div className="rounded-3xl rounded-tl-sm border border-[#e3ded0] bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-2xl font-black">{escalated ? "Live Admin Escalation" : "Ka-Farm Support"}</h2>
-              <Badge tone={escalated ? "warn" : "good"}>{escalated ? "Escalated" : "Ka-Farm First"}</Badge>
-            </div>
-            <p className="mt-2 text-sm font-bold leading-6 text-[#667267]">{escalated ? "Admin queue received this chat. KaFarm already prepared the summary and evidence trail." : "Kumusta buddy. Ako si KaFarm. Mag-type ka lang dito, sasagot muna ako. Kapag money, KYC, fraud, legal, or unclear, ipapasa ko sa admin."}</p>
-            <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#eef4ea] px-3 py-1 text-xs font-black uppercase text-[#1f6b45]">
-              typing assistant <span className="animate-pulse">...</span>
-            </p>
-          </div>
-        </div>
-        <div className="min-h-[62vh] bg-[linear-gradient(180deg,#fffdf7_0%,#f6f3e8_100%)] p-4">
-          <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-2">
-            {messages.map((m, i) => (
-              <div key={i} className={"flex max-w-[92%] items-start gap-2 " + (m.from === "customer" ? "ml-auto justify-end" : "")}>
-                {m.from === "kafarm" && (
-                  <div className="h-14 w-12 shrink-0 overflow-hidden rounded-2xl border-2 border-white bg-[#eef4ea] shadow-sm">
-                    <img src="/farmconnect/kafarm/ka-farm-mascot.png" alt="" className="h-full w-full object-contain p-1" />
-                  </div>
-                )}
-                <div className={"rounded-2xl p-3 shadow-sm " + (m.from === "customer" ? "bg-[#1f6b45] text-white" : m.from === "admin" ? "bg-sky-50 text-[#12375a] ring-1 ring-sky-100" : "rounded-tl-sm bg-white")}>
-                  <b>{m.from === "customer" ? "You" : m.from === "admin" ? "Admin" : "Ka-Farm"}</b>
-                  {m.from === "kafarm" && <span className="ml-2 text-[11px] font-black uppercase text-[#1f6b45]">typing...</span>}
-                  <p className="mt-1 text-sm leading-6">{m.text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="border-t border-[#ece6d8] bg-white p-4">
-          {showEscalate && (
-            <button onClick={openLiveChat} className="mb-3 w-full rounded-2xl bg-amber-300 px-4 py-3 font-black text-[#17251d]">
-              Open Live Admin Escalation
-            </button>
-          )}
-          <div className="flex gap-2">
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") send();
-              }}
-              placeholder={escalated ? "Add details for admin..." : "Message Ka-Farm..."}
-              className="flex-1 rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-4 font-bold"
-            />
-            <button onClick={send} className="rounded-2xl bg-[#1f6b45] px-6 font-black text-white">
-              Send
-            </button>
-          </div>
-          <p className="mt-2 text-xs font-bold text-[#667267]">{dbNote}</p>
-        </div>
-      </section>
-    </Shell>
-  );
+  return <Shell role="customer" title="Support"><SupportConversation role="customer" /></Shell>;
 }
-export function SettingsPage() {
+export function SettingsPage({ verificationOnly = false }: { verificationOnly?: boolean } = {}) {
+  const pathname = usePathname();
+  const isCustomerV2 = pathname.startsWith("/customer-v2");
   type SettingsPanel = "kyc" | "pin" | "password" | "contact";
   type KycFlowState = "loading" | "not_submitted" | "pending" | "rejected" | "approved" | "error";
   const fallbackProfile = {
@@ -5349,6 +5553,8 @@ export function SettingsPage() {
   const [kycIdBackFile, setKycIdBackFile] = useState<File | null>(null);
   const [kycSelfieFile, setKycSelfieFile] = useState<File | null>(null);
   const [kycSubmitting, setKycSubmitting] = useState(false);
+  const kycBusy = useRef(false);
+  const kycUnconfirmed = useRef(false);
   const [kycFlow, setKycFlow] = useState<{
     state: KycFlowState;
     note: string | null;
@@ -5359,7 +5565,7 @@ export function SettingsPage() {
   const kycConsentVersion = "kyc-consent-v1-2026-07-09";
   const kycConsentText = "I consent to FarmConnect collecting and processing my government ID, selfie, address, birthdate, and payout-match details for KYC verification, fraud prevention, withdrawal safety, and admin review. I understand withdrawals stay locked until KYC is reviewed.";
   const [kycConsent, setKycConsent] = useState(false);
-  const [activePanel, setActivePanel] = useState<SettingsPanel | null>(null);
+  const [activePanel, setActivePanel] = useState<SettingsPanel | null>(verificationOnly ? "kyc" : null);
   const [kyc, setKyc] = useState({
     legalName: profile.name,
     birthdate: profile.birthdate,
@@ -5509,7 +5715,7 @@ export function SettingsPage() {
       text: "Manage GCash, Maya, or bank payout.",
       icon: "wallet",
       action: "Manage Payout",
-      href: "/customer/withdraw/add-payout",
+        href: isCustomerV2 ? "/customer-v2/withdraw/add-payout" : "/customer/withdraw/add-payout",
     },
     {
       key: "contact",
@@ -5523,7 +5729,7 @@ export function SettingsPage() {
       text: "Open receipts, inbox, and records.",
       icon: "file",
       action: "Open Inbox",
-      href: "/customer/inbox",
+        href: isCustomerV2 ? "/customer-v2/inbox" : "/customer/inbox",
     },
   ];
   function cardClass(tone?: "green" | "amber" | "blue") {
@@ -5605,6 +5811,11 @@ export function SettingsPage() {
     return () => window.clearTimeout(timer);
   }, [activePanel, kyc.address, kyc.postal, kyc.idType, kyc.idLast4, kycIdPhoto, kycIdBackPhoto, kycSelfiePhoto]);
   async function submitKyc() {
+    if (kycBusy.current || kycSubmitting) return;
+    if (!["not_submitted", "rejected"].includes(kycFlow.state) || kycUnconfirmed.current) {
+      setSettingsNote("Check your verification status before sending again. An existing submission may already be under review.");
+      return;
+    }
     if (!kycIdFile || !kycIdBackFile || !kycSelfieFile) {
       setSettingsNote("KYC needs a new ID front, ID back, and selfie photo before sending.");
       return;
@@ -5613,21 +5824,18 @@ export function SettingsPage() {
       setSettingsNote("Please confirm KYC consent before sending. This protects both the customer and FarmConnect records.");
       return;
     }
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) {
-      setSettingsNote("Please login first before sending KYC. This keeps your ID, selfie, consent, and inbox notice attached to the correct customer account.");
-      return;
-    }
-    const submittedAt = new Date().toLocaleString();
-    const inboxNotice = {
-      tab: "Alerts",
-      title: "KYC Submitted",
-      text: `Your KYC is under review. Submitted ${submittedAt}. We will notify you when admin finishes checking it.`,
-      status: "Pending",
-      action: "read",
-    };
+    kycBusy.current = true;
     try {
       setKycSubmitting(true);
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error("Please sign in before submitting verification.");
+      const latest = await getCurrentCustomerKycSubmission();
+      if (latest && !["rejected", "declined", "denied", "needs_info"].includes(latest.status)) {
+        setKycFlow({state: ["approved", "verified", "accepted"].includes(latest.status) ? "approved" : "pending", note: latest.adminNote, submittedAt: latest.submittedAt});
+        setActivePanel(null);
+        setSettingsNote("Your verification is already saved. No new submission was sent.");
+        return;
+      }
       setSettingsNote("Uploading ID and selfie securely before submitting KYC...");
       const submissionFolder = `submissions/${Date.now()}`;
       const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
@@ -5663,6 +5871,7 @@ export function SettingsPage() {
         p_metadata: { source: "customer_settings", id_type: kyc.idType },
       });
       if (consentError) throw consentError;
+      kycUnconfirmed.current = true;
       const { error } = await supabase.rpc("customer_submit_kyc", {
         p_legal_name: profile.name,
         p_birthdate: profile.birthdate || null,
@@ -5679,31 +5888,6 @@ export function SettingsPage() {
         p_address_proof_url: null,
       });
       if (error) throw error;
-      const reviewRecord = {
-        customer: profile.name,
-        email: profile.email,
-        idType: kyc.idType,
-        idNumber: kyc.idLast4,
-        submittedAt,
-        faceStatus: "Manual admin review",
-        status: "Ready for admin review",
-        note: "Automated face checking is disabled. Admin must verify the ID and selfie before approval.",
-        faceScore: null,
-        engineDetails: ["Manual identity review required"],
-        front: frontPath,
-        back: backPath,
-        selfie: selfiePath,
-        consentAccepted: true,
-        consentAcceptedAt: submittedAt,
-        consentVersion: kycConsentVersion,
-        consentText: kycConsentText,
-      };
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("farmconnect_latest_kyc_review", JSON.stringify(reviewRecord));
-        const rawInbox = window.localStorage.getItem("farmconnect_customer_inbox");
-        const currentInbox = rawInbox ? JSON.parse(rawInbox) : [];
-        window.localStorage.setItem("farmconnect_customer_inbox", JSON.stringify([inboxNotice, ...currentInbox.filter((item: any) => item.title !== inboxNotice.title)]));
-      }
       setKycFlow({
         state: "pending",
         note: null,
@@ -5715,8 +5899,12 @@ export function SettingsPage() {
     } catch (error) {
       console.error("FarmConnect KYC submit failed", error);
       const reason = readableAppError(error);
-      setSettingsNote(`KYC was not submitted. ${reason || "Please try again or ask admin to check private KYC storage access."}`);
+      if (kycUnconfirmed.current) {
+        setKycFlow({state:"error",note:"Submission needs confirmation. Reopen verification to check its saved status.",submittedAt:null});
+      }
+      setSettingsNote(`Verification could not be confirmed. Check your verification status before submitting again. ${reason}`);
     } finally {
+      kycBusy.current = false;
       setKycSubmitting(false);
     }
   }
@@ -5935,9 +6123,10 @@ export function SettingsPage() {
   const panelTitle = activePanel === "kyc" ? "KYC Verification" : activePanel === "pin" ? "Wallet PIN" : activePanel === "password" ? "Change Password" : activePanel === "contact" ? "Contact Details" : "Settings";
   return (
     <Shell role="customer" title="Profile Settings">
-      <PageTitle title="Profile Settings" text="Manage profile, KYC, wallet security, payout account, and records." icon="settings" />
-      <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+      <PageTitle title={verificationOnly ? "Complete your registration" : "Profile Settings"} text={verificationOnly ? "Step 2: submit your ID and selfie for verification." : "Manage profile, KYC, wallet security, payout account, and records."} icon="settings" />
+      {verificationOnly && <Link href="/customer-v2/roosters" className="my-3 inline-block underline">Continue to your roosters</Link>}
+      <div className={verificationOnly ? "grid gap-5" : "grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]"}>
+        <aside className={verificationOnly ? "hidden" : "space-y-5 lg:sticky lg:top-24 lg:self-start"}>
           <Card>
             <div className="flex items-center gap-4">
               <div className="relative h-24 w-24 shrink-0">
@@ -6029,7 +6218,9 @@ export function SettingsPage() {
               </div>
               <Badge tone={activePanel === "kyc" ? "warn" : activePanel ? "neutral" : "good"}>{activePanel ? "Open" : "Ready"}</Badge>
             </div>
-            {!activePanel && (
+            {verificationOnly && ["pending", "approved"].includes(kycFlow.state) && <p role="status" className="mt-5 rounded-xl bg-[#edf7f5] p-4">{kycFlow.state === "approved" ? "Verified" : "Under review"}</p>}
+            {activePanel === "kyc" && ["loading", "error"].includes(kycFlow.state) && <p role="status" className="mt-5 p-4">{kycFlow.state === "loading" ? "Checking verification…" : kycFlow.note || "Verification could not be checked. Reopen this page to retry the status check."}</p>}
+            {!activePanel && !verificationOnly && (
               <div className="mt-6 grid min-h-[420px] place-items-center rounded-3xl border border-dashed border-[#ded8c9] bg-[#fffdf7]">
                 <div className="max-w-sm text-center">
                   <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#f6f3e8] text-[#1f6b45]">
@@ -6040,7 +6231,7 @@ export function SettingsPage() {
                 </div>
               </div>
             )}
-            {activePanel === "kyc" && (
+            {activePanel === "kyc" && ["not_submitted", "rejected"].includes(kycFlow.state) && (
               <div className="mt-5 grid gap-3 md:grid-cols-2">
                 <div className="rounded-2xl border border-[#ded8c9] bg-[#f6f3e8] px-4 py-3">
                   <p className="text-xs font-black uppercase text-[#667267]">Registered Name</p>
@@ -6257,7 +6448,14 @@ export function CaretakerTasks() {
   const [selected, setSelected] = useState<CaretakerTaskView | null>(null);
   const [taskNote, setTaskNote] = useState("Loading active tasks from database...");
   const [documentation, setDocumentation] = useState("");
+  const [careEntries, setCareEntries] = useState<DailyCareEntry[]>([]);
+  const [carePeriod, setCarePeriod] = useState<DailyCareEntry["period"]>("Morning");
+  const [careTime, setCareTime] = useState("05:30");
+  const [careWork, setCareWork] = useState("");
+  const [careFindings, setCareFindings] = useState("");
+  const [dailySubmissionKey, setDailySubmissionKey] = useState("");
   const [proofFiles, setProofFiles] = useState<File[]>([]);
+  const [existingProofs, setExistingProofs] = useState<Array<{ path: string; url: string }>>([]);
   const [qrValue, setQrValue] = useState("");
   const [qrSkipped, setQrSkipped] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
@@ -6267,11 +6465,14 @@ export function CaretakerTasks() {
   const [feedUsed, setFeedUsed] = useState("");
   const [actualRemainingFeed, setActualRemainingFeed] = useState("");
   const [saleAmount, setSaleAmount] = useState("");
-  const [healthStatus, setHealthStatus] = useState<"pass" | "watch" | "isolate_and_escalate">("pass");
+  const [healthStatus, setHealthStatus] = useState<"" | "pass" | "watch" | "isolate_and_escalate">("");
+  const [checklistAnswers, setChecklistAnswers] = useState<Record<string, boolean>>({});
   const [submitAttempt, setSubmitAttempt] = useState(0);
   const [missionInventory, setMissionInventory] = useState<CareTaskInventoryItem[]>([]);
   const [inventoryItemId, setInventoryItemId] = useState("");
   const proofInputRef = useRef<HTMLInputElement>(null);
+  const uploadedProofsRef = useRef<Map<File, string>>(new Map());
+  const submittingRef = useRef(false);
   const qrTagRef = useRef<HTMLDivElement>(null);
   const qrVideoRef = useRef<HTMLVideoElement>(null);
   const qrStreamRef = useRef<MediaStream | null>(null);
@@ -6285,6 +6486,10 @@ export function CaretakerTasks() {
   const isPaidMissionTask = selected?.workflowType === "care_plan_daily_mission";
   const isManualMissionTask = selected?.workflowType === "manual_standard_mission";
   const isMissionTask = isPaidMissionTask || isManualMissionTask;
+  const isDailyCareReportTask = Boolean(selected && !isSalePriceTask && !isSaleReleaseTask && selected.workflowType !== "qr_tagging");
+  const dailyReportDocumentation = careEntries.length ? serializeDailyCareReport(careEntries) : "";
+  const effectiveDocumentation = isDailyCareReportTask ? dailyReportDocumentation : documentation.trim();
+  const totalProofCount = existingProofs.length + proofFiles.length;
   const selectedMissionInventory = missionInventory.find((item) => item.id === inventoryItemId);
   const reservedFeedKg = Number(selectedMissionInventory?.reserved_kg || (Number(selectedMissionInventory?.reserved_inventory_units || 0) * Number(selectedMissionInventory?.kg_per_inventory_unit || 0)));
   const expectedRemainingFeedKg = Math.max(0, reservedFeedKg - Number(feedUsed || 0));
@@ -6323,21 +6528,66 @@ export function CaretakerTasks() {
   }, []);
 
   function resetDraft(task: CaretakerTaskView) {
+    if (submittingRef.current) return;
+    uploadedProofsRef.current.clear();
     setSelected(task);
-    setDocumentation("");
+    const previousEntries = Array.isArray(task.backjobProof?.daily_report) && task.backjobProof.daily_report.length
+      ? task.backjobProof.daily_report
+      : parseDailyCareReport(task.backjobProof?.free_note);
+    setDocumentation(task.backjobProof?.free_note && !previousEntries.length ? task.backjobProof.free_note : "");
+    setCareEntries(previousEntries);
+    setCarePeriod("Morning");
+    setCareTime("05:30");
+    setCareWork("");
+    setCareFindings("");
+    setDailySubmissionKey(typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${task.id}-${Date.now()}`);
     setProofFiles([]);
+    const previousPaths = task.backjobProof?.stored_paths || [];
+    const previousUrls = task.backjobProof?.signed_urls || [];
+    setExistingProofs(previousPaths.map((path, index) => ({ path, url: previousUrls[index] || "" })));
     setQrValue("");
     setQrSkipped(false);
     setSaleAmount("");
-    setHealthStatus("pass");
+    setHealthStatus(task.backjobProof?.health_status || "");
+    const restoredChecks: Record<string, boolean> = {};
+    const groups: Record<string, string> = { operations: "operations_checklist", housing: "housing_checklist", supplements: "supplement_checklist", vaccines: "vaccine_checklist", health: "health_checklist" };
+    for (const [group, entries] of Object.entries(task.backjobProof?.checklist_results || {})) {
+      for (const entry of entries || []) restoredChecks[`${groups[group]}:${entry.label}`] = entry.checked === true;
+    }
+    setChecklistAnswers(restoredChecks);
     setMissionInventory([]);
-    setInventoryItemId("");
-    setFeedUsed("");
-    setActualRemainingFeed("");
+    const previousUsage = task.backjobProof?.inventory_usage?.[0];
+    setInventoryItemId(previousUsage?.inventory_item_id || "");
+    setFeedUsed(previousUsage ? String(previousUsage.quantity) : task.backjobProof?.feed_quantity_used != null ? String(task.backjobProof.feed_quantity_used) : "");
+    setActualRemainingFeed(task.backjobProof?.actual_remaining_feed != null ? String(task.backjobProof.actual_remaining_feed) : "");
     setCameraOpening(false);
     setCameraMessage("Camera is ready to open. You can also enter the QR manually or skip verification.");
     setPhase("work");
-    setTaskNote(task.workflowType === "sale_release_confirmation" ? `Opened ${task.task}. Read the sale instruction and submit your acknowledgement. No photo or QR is required.` : `Opened ${task.task}. Complete the documentation and photos before QR verification.`);
+    setTaskNote(task.status === "backjob" ? `Correction required: ${task.backjobProof?.admin_note || "Review the returned report, replace the incorrect evidence, then resubmit."}` : task.workflowType === "sale_release_confirmation" ? `Opened ${task.task}. Read the sale instruction and submit your acknowledgement. No photo or QR is required.` : `Opened ${task.task}. Complete the documentation and photos before QR verification.`);
+  }
+
+  function addCareEntry() {
+    const work = careWork.trim();
+    const findings = careFindings.trim();
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(careTime) || work.length < 3 || findings.length < 3 || work.length > 2000 || findings.length > 2000 || careEntries.length >= 5) {
+      setTaskNote("Use a valid time and 3–2000 characters for work and findings. Maximum five updates per report.");
+      return;
+    }
+    // Keep insertion order: every entry corresponds to the photo at the same index.
+    const next = [...careEntries, { period: carePeriod, time: careTime, work, findings }];
+    setCareEntries(next);
+    setCareWork("");
+    setCareFindings("");
+    setTaskNote(`${carePeriod} update added. Attach one clear photo for every care update.`);
+  }
+
+  function removeCareEntry(index: number) {
+    setCareEntries((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    if (index < existingProofs.length) {
+      setExistingProofs((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    } else {
+      setProofFiles((current) => current.filter((_, itemIndex) => itemIndex !== index - existingProofs.length));
+    }
   }
 
   useEffect(() => {
@@ -6361,7 +6611,7 @@ export function CaretakerTasks() {
   function addProofFiles(files?: FileList | null) {
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime"];
     const accepted = Array.from(files || []).filter((file) => allowedTypes.includes(file.type) && file.size <= (file.type.startsWith("video/") ? 50 : 10) * 1024 * 1024);
-    setProofFiles((current) => [...current, ...accepted].slice(0, 5));
+    setProofFiles((current) => [...current, ...accepted].slice(0, Math.max(0, 5 - existingProofs.length)));
     setTaskNote(accepted.length ? `${accepted.length} evidence file(s) attached. Finish the documentation, then submit for verification.` : "Use JPG, PNG, WebP up to 10 MB or MP4, WebM, MOV video up to 50 MB.");
   }
 
@@ -6451,16 +6701,28 @@ export function CaretakerTasks() {
 
   function openQrVerification() {
     if (!selected) return;
-    if (documentation.trim().length < 5) {
-      setTaskNote("Write a clear work documentation before submitting.");
+    if (isMissionTask && !healthStatus) {
+      setTaskNote("Choose the actual health result before submitting.");
+      return;
+    }
+    if (isMissionTask && healthStatus === "pass" && ["operations_checklist", "housing_checklist", "supplement_checklist", "vaccine_checklist", "health_checklist"].some((key) => missionList(key).some((label) => !checklistAnswers[`${key}:${label}`]))) {
+      setTaskNote("Confirm each completed checklist item. If a health check did not pass, choose WATCH or ISOLATE AND ESCALATE.");
+      return;
+    }
+    if (effectiveDocumentation.length < 5) {
+      setTaskNote(isDailyCareReportTask ? "Add at least one timed care update before submitting." : "Write a clear work documentation before submitting.");
       return;
     }
     if (isSalePriceTask && Number(saleAmount) <= 0) {
       setTaskNote("Enter the inspected rooster price before submitting.");
       return;
     }
-    if (!proofFiles.length && !isSaleReleaseTask) {
+    if (!totalProofCount && !isSaleReleaseTask) {
       setTaskNote("Attach at least one clear work photo before submitting.");
+      return;
+    }
+    if (isDailyCareReportTask && totalProofCount !== careEntries.length) {
+      setTaskNote("Attach one clear photo for every timed care update before submitting.");
       return;
     }
     if (needsFeedQty && Number(feedUsed) <= 0) {
@@ -6591,12 +6853,15 @@ export function CaretakerTasks() {
   }
 
   async function sendToAdmin(allowFromWork = false) {
-    if (!selected || (phase !== "confirm" && !allowFromWork)) return;
+    if (!selected || submittingRef.current || (phase !== "confirm" && !allowFromWork)) return;
+    submittingRef.current = true;
     setPhase("sending");
     setTaskNote("Uploading proof and sending it to Admin Task Verification...");
     try {
-      const proofUrls: string[] = [];
+      const proofUrls: string[] = existingProofs.map((proof) => proof.path);
       for (let index = 0; index < proofFiles.length; index += 1) {
+        const cachedPath = uploadedProofsRef.current.get(proofFiles[index]);
+        if (cachedPath) { proofUrls.push(cachedPath); continue; }
         const isVideo = proofFiles[index].type.startsWith("video/");
         proofUrls.push(
           await uploadPrivateEvidenceFile({
@@ -6609,44 +6874,50 @@ export function CaretakerTasks() {
             upsert: false,
           }),
         );
+        uploadedProofsRef.current.set(proofFiles[index], proofUrls[proofUrls.length - 1]);
       }
       if (isSalePriceTask || isSaleReleaseTask) {
         await submitCaretakerRoosterSaleTask({
           taskId: selected.id,
+          submissionKey: dailySubmissionKey,
           declaredAmount: isSalePriceTask ? Number(saleAmount) : null,
           proofUrls,
-          freeNote: documentation.trim(),
+          freeNote: effectiveDocumentation,
           qrVerified: isSaleReleaseTask ? false : !qrSkipped,
           serialException: isSaleReleaseTask ? false : qrSkipped,
         });
       } else if (isMissionTask) {
+        if (!healthStatus) throw new Error("Choose the actual health result before submitting.");
         const checklistResults = {
             operations: missionList("operations_checklist").map((label) => ({
               label,
-              checked: true,
+              checked: checklistAnswers[`operations_checklist:${label}`] === true,
             })),
             housing: missionList("housing_checklist").map((label) => ({
               label,
-              checked: true,
+              checked: checklistAnswers[`housing_checklist:${label}`] === true,
             })),
             supplements: missionList("supplement_checklist").map((label) => ({
               label,
-              checked: true,
+              checked: checklistAnswers[`supplement_checklist:${label}`] === true,
             })),
             vaccines: missionList("vaccine_checklist").map((label) => ({
               label,
-              checked: true,
+              checked: checklistAnswers[`vaccine_checklist:${label}`] === true,
             })),
             health: missionList("health_checklist").map((label) => ({
               label,
-              checked: true,
+              checked: checklistAnswers[`health_checklist:${label}`] === true,
             })),
           };
         const inventoryReconciliationNote = `Feed inventory: ${Number(feedUsed).toFixed(3)} kg used; ${Number(actualRemainingFeed).toFixed(3)} kg actual remaining; ${expectedRemainingFeedKg.toFixed(3)} kg expected remaining; ${hasInventoryDiscrepancy ? "INVENTORY DISCREPANCY - ADMIN REVIEW REQUIRED" : "balance matched"}.`;
         const missionBase = {
           taskId: selected.id,
+          submissionKey: dailySubmissionKey,
+          dailyReport: careEntries,
+          actualRemainingFeed: Number(actualRemainingFeed),
           proofUrls,
-          freeNote: `${documentation.trim()}\n\n${inventoryReconciliationNote}`,
+          freeNote: `${effectiveDocumentation}\n${inventoryReconciliationNote}`,
           qrVerified: !qrSkipped,
           serialException: qrSkipped,
           healthStatus,
@@ -6669,18 +6940,24 @@ export function CaretakerTasks() {
           proofUrl: proofUrls[0],
           proofUrls,
           presetNote: `${selected.task} completed${needsFeedQty ? ` - ${feedUsed} kg used` : ""}`,
-          freeNote: documentation.trim(),
+          freeNote: effectiveDocumentation,
           qrVerified: !qrSkipped,
           serialException: qrSkipped,
           feedQuantityUsed: needsFeedQty ? Number(feedUsed) : null,
           feedUnit: needsFeedQty ? "kg" : null,
+          dailyReport: isDailyCareReportTask ? careEntries : null,
+          submissionKey: dailySubmissionKey,
         });
       }
       const nextTasks = tasks.filter((task) => task.id !== selected.id);
       setTasks(nextTasks);
-      setSelected(nextTasks[0] || null);
+      setSelected(null);
       setDocumentation("");
+      setCareEntries([]);
+      setCareWork("");
+      setCareFindings("");
       setProofFiles([]);
+      setExistingProofs([]);
       setQrValue("");
       setQrSkipped(false);
       setSaleAmount("");
@@ -6690,6 +6967,8 @@ export function CaretakerTasks() {
       setPhase("confirm");
       const message = readableAppError(error);
       setTaskNote(/bucket not found/i.test(message) ? "Send blocked: caretaker task-proof storage is not installed. Apply database SQL 033, then send again. Your draft is still here." : /null value in column ["']task_id["']|TASK_PROOF_TASK_ID/i.test(message) ? "Send blocked: task proof IDs are not synchronized. Apply SQL 037, reload the task, then send again. Your draft is still here." : /TASK_NOT_ASSIGNED_TO_(CARETAKER|CURRENT_CARETAKER)/i.test(message) ? "Send blocked: this task is linked to a different legacy caretaker record. Apply SQL 036, reload the task, then send again. Your draft is still here." : `Send failed: ${message || "Check task-proof storage, caretaker assignment, and SQL 033."}`);
+    } finally {
+      submittingRef.current = false;
     }
   }
 
@@ -6831,7 +7110,7 @@ export function CaretakerTasks() {
                             <h4 className="font-black">{String(title)}</h4>
                             <ol className="mt-3 max-h-72 list-decimal space-y-2 overflow-y-auto pl-5">
                               {missionList(String(key)).map((item) => (
-                                <li key={item} className="rounded-xl bg-[#f6f3e8] p-3 text-xs font-bold leading-5">{item}</li>
+                                <li key={item} className="rounded-xl bg-[#f6f3e8] p-3 text-xs font-bold leading-5"><label className="flex items-start gap-3"><input type="checkbox" checked={checklistAnswers[`${key}:${item}`] === true} onChange={(event) => setChecklistAnswers((current) => ({ ...current, [`${key}:${item}`]: event.target.checked }))} className="mt-1 h-5 w-5 shrink-0" /><span>{item}</span></label></li>
                               ))}
                             </ol>
                           </section>
@@ -6840,6 +7119,7 @@ export function CaretakerTasks() {
                       <label className="block rounded-2xl bg-white p-4">
                         <span className="font-black">Health Result</span>
                         <select value={healthStatus} onChange={(event) => setHealthStatus(event.target.value as typeof healthStatus)} className="mt-2 w-full rounded-xl border p-3 font-black">
+                          <option value="" disabled>Choose health result</option>
                           <option value="pass">PASS</option>
                           <option value="watch">WATCH — keep mission open</option>
                           <option value="isolate_and_escalate">ISOLATE AND ESCALATE</option>
@@ -6889,10 +7169,27 @@ export function CaretakerTasks() {
                       <b>Final sale acknowledgement:</b> Confirm in your documentation that you read the approved sale instruction and the rooster is ready for release. No photo or QR scan is required.
                     </div>
                   )}
-                  <label className="block">
-                    <span className="text-sm font-black">Work Documentation</span>
-                    <textarea value={documentation} onChange={(event) => setDocumentation(event.target.value)} className="mt-2 min-h-32 w-full rounded-2xl border border-[#ded8c9] p-4 text-sm font-bold" placeholder={isSaleReleaseTask ? "Write your acknowledgement and final sale release note..." : "Write what was done, what was observed, and any quantity used..."} />
-                  </label>
+                  {isDailyCareReportTask ? (
+                    <section className="rounded-3xl border border-[#cfe2d7] bg-[#f8fbf9] p-4 sm:p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div><p className="text-xs font-black uppercase tracking-[.12em] text-[#087f83]">Today&apos;s report</p><h3 className="mt-1 text-2xl font-black">Add care update</h3></div>
+                        <Badge tone={careEntries.length ? "good" : "neutral"}>{careEntries.length} added</Badge>
+                      </div>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <label className="block"><span className="text-sm font-black">Part of day</span><select value={carePeriod} onChange={(event) => setCarePeriod(event.target.value as DailyCareEntry["period"])} className="mt-2 w-full rounded-xl border border-[#cfe2d7] bg-white p-3 font-bold"><option>Morning</option><option>Midday</option><option>Afternoon</option><option>Evening</option></select></label>
+                        <label className="block"><span className="text-sm font-black">What time?</span><input type="time" value={careTime} onChange={(event) => setCareTime(event.target.value)} className="mt-2 w-full rounded-xl border border-[#cfe2d7] bg-white p-3 font-black" /></label>
+                      </div>
+                      <label className="mt-3 block"><span className="text-sm font-black">What did you do?</span><textarea value={careWork} onChange={(event) => setCareWork(event.target.value)} className="mt-2 min-h-24 w-full rounded-xl border border-[#cfe2d7] bg-white p-3 font-bold" placeholder="Example: Fed the rooster, replaced the water, and cleaned the pen." /></label>
+                      <label className="mt-3 block"><span className="text-sm font-black">Findings</span><textarea value={careFindings} onChange={(event) => setCareFindings(event.target.value)} className="mt-2 min-h-20 w-full rounded-xl border border-[#cfe2d7] bg-white p-3 font-bold" placeholder="Example: Ate well and moved normally." /></label>
+                      <button type="button" onClick={addCareEntry} className="mt-4 min-h-12 w-full rounded-xl bg-[#087f83] px-4 py-3 font-black text-white">Add to Today</button>
+                      {careEntries.length > 0 && <div className="mt-4 space-y-3">{careEntries.map((entry, index) => <article key={`${entry.time}-${index}`} className="rounded-2xl bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><b>{formatCareEntryTime(entry.time)} · {entry.period}</b><p className="mt-2 text-sm font-bold text-[#536a68]">{entry.work}</p><p className="mt-1 text-sm font-bold text-[#536a68]"><span className="text-[#10251d]">Findings:</span> {entry.findings}</p></div><button type="button" onClick={() => removeCareEntry(index)} className="rounded-lg bg-[#f4efe4] px-3 py-2 text-xs font-black">Remove</button></div></article>)}</div>}
+                    </section>
+                  ) : (
+                    <label className="block">
+                      <span className="text-sm font-black">Work Documentation</span>
+                      <textarea value={documentation} onChange={(event) => setDocumentation(event.target.value)} className="mt-2 min-h-32 w-full rounded-2xl border border-[#ded8c9] p-4 text-sm font-bold" placeholder={isSaleReleaseTask ? "Write your acknowledgement and final sale release note..." : "Write what was done and what was observed..."} />
+                    </label>
+                  )}
                   {(needsFeedQty || isMissionTask) && (
                     <div className="grid max-w-2xl gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:grid-cols-2">
                       <label className="block">
@@ -6923,7 +7220,7 @@ export function CaretakerTasks() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <b>Work Evidence</b>
-                          <p className="text-sm font-bold text-[#667267]">{needsVideoProof ? "Attach the requested video; clear photos may be added too." : "Attach 1-5 clear photos or the requested video. QR opens after Submit Work."}</p>
+                          <p className="text-sm font-bold text-[#667267]">{isDailyCareReportTask ? `Attach one clear photo for every update (${totalProofCount}/${careEntries.length || 1}).` : needsVideoProof ? "Attach the requested video; clear photos may be added too." : "Attach 1-5 clear photos or the requested video. QR opens after Submit Work."}</p>
                         </div>
                         <button type="button" onClick={() => proofInputRef.current?.click()} className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">
                           <Icon name="upload" className="mr-2 inline h-5 w-5" />
@@ -6932,10 +7229,17 @@ export function CaretakerTasks() {
                       </div>
                       <input ref={proofInputRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" multiple className="hidden" onChange={(event) => addProofFiles(event.target.files)} />
                       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                        {existingProofs.map((proof, index) => (
+                          <div key={proof.path} className="relative overflow-hidden rounded-xl border border-amber-300 bg-white">
+                            {proof.url ? <img src={proof.url} alt={`Returned proof ${index + 1}`} className="aspect-square w-full object-cover" /> : <div className="grid aspect-square place-items-center p-2 text-center text-xs font-black text-[#667267]">Previous photo</div>}
+                            <span className="absolute bottom-1 left-1 rounded bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-950">Previous</span>
+                            <button type="button" onClick={() => isDailyCareReportTask ? removeCareEntry(index) : setExistingProofs((items) => items.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-red-600 text-xs font-black text-white" aria-label={isDailyCareReportTask ? `Remove update and photo ${index + 1}` : `Remove previous proof ${index + 1}`}>x</button>
+                          </div>
+                        ))}
                         {previews.map(({ file, url }, index) => (
                           <div key={`${file.name}-${index}`} className="relative overflow-hidden rounded-xl border bg-white">
                             {file.type.startsWith("video/") ? <video src={url} controls playsInline className="aspect-square w-full bg-black object-contain" /> : <img src={url} alt={`Proof ${index + 1}`} className="aspect-square w-full object-cover" />}
-                            <button type="button" onClick={() => setProofFiles((files) => files.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-red-600 text-xs font-black text-white" aria-label={`Remove ${file.name}`}>
+                            <button type="button" onClick={() => isDailyCareReportTask ? removeCareEntry(existingProofs.length + index) : setProofFiles((files) => files.filter((_, itemIndex) => itemIndex !== index))} className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-red-600 text-xs font-black text-white" aria-label={isDailyCareReportTask ? `Remove update and photo ${existingProofs.length + index + 1}` : `Remove ${file.name}`}>
                               x
                             </button>
                           </div>
@@ -7129,205 +7433,7 @@ export function CompletedTasks() {
   );
 }
 export function CaretakerChat() {
-  type ChatMsg = {
-    from: "caretaker" | "kafarm" | "admin";
-    text: string;
-    at: string;
-  };
-  const [messages, setMessages] = useState<ChatMsg[]>([
-    {
-      from: "kafarm",
-      text: "Caretaker buddy, KaFarm muna. Sabihin kung QR, camera, serial, upload, task note, or proof ang problema. Kapag kailangan ng admin release/exception, ie-escalate ko.",
-      at: "Now",
-    },
-  ]);
-  const [msg, setMsg] = useState("");
-  const [escalated, setEscalated] = useState(false);
-  const [caseId, setCaseId] = useState("");
-  const [dbNote, setDbNote] = useState("No active DB chat yet. Send a message to start.");
-  function mapCareMessages(rows: any[]): ChatMsg[] {
-    if (!rows.length)
-      return [
-        {
-          from: "kafarm",
-          text: "Caretaker buddy, KaFarm muna. Sabihin kung QR, camera, serial, upload, task note, or proof ang problema. Kapag kailangan ng admin release/exception, ie-escalate ko.",
-          at: "Now",
-        },
-      ];
-    return rows.map((row) => ({
-      from: row.sender_role === "caretaker" ? "caretaker" : row.sender_role === "admin" ? "admin" : "kafarm",
-      text: row.body,
-      at: new Date(row.created_at).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    })) as ChatMsg[];
-  }
-  async function loadCaretakerSession(sessionId?: string) {
-    try {
-      const id = sessionId || caseId;
-      if (!id) return;
-      const { data, error } = await getSupportMessages(id);
-      if (error) throw error;
-      setMessages(mapCareMessages(data || []));
-      const { data: session } = await getSupportSessionStatus(id);
-      setEscalated(["escalated", "admin_joined", "ended", "completed"].includes(session?.status || ""));
-      setDbNote("Caretaker chat trail saved to database.");
-    } catch {
-      setDbNote("Chat is visible here, but database sync needs admin/Buddy check.");
-    }
-  }
-  async function loadLatestCaretakerSession() {
-    try {
-      const { data, error } = await getLatestSupportSessionId();
-      if (error) throw error;
-      if (data?.id) {
-        setCaseId(data.id);
-        await loadCaretakerSession(data.id);
-      } else {
-        setDbNote("No active DB chat yet. Send a message to start.");
-      }
-    } catch {
-      setDbNote("Could not load previous caretaker chat. Send a new message or ask admin.");
-    }
-  }
-  useEffect(() => {
-    loadLatestCaretakerSession();
-  }, []);
-  useEffect(() => {
-    if (caseId) loadCaretakerSession(caseId);
-  }, [caseId]);
-  function replyFor(q: string) {
-    return getKaFarmReply(q, "caretaker");
-  }
-  async function saveCaretakerKaFarmReply(sessionId: string, body: string, metadata: Record<string, any> = {}) {
-    const { error } = await saveKaFarmSupportMessage(sessionId, body, metadata);
-    if (error) throw error;
-  }
-  function needsAdmin(q: string) {
-    return shouldEscalateToAdmin(q, "caretaker");
-  }
-  async function send() {
-    if (!msg.trim()) return;
-    const q = msg.trim();
-    const answer = replyFor(q);
-    const shouldEscalate = escalated || needsAdmin(q);
-    setMessages((current) => {
-      const next = [
-        ...current,
-        { from: "caretaker" as const, text: q, at: "Now" },
-        { from: "kafarm" as const, text: answer, at: "Now" },
-        ...(shouldEscalate && !escalated
-          ? [
-              {
-                from: "kafarm" as const,
-                text: "I escalated this to admin. Do not use serial exception, bypass QR, or send customer update until admin reviews it.",
-                at: "Now",
-              },
-            ]
-          : []),
-      ];
-      return next;
-    });
-    if (needsAdmin(q)) setEscalated(true);
-    setMsg("");
-    try {
-      const { data, error } = await sendSupportMessage({
-        role: "caretaker",
-        sessionId: caseId || null,
-        body: q,
-        forceEscalate: shouldEscalate,
-      });
-      if (error) throw error;
-      setCaseId(data);
-      await saveCaretakerKaFarmReply(data, answer, {
-        mode: "caretaker_support",
-        rule_based: true,
-      });
-      if (shouldEscalate && !escalated) await saveCaretakerKaFarmReply(data, `${getEscalationNotice(q, "caretaker")} Do not use serial exception, bypass QR, or send customer update until admin reviews it.`, { mode: "caretaker_support", escalation_notice: true });
-      await loadCaretakerSession(data);
-    } catch {
-      setDbNote("Message shown here, but DB save failed. Please check caretaker account mapping.");
-    }
-  }
-  async function escalateNow() {
-    setEscalated(true);
-    const last = [...messages].reverse().find((m) => m.from === "caretaker")?.text || "Caretaker requested admin exception";
-    setMessages((current) => [
-      ...current,
-      {
-        from: "kafarm",
-        text: "I escalated this to admin. No serial exception, QR bypass, or customer update should happen until admin reviews it.",
-        at: "Now",
-      },
-    ]);
-    try {
-      const { data, error } = await sendSupportMessage({
-        role: "caretaker",
-        sessionId: caseId || null,
-        body: last,
-        forceEscalate: true,
-      });
-      if (error) throw error;
-      setCaseId(data);
-      await saveCaretakerKaFarmReply(data, "I escalated this to admin. No serial exception, QR bypass, or customer update should happen until admin reviews it.", { mode: "caretaker_support", escalation_notice: true });
-      await loadCaretakerSession(data);
-    } catch {
-      setDbNote("Escalation visible here, but DB sync failed. Admin may need to check caretaker profile link.");
-    }
-  }
-  const showEscalate = !escalated && messages.some((m, i) => i > 0 && m.from === "kafarm" && /admin|exception|release|sensitive|wrong/i.test(m.text));
-  return (
-    <Shell role="caretaker" title="Chat Admin">
-      <PageTitle title="Chat Admin" text="Ask KaFarm first for QR, camera, serial, upload, task, or proof issues. Admin joins when exception is needed." icon="chat" />
-      <section className="mx-auto max-w-4xl overflow-hidden rounded-[28px] border border-[#e3ded0] bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ece6d8] bg-[#fffdf7] p-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-full bg-[#1f6b45] text-white">
-              <Icon name="chat" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black">{escalated ? "Admin Escalation Open" : "KaFarm Caretaker Help"}</h2>
-              <p className="text-sm font-bold text-[#667267]">Customer and caretaker still cannot chat directly.</p>
-            </div>
-          </div>
-          <Badge tone={escalated ? "warn" : "good"}>{escalated ? "Escalated" : "Ka-Farm First"}</Badge>
-        </div>
-        <div className="min-h-[62vh] bg-[linear-gradient(180deg,#fffdf7_0%,#f6f3e8_100%)] p-4">
-          <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-2">
-            {messages.map((m, i) => (
-              <div key={i} className={"max-w-[86%] rounded-2xl p-3 shadow-sm " + (m.from === "caretaker" ? "ml-auto bg-[#1f6b45] text-white" : m.from === "admin" ? "bg-sky-50 text-[#12375a] ring-1 ring-sky-100" : "bg-white")}>
-                <b>{m.from === "caretaker" ? "Caretaker" : m.from === "admin" ? "Admin" : "Ka-Farm"}</b>
-                <p className="mt-1 text-sm leading-6">{m.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="border-t border-[#ece6d8] bg-white p-4">
-          {showEscalate && (
-            <button onClick={escalateNow} className="mb-3 w-full rounded-2xl bg-amber-300 px-4 py-3 font-black text-[#17251d]">
-              Escalate to Admin
-            </button>
-          )}
-          <div className="flex gap-2">
-            <input
-              value={msg}
-              onChange={(e) => setMsg(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") send();
-              }}
-              className="flex-1 rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-4 font-bold"
-              placeholder="Message KaFarm about QR, camera, serial, upload, task, or proof..."
-            />
-            <button onClick={send} className="rounded-2xl bg-[#1f6b45] px-6 font-black text-white">
-              Send
-            </button>
-          </div>
-          <p className="mt-2 text-xs font-bold text-[#667267]">{dbNote}</p>
-        </div>
-      </section>
-    </Shell>
-  );
+  return <Shell role="caretaker" title="Support"><SupportConversation role="caretaker" /></Shell>;
 }
 export function CaretakerProfile() {
   const [caretaker, setCaretaker] = useState<any>(null);
@@ -9848,7 +9954,7 @@ function AdminLiveCareRequestQueue({ mode = "all" }: { mode?: "all" | "task" } =
 
 function AdminLiveTaskProofQueue() {
   const [rows, setRows] = useState<any[]>([]);
-  const [proofUrls, setProofUrls] = useState<Record<string, string>>({});
+  const [proofUrls, setProofUrls] = useState<Record<string, string[]>>({});
   const [selectedId, setSelectedId] = useState("");
   const [adminNote, setAdminNote] = useState("");
   const [reviewing, setReviewing] = useState(false);
@@ -9861,13 +9967,11 @@ function AdminLiveTaskProofQueue() {
       setRows(data);
       const signedEntries = await Promise.all(
         data.map(async (row) => {
-          const stored = row.proof_file_urls?.[0] || row.proof_url;
-          if (!stored) return [row.id, ""] as const;
-          try {
-            return [row.id, await createPrivateEvidenceUrl("caretaker-task-proofs", stored)] as const;
-          } catch {
-            return [row.id, ""] as const;
-          }
+          const storedFiles = (Array.isArray(row.proof_file_urls) && row.proof_file_urls.length ? row.proof_file_urls : [row.proof_url]).filter(Boolean);
+          const signed = await Promise.all(storedFiles.map(async (stored: string) => {
+            try { return await createPrivateEvidenceUrl("caretaker-task-proofs", stored); } catch { return ""; }
+          }));
+          return [row.id, signed] as const;
         }),
       );
       setProofUrls(Object.fromEntries(signedEntries));
@@ -9893,6 +9997,7 @@ function AdminLiveTaskProofQueue() {
       setNote("Write a clear correction note before returning this task to the caretaker.");
       return;
     }
+    if (decision === "rejected" && !window.confirm("Reject this report and close the task? Use Return for Correction if the caretaker should fix and resubmit it.")) return;
     setReviewing(true);
     try {
       if (row.caretaker_tasks?.workflow_type === "care_plan_daily_mission") {
@@ -9912,7 +10017,9 @@ function AdminLiveTaskProofQueue() {
     }
   }
   const task = selected?.caretaker_tasks;
-  const proofUrl = selected ? proofUrls[selected.id] : "";
+  const selectedProofUrls = selected ? proofUrls[selected.id] || [] : [];
+  const proofUrl = selectedProofUrls[0] || "";
+  const selectedDailyEntries = parseDailyCareReport(selected?.free_note);
   const isVideoEvidence = String(selected?.proof_type || "").toLowerCase() === "video" || /\.(mp4|webm|mov)(?:\?|$)/i.test(proofUrl);
   const isQrTagging = task?.workflow_type === "qr_tagging";
   const isSalePriceProof = task?.workflow_type === "sale_price_inspection";
@@ -9996,8 +10103,8 @@ function AdminLiveTaskProofQueue() {
               <Info label="Workflow" value={isSalePriceProof ? "Special Sale Price Inspection" : isSaleReleaseProof ? "Special Final Sale Release" : "Standard Care Task"} />
             </div>
             <div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4">
-              <p className="text-xs font-black uppercase text-[#667267]">Caretaker Documentation</p>
-              <p className="mt-2 whitespace-pre-wrap text-sm font-bold leading-6">{selected.free_note || selected.preset_note || "No documentation submitted."}</p>
+              <p className="text-xs font-black uppercase text-[#667267]">{selectedDailyEntries.length ? "Daily Report" : "Caretaker Documentation"}</p>
+              {selectedDailyEntries.length ? <div className="mt-3 space-y-3">{selectedDailyEntries.map((entry, index) => <article key={`${entry.time}-${index}`} className="grid gap-3 rounded-2xl bg-white p-3 sm:grid-cols-[120px_1fr]"><div className="overflow-hidden rounded-xl bg-[#edf3ef]">{selectedProofUrls[index] ? <img src={selectedProofUrls[index]} alt={`${entry.period} care proof`} className="h-28 w-full object-cover" /> : <div className="grid h-28 place-items-center text-xs font-black text-[#667267]">No photo</div>}</div><div><h3 className="font-black">{formatCareEntryTime(entry.time)} · {entry.period}</h3><p className="mt-2 text-sm font-bold leading-6">{entry.work}</p><p className="mt-1 text-sm font-bold leading-6 text-[#667267]"><span className="text-[#10251d]">Findings:</span> {entry.findings}</p></div></article>)}</div> : <p className="mt-2 whitespace-pre-wrap text-sm font-bold leading-6">{selected.free_note || selected.preset_note || "No documentation submitted."}</p>}
             </div>
             {["care_plan_daily_mission", "manual_standard_mission"].includes(String(task?.workflow_type || "")) && (
               <div className="mt-4 space-y-3 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4">
@@ -10007,6 +10114,7 @@ function AdminLiveTaskProofQueue() {
                     <h3 className="text-xl font-black">{String(task.task_metadata?.primary_mission || task.task_type)}</h3>
                   </div>
                   <Badge tone={selected.health_status === "pass" ? "good" : "bad"}>{String(selected.health_status || "missing").replaceAll("_", " ")}</Badge>
+                  <Info label="Reported Remaining Feed" value={selected.actual_remaining_feed == null ? "Not recorded" : `${selected.actual_remaining_feed} kg`} />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Info label="Operations Completed" value={`${Array.isArray(selected.checklist_results?.operations) ? selected.checklist_results.operations.filter((item: any) => item.checked).length : 0} / ${Array.isArray(task.task_metadata?.operations_checklist) ? task.task_metadata.operations_checklist.length : 0}`} />
@@ -10050,8 +10158,11 @@ function AdminLiveTaskProofQueue() {
         <button type="button" onClick={() => selected && review(selected, "approved")} disabled={!selected || reviewing || (["care_plan_daily_mission", "manual_standard_mission"].includes(String(task?.workflow_type || "")) && selected.health_status !== "pass")} className="mt-4 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">
           {reviewing ? "Saving..." : "Approve Task"}
         </button>
-        <button type="button" onClick={() => selected && review(selected, "backjob")} disabled={!selected || reviewing} className="mt-3 w-full rounded-2xl bg-red-600 px-4 py-4 font-black text-white disabled:bg-[#b9b3a4]">
-          Reject / Send Backjob
+        <button type="button" onClick={() => selected && review(selected, "backjob")} disabled={!selected || reviewing} className="mt-3 w-full rounded-2xl bg-amber-400 px-4 py-4 font-black text-[#10251d] disabled:bg-[#b9b3a4]">
+          Return for Correction
+        </button>
+        <button type="button" onClick={() => selected && review(selected, "rejected")} disabled={!selected || reviewing} className="mt-3 w-full rounded-2xl border border-red-300 px-4 py-3 font-bold text-red-800 disabled:opacity-50">
+          Reject and Close Task
         </button>
         <div className="mt-4 space-y-3 text-xs font-bold leading-5">
           <p className="rounded-xl bg-emerald-50 p-3 text-emerald-900">
@@ -12176,7 +12287,9 @@ export function UnifiedLoginPage({ suggestedRole }: { suggestedRole?: Role }) {
       }
 
       const role = (profile.role || "customer") as Role;
-      router.push(roleWorkspace(role));
+      if (role === "customer" && !(await getCurrentCustomerKycSubmission())) {
+        router.push("/customer-v2/onboarding");
+      } else router.push(roleWorkspace(role));
     } catch (error) {
       const text = error instanceof Error ? error.message : "Please check your details and try again.";
       setMessage(text.toLowerCase().includes("invalid") ? "Email or password did not match. Please try again." : "We could not complete this yet. Please try again in a moment.");
@@ -12235,7 +12348,7 @@ export function FarmerSignupPage() {
   });
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("Customer signup creates a customer role only. KYC documents stay in Settings after login.");
+  const [message, setMessage] = useState("Step 1: create your account. Next, submit your ID and selfie.");
 
   function update(key: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -12286,8 +12399,8 @@ export function FarmerSignupPage() {
           displayName: form.displayName || form.fullName,
           birthdate: form.birthdate,
         });
-      setMessage(data.session ? "Customer account ready. Opening dashboard..." : "Account created. Please login if email confirmation is required.");
-      if (data.session) router.push("/customer/dashboard");
+      setMessage(data.session ? "Account created. Continue with your ID and selfie." : "Check your email to confirm your account, then sign in to complete verification.");
+      if (data.session) router.push("/customer-v2/onboarding");
     } catch (error) {
       const text = signupFailureMessage(error);
       setMessage(text.toLowerCase().includes("row-level") || text.toLowerCase().includes("policy") ? "Customer profile could not be created yet. Check profile RLS/signup SQL." : text);
@@ -12298,7 +12411,7 @@ export function FarmerSignupPage() {
 
   return (
     <AuthShell>
-      <AuthPanel icon="user" title="Customer Registration" text="For customers/farmers who will buy roosters, request care, use wallet withdrawal, and submit KYC later in Settings.">
+      <AuthPanel icon="user" title="Customer Registration" text="Create your account, then verify your identity with an ID and selfie.">
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           <input value={form.fullName} onChange={(e) => update("fullName", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Legal full name" />
           <input value={form.displayName} onChange={(e) => update("displayName", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Display name / nickname" />

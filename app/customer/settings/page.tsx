@@ -1,2 +1,3 @@
-import { SettingsPage } from "@/lib/farmconnect-v1";
-export default SettingsPage;
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
+
+export default customerRouteRedirect("settings");

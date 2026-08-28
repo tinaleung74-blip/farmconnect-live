@@ -1,2 +1,3 @@
-import { CustomerRoostersResponsive } from "@/lib/farmconnect-v1";
-export default CustomerRoostersResponsive;
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
+
+export default customerRouteRedirect("roosters");

@@ -6,16 +6,17 @@ import { useState } from "react";
 import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/customer-signup";
 import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { supabase } from "@/lib/supabase";
+import { InstallFarmConnectButton } from "./_components/FarmConnectPwa";
 
 type Role = "customer" | "caretaker" | "admin";
 
 function roleWorkspace(role: Role) {
   if (role === "admin") return "/admin";
   if (role === "caretaker") return "/caretaker/dashboard";
-  return "/customer/dashboard";
+  return "/customer-v2/roosters";
 }
 
-export default function HomePage() {
+export function FarmConnectAuthPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -112,7 +113,7 @@ export default function HomePage() {
       }
 
       if (data.session) {
-        router.push("/customer/dashboard");
+        router.push("/customer-v2/roosters");
       } else {
         setMode("login");
         setMessage("Account created. Please sign in to continue.");
@@ -249,6 +250,68 @@ export default function HomePage() {
           </div>
         </section>
       </section>
+    </main>
+  );
+}
+
+export default function PublicHomePage() {
+  const benefits = [
+    ["/farmconnect/roosters/fc-stage-1-chick-base.jpg", "Choose your rooster", "Pick the breed and care option that fits you."],
+    ["/farmconnect/home/rooster-updates.png", "Follow its growth", "See its growth day, weight, health, and latest farm update."],
+    ["/farmconnect/home/secure-wallet.png", "Stay in control", "Review care records, request a sale, and track your Wallet."],
+  ];
+  return (
+    <main className="min-h-screen bg-[#f5f1e5] text-[#113d2d]">
+      <header className="sticky top-0 z-40 border-b border-white/20 bg-[#075f48]/95 text-white shadow-lg backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <Link href="/" className="flex items-center gap-3">
+            <img src="/farmconnect/home/farmconnect-brand-mark.png" alt="FarmConnect" className="h-11 w-11 rounded-2xl bg-white object-cover" />
+            <div><b className="block text-lg leading-none">FarmConnect</b><small className="font-bold text-emerald-100">Your rooster, within reach</small></div>
+          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/login" className="rounded-xl border border-white/40 px-4 py-2 text-sm font-black">Sign In</Link>
+            <Link href="/signup" className="rounded-xl bg-[#ffd84a] px-4 py-2 text-sm font-black text-[#173d2e]">Get Started</Link>
+          </div>
+        </div>
+      </header>
+
+      <section className="relative isolate overflow-hidden bg-[#064d3b] text-white">
+        <div className="absolute inset-0 -z-20 bg-[url('/farmconnect/farmconnect-hero-wallpaper.jpg')] bg-cover bg-center" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(3,48,36,.96),rgba(3,48,36,.76),rgba(3,48,36,.18))]" />
+        <div className="mx-auto grid min-h-[670px] max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1.05fr_.95fr]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[.18em] text-[#ffe37a]">Rooster ownership made easier</p>
+            <h1 className="mt-4 max-w-3xl text-5xl font-black leading-[.94] tracking-[-.045em] sm:text-7xl">Your rooster, cared for every day—even when you’re away.</h1>
+            <p className="mt-6 max-w-2xl text-base font-bold leading-7 text-emerald-50/90 sm:text-lg">Choose your rooster, follow its growth, receive clear care updates, and manage its journey from your phone.</p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/signup" className="rounded-2xl bg-[#ffd84a] px-6 py-4 font-black text-[#173d2e] shadow-xl">Get Your Rooster</Link>
+              <a href="#care" className="rounded-2xl border border-white/40 bg-white/10 px-6 py-4 font-black backdrop-blur">See How Care Works</a>
+              <InstallFarmConnectButton className="rounded-2xl border border-white/40 bg-white px-6 py-4 font-black text-[#07563f]" />
+            </div>
+          </div>
+          <div className="mx-auto w-full max-w-lg rounded-[34px] border border-white/30 bg-white/95 p-4 text-[#163d2e] shadow-2xl sm:p-6">
+            <img src="/farmconnect/roosters/fc-rooster-hero.jpg" alt="FarmConnect rooster" className="h-72 w-full rounded-[26px] object-cover" />
+            <div className="mt-4 flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase text-[#748279]">Your rooster</p><h2 className="text-3xl font-black">Premium Rooster</h2><p className="mt-1 font-bold text-[#6a776e]">Growing healthy • Care updated today</p></div><span className="rounded-full bg-emerald-100 px-3 py-2 text-xs font-black text-emerald-800">In Care</span></div>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-[#f4f1e7] p-3"><b className="block text-lg">Day 60</b><small className="font-bold">Growth</small></div><div className="rounded-xl bg-[#f4f1e7] p-3"><b className="block text-lg">Healthy</b><small className="font-bold">Condition</small></div><div className="rounded-xl bg-[#f4f1e7] p-3"><b className="block text-lg">Updated</b><small className="font-bold">Care Log</small></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
+        <p className="text-xs font-black uppercase tracking-[.16em] text-[#16704f]">Built around your rooster</p>
+        <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-[-.035em] sm:text-5xl">Stay part of its journey without being at the farm every day.</h2>
+        <div className="mt-9 grid gap-5 md:grid-cols-3">{benefits.map(([src,title,text])=><article key={title} className="rounded-[28px] bg-white p-5 shadow-lg"><img src={src} alt="" className="h-48 w-full rounded-[22px] object-cover" /><h3 className="mt-5 text-2xl font-black">{title}</h3><p className="mt-2 font-bold leading-7 text-[#69766e]">{text}</p></article>)}</div>
+      </section>
+
+      <section id="care" className="bg-[#0a5d46] px-5 py-16 text-white sm:px-8">
+        <div className="mx-auto max-w-7xl"><p className="text-xs font-black uppercase tracking-[.16em] text-[#ffe37a]">Care that fits you</p><h2 className="mt-3 text-4xl font-black sm:text-5xl">Choose when and how your rooster is cared for.</h2>
+          <div className="mt-9 grid gap-5 md:grid-cols-2"><article className="rounded-[28px] bg-white/10 p-7 ring-1 ring-white/20"><p className="text-sm font-black text-[#ffe37a]">DAILY CARE</p><h3 className="mt-2 text-3xl font-black">Care when you need it</h3><p className="mt-3 font-bold leading-7 text-emerald-50">Request a scheduled care service and receive a clear record of what was done.</p></article><article className="rounded-[28px] bg-[#ffd84a] p-7 text-[#173d2e]"><p className="text-sm font-black">MONTHLY CARE</p><h3 className="mt-2 text-3xl font-black">Thirty days of organized care</h3><p className="mt-3 font-bold leading-7">Daily caretaker work continues while you follow the updates, evidence, weight, and health from your account.</p></article></div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-5 py-20 text-center sm:px-8"><p className="text-xs font-black uppercase tracking-[.16em] text-[#16704f]">Your rooster’s journey</p><h2 className="mt-3 text-4xl font-black sm:text-6xl">You own the rooster. FarmConnect helps you stay part of its journey.</h2><div className="mt-8 flex flex-wrap justify-center gap-3"><Link href="/signup" className="rounded-2xl bg-[#0a7654] px-7 py-4 font-black text-white">Start With a Rooster</Link><Link href="/login" className="rounded-2xl border border-[#aab9ae] bg-white px-7 py-4 font-black">Sign In</Link></div></section>
+
+      <footer className="bg-[#063f31] px-5 py-8 text-white sm:px-8"><div className="mx-auto flex max-w-7xl flex-col justify-between gap-5 sm:flex-row sm:items-center"><div><b className="text-xl">FarmConnect</b><p className="mt-1 text-sm font-bold text-emerald-100">Rooster ownership, care, and trusted updates.</p></div><div className="flex flex-wrap gap-4 text-sm font-black"><Link href="/caretaker-careers">Work With Us</Link><Link href="/apply-caretaker">Apply as Caretaker</Link><Link href="/login">Sign In</Link></div></div></footer>
     </main>
   );
 }

@@ -1,5 +1,3 @@
-import { CashInQrPage } from "@/lib/farmconnect-v1";
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
 
-export default function Page() {
-  return <CashInQrPage name="BPI" image="/fc-bpi-qr-crop.png" />;
-}
+export default customerRouteRedirect("wallet");

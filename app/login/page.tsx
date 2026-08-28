@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { FarmConnectAuthPage } from "@/app/page";
 
 export default function Page() {
-  redirect("/");
+  return <FarmConnectAuthPage />;
 }

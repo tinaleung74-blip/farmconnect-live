@@ -1,2 +1,2 @@
-import { AdminWorkspace } from "@/lib/farmconnect-v1";
-export default function Page(){ return <AdminWorkspace kind="evidence" />; }
+import { LiveEvidencePage } from "@/lib/live-evidence-pages";
+export default function Page(){ return <LiveEvidencePage admin />; }

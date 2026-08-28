@@ -279,7 +279,7 @@ const pageLinks: Record<string, Array<{ label: string; href: string }>> = {
     { label: "Buddy Report", href: "/admin/kafarm/buddy-reports" },
   ],
   "qa-test-lab": [
-    { label: "Farm Buy", href: "/customer/farm-buy" },
+    { label: "Add Rooster", href: "/customer-v2/add-rooster" },
     { label: "Support", href: "/customer/support" },
     { label: "Live Chat", href: "/admin/live-chat" },
   ],
@@ -341,7 +341,7 @@ const sqlAuditModules: SqlAuditModule[] = [
   { module: "Wallet / PIN / Payout", pages: "/customer/wallet, /customer/withdraw, /admin/customer-requests/security", tables: ["profiles.wallet_balance", "wallet_transactions", "withdrawal_requests"], functions: ["change_wallet_pin", "admin_reset_wallet_pin"], views: [], policies: ["wallet"] },
   { module: "Manual Payments / Invoice", pages: "/customer/payment, /admin/customer-requests/payment", tables: ["manual_payment_requests", "payment_evidence_logs", "inbox_items"], functions: ["customer_submit_manual_payment", "admin_review_manual_payment"], views: [], policies: ["payment evidence read linked"] },
   { module: "Withdrawal Review", pages: "/customer/withdraw, /admin/customer-requests/withdraw", tables: ["withdrawal_requests", "withdrawal_evidence_logs"], functions: ["customer_submit_withdrawal_request", "admin_review_withdrawal_request"], views: [], policies: ["withdrawal evidence read linked"] },
-  { module: "Farm Buy / Inventory", pages: "/customer/farm-buy, /customer/inventory", tables: ["farm_products", "farm_cart_items", "customer_inventory_items", "customer_animals"], functions: ["customer_buy_cart"], views: [], policies: ["inventory"] },
+  { module: "Farm Buy / Inventory", pages: "/customer-v2/add-rooster, /customer/inventory", tables: ["farm_products", "farm_cart_items", "customer_inventory_items", "customer_animals"], functions: ["customer_buy_cart"], views: [], policies: ["inventory"] },
   { module: "Roosters / Ownership", pages: "/customer/roosters, /customer/care-logs", tables: ["animals", "customer_animals", "animal_photos", "animal_weights", "farm_care_requests", "caretaker_tasks", "task_proofs"], functions: [], views: [], policies: ["customer animals"] },
   { module: "Care Requests / Task Assignment", pages: "/customer/farm-requests, /admin/customer-requests/task, /caretaker/tasks", tables: ["farm_care_requests", "caretaker_tasks", "task_proofs"], functions: ["customer_create_care_request", "admin_assign_care_request", "caretaker_submit_task_proof", "admin_review_task_proof"], views: [], policies: ["care task"] },
   { module: "Caretaker Registration", pages: "/caretaker/signup, /admin/caretaker-management", tables: ["caretaker_applications", "caretakers"], functions: ["submit_caretaker_application", "admin_review_caretaker_application"], views: [], policies: ["caretaker"] },

@@ -1,3 +1,3 @@
-import { CustomerInvoicePage } from '@/lib/farmconnect-v1';
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
 
-export default function Page(){ return <CustomerInvoicePage type="care-request" />; }
+export default customerRouteRedirect("inbox/invoice/care-request");

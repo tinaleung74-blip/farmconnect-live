@@ -10,12 +10,13 @@ const checks = [
       && /const tab = isWithdrawalRecord \? "Alerts" : isPaymentRecord \? "Receipts"/.test(source),
   },
   {
-    name: "Withdrawal Inbox action opens the withdrawal workflow",
-    ok: /const href = isWithdrawalRecord \? "\/customer\/withdraw"/.test(source),
+    name: "Withdrawal Inbox action opens the inline payout evidence",
+    ok: /if \(item\.action === "withdrawal"\) \{[\s\S]*setExpandedInboxKey/.test(source)
+      && /i\.withdrawalDetails\?\.reference \|\| i\.withdrawalDetails\?\.receiptUrl/.test(source),
   },
   {
     name: "Withdrawal Inbox button has a truthful label",
-    ok: /item\.action === "withdrawal" \? "Open Withdrawal"/.test(source),
+    ok: /i\.action === "withdrawal" && expandedInboxKey === i\.inboxKey \? "Close" : "View"/.test(source),
   },
 ];
 

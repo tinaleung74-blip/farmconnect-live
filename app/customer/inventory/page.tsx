@@ -1,2 +1,3 @@
-import { InventoryPage } from "@/lib/farmconnect-v1";
-export default InventoryPage;
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
+
+export default customerRouteRedirect("roosters");

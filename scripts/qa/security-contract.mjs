@@ -35,6 +35,8 @@ const forgotPasswordSource = read(path.join(root, "app", "forgot-password", "pag
 const resetPasswordSource = read(path.join(root, "app", "reset-password", "page.tsx"));
 const guardianApiSource = read(path.join(root, "app", "api", "kafarm", "guardian", "route.ts"));
 const guardianClientSource = read(path.join(root, "app", "admin", "kafarm", "guardian", "_components", "GuardianClient.tsx"));
+const databaseSecurityHardeningSource = read(path.join(root, "database", "applied", "083_supabase_api_surface_security_hardening.sql"));
+const databaseSecurityRunbookSource = read(path.join(root, "database", "SECURITY_083_DEPLOYMENT_RUNBOOK.md"));
 const clientSecretReferences = clientFiles
   .filter(file => !file.includes(`${path.sep}api${path.sep}`))
   .filter(file => !/^\s*import\s+["']server-only["'];?/m.test(read(file)))
@@ -73,6 +75,12 @@ const checks = [
   { name: "Rate-limit activation is database-verified and Admin visible", ok: /database_migration_and_deployment_verification/.test(rateLimitSource) && /farmconnect_rate_limit_version/.test(guardianApiSource) && /Rate Limit (?:ON|·)/.test(guardianClientSource) },
   { name: "Rate-limit configuration is server-only", ok: /^\s*import\s+["']server-only["'];?/m.test(rateLimitSource) && !guardianClientSource.includes("FARMCONNECT_RATE_LIMIT_MODE") },
   { name: "E2E harness permanently rejects the FarmConnect production database", ok: /E2E_PRODUCTION_DATABASE_BLOCKED/.test(isolatedTargetGuardSource) && /bfckjrqrixbtqqvsxgjq\.supabase\.co/.test(isolatedTargetGuardSource) },
+  { name: "Security hardening removes anonymous SECURITY DEFINER execution", ok: /revoke execute on function %s from public, anon/.test(databaseSecurityHardeningSource) && /anonymous_security_definer_execute_count/.test(databaseSecurityHardeningSource) },
+  { name: "Security hardening blocks direct browser calls to internal functions", ok: /v_internal_names constant text\[\]/.test(databaseSecurityHardeningSource) && /sync_withdrawal_wallet_ledger_status/.test(databaseSecurityHardeningSource) && /authenticated_internal_execute_count/.test(databaseSecurityHardeningSource) },
+  { name: "Security hardening converts flagged views to caller-context RLS", ok: /security_invoker = true/.test(databaseSecurityHardeningSource) && /admin_kyc_review_queue/.test(databaseSecurityHardeningSource) && /security_definer_view_count/.test(databaseSecurityHardeningSource) },
+  { name: "Security hardening locks mutable function search paths", ok: /alter function %s set search_path = pg_catalog, public, extensions/.test(databaseSecurityHardeningSource) && /touch_updated_at/.test(databaseSecurityHardeningSource) },
+  { name: "KaFarm SQL audit insertion is service-role-only", ok: /drop policy if exists "kafarm sql audit service insert"/.test(databaseSecurityHardeningSource) && /revoke insert on table public\.kafarm_sql_gateway_audit_logs from public, anon, authenticated/.test(databaseSecurityHardeningSource) },
+  { name: "Security migration has role smoke tests and rollback guidance", ok: /Anonymous: Sign In and Sign Up/.test(databaseSecurityRunbookSource) && /Rollback principle/.test(databaseSecurityRunbookSource) },
 ];
 const report = { generatedAt: new Date().toISOString(), passed: checks.every(check => check.ok), checks };
 fs.mkdirSync(outputDir, { recursive: true });

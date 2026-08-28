@@ -1,4 +1,4 @@
-import { AddPayoutPageV2 } from '@/lib/farmconnect-v1';
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
 
-export default AddPayoutPageV2;
+export default customerRouteRedirect("withdraw/add-payout");
 

@@ -37,6 +37,109 @@ body {
   overflow-x: hidden;
 }
 
+/* Customer V2 brand truth: rooster red + golden yellow + iridescent teal. */
+[data-farmconnect-v2="true"] {
+  --fc-red: #c9232d;
+  --fc-yellow: #f4c430;
+  --fc-teal: #087f83;
+  --fc-teal-dark: #063b3f;
+  --fc-ink: #041f22;
+  --fc-cream: #fff8e7;
+  color: var(--fc-ink);
+}
+
+[data-farmconnect-v2="true"] > header {
+  border-bottom-color: var(--fc-yellow) !important;
+  border-bottom-width: 2px;
+  background: var(--fc-teal-dark) !important;
+  color: #fffdf7;
+  box-shadow: 0 4px 16px rgba(4, 31, 34, 0.14) !important;
+}
+
+/* A quiet customer canvas keeps the rooster photo, not wallpaper, in focus.
+   Override the shared legacy shell's inline artwork on customer pages only. */
+main[data-farmconnect-v2="true"] {
+  background-color: #faf8f0;
+  background-image:
+    radial-gradient(ellipse at 100% 0%, rgba(8, 127, 131, 0.08), transparent 48%),
+    radial-gradient(ellipse at 0% 100%, rgba(244, 196, 48, 0.10), transparent 48%) !important;
+  background-attachment: scroll;
+}
+
+.fc-rooster-detail-layout {
+  display: grid;
+  align-items: start;
+}
+
+.fc-rooster-portrait {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 12px;
+  background: #edf3ef;
+}
+
+.fc-rooster-portrait-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  max-height: 480px;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 16px;
+}
+
+@media (min-width: 768px) {
+  .fc-rooster-detail-layout {
+    grid-template-columns: minmax(260px, 42%) minmax(0, 1fr);
+  }
+
+  .fc-rooster-portrait {
+    align-self: stretch;
+    padding: 16px;
+  }
+}
+
+[data-farmconnect-v2="true"] [class*="bg-[#1f6b45]"],
+[data-farmconnect-v2="true"] [class*="bg-[#0a7654]"],
+[data-farmconnect-v2="true"] [class*="bg-[#145f3e]"],
+[data-farmconnect-v2="true"] [class*="bg-[#14613f]"] {
+  background-color: var(--fc-teal) !important;
+}
+
+[data-farmconnect-v2="true"] [class*="text-[#1f6b45]"],
+[data-farmconnect-v2="true"] [class*="text-[#197044]"],
+[data-farmconnect-v2="true"] [class*="text-[#24724d]"],
+[data-farmconnect-v2="true"] [class*="text-[#25724d]"],
+[data-farmconnect-v2="true"] [class*="text-[#174d36]"] {
+  color: var(--fc-teal-dark) !important;
+}
+
+[data-farmconnect-v2="true"] [class*="bg-sky-100"],
+[data-farmconnect-v2="true"] [class*="bg-emerald-100"],
+[data-farmconnect-v2="true"] [class*="bg-[#eaf8ef]"] {
+  background-color: #dff5f3 !important;
+}
+
+[data-farmconnect-v2="true"] [class*="text-sky-900"],
+[data-farmconnect-v2="true"] [class*="text-emerald-900"],
+[data-farmconnect-v2="true"] [class*="text-emerald-800"] {
+  color: var(--fc-teal-dark) !important;
+}
+
+[data-farmconnect-v2="true"] [class*="bg-amber-100"],
+[data-farmconnect-v2="true"] [class*="bg-amber-300"] {
+  background-color: var(--fc-yellow) !important;
+  color: var(--fc-ink) !important;
+}
+
+[data-farmconnect-v2="true"] .fc-customer-mobile-nav,
+[data-farmconnect-v2="true"] .fc-customer-tablet-nav {
+  border-color: rgba(244, 196, 48, 0.72) !important;
+  background: rgba(255, 248, 231, 0.97) !important;
+}
+
 html {
   overflow-x: hidden;
 }

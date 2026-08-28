@@ -17,16 +17,25 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   async headers() {
-    return [{
-      source: "/(.*)",
-      headers: [
-        { key: "Content-Security-Policy", value: contentSecurityPolicy },
-        { key: "X-Content-Type-Options", value: "nosniff" },
-        { key: "X-Frame-Options", value: "DENY" },
-        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-        { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
-      ],
-    }];
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "Content-Security-Policy", value: contentSecurityPolicy },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
+        ],
+      },
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
   },
 };
 

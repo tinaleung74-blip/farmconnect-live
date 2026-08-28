@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.0.0",
+  "contractId": "customer-rooster-centric-v2",
+  "status": "owner-approved-ui-prototype",
+  "databaseStatus": "unchanged-pending-workflow-approval",
+  "legacy": {
+    "preserve": true,
+    "rule": "Legacy customer routes and records remain valid rollback evidence until V2 is fully wired and verified."
+  },
+  "v2": {
+    "entry": "rooster-centric-customer-workspace",
+    "primarySurface": "owned-rooster",
+    "topActions": ["wallet", "inbox", "support", "settings"],
+    "removedCustomerPrimaryPages": ["dashboard", "farm-buy", "farm-requests", "inventory", "standalone-care-logs"],
+    "roosterActions": ["add-rooster", "daily-care", "monthly-care", "sell-rooster", "view-qr"],
+    "responsiveNavigation": {
+      "touch": "horizontal-swipe-and-snap",
+      "pointer": "previous-next-arrows"
+    },
+    "publicRoutes": {
+      "customerHomepage": "/",
+      "sharedLogin": "/login",
+      "customerSignup": "/signup",
+      "caretakerHomepage": "/caretaker-careers",
+      "caretakerApplication": "/apply-caretaker"
+    },
+    "customerRoutes": {
+      "workspace": "/customer-v2/roosters",
+      "wallet": "/customer-v2/wallet",
+      "inbox": "/customer-v2/inbox",
+      "support": "/customer-v2/support",
+      "settings": "/customer-v2/settings"
+    }
+  },
+  "crossRoleWorkflow": [
+    "customer-submits-rooster-and-care-payment",
+    "admin-verifies-payment-and-ownership",
+    "admin-assigns-caretaker",
+    "caretaker-performs-task-and-submits-proof",
+    "admin-verifies-proof",
+    "customer-rooster-card-and-care-logs-refresh"
+  ],
+  "guardianRules": [
+    "Do not report intentional V2 page consolidation as a missing-route incident.",
+    "Every customer-visible completion must be backed by the authoritative cross-role records.",
+    "A V2 UI success state is not proof that payment, ownership, task, evidence, inventory, wallet, or withdrawal completed.",
+    "Legacy and V2 evidence must be labeled by interface version.",
+    "Never migrate, delete, or rewrite legacy business records automatically.",
+    "Resume from the first unproven workflow step instead of restarting the transaction."
+  ],
+  "databaseGate": {
+    "allowedNow": false,
+    "requiredBeforeChange": [
+      "owner-approves-final-v2-ui",
+      "field-to-existing-record-map",
+      "legacy-record-compatibility-check",
+      "rls-and-rpc-impact-review",
+      "isolated-end-to-end-test-plan",
+      "rollback-and-forward-fix-plan"
+    ]
+  }
+}
