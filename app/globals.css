@@ -50,8 +50,10 @@ body {
 
 [data-farmconnect-v2="true"] > header {
   border-bottom-color: var(--fc-yellow) !important;
-  background: linear-gradient(110deg, #041f22 0%, var(--fc-teal) 54%, var(--fc-teal-dark) 100%) !important;
-  box-shadow: 0 12px 30px rgba(4, 31, 34, 0.28) !important;
+  border-bottom-width: 2px;
+  background: var(--fc-teal-dark) !important;
+  color: #fffdf7;
+  box-shadow: 0 4px 16px rgba(4, 31, 34, 0.14) !important;
 }
 
 /* A quiet customer canvas keeps the rooster photo, not wallpaper, in focus.
