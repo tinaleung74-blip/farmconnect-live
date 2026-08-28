@@ -1,2 +1,2 @@
-import { CompletedTasks } from "@/lib/farmconnect-v1";
-export default CompletedTasks;
+import { LiveEvidencePage } from "@/lib/live-evidence-pages";
+export default function Page() { return <LiveEvidencePage />; }

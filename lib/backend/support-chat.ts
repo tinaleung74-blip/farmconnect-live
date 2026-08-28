@@ -47,16 +47,31 @@ export async function sendSupportMessage({
   });
 }
 
-export async function saveKaFarmSupportMessage(
-  sessionId: string,
-  body: string,
-  metadata: Record<string, unknown> = {}
-) {
-  return supabase.rpc("kafarm_support_send_message", {
-    p_session_id: sessionId,
-    p_body: body,
-    p_metadata: metadata,
-  });
+export async function saveKaFarmSupportMessage(operationKey: string) {
+  const controller=new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const unavailable={error:{message:"Reply not confirmed. Retry using the same receipt."}};
+  try {
+    return await Promise.race([
+      (async()=>{
+        const { data, error } = await supabase.auth.getSession();
+        if(controller.signal.aborted)return unavailable;
+        if (error || !data.session) return { error: { message: "Sign in first." } };
+        const response = await fetch("/api/support/reply", {
+          method: "POST", signal:controller.signal,
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
+          body: JSON.stringify({ operationKey }),
+        });
+        if(!response.ok)return unavailable;
+        const receipt=await response.json();
+        return receipt && ["saved","skipped"].includes(receipt.state) ? {error:null} : unavailable;
+      })(),
+      new Promise<typeof unavailable>(resolve=>{
+        timer=setTimeout(()=>{resolve(unavailable);controller.abort();},15000);
+      }),
+    ]);
+  } catch {return unavailable;}
+  finally {if(timer!==undefined)clearTimeout(timer);}
 }
 
 export async function getAdminEscalatedChats() {

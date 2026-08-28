@@ -37,6 +37,62 @@ body {
   overflow-x: hidden;
 }
 
+/* Customer V2 brand truth: rooster red + golden yellow + iridescent teal. */
+[data-farmconnect-v2="true"] {
+  --fc-red: #c9232d;
+  --fc-yellow: #f4c430;
+  --fc-teal: #087f83;
+  --fc-teal-dark: #063b3f;
+  --fc-ink: #041f22;
+  --fc-cream: #fff8e7;
+  color: var(--fc-ink);
+}
+
+[data-farmconnect-v2="true"] > header {
+  border-bottom-color: var(--fc-yellow) !important;
+  background: linear-gradient(110deg, #041f22 0%, var(--fc-teal) 54%, var(--fc-teal-dark) 100%) !important;
+  box-shadow: 0 12px 30px rgba(4, 31, 34, 0.28) !important;
+}
+
+[data-farmconnect-v2="true"] [class*="bg-[#1f6b45]"],
+[data-farmconnect-v2="true"] [class*="bg-[#0a7654]"],
+[data-farmconnect-v2="true"] [class*="bg-[#145f3e]"],
+[data-farmconnect-v2="true"] [class*="bg-[#14613f]"] {
+  background-color: var(--fc-teal) !important;
+}
+
+[data-farmconnect-v2="true"] [class*="text-[#1f6b45]"],
+[data-farmconnect-v2="true"] [class*="text-[#197044]"],
+[data-farmconnect-v2="true"] [class*="text-[#24724d]"],
+[data-farmconnect-v2="true"] [class*="text-[#25724d]"],
+[data-farmconnect-v2="true"] [class*="text-[#174d36]"] {
+  color: var(--fc-teal-dark) !important;
+}
+
+[data-farmconnect-v2="true"] [class*="bg-sky-100"],
+[data-farmconnect-v2="true"] [class*="bg-emerald-100"],
+[data-farmconnect-v2="true"] [class*="bg-[#eaf8ef]"] {
+  background-color: #dff5f3 !important;
+}
+
+[data-farmconnect-v2="true"] [class*="text-sky-900"],
+[data-farmconnect-v2="true"] [class*="text-emerald-900"],
+[data-farmconnect-v2="true"] [class*="text-emerald-800"] {
+  color: var(--fc-teal-dark) !important;
+}
+
+[data-farmconnect-v2="true"] [class*="bg-amber-100"],
+[data-farmconnect-v2="true"] [class*="bg-amber-300"] {
+  background-color: var(--fc-yellow) !important;
+  color: var(--fc-ink) !important;
+}
+
+[data-farmconnect-v2="true"] .fc-customer-mobile-nav,
+[data-farmconnect-v2="true"] .fc-customer-tablet-nav {
+  border-color: rgba(244, 196, 48, 0.72) !important;
+  background: rgba(255, 248, 231, 0.97) !important;
+}
+
 html {
   overflow-x: hidden;
 }

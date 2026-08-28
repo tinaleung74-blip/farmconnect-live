@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { KaFarmClientMonitor } from "./_components/KaFarmClientMonitor";
 import { FarmConnectPwa } from "./_components/FarmConnectPwa";
+import { DatabaseTargetBanner } from "./_components/DatabaseTargetBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +49,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <FarmConnectPwa />
+        <DatabaseTargetBanner />
         <KaFarmClientMonitor />
         {children}
       </body>

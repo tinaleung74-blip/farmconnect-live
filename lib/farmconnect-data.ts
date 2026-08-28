@@ -240,7 +240,22 @@ export async function getCaretakerActiveTasks() {
   const { data, error } = await supabase.from("caretaker_tasks").select("*").in("status", ["active", "in_progress", "backjob"]).order("due_at", { ascending: true }).limit(80);
 
   if (error) throw error;
-  return data || [];
+  const rows = data || [];
+  const backjobIds = rows.filter((row) => row.status === "backjob").map((row) => row.id);
+  if (!backjobIds.length) return rows;
+  const { data: proofs, error: proofError } = await supabase.from("task_proofs").select("id,caretaker_task_id,task_id,free_note,preset_note,daily_report,proof_file_urls,proof_url,health_status,checklist_results,inventory_usage,feed_quantity_used,actual_remaining_feed,admin_note,reviewed_at,created_at").in("caretaker_task_id", backjobIds).eq("admin_review_status", "backjob").order("created_at", { ascending: false });
+  if (proofError) throw proofError;
+  const proofMap = new Map<string, NonNullable<typeof proofs>[number] & { stored_paths: string[]; signed_urls: string[] }>();
+  for (const proof of proofs || []) {
+    const taskId = proof.caretaker_task_id || proof.task_id;
+    if (!taskId || proofMap.has(taskId)) continue;
+    const storedPaths = (Array.isArray(proof.proof_file_urls) && proof.proof_file_urls.length ? proof.proof_file_urls : proof.proof_url ? [proof.proof_url] : []).filter(Boolean);
+    const signedUrls = (await Promise.all(storedPaths.map(async (stored: string) => {
+      try { return await createPrivateEvidenceUrl("caretaker-task-proofs", stored); } catch { return ""; }
+    })));
+    proofMap.set(taskId, { ...proof, stored_paths: storedPaths, signed_urls: signedUrls });
+  }
+  return rows.map((row) => ({ ...row, backjob_proof: proofMap.get(row.id) || null }));
 }
 
 export async function getCustomerCarePlans() {
@@ -496,6 +511,9 @@ export async function getCaretakerTaskInventory(taskId: string): Promise<CareTas
 }
 
 export async function submitCaretakerMissionProof(payload: {
+  submissionKey: string;
+  dailyReport: unknown[];
+  actualRemainingFeed: number;
   taskId: string;
   proofUrls: string[];
   freeNote: string;
@@ -515,7 +533,10 @@ export async function submitCaretakerMissionProof(payload: {
     unit: "kg";
   }>;
 }) {
-  const { data, error } = await supabase.rpc("caretaker_submit_mission_proof", {
+  const { data, error } = await submitCaretakerProofRequest({
+    p_submission_key: payload.submissionKey,
+    p_daily_report: payload.dailyReport,
+    p_actual_remaining_feed: payload.actualRemainingFeed,
     p_task_id: payload.taskId,
     p_proof_urls: payload.proofUrls,
     p_free_note: payload.freeNote,
@@ -530,6 +551,9 @@ export async function submitCaretakerMissionProof(payload: {
 }
 
 export async function submitCaretakerManualMissionProof(payload: {
+  submissionKey: string;
+  dailyReport: unknown[];
+  actualRemainingFeed: number;
   taskId: string;
   proofUrls: string[];
   freeNote: string;
@@ -549,7 +573,10 @@ export async function submitCaretakerManualMissionProof(payload: {
     unit: "kg" | "inventory_unit";
   }>;
 }) {
-  const { data, error } = await supabase.rpc("caretaker_submit_manual_mission_proof", {
+  const { data, error } = await submitCaretakerProofRequest({
+    p_submission_key: payload.submissionKey,
+    p_daily_report: payload.dailyReport,
+    p_actual_remaining_feed: payload.actualRemainingFeed,
     p_task_id: payload.taskId,
     p_proof_urls: payload.proofUrls,
     p_free_note: payload.freeNote,
@@ -573,9 +600,9 @@ export async function adminReviewManualMissionProof(proofId: string, decision: "
   return data as GuardedWorkflowResult;
 }
 
-export async function submitCaretakerTaskProof(payload: { taskId: string; proofUrl?: string | null; proofUrls?: string[]; presetNote?: string | null; freeNote?: string | null; qrVerified?: boolean; serialException?: boolean; feedQuantityUsed?: number | null; feedUnit?: string | null }) {
+export async function submitCaretakerTaskProof(payload: { taskId: string; proofUrl?: string | null; proofUrls?: string[]; presetNote?: string | null; freeNote?: string | null; qrVerified?: boolean; serialException?: boolean; feedQuantityUsed?: number | null; feedUnit?: string | null; dailyReport?: unknown[] | null; submissionKey?: string | null }) {
   const proofUrls = (payload.proofUrls || [payload.proofUrl]).filter((value): value is string => Boolean(value));
-  const { data, error } = await supabase.rpc("caretaker_submit_task_proof_v3", {
+  const { data, error } = await submitCaretakerProofRequest({
     p_task_id: payload.taskId,
     p_proof_urls: proofUrls,
     p_preset_note: payload.presetNote || null,
@@ -584,10 +611,16 @@ export async function submitCaretakerTaskProof(payload: { taskId: string; proofU
     p_serial_exception: payload.serialException ?? false,
     p_feed_quantity_used: payload.feedQuantityUsed ?? null,
     p_feed_unit: payload.feedUnit || null,
+    p_daily_report: payload.dailyReport || null,
+    p_submission_key: payload.submissionKey || null,
   });
 
   if (error) throw error;
   return data as string;
+}
+
+function submitCaretakerProofRequest(request: Record<string, unknown>) {
+  return supabase.rpc("caretaker_submit_report_guarded", { p_request: request });
 }
 
 export async function getAdminTaskProofs() {
@@ -695,8 +728,9 @@ export async function adminReviewRoosterSale(saleRequestId: string, decision: "a
   return data as GuardedWorkflowResult;
 }
 
-export async function submitCaretakerRoosterSaleTask(payload: { taskId: string; declaredAmount?: number | null; proofUrls?: string[]; freeNote: string; qrVerified?: boolean; serialException?: boolean }) {
-  const { data, error } = await supabase.rpc("caretaker_submit_rooster_sale_task", {
+export async function submitCaretakerRoosterSaleTask(payload: { taskId: string; submissionKey: string; declaredAmount?: number | null; proofUrls?: string[]; freeNote: string; qrVerified?: boolean; serialException?: boolean }) {
+  const { data, error } = await submitCaretakerProofRequest({
+    p_submission_key: payload.submissionKey,
     p_task_id: payload.taskId,
     p_declared_amount: payload.declaredAmount ?? null,
     p_proof_urls: payload.proofUrls || [],
@@ -731,6 +765,7 @@ export async function markInboxItemRead(inboxItemId: string) {
 }
 
 export type CareLogRecord = {
+  customerAnimalId?: string | null;
   rooster: string;
   title: string;
   type: string;
@@ -746,7 +781,46 @@ export type CareLogRecord = {
   proof: string;
   reviewer: string;
   image: string;
+  images?: string[];
 };
+
+export async function getCustomerRoosterDiary(customerAnimalId: string): Promise<CareLogRecord[]> {
+  const { data, error } = await supabase.rpc("customer_get_rooster_diary", {
+    p_customer_animal_id: customerAnimalId,
+  });
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  return Promise.all(rows.map(async (row: any) => {
+    const date = row.created_at ? new Date(row.created_at) : null;
+    const storedImages = (Array.isArray(row.images) && row.images.length ? row.images : row.image ? [row.image] : []).filter(Boolean);
+    const signedImages = (await Promise.all(storedImages.map(async (stored: string) => {
+      try {
+        return await createPrivateEvidenceUrl("caretaker-task-proofs", stored);
+      } catch {
+        throw new Error("A diary photo could not be loaded. Please try again; your report has not been changed.");
+      }
+    })));
+    return {
+      customerAnimalId: row.customer_animal_id || customerAnimalId,
+      rooster: "",
+      title: row.title || "Care Update",
+      type: row.proof_type || "Care",
+      item: "",
+      amount: "",
+      productCost: 0,
+      laborCost: 0,
+      detail: row.detail || "Care documentation completed.",
+      status: row.status || "Verified",
+      caretaker: "",
+      uploaded: date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }) : "Today",
+      time: date && !Number.isNaN(date.getTime()) ? date.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" }) : "",
+      proof: row.proof_type || "Care documentation",
+      reviewer: "Verified",
+      image: signedImages[0] || "",
+      images: signedImages,
+    };
+  }));
+}
 
 function formatDateTime(value?: string | null) {
   if (!value) return { uploaded: "Today", time: "" };
@@ -1144,6 +1218,19 @@ export async function getAdminWithdrawalDisputes() {
     .limit(100);
   if (error) throw error;
   return data || [];
+}
+
+export async function renameCustomerRooster(customerAnimalId: string, animalName: string) {
+  const name = animalName.trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 40) throw new Error("ROOSTER_NAME_INVALID");
+
+  const { data, error } = await supabase.rpc("rename_customer_rooster", {
+    p_customer_animal_id: customerAnimalId,
+    p_animal_name: name,
+  });
+
+  if (error) throw error;
+  return data;
 }
 
 export async function resolveWithdrawalDispute(payload: {
