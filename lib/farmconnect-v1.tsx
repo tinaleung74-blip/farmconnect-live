@@ -1809,7 +1809,7 @@ export function CustomerRoostersResponsive() {
               <Link href="/customer/care-logs" className="rounded-xl bg-[#f0ecdf] px-2 py-3 text-center text-[10px] font-black">
                 Care Logs
               </Link>
-              <Link href={`/customer/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-2 py-3 text-center text-[10px] font-black">
+              <Link href={`/customer-v2/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-2 py-3 text-center text-[10px] font-black">
                 Sell
               </Link>
             </div>
@@ -2155,7 +2155,7 @@ export function CustomerRoosters() {
                   <Link href="/customer/care-logs" className="rounded-xl bg-[#eee8d9] px-4 py-3 font-black">
                     Care Logs
                   </Link>
-                  <Link href={`/customer/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-4 py-3 font-black">
+                  <Link href={`/customer-v2/sell-rooster?id=${selected.id}`} className="rounded-xl bg-amber-300 px-4 py-3 font-black">
                     Sell
                   </Link>
                 </div>
@@ -2181,131 +2181,102 @@ export function CustomerRoosters() {
 
 export function CustomerSellRooster() {
   const search = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-  const isCustomerV2 = pathname.startsWith("/customer-v2");
+  const animalId = search.get("id") || "";
   const [animal, setAnimal] = useState<any>(null);
   const [sale, setSale] = useState<any>(null);
-  const [note, setNote] = useState("");
-  const [statusNote, setStatusNote] = useState("Loading rooster sale record...");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [renderedAt] = useState(() => Date.now());
-  const animalId = search.get("id") || "";
+  const actionLock = useRef(false);
+  const sequence = useRef(0);
 
   async function load() {
+    const current = ++sequence.current;
+    setLoading(true);
+    setLoadError(false);
     try {
       const rows = await getCustomerOwnedRoosters();
-      const selectedAnimal = rows.find((row: any) => row.id === animalId) || rows[0] || null;
-      setAnimal(selectedAnimal);
-      if (!selectedAnimal) {
-        setSale(null);
-        setStatusNote("No owned rooster was found for this sale request.");
-        return;
-      }
-      const activeSale = await getCustomerRoosterSaleRequest(selectedAnimal.id);
-      setSale(activeSale);
-      const statusMessages: Record<string, string> = {
-        price_requested: "Price inspection requested. Waiting for admin to assign a caretaker.",
-        price_assigned: "A caretaker is checking the rooster price.",
-        price_submitted: "Caretaker price proof submitted. Waiting for admin verification.",
-        price_backjob: "Admin returned the price inspection to the caretaker for correction.",
-        price_ready: "The approved price is ready. Review it below, then press Sell to send the final request.",
-        sale_requested: "Sell request received. It is now waiting in the admin Sell Requests queue.",
-        sale_rejected: "Admin returned the sell request. Review the note and submit again when ready.",
-        release_pending_assignment: "Sale approved. Waiting for admin to assign the final caretaker release task.",
-        release_assigned: "Final release task assigned to a caretaker.",
-        release_submitted: "Caretaker submitted final release confirmation. Waiting for admin approval.",
-        release_backjob: "Final release confirmation was returned to the caretaker for correction.",
-      };
-      setStatusNote(activeSale ? statusMessages[String(activeSale.status || "")] || "The price inspection and sale release are tracked step by step." : "Request a caretaker price inspection first. The final Sell button unlocks only after admin approval.");
-    } catch (error) {
-      setStatusNote(`Sale record could not load: ${readableAppError(error) || "Check login and SQL 040."}`);
+      const selected = rows.find((row: any) => row.id === animalId) || null;
+      const request = selected ? await getCustomerRoosterSaleRequest(selected.id) : null;
+      if (current !== sequence.current) return;
+      setAnimal(selected);
+      setSale(request);
+      setMessage(selected ? "" : "Choose a rooster from your roosters page.");
+    } catch {
+      if (current !== sequence.current) return;
+      setAnimal(null);
+      setSale(null);
+      setLoadError(true);
+      setMessage("Could not load this rooster. Please try again.");
+    } finally {
+      if (current === sequence.current) setLoading(false);
     }
   }
-
   useEffect(() => {
     void load();
+    return () => { sequence.current++; };
   }, [animalId]);
 
-  async function requestPrice() {
-    if (!animal || busy) return;
+  const status = String(sale?.status || "not_requested");
+  const approvedPrice = Number(sale?.approved_sale_price || 0);
+  const canSell = ["price_ready", "sale_rejected"].includes(status) && approvedPrice > 0;
+  const labels: Record<string, string> = {
+    not_requested: "Not evaluated", price_requested: "Evaluation pending",
+    price_assigned: "Evaluation in progress", price_submitted: "Evaluation pending",
+    price_backjob: "Evaluation in progress", price_ready: "Offer ready",
+    sale_requested: "Sale pending", sale_rejected: "Needs attention",
+    release_pending_assignment: "Sale in progress", release_assigned: "Sale in progress",
+    release_submitted: "Sale in progress", release_backjob: "Sale in progress",
+    completed: "Sold",
+  };
+
+  async function act(kind: "evaluate" | "sell") {
+    if (actionLock.current || loading || loadError || !animal) return;
+    if (kind === "evaluate" && sale) return;
+    if (kind === "sell" && (!sale || !canSell)) return;
+    actionLock.current = true;
     setBusy(true);
     try {
-      await requestRoosterSalePrice(animal.id, note);
-      setStatusNote("Price inspection requested. Admin must assign the special task to a caretaker.");
+      if (kind === "evaluate") await requestRoosterSalePrice(animal.id);
+      else await confirmRoosterSale(sale.id);
       await load();
-    } catch (error) {
-      setStatusNote(`Price request failed: ${readableAppError(error) || "Check SQL 040 and customer ownership."}`);
+    } catch {
+      // A lost response is not proof of failure. Reload before allowing a retry.
+      await load();
+      setMessage("Please check the latest status before trying again.");
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   }
 
-  async function confirmSaleRequest() {
-    if (!sale || busy) return;
-    setBusy(true);
-    try {
-      await confirmRoosterSale(sale.id, note);
-      setStatusNote("Sale request sent to admin. The approved price is locked while admin reviews the release.");
-      await load();
-    } catch (error) {
-      setStatusNote(`Sell request failed: ${readableAppError(error) || "Check SQL 040 and approved price."}`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const meta = animal?.ownership_metadata || {};
-  const breed = animal?.breed_snapshot || animal?.bloodline_snapshot || "Recorded breed";
-  const acquired = animal?.acquired_at ? new Date(animal.acquired_at) : null;
-  const age = acquired && !Number.isNaN(acquired.getTime()) ? `${Math.max(0, Math.floor((renderedAt - acquired.getTime()) / 86400000))} days in your account` : String(meta.age || "Not recorded");
-  const weight = String(meta.weight || meta.latest_weight || "Pending caretaker inspection");
-  const approvedPrice = Number(sale?.approved_sale_price || animal?.approved_sale_price || 0);
-  const currentStatus = String(sale?.status || "not_requested");
-  const canConfirm = ["price_ready", "sale_rejected"].includes(currentStatus) && approvedPrice > 0;
-  const waiting = sale && !canConfirm;
-  const buttonLabel = !sale ? "Request Price Inspection" : canConfirm ? `Sell for ${peso(approvedPrice)}` : currentStatus === "completed" ? "Sale Completed" : "Waiting for Farm Review";
-
-  return (
-    <Shell role="customer" title="Sell Rooster">
-      <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={() => router.push(isCustomerV2 ? "/customer-v2/roosters" : "/customer/roosters")} className="rounded-xl bg-white px-4 py-3 font-black shadow-sm">
-          Back
-        </button>
-        <Badge tone={canConfirm ? "good" : waiting ? "warn" : "neutral"}>{currentStatus.replaceAll("_", " ")}</Badge>
-      </div>
-      <div className="mx-auto mt-5 grid max-w-5xl gap-5 lg:grid-cols-[minmax(320px,0.9fr)_1.1fr]">
-        <Card className="overflow-hidden p-0">
-          <div className="bg-[#eef2ea] p-5">
-            <img src="/farmconnect/roosters/fc-stage-4-adult-rooster-base.jpg" alt={animal?.animal_name || "Owned rooster"} className="aspect-square w-full rounded-2xl bg-white object-cover" />
+  return <Shell role="customer" title="Sell Rooster">
+    <div className="mx-auto max-w-3xl space-y-4">
+      <Link href="/customer-v2/roosters" className="inline-flex rounded-xl bg-white px-4 py-3 font-bold">Back to roosters</Link>
+      <Card className="overflow-hidden">
+        {loading ? <p role="status">Loading rooster…</p> : animal ? <>
+          <div className="grid items-center gap-5 sm:grid-cols-[180px_1fr]">
+            <img src="/farmconnect/roosters/fc-stage-4-adult-rooster-base.jpg" alt={animal.animal_name || "Rooster"} className="aspect-square w-full max-w-64 rounded-2xl object-cover" />
+            <div>
+              <h1 className="text-3xl font-black text-[#073b3d]">{animal.animal_name || animal.breed_snapshot || "Rooster"}</h1>
+              <p className="mt-1 text-sm text-[#526567]">{animal.breed_snapshot || animal.bloodline_snapshot || ""}</p>
+              <div className="mt-3"><Badge tone={canSell || status === "completed" ? "good" : "neutral"}>{labels[status] || "Status unavailable"}</Badge></div>
+              <p className="mt-5 text-sm text-[#526567]">Offer</p>
+              <p className="text-3xl font-bold text-[#087f83]">{approvedPrice > 0 ? peso(approvedPrice) : "—"}</p>
+            </div>
           </div>
-          <div className="border-t border-[#ded8c9] p-5">
-            <p className="text-xs font-black uppercase text-[#667267]">Owned Rooster</p>
-            <h1 className="mt-1 text-3xl font-black">{animal?.animal_name || "Select a rooster"}</h1>
-            <p className="mt-1 font-black text-[#1f6b45]">{animal?.animal_code || "No serial"}</p>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button type="button" disabled={busy || Boolean(sale)} onClick={() => void act("evaluate")} className="rounded-2xl bg-[#087f83] px-4 py-4 font-bold text-white disabled:opacity-40">Evaluate Price</button>
+            <button type="button" disabled={busy || !canSell} onClick={() => void act("sell")} className="rounded-2xl bg-[#f6c72b] px-4 py-4 font-bold text-[#073b3d] disabled:opacity-40">{status === "completed" ? "Sold" : "Sell"}</button>
           </div>
-        </Card>
-        <Card>
-          <h2 className="text-2xl font-black">Sale Details</h2>
-          <p className="mt-1 text-sm font-bold text-[#667267]">The approved price comes from caretaker inspection and admin verification.</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <Info label="Name" value={animal?.animal_name || "Not recorded"} />
-            <Info label="Breed" value={breed} />
-            <Info label="Weight" value={weight} />
-            <Info label="Age" value={age} />
-            <Info label="Serial ID" value={animal?.animal_code || "Not tagged"} />
-            <Info label="Approved Price" value={approvedPrice > 0 ? peso(approvedPrice) : "Waiting for inspection"} />
-          </div>
-          <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional note for caretaker/admin..." className="mt-5 h-28 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-4 text-sm font-bold" />
-          <div className="mt-4 rounded-2xl bg-[#f4efe4] p-4 text-sm font-bold leading-6 text-[#667267]">{statusNote}</div>
-          <button type="button" disabled={!animal || busy || Boolean(sale && !canConfirm)} onClick={() => (canConfirm ? void confirmSaleRequest() : void requestPrice())} className="mt-5 w-full rounded-2xl bg-amber-300 px-5 py-4 text-lg font-black disabled:cursor-not-allowed disabled:bg-[#c9c3b6]">
-            {busy ? "Saving..." : buttonLabel}
-          </button>
-          {canConfirm && <p className="mt-3 text-center text-xs font-bold text-[#667267]">After confirmation, admin creates the final caretaker release task. Wallet credit happens only after final proof approval.</p>}
-        </Card>
-      </div>
-    </Shell>
-  );
+          {!canSell && status !== "completed" && <p className="mt-3 text-sm text-[#526567]">{sale ? "Your request is being processed." : "Evaluate your rooster to receive an offer."}</p>}
+        </> : null}
+        {message && <p role="status" className="mt-4 text-sm">{message}</p>}
+        <button type="button" disabled={busy || loading} onClick={() => void load()} className="mt-4 text-sm font-bold text-[#087f83] underline disabled:opacity-40">{busy ? "Sending…" : "Refresh status"}</button>
+      </Card>
+    </div>
+  </Shell>;
 }
 export function CareLogsPage() {
   const [selected, setSelected] = useState<RoosterCard | null>(null);
