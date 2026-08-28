@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
 
-export default function Page() {
-  redirect("/customer/farm-requests");
-}
+export default customerRouteRedirect("care");

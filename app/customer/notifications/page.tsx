@@ -1,2 +1,3 @@
-import { InboxPage } from "@/lib/farmconnect-v1";
-export default InboxPage;
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
+
+export default customerRouteRedirect("inbox");

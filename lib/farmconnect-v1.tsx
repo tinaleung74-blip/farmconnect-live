@@ -196,10 +196,10 @@ function FCCoin({ className = "h-12 w-12" }: { className?: string }) {
 
 const nav = {
   customer: [
-    ["My Roosters", "/customer/roosters", "rooster"],
-    ["Add Rooster", "/customer-v2/add-rooster", "bag"],
-    ["Farm Requests", "/customer/farm-requests", "clipboard"],
-    ["Wallet", "/customer/wallet", "wallet"],
+    ["Wallet", "/customer-v2/wallet", "wallet"],
+    ["Inbox", "/customer-v2/inbox", "inbox"],
+    ["Support", "/customer-v2/support", "support"],
+    ["Settings", "/customer-v2/settings", "settings"],
   ],
   caretaker: [
     ["Active Tasks", "/caretaker/tasks", "clipboard"],
@@ -612,36 +612,9 @@ function submittedProofToCareLog(record: SubmittedTaskProof): CareLogRecord {
   };
 }
 
-const customerNavCardStyle: Record<string, { bg: string; border: string; chip: string; text: string }> = {
-  "My Roosters": {
-    bg: "linear-gradient(135deg, #e8ffdc 0%, #fff17a 56%, #dff0ff 100%)",
-    border: "#f6b64a",
-    chip: "#fff1b7",
-    text: "#173021",
-  },
-  "Farm Buy": {
-    bg: "linear-gradient(135deg, #dff0ff 0%, #fff17a 52%, #e7ffe0 100%)",
-    border: "#1f5db8",
-    chip: "#dceaff",
-    text: "#102b4a",
-  },
-  "Farm Requests": {
-    bg: "linear-gradient(135deg, #e7fff0 0%, #dff0ff 48%, #fff17a 100%)",
-    border: "#d92525",
-    chip: "#ffe2de",
-    text: "#302018",
-  },
-  Wallet: {
-    bg: "linear-gradient(135deg, #dff0ff 0%, #e7ffe0 52%, #fff17a 100%)",
-    border: "#0d4fb3",
-    chip: "#dceaff",
-    text: "#102b4a",
-  },
-};
 function Shell({ role, title, children }: { role: Role; title: string; children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const isCustomerV2 = role === "customer" && pathname.startsWith("/customer-v2");
+  const isCustomerV2 = role === "customer";
   const customerV2Links = [
     ["Roosters", "/customer-v2/roosters", "rooster"],
     ["Inbox", "/customer-v2/inbox", "inbox"],
@@ -650,56 +623,8 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
   ] as const;
   const links = isCustomerV2 ? customerV2Links : nav[role];
   const headerLinks = role === "admin" ? links.filter(([label]) => ["Dashboard", "Customer Requests", "Caretaker Management", "Farm Operations", "Issue Management", "Account Verification"].includes(label)) : links;
-  const customerPhoneLinks = [
-    ...(isCustomerV2
-      ? customerV2Links
-      : ([
-          ["Home", "/customer/dashboard", "home"],
-          ["Roosters", "/customer/roosters", "rooster"],
-          ["Add Rooster", "/customer-v2/add-rooster", "bag"],
-          ["Requests", "/customer/farm-requests", "clipboard"],
-        ] as const)),
-  ] as const;
-  const customerMoreLinks = [
-    ["Wallet", "/customer/wallet", "wallet"],
-    ["Inbox", "/customer/inbox", "inbox"],
-    ["Support", "/customer/support", "support"],
-    ["Inventory", "/customer/inventory", "bag"],
-    ["Settings", "/customer/settings", "settings"],
-  ] as const;
-  const customerTabletLinks = [
-    ...(isCustomerV2
-      ? customerV2Links
-      : ([
-          ["Dashboard", "/customer/dashboard", "home"],
-          ["My Roosters", "/customer/roosters", "rooster"],
-          ["Add Rooster", "/customer-v2/add-rooster", "bag"],
-          ["Requests", "/customer/farm-requests", "clipboard"],
-          ["Wallet", "/customer/wallet", "wallet"],
-          ["Inbox", "/customer/inbox", "inbox"],
-        ] as const)),
-  ] as const;
   const [inboxCount, setInboxCount] = useState(0);
   const [accessReady, setAccessReady] = useState(false);
-  const [customerMoreOpen, setCustomerMoreOpen] = useState(false);
-  useEffect(() => {
-    if (!customerMoreOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setCustomerMoreOpen(false);
-    };
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [customerMoreOpen]);
-  const logoutCustomer = async () => {
-    setCustomerMoreOpen(false);
-    await supabase.auth.signOut().catch(() => undefined);
-    router.replace("/");
-  };
   useEffect(() => {
     let mounted = true;
     getCurrentProfile()
@@ -765,7 +690,7 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
     >
       <header className="sticky top-0 z-40 border-b-4 border-[#ffd43b] bg-gradient-to-r from-[#075c3a]/95 via-[#0b6fba]/94 to-[#075c3a]/95 text-white shadow-[0_12px_35px_rgba(7,92,58,0.24)] backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
-          <Link href={role === "admin" ? "/admin" : role === "caretaker" ? "/caretaker/dashboard" : isCustomerV2 ? "/customer-v2/roosters" : "/customer/dashboard"} className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Link href={role === "admin" ? "/admin" : role === "caretaker" ? "/caretaker/dashboard" : "/customer-v2/roosters"} className="flex min-w-0 items-center gap-2 sm:gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-white shadow-sm sm:h-12 sm:w-12">
               <FarmImageIcon name="rooster" className="h-9 w-9 sm:h-11 sm:w-11" />
             </span>
@@ -774,34 +699,16 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
               <small className="block max-w-32 truncate text-[10px] font-bold text-white/78 sm:max-w-48 sm:text-xs">{title}</small>
             </span>
           </Link>
-          <nav className={isCustomerV2 ? "hidden" : "fc-desktop-header-nav hidden items-center gap-2 lg:flex"}>
-            {headerLinks.map(([label, href, icon]) => {
-              const navCard = role === "customer" ? customerNavCardStyle[label] : undefined;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  style={
-                    navCard
-                      ? {
-                          background: navCard.bg,
-                          borderColor: navCard.border,
-                          color: navCard.text,
-                        }
-                      : undefined
-                  }
-                  className={navCard ? "group flex min-h-[48px] items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black shadow-sm ring-1 ring-white/35 transition hover:-translate-y-0.5 hover:shadow-md xl:px-3.5" : "flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-black text-white transition hover:bg-white/16 xl:px-3 xl:text-sm"}
-                >
-                  <span className={navCard ? "grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-white/78 p-0.5 shadow-sm ring-1 ring-white/80" : "contents"}>
-                    <FarmImageIcon name={icon as IconName} className={navCard ? "h-7 w-7 rounded-lg object-contain transition group-hover:scale-105" : "h-5 w-5 rounded-md"} fallbackClassName={navCard ? "h-5 w-5" : "h-4 w-4"} />
-                  </span>
-                  <span className="leading-tight">{label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          {role !== "customer" && <nav className="fc-desktop-header-nav hidden items-center gap-2 lg:flex">
+            {headerLinks.map(([label, href, icon]) => (
+              <Link key={href} href={href} className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-black text-white hover:bg-white/16">
+                <FarmImageIcon name={icon as IconName} className="h-5 w-5 rounded-md" />
+                <span>{label}</span>
+              </Link>
+            ))}
+          </nav>}
           {isCustomerV2 ? (
-            <nav className="ml-auto grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-2" aria-label="Customer V2 tools">
+            <nav className="ml-auto grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-2" aria-label="Customer tools">
               {([ ["Wallet", "/customer-v2/wallet", "/farmconnect/customer-v2-icons/wallet-v2.png"], ["Inbox", "/customer-v2/inbox", "/farmconnect/customer-v2-icons/inbox-v2.png"], ["Support", "/customer-v2/support", "/farmconnect/customer-v2-icons/support-v2.png"], ["Settings", "/customer-v2/settings", "/farmconnect/customer-v2-icons/settings-v2.png"] ] as const).map(([label, href, image]) => (
                 <Link key={href} href={href} aria-label={label} className="relative grid min-h-11 min-w-11 place-items-center rounded-full border border-[#f4c430]/70 bg-white/10 p-1 text-xs font-black transition hover:bg-[#f4c430] hover:text-[#041f22] sm:flex sm:min-h-12 sm:gap-2 sm:px-2.5">
                   <span className="grid h-8 w-8 place-items-center rounded-full bg-[#fff8e7] shadow sm:h-9 sm:w-9"><img src={image} alt="" className="h-7 w-7 object-contain sm:h-8 sm:w-8" /></span>
@@ -811,60 +718,13 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
               ))}
             </nav>
           ) : <div className="flex items-center gap-2">
-            {role === "customer" && <TopIcon href="/customer/inbox" name="inbox" label="Inbox" imageSrc="/farmconnect/icons/farm-inbox.png" badge={inboxCount} />}
-            {role === "customer" && !isCustomerV2 && (
-              <span className="hidden sm:contents">
-                <TopIcon href={isCustomerV2 ? "/customer-v2/support" : "/customer/support"} name="support" label="Support" imageSrc="/farmconnect/icons/support.png" />
-              </span>
-            )}
-            {role === "customer" && !isCustomerV2 && (
-              <span className="hidden md:contents">
-                <TopIcon href="/customer/inventory" name="bag" label="Inventory" imageSrc="/farmconnect/icons/farm-bag.png" />
-              </span>
-            )}
-            <span className="hidden sm:contents">
-              <TopIcon href={role === "customer" ? (isCustomerV2 ? "/customer-v2/settings" : "/customer/settings") : role === "caretaker" ? "/caretaker/profile" : "/admin/kafarm"} name="settings" label={role === "admin" ? "Ka-Farm" : "Settings"} imageSrc={role === "customer" ? "/farmconnect/icons/farm-settings.png" : undefined} />
-            </span>
-            {role === "customer" && (
-              <span className="sm:hidden">
-                <TopIcon href={isCustomerV2 ? "/customer-v2/settings" : "/customer/settings"} name="settings" label="Profile" imageSrc="/farmconnect/icons/farm-settings.png" />
-              </span>
-            )}
-            <span className={role === "customer" ? "hidden sm:contents" : "contents"}>
-              <TopIcon href="/" name="logout" label="Logout" />
-            </span>
+            <TopIcon href={role === "caretaker" ? "/caretaker/profile" : "/admin/kafarm"} name="settings" label={role === "admin" ? "Ka-Farm" : "Settings"} />
+            <TopIcon href="/" name="logout" label="Logout" />
           </div>}
         </div>
       </header>
-      {role === "customer" && !isCustomerV2 && (
-        <nav aria-label="Customer tablet navigation" className="fc-customer-tablet-nav sticky top-[72px] z-30 mx-auto hidden max-w-5xl items-center justify-center gap-2 border-b border-[#d7e2d5] bg-white/94 px-3 py-2 shadow-md backdrop-blur">
-          {customerTabletLinks.map(([label, href, icon]) => (
-            <Link key={href} href={href} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-[#dbe6d7] bg-[#fbfbf6] px-3 py-2 text-center text-xs font-black text-[#174d36] transition hover:border-[#1f6b45] hover:bg-emerald-50">
-              <FarmImageIcon name={icon as IconName} className="h-7 w-7 rounded-md" fallbackClassName="h-5 w-5" />
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
-      )}
-      <div className={`fc-shell-content mx-auto max-w-7xl px-3 py-4 drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] sm:px-4 sm:py-6 ${role === "customer" ? (isCustomerV2 ? "pb-8" : "pb-40 sm:pb-6 lg:pb-28") : "pb-28"}`}>{children}</div>
-      {role === "customer" && !isCustomerV2 ? (
-        <nav aria-label="Customer phone navigation" className="fc-customer-mobile-nav fixed bottom-2 left-1/2 z-40 flex w-[calc(100%-16px)] max-w-md -translate-x-1/2 gap-1 rounded-2xl border border-[#ded8c9] bg-white/96 p-2 shadow-xl backdrop-blur sm:hidden">
-          {customerPhoneLinks.map(([label, href, icon]) => (
-            <Link key={href} href={href} className="grid min-w-0 flex-1 place-items-center rounded-xl px-1 py-2 text-center text-[10px] font-black text-[#174d36]">
-              <FarmImageIcon name={icon as IconName} className="mb-1 h-7 w-7 rounded-md" fallbackClassName="mb-1 h-5 w-5" />
-              <span className="truncate">{label}</span>
-            </Link>
-          ))}
-          {!isCustomerV2 && (
-            <button type="button" aria-expanded={customerMoreOpen} aria-controls="customer-more-tools" onClick={() => setCustomerMoreOpen(true)} className="grid min-w-0 flex-1 place-items-center rounded-xl px-1 py-2 text-center text-[10px] font-black text-[#174d36]">
-              <span className="mb-1 grid h-7 w-7 place-items-center rounded-md bg-[#eef5ec] text-base leading-none" aria-hidden="true">
-                •••
-              </span>
-              <span className="truncate">More</span>
-            </button>
-          )}
-        </nav>
-      ) : role !== "customer" ? (
+      <div className={`fc-shell-content mx-auto max-w-7xl px-3 py-4 drop-shadow-[0_1px_0_rgba(255,255,255,0.65)] sm:px-4 sm:py-6 ${role === "customer" ? "pb-8" : "pb-28"}`}>{children}</div>
+      {role !== "customer" ? (
         <nav aria-label={`${role} mobile navigation`} className="fc-scroll-row fixed bottom-2 left-1/2 z-40 flex w-[calc(100%-16px)] max-w-3xl -translate-x-1/2 snap-x gap-1 overflow-x-auto rounded-2xl border border-[#ded8c9] bg-white/96 p-2 shadow-xl backdrop-blur lg:hidden">
           {headerLinks.map(([label, href, icon]) => (
             <Link key={href} href={href} aria-label={label} title={label} className="grid min-w-[76px] flex-1 snap-start place-items-center rounded-xl px-2 py-2 text-center text-[10px] font-bold sm:min-w-[92px] sm:text-[11px]">
@@ -873,35 +733,6 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
           ))}
         </nav>
       ) : null}
-      {role === "customer" && !isCustomerV2 && customerMoreOpen && (
-        <div className="fixed inset-0 z-[70] sm:hidden">
-          <button type="button" aria-label="Close menu" onClick={() => setCustomerMoreOpen(false)} className="absolute inset-0 h-full w-full bg-[#082d20]/55 backdrop-blur-[2px]" />
-          <aside id="customer-more-tools" aria-label="More pages" className="absolute inset-x-2 bottom-2 rounded-[26px] border border-[#d7e0d4] bg-[#fffdf8] p-4 pb-3 text-[#174d36] shadow-[0_22px_60px_rgba(6,45,31,0.34)]">
-            <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-[#cad2c8]" />
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-[#278354]">FarmConnect</p>
-                <h2 className="mt-1 text-xl font-black">More tools</h2>
-              </div>
-              <button type="button" aria-label="Close menu" onClick={() => setCustomerMoreOpen(false)} className="grid h-9 w-9 place-items-center rounded-full bg-[#edf2e9] text-xl font-medium text-[#174d36]">
-                ×
-              </button>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {customerMoreLinks.map(([label, href, icon]) => (
-                <Link key={href} href={href} onClick={() => setCustomerMoreOpen(false)} className="relative grid min-h-[84px] place-items-center rounded-2xl border border-[#dde5da] bg-white px-2 py-3 text-center shadow-sm">
-                  <FarmImageIcon name={icon as IconName} className="h-10 w-10 rounded-xl object-contain" fallbackClassName="h-6 w-6" />
-                  {label === "Inbox" && inboxCount > 0 && <span className="absolute right-2 top-2 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white">{inboxCount > 9 ? "9+" : inboxCount}</span>}
-                  <span className="mt-1 text-[11px] font-black">{label}</span>
-                </Link>
-              ))}
-            </div>
-            <button type="button" onClick={logoutCustomer} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-black text-red-700">
-              <Icon name="logout" className="h-4 w-4" /> Logout safely
-            </button>
-          </aside>
-        </div>
-      )}
     </main>
   );
 }

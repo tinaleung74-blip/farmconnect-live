@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
 
-export default function CustomerDashboardRedirect() {
-  redirect("/customer-v2/roosters");
-}
+export default customerRouteRedirect("roosters");

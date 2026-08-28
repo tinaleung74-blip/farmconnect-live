@@ -1,10 +1,3 @@
-import { Suspense } from "react";
-import { FarmRequests } from "@/lib/farmconnect-v1";
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
 
-export default function CustomerPhotoUpdatesPage() {
-  return (
-    <Suspense fallback={null}>
-      <FarmRequests />
-    </Suspense>
-  );
-}
+export default customerRouteRedirect("roosters");

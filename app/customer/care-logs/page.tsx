@@ -1,2 +1,3 @@
-import { CareLogsPage } from "@/lib/farmconnect-v1";
-export default CareLogsPage;
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
+
+export default customerRouteRedirect("roosters");

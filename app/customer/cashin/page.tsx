@@ -1,3 +1,3 @@
-import { CashInPage } from "@/lib/farmconnect-v1";
+import { customerRouteRedirect } from "@/lib/customer-route-redirect";
 
-export default CashInPage;
+export default customerRouteRedirect("wallet");

@@ -1,19 +1,44 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-28T04:26:17.849Z",
-  "sourceFingerprint": "e70b221044220bc065f43b25c94a34ee2fa65853adb423d44e7d2610fc6ab64a",
+  "generatedAt": "2026-08-28T05:24:08.637Z",
+  "sourceFingerprint": "ad750b4ee3e5e91fda306f16f1cf81c4e7f64136966d00eebd5d1ef1ebb96012",
   "git": {
-    "commit": "99a12a1bda57d68b56bda4cfbc071f43a336ca02",
+    "commit": "0f2c1f1c2d7d7158a6cbd58b93b4b4f3b4e06757",
     "branch": "agent/independent-operations",
     "dirtyFiles": [
-      "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "app/customer/farm-buy/page.tsx",
-      "app/customer/marketplace/dashboard/page.tsx",
-      "app/customer/marketplace/page.tsx",
-      "app/customer/store/page.tsx",
+      "app/customer/care-logs/page.tsx",
+      "app/customer/care-plans/page.tsx",
+      "app/customer/caretakers/dashboard/page.tsx",
+      "app/customer/caretakers/page.tsx",
+      "app/customer/cashin/bpi/page.tsx",
+      "app/customer/cashin/gcash/page.tsx",
+      "app/customer/cashin/maya/page.tsx",
+      "app/customer/cashin/page.tsx",
+      "app/customer/chicks/page.tsx",
+      "app/customer/customer-service/page.tsx",
+      "app/customer/dashboard/page.tsx",
+      "app/customer/farm-requests/page.tsx",
+      "app/customer/inbox/invoice/care-request/page.tsx",
+      "app/customer/inbox/invoice/cashin/page.tsx",
+      "app/customer/inbox/invoice/farm-buy/page.tsx",
+      "app/customer/inbox/page.tsx",
+      "app/customer/inventory/page.tsx",
+      "app/customer/live-camera/page.tsx",
+      "app/customer/membership/page.tsx",
+      "app/customer/notifications/page.tsx",
+      "app/customer/page.tsx",
+      "app/customer/payment/page.tsx",
+      "app/customer/photo-updates/page.tsx",
+      "app/customer/roosters/page.tsx",
+      "app/customer/settings/page.tsx",
+      "app/customer/support/page.tsx",
+      "app/customer/wallet/page.tsx",
+      "app/customer/weight-updates/page.tsx",
+      "app/customer/withdraw/add-payout/page.tsx",
+      "app/customer/withdraw/page.tsx",
       "lib/farmconnect-v1.tsx",
-      "lib/kafarm-brain.ts",
-      "scripts/qa/add-rooster-route-regression.test.mjs"
+      "lib/customer-route-redirect.ts",
+      "scripts/qa/customer-navigation-regression.test.mjs"
     ]
   },
   "safety": {
@@ -47,9 +72,9 @@
     "routes": 131,
     "apiEndpoints": 5,
     "clientStorageKeys": 18,
-    "activeFiles": 167,
+    "activeFiles": 168,
     "unreachableFiles": 3,
-    "actions": 161,
+    "actions": 151,
     "backendReferences": 137,
     "findings": 1
   },
@@ -1141,53 +1166,9 @@
     },
     {
       "kind": "button",
-      "label": "••• More",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 859,
-      "role": "system",
-      "route": "lib/farmconnect-v1.tsx",
-      "exportName": null,
-      "wiring": "handled-unproven",
-      "handler": null
-    },
-    {
-      "kind": "button",
-      "label": "FarmConnect More tools setCustomerMoreOpen(false)} className=\"grid h-9 w-9 place-items-center rounde",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 878,
-      "role": "system",
-      "route": "lib/farmconnect-v1.tsx",
-      "exportName": null,
-      "wiring": "handled-unproven",
-      "handler": null
-    },
-    {
-      "kind": "button",
-      "label": "Logout safely",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 899,
-      "role": "system",
-      "route": "lib/farmconnect-v1.tsx",
-      "exportName": null,
-      "wiring": "handled-unproven",
-      "handler": null
-    },
-    {
-      "kind": "button",
-      "label": "Owned Rooster",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 1718,
-      "role": "customer",
-      "route": "/customer/roosters",
-      "exportName": "CustomerRoostersResponsive",
-      "wiring": "handled-unproven",
-      "handler": "() => setSelected(row)} className={`flex min-w-[255px] snap-start items-center gap-3 rounded-[18px] border p-2 text-left"
-    },
-    {
-      "kind": "button",
       "label": "+ Add Rooster",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1910,
+      "line": 1741,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1198,7 +1179,7 @@
       "kind": "button",
       "label": "×",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1911,
+      "line": 1742,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1209,7 +1190,7 @@
       "kind": "button",
       "label": "Try Again",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1913,
+      "line": 1744,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1220,7 +1201,7 @@
       "kind": "button",
       "label": "←",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1915,
+      "line": 1746,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1231,7 +1212,7 @@
       "kind": "button",
       "label": "→",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1915,
+      "line": 1746,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1242,7 +1223,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1917,
+      "line": 1748,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1253,7 +1234,7 @@
       "kind": "button",
       "label": "Rename",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1917,
+      "line": 1748,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1264,7 +1245,7 @@
       "kind": "button",
       "label": "×",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1936,
+      "line": 1767,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1275,7 +1256,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1936,
+      "line": 1767,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1286,7 +1267,7 @@
       "kind": "button",
       "label": "×",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1937,
+      "line": 1768,
       "role": "customer",
       "route": "/customer-v2/roosters",
       "exportName": "CustomerRoostersV2",
@@ -1297,7 +1278,7 @@
       "kind": "button",
       "label": "Care options Choose care for ⌄",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2015,
+      "line": 1846,
       "role": "customer",
       "route": "/customer-v2/roosters/diary",
       "exportName": "CustomerRoosterDiaryV2",
@@ -1308,7 +1289,7 @@
       "kind": "button",
       "label": "Daily Care ₱160 One-day care",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2016,
+      "line": 1847,
       "role": "customer",
       "route": "/customer-v2/roosters/diary",
       "exportName": "CustomerRoosterDiaryV2",
@@ -1319,7 +1300,7 @@
       "kind": "button",
       "label": "Monthly Care ₱5,000 30-day coverage",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2016,
+      "line": 1847,
       "role": "customer",
       "route": "/customer-v2/roosters/diary",
       "exportName": "CustomerRoosterDiaryV2",
@@ -1330,7 +1311,7 @@
       "kind": "button",
       "label": "{paying ? \"Preparing Payment...\" : `Pay $ `}",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2017,
+      "line": 1848,
       "role": "customer",
       "route": "/customer-v2/roosters/diary",
       "exportName": "CustomerRoosterDiaryV2",
@@ -1341,7 +1322,7 @@
       "kind": "button",
       "label": "Try Again",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2021,
+      "line": 1852,
       "role": "customer",
       "route": "/customer-v2/roosters/diary",
       "exportName": "CustomerRoosterDiaryV2",
@@ -1350,20 +1331,9 @@
     },
     {
       "kind": "button",
-      "label": "-",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 2098,
-      "role": "customer",
-      "route": "/customer/caretakers, /customer/caretakers/dashboard, /customer/chicks",
-      "exportName": "CustomerRoosters",
-      "wiring": "handled-unproven",
-      "handler": "() => setSelected(r)} className={\"flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition \" + (select"
-    },
-    {
-      "kind": "button",
       "label": "Evaluate Price",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2270,
+      "line": 2101,
       "role": "customer",
       "route": "/customer-v2/sell-rooster",
       "exportName": "CustomerSellRooster",
@@ -1374,7 +1344,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2271,
+      "line": 2102,
       "role": "customer",
       "route": "/customer-v2/sell-rooster",
       "exportName": "CustomerSellRooster",
@@ -1385,40 +1355,18 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2276,
+      "line": 2107,
       "role": "customer",
       "route": "/customer-v2/sell-rooster",
       "exportName": "CustomerSellRooster",
       "wiring": "handled-unproven",
       "handler": null
-    },
-    {
-      "kind": "button",
-      "label": "-",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 2351,
-      "role": "customer",
-      "route": "/customer/care-logs",
-      "exportName": "CareLogsPage",
-      "wiring": "handled-unproven",
-      "handler": "() => setSelected(r)} className={\"flex w-full items-center gap-3 rounded-2xl border p-3 text-left \" + (selected?.id === "
-    },
-    {
-      "kind": "button",
-      "label": "Unlabeled button",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 2395,
-      "role": "customer",
-      "route": "/customer/care-logs",
-      "exportName": "CareLogsPage",
-      "wiring": "handled-unproven",
-      "handler": "() => setStatus(s)} className={\"rounded-full px-4 py-2 text-sm font-black \" + (status === s ? \"bg-[#1f6b45] text-white\" "
     },
     {
       "kind": "button",
       "label": "Clear Link",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2652,
+      "line": 2483,
       "role": "customer",
       "route": "/customer-v2/add-rooster",
       "exportName": "FarmBuy",
@@ -1429,7 +1377,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2662,
+      "line": 2493,
       "role": "customer",
       "route": "/customer-v2/add-rooster",
       "exportName": "FarmBuy",
@@ -1440,7 +1388,7 @@
       "kind": "button",
       "label": "-",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2685,
+      "line": 2516,
       "role": "customer",
       "route": "/customer-v2/add-rooster",
       "exportName": "FarmBuy",
@@ -1451,7 +1399,7 @@
       "kind": "button",
       "label": "+",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2692,
+      "line": 2523,
       "role": "customer",
       "route": "/customer-v2/add-rooster",
       "exportName": "FarmBuy",
@@ -1462,7 +1410,7 @@
       "kind": "button",
       "label": "Pay",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2732,
+      "line": 2563,
       "role": "customer",
       "route": "/customer-v2/add-rooster",
       "exportName": "FarmBuy",
@@ -1473,7 +1421,7 @@
       "kind": "button",
       "label": "Pay",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2737,
+      "line": 2568,
       "role": "customer",
       "route": "/customer-v2/add-rooster",
       "exportName": "FarmBuy",
@@ -1484,9 +1432,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3124,
+      "line": 2955,
       "role": "customer",
-      "route": "/customer-v2/care, /customer/farm-requests, /customer/live-camera, /customer/photo-updates, /customer/weight-updates",
+      "route": "/customer-v2/care",
       "exportName": "FarmRequests",
       "wiring": "handled-unproven",
       "handler": "() => setRooster(r)} className={\"flex w-full items-center gap-3 rounded-xl border p-3 text-left \" + (rooster?.id === r.i"
@@ -1495,9 +1443,9 @@
       "kind": "button",
       "label": "-",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3139,
+      "line": 2970,
       "role": "customer",
-      "route": "/customer-v2/care, /customer/farm-requests, /customer/live-camera, /customer/photo-updates, /customer/weight-updates",
+      "route": "/customer-v2/care",
       "exportName": "FarmRequests",
       "wiring": "handled-unproven",
       "handler": "() => setService(s)} className={\"w-full rounded-xl border p-3 text-left \" + (service.name === s.name ? \"border-[#1f6b45]"
@@ -1506,9 +1454,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3152,
+      "line": 2983,
       "role": "customer",
-      "route": "/customer-v2/care, /customer/farm-requests, /customer/live-camera, /customer/photo-updates, /customer/weight-updates",
+      "route": "/customer-v2/care",
       "exportName": "FarmRequests",
       "wiring": "handled-unproven",
       "handler": null
@@ -1517,9 +1465,9 @@
       "kind": "button",
       "label": "View Care",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3167,
+      "line": 2998,
       "role": "customer",
-      "route": "/customer-v2/care, /customer/farm-requests, /customer/live-camera, /customer/photo-updates, /customer/weight-updates",
+      "route": "/customer-v2/care",
       "exportName": "FarmRequests",
       "wiring": "handled-unproven",
       "handler": null
@@ -1528,9 +1476,9 @@
       "kind": "button",
       "label": "Continue ₱5,000 Payment",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3177,
+      "line": 3008,
       "role": "customer",
-      "route": "/customer-v2/care, /customer/farm-requests, /customer/live-camera, /customer/photo-updates, /customer/weight-updates",
+      "route": "/customer-v2/care",
       "exportName": "FarmRequests",
       "wiring": "handled-unproven",
       "handler": null
@@ -1539,9 +1487,9 @@
       "kind": "button",
       "label": "View Status",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3181,
+      "line": 3012,
       "role": "customer",
-      "route": "/customer-v2/care, /customer/farm-requests, /customer/live-camera, /customer/photo-updates, /customer/weight-updates",
+      "route": "/customer-v2/care",
       "exportName": "FarmRequests",
       "wiring": "handled-unproven",
       "handler": null
@@ -1550,9 +1498,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3951,
+      "line": 3782,
       "role": "customer",
-      "route": "/customer-v2/wallet, /customer/membership, /customer/wallet",
+      "route": "/customer-v2/wallet",
       "exportName": "WalletPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1561,9 +1509,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4054,
+      "line": 3885,
       "role": "customer",
-      "route": "/customer-v2/wallet, /customer/membership, /customer/wallet",
+      "route": "/customer-v2/wallet",
       "exportName": "WalletPage",
       "wiring": "handled-unproven",
       "handler": "() => setShowAmounts(!showAmounts)} className=\"grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-[#19704"
@@ -1572,9 +1520,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4069,
+      "line": 3900,
       "role": "customer",
-      "route": "/customer-v2/wallet, /customer/membership, /customer/wallet",
+      "route": "/customer-v2/wallet",
       "exportName": "WalletPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1583,9 +1531,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4125,
+      "line": 3956,
       "role": "customer",
-      "route": "/customer-v2/wallet, /customer/membership, /customer/wallet",
+      "route": "/customer-v2/wallet",
       "exportName": "WalletPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1594,9 +1542,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4139,
+      "line": 3970,
       "role": "customer",
-      "route": "/customer-v2/wallet, /customer/membership, /customer/wallet",
+      "route": "/customer-v2/wallet",
       "exportName": "WalletPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1605,42 +1553,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4234,
+      "line": 4382,
       "role": "customer",
-      "route": "/customer/cashin",
-      "exportName": "CashInPage",
-      "wiring": "handled-unproven",
-      "handler": "() => setMethod(m)} className={\"flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-black transition \" + (m"
-    },
-    {
-      "kind": "button",
-      "label": "Upload Proof Screenshot or clear photo of payment",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 4274,
-      "role": "customer",
-      "route": "/customer/cashin",
-      "exportName": "CashInPage",
-      "wiring": "handled-unproven",
-      "handler": null
-    },
-    {
-      "kind": "button",
-      "label": "Submit for Auto Check",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 4285,
-      "role": "customer",
-      "route": "/customer/cashin",
-      "exportName": "CashInPage",
-      "wiring": "handled-unproven",
-      "handler": null
-    },
-    {
-      "kind": "button",
-      "label": "Unlabeled button",
-      "file": "lib/farmconnect-v1.tsx",
-      "line": 4551,
-      "role": "customer",
-      "route": "/customer-v2/withdraw, /customer/withdraw",
+      "route": "/customer-v2/withdraw",
       "exportName": "WithdrawPageV2",
       "wiring": "handled-unproven",
       "handler": "() => setSelectedId(row.id)} className={\"rounded-2xl border p-4 text-left transition \" + (selected?.id === row.id ? \"bor"
@@ -1649,9 +1564,9 @@
       "kind": "button",
       "label": "Request Withdrawal",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4578,
+      "line": 4409,
       "role": "customer",
-      "route": "/customer-v2/withdraw, /customer/withdraw",
+      "route": "/customer-v2/withdraw",
       "exportName": "WithdrawPageV2",
       "wiring": "handled-unproven",
       "handler": null
@@ -1660,9 +1575,9 @@
       "kind": "button",
       "label": "View Uploaded Receipt",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4606,
+      "line": 4437,
       "role": "customer",
-      "route": "/customer-v2/withdraw, /customer/withdraw",
+      "route": "/customer-v2/withdraw",
       "exportName": "WithdrawPageV2",
       "wiring": "handled-unproven",
       "handler": null
@@ -1671,9 +1586,9 @@
       "kind": "button",
       "label": "I Received the Payout",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4615,
+      "line": 4446,
       "role": "customer",
-      "route": "/customer-v2/withdraw, /customer/withdraw",
+      "route": "/customer-v2/withdraw",
       "exportName": "WithdrawPageV2",
       "wiring": "handled-unproven",
       "handler": null
@@ -1682,9 +1597,9 @@
       "kind": "button",
       "label": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4622,
+      "line": 4453,
       "role": "customer",
-      "route": "/customer-v2/withdraw, /customer/withdraw",
+      "route": "/customer-v2/withdraw",
       "exportName": "WithdrawPageV2",
       "wiring": "handled-unproven",
       "handler": null
@@ -1693,9 +1608,9 @@
       "kind": "button",
       "label": "Send Problem",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4632,
+      "line": 4463,
       "role": "customer",
-      "route": "/customer-v2/withdraw, /customer/withdraw",
+      "route": "/customer-v2/withdraw",
       "exportName": "WithdrawPageV2",
       "wiring": "handled-unproven",
       "handler": null
@@ -1704,9 +1619,9 @@
       "kind": "button",
       "label": "Report a Problem",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4639,
+      "line": 4470,
       "role": "customer",
-      "route": "/customer-v2/withdraw, /customer/withdraw",
+      "route": "/customer-v2/withdraw",
       "exportName": "WithdrawPageV2",
       "wiring": "handled-unproven",
       "handler": null
@@ -1715,9 +1630,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4690,
+      "line": 4521,
       "role": "customer",
-      "route": "/customer-v2/withdraw/add-payout, /customer/withdraw/add-payout",
+      "route": "/customer-v2/withdraw/add-payout",
       "exportName": "AddPayoutPageV2",
       "wiring": "handled-unproven",
       "handler": "() => setProvider(row)} className={\"w-full rounded-xl border p-3 text-left font-black \" + (provider.name === row.name ? "
@@ -1726,9 +1641,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 4715,
+      "line": 4546,
       "role": "customer",
-      "route": "/customer-v2/withdraw/add-payout, /customer/withdraw/add-payout",
+      "route": "/customer-v2/withdraw/add-payout",
       "exportName": "AddPayoutPageV2",
       "wiring": "handled-unproven",
       "handler": null
@@ -1737,9 +1652,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5080,
+      "line": 4911,
       "role": "customer",
-      "route": "/customer-v2/inbox, /customer/inbox, /customer/notifications",
+      "route": "/customer-v2/inbox",
       "exportName": "InboxPage",
       "wiring": "handled-unproven",
       "handler": "() => { setCategory(c.name); setQuery(\"\"); setCategoryMenuOpen(false); }} className={\"flex w-full items-center gap-3 rou"
@@ -1748,9 +1663,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5089,
+      "line": 4920,
       "role": "customer",
-      "route": "/customer-v2/inbox, /customer/inbox, /customer/notifications",
+      "route": "/customer-v2/inbox",
       "exportName": "InboxPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1759,9 +1674,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5095,
+      "line": 4926,
       "role": "customer",
-      "route": "/customer-v2/inbox, /customer/inbox, /customer/notifications",
+      "route": "/customer-v2/inbox",
       "exportName": "InboxPage",
       "wiring": "handled-unproven",
       "handler": "() => { setSort(option); setSortMenuOpen(false); }} className={\"w-full rounded-xl px-3 py-2.5 text-left text-sm font-bla"
@@ -1770,9 +1685,9 @@
       "kind": "button",
       "label": "Mark All as Read",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5100,
+      "line": 4931,
       "role": "customer",
-      "route": "/customer-v2/inbox, /customer/inbox, /customer/notifications",
+      "route": "/customer-v2/inbox",
       "exportName": "InboxPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1781,9 +1696,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5163,
+      "line": 4994,
       "role": "customer",
-      "route": "/customer-v2/inbox, /customer/inbox, /customer/notifications",
+      "route": "/customer-v2/inbox",
       "exportName": "InboxPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1792,9 +1707,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5167,
+      "line": 4998,
       "role": "customer",
-      "route": "/customer-v2/inbox, /customer/inbox, /customer/notifications",
+      "route": "/customer-v2/inbox",
       "exportName": "InboxPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1803,9 +1718,9 @@
       "kind": "button",
       "label": "x",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5340,
+      "line": 5171,
       "role": "customer",
-      "route": "/customer-v2/payment, /customer/payment",
+      "route": "/customer-v2/payment",
       "exportName": "CustomerPaymentPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1814,9 +1729,9 @@
       "kind": "button",
       "label": "FarmConnect",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5401,
+      "line": 5232,
       "role": "customer",
-      "route": "/customer-v2/payment, /customer/payment",
+      "route": "/customer-v2/payment",
       "exportName": "CustomerPaymentPage",
       "wiring": "handled-unproven",
       "handler": "() => setMethod(row)} className={\"relative aspect-[1.58/1] w-full overflow-hidden rounded-[22px] bg-gradient-to-br p-4 t"
@@ -1825,9 +1740,9 @@
       "kind": "button",
       "label": "View QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5417,
+      "line": 5248,
       "role": "customer",
-      "route": "/customer-v2/payment, /customer/payment",
+      "route": "/customer-v2/payment",
       "exportName": "CustomerPaymentPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1836,9 +1751,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5430,
+      "line": 5261,
       "role": "customer",
-      "route": "/customer-v2/payment, /customer/payment",
+      "route": "/customer-v2/payment",
       "exportName": "CustomerPaymentPage",
       "wiring": "handled-unproven",
       "handler": "submitPayment} disabled={submitting || Boolean(submittedId)} className={\"mt-4 w-full rounded-2xl px-4 py-4 font-black te"
@@ -1847,9 +1762,9 @@
       "kind": "button",
       "label": "Close",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5586,
+      "line": 5417,
       "role": "customer",
-      "route": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy, /customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
+      "route": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
       "exportName": "CustomerInvoicePage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1858,9 +1773,9 @@
       "kind": "button",
       "label": "View Uploaded Receipt",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5620,
+      "line": 5451,
       "role": "customer",
-      "route": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy, /customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
+      "route": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
       "exportName": "CustomerInvoicePage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1869,9 +1784,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5658,
+      "line": 5489,
       "role": "customer",
-      "route": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy, /customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
+      "route": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
       "exportName": "CustomerInvoicePage",
       "wiring": "handled-unproven",
       "handler": "() => setCorrectionMethod(row)} className={\"rounded-2xl border p-4 text-left \" + (correctionMethod.method === row.method"
@@ -1880,9 +1795,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5673,
+      "line": 5504,
       "role": "customer",
-      "route": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy, /customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
+      "route": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
       "exportName": "CustomerInvoicePage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1891,9 +1806,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6302,
+      "line": 6133,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1902,9 +1817,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6308,
+      "line": 6139,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1913,9 +1828,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6372,
+      "line": 6203,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": "() => card.key && openPanel(card.key, card.title)} className={\"flex w-full items-center gap-3 rounded-2xl border p-3 tex"
@@ -1924,9 +1839,9 @@
       "kind": "button",
       "label": "ID Front chooseKycPhoto(\"front\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6484,
+      "line": 6315,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1935,9 +1850,9 @@
       "kind": "button",
       "label": "ID Back chooseKycPhoto(\"back\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6492,
+      "line": 6323,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1946,9 +1861,9 @@
       "kind": "button",
       "label": "Selfie chooseKycPhoto(\"selfie\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6500,
+      "line": 6331,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1957,9 +1872,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6517,
+      "line": 6348,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": "submitKyc} disabled={!kycConsent || kycSubmitting} className={\"rounded-2xl px-4 py-4 font-black text-white md:col-span-2"
@@ -1968,9 +1883,9 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6566,
+      "line": 6397,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1979,9 +1894,9 @@
       "kind": "button",
       "label": "Change Password",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6576,
+      "line": 6407,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -1990,9 +1905,9 @@
       "kind": "button",
       "label": "Save Contact Details",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6587,
+      "line": 6418,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage",
       "wiring": "handled-unproven",
       "handler": null
@@ -2001,7 +1916,7 @@
       "kind": "button",
       "label": "/",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7159,
+      "line": 6990,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2012,7 +1927,7 @@
       "kind": "button",
       "label": "Download QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7313,
+      "line": 7144,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2023,7 +1938,7 @@
       "kind": "button",
       "label": "Print Tag",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7317,
+      "line": 7148,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2034,7 +1949,7 @@
       "kind": "button",
       "label": "Add to Today",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7353,
+      "line": 7184,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2045,7 +1960,7 @@
       "kind": "button",
       "label": "Remove",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7354,
+      "line": 7185,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2056,7 +1971,7 @@
       "kind": "button",
       "label": "Add Evidence",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7394,
+      "line": 7225,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2067,7 +1982,7 @@
       "kind": "button",
       "label": "x",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7405,
+      "line": 7236,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2078,7 +1993,7 @@
       "kind": "button",
       "label": "x",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7411,
+      "line": 7242,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2089,7 +2004,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7420,
+      "line": 7251,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2100,7 +2015,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7443,
+      "line": 7274,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2111,7 +2026,7 @@
       "kind": "button",
       "label": "Verify QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7478,
+      "line": 7309,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2122,7 +2037,7 @@
       "kind": "button",
       "label": "Skip QR",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7481,
+      "line": 7312,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2133,7 +2048,7 @@
       "kind": "button",
       "label": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7494,
+      "line": 7325,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2144,7 +2059,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7542,
+      "line": 7373,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2155,7 +2070,7 @@
       "kind": "button",
       "label": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7545,
+      "line": 7376,
       "role": "caretaker",
       "route": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "exportName": "CaretakerTasks",
@@ -2166,7 +2081,7 @@
       "kind": "button",
       "label": "-",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 7731,
+      "line": 7562,
       "role": "caretaker",
       "route": "/caretaker/dashboard",
       "exportName": "CaretakerOperationChecker",
@@ -2177,7 +2092,7 @@
       "kind": "button",
       "label": "Refresh Database Queue",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8129,
+      "line": 7960,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2188,7 +2103,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8135,
+      "line": 7966,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2199,7 +2114,7 @@
       "kind": "button",
       "label": "Send",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8199,
+      "line": 8030,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2210,7 +2125,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8209,
+      "line": 8040,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2221,7 +2136,7 @@
       "kind": "button",
       "label": "End Chat",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8212,
+      "line": 8043,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2232,7 +2147,7 @@
       "kind": "button",
       "label": "Complete Chat",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8215,
+      "line": 8046,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2243,7 +2158,7 @@
       "kind": "button",
       "label": "{section.id === \"sell\" ? liveSellCount : customerRequestJobs.filter((job) => job.queue === section.i",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8445,
+      "line": 8276,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2254,7 +2169,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8499,
+      "line": 8330,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2265,7 +2180,7 @@
       "kind": "button",
       "label": "View Payout Proof",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8604,
+      "line": 8435,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2276,7 +2191,7 @@
       "kind": "button",
       "label": "View Receipt",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8620,
+      "line": 8451,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2287,7 +2202,7 @@
       "kind": "button",
       "label": "/",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8638,
+      "line": 8469,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2298,7 +2213,7 @@
       "kind": "button",
       "label": "Assign Task",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8646,
+      "line": 8477,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2309,7 +2224,7 @@
       "kind": "button",
       "label": "Approve",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8654,
+      "line": 8485,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2320,7 +2235,7 @@
       "kind": "button",
       "label": "Reject",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8657,
+      "line": 8488,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2331,7 +2246,7 @@
       "kind": "button",
       "label": "View Invoice",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8666,
+      "line": 8497,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2342,7 +2257,7 @@
       "kind": "button",
       "label": "Submit Decision",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8670,
+      "line": 8501,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2353,7 +2268,7 @@
       "kind": "button",
       "label": "Close",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8690,
+      "line": 8521,
       "role": "admin",
       "route": "/admin, /admin/analytics",
       "exportName": "AdminHome",
@@ -2364,7 +2279,7 @@
       "kind": "button",
       "label": "/",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8899,
+      "line": 8730,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2375,7 +2290,7 @@
       "kind": "button",
       "label": "Approve for Final Release",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8948,
+      "line": 8779,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2386,7 +2301,7 @@
       "kind": "button",
       "label": "Reject with Note",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 8951,
+      "line": 8782,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2397,7 +2312,7 @@
       "kind": "button",
       "label": "/ Ref {sourceType === \"care\" && }",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9057,
+      "line": 8888,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2408,7 +2323,7 @@
       "kind": "button",
       "label": "View Receipt",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9147,
+      "line": 8978,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2419,7 +2334,7 @@
       "kind": "button",
       "label": "View Invoice",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9184,
+      "line": 9015,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2430,7 +2345,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9188,
+      "line": 9019,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2441,7 +2356,7 @@
       "kind": "button",
       "label": "Close",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9204,
+      "line": 9035,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2452,7 +2367,7 @@
       "kind": "button",
       "label": "-",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9288,
+      "line": 9119,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2463,7 +2378,7 @@
       "kind": "button",
       "label": "Approve",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9354,
+      "line": 9185,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2474,7 +2389,7 @@
       "kind": "button",
       "label": "Needs Info",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9357,
+      "line": 9188,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2485,7 +2400,7 @@
       "kind": "button",
       "label": "Reject",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 9360,
+      "line": 9191,
       "role": "customer, admin",
       "route": "/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
       "exportName": "AdminCustomerRequestsSection",
@@ -2496,7 +2411,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 12599,
+      "line": 12430,
       "role": "system",
       "route": "/signup",
       "exportName": "FarmerSignupPage",
@@ -3620,25 +3535,25 @@
       "kind": "table",
       "name": "workflow_operation_keys",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5281,
+      "line": 5112,
       "role": "customer",
-      "route": "/customer-v2/payment, /customer/payment",
+      "route": "/customer-v2/payment",
       "exportName": "CustomerPaymentPage"
     },
     {
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6145,
+      "line": 5976,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage"
     },
     {
       "kind": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 12444,
+      "line": 12275,
       "role": "system",
       "route": "lib/farmconnect-v1.tsx",
       "exportName": "UnifiedLoginPage"
@@ -3647,27 +3562,27 @@
       "kind": "rpc",
       "name": "customer_record_kyc_consent",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6037,
+      "line": 5868,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage"
     },
     {
       "kind": "rpc",
       "name": "customer_submit_kyc",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6044,
+      "line": 5875,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage"
     },
     {
       "kind": "rpc",
       "name": "change_wallet_pin",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 6099,
+      "line": 5930,
       "role": "customer",
-      "route": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "route": "/customer-v2/onboarding, /customer-v2/settings",
       "exportName": "SettingsPage"
     },
     {
@@ -4124,7 +4039,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 701,
+      "line": 635,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/",
       "exists": true,
@@ -4132,7 +4047,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 710,
+      "line": 638,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/",
       "exists": true,
@@ -4140,7 +4055,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 713,
+      "line": 722,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/",
       "exists": true,
@@ -4148,151 +4063,127 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 814,
+      "line": 1089,
       "ownerRoute": "lib/farmconnect-v1.tsx",
-      "target": "/customer/inbox",
-      "exists": true,
-      "exportName": null
-    },
-    {
-      "source": "lib/farmconnect-v1.tsx",
-      "line": 822,
-      "ownerRoute": "lib/farmconnect-v1.tsx",
-      "target": "/customer/inventory",
-      "exists": true,
-      "exportName": null
-    },
-    {
-      "source": "lib/farmconnect-v1.tsx",
-      "line": 834,
-      "ownerRoute": "lib/farmconnect-v1.tsx",
-      "target": "/",
-      "exists": true,
-      "exportName": null
-    },
-    {
-      "source": "lib/farmconnect-v1.tsx",
-      "line": 1258,
-      "ownerRoute": "/customer",
       "target": "/customer/roosters",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1265,
-      "ownerRoute": "/customer",
+      "line": 1096,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer-v2/add-rooster",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1293,
-      "ownerRoute": "/customer",
+      "line": 1124,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/wallet",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1317,
-      "ownerRoute": "/customer",
+      "line": 1148,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/farm-requests",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1326,
-      "ownerRoute": "/customer",
+      "line": 1157,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/care-logs",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1369,
-      "ownerRoute": "/customer",
+      "line": 1200,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/roosters",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1476,
-      "ownerRoute": "/customer",
+      "line": 1307,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/roosters",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1487,
-      "ownerRoute": "/customer",
+      "line": 1318,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer-v2/add-rooster",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1499,
-      "ownerRoute": "/customer",
+      "line": 1330,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/care-logs",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1521,
-      "ownerRoute": "/customer",
+      "line": 1352,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/roosters",
+      "exists": true,
+      "exportName": "CustomerHome"
+    },
+    {
+      "source": "lib/farmconnect-v1.tsx",
+      "line": 1396,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
+      "target": "/customer/wallet",
+      "exists": true,
+      "exportName": "CustomerHome"
+    },
+    {
+      "source": "lib/farmconnect-v1.tsx",
+      "line": 1420,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
+      "target": "/customer/farm-requests",
       "exists": true,
       "exportName": "CustomerHome"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
       "line": 1565,
-      "ownerRoute": "/customer",
-      "target": "/customer/wallet",
-      "exists": true,
-      "exportName": "CustomerHome"
-    },
-    {
-      "source": "lib/farmconnect-v1.tsx",
-      "line": 1589,
-      "ownerRoute": "/customer",
-      "target": "/customer/farm-requests",
-      "exists": true,
-      "exportName": "CustomerHome"
-    },
-    {
-      "source": "lib/farmconnect-v1.tsx",
-      "line": 1734,
-      "ownerRoute": "/customer/roosters",
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer-v2/add-rooster",
       "exists": true,
       "exportName": "CustomerRoostersResponsive"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1806,
-      "ownerRoute": "/customer/roosters",
+      "line": 1637,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/farm-requests",
       "exists": true,
       "exportName": "CustomerRoostersResponsive"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1809,
-      "ownerRoute": "/customer/roosters",
+      "line": 1640,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/care-logs",
       "exists": true,
       "exportName": "CustomerRoostersResponsive"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1911,
+      "line": 1742,
       "ownerRoute": "/customer-v2/roosters",
       "target": "/customer-v2/add-rooster",
       "exists": true,
@@ -4300,7 +4191,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 1996,
+      "line": 1827,
       "ownerRoute": "/customer-v2/roosters/diary",
       "target": "/customer-v2/payment",
       "exists": true,
@@ -4308,7 +4199,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2002,
+      "line": 1833,
       "ownerRoute": "/customer-v2/roosters/diary",
       "target": "/customer-v2/payment",
       "exists": true,
@@ -4316,7 +4207,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2010,
+      "line": 1841,
       "ownerRoute": "/customer-v2/roosters/diary",
       "target": "/customer-v2/roosters",
       "exists": true,
@@ -4324,7 +4215,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2012,
+      "line": 1843,
       "ownerRoute": "/customer-v2/roosters/diary",
       "target": "/customer-v2/roosters",
       "exists": true,
@@ -4332,39 +4223,39 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2092,
-      "ownerRoute": "/customer/caretakers, /customer/caretakers/dashboard, /customer/chicks",
+      "line": 1923,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer-v2/add-rooster",
       "exists": true,
       "exportName": "CustomerRoosters"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2152,
-      "ownerRoute": "/customer/caretakers, /customer/caretakers/dashboard, /customer/chicks",
+      "line": 1983,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/farm-requests",
       "exists": true,
       "exportName": "CustomerRoosters"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2155,
-      "ownerRoute": "/customer/caretakers, /customer/caretakers/dashboard, /customer/chicks",
+      "line": 1986,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/care-logs",
       "exists": true,
       "exportName": "CustomerRoosters"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2170,
-      "ownerRoute": "/customer/caretakers, /customer/caretakers/dashboard, /customer/chicks",
+      "line": 2001,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer-v2/add-rooster",
       "exists": true,
       "exportName": "CustomerRoosters"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2256,
+      "line": 2087,
       "ownerRoute": "/customer-v2/sell-rooster",
       "target": "/customer-v2/roosters",
       "exists": true,
@@ -4372,7 +4263,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 2629,
+      "line": 2460,
       "ownerRoute": "/customer-v2/add-rooster",
       "target": "/customer-v2/payment",
       "exists": true,
@@ -4380,7 +4271,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 3245,
+      "line": 3076,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/payment",
       "exists": true,
@@ -4388,63 +4279,63 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 3965,
-      "ownerRoute": "/customer-v2/wallet, /customer/membership, /customer/wallet",
+      "line": 3796,
+      "ownerRoute": "/customer-v2/wallet",
       "target": "/customer-v2/withdraw",
       "exists": true,
       "exportName": "WalletPage"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4001,
-      "ownerRoute": "/customer-v2/wallet, /customer/membership, /customer/wallet",
+      "line": 3832,
+      "ownerRoute": "/customer-v2/wallet",
       "target": "/customer-v2/inbox",
       "exists": true,
       "exportName": "WalletPage"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4173,
-      "ownerRoute": "/customer-v2/wallet, /customer/membership, /customer/wallet",
+      "line": 4004,
+      "ownerRoute": "/customer-v2/wallet",
       "target": "/customer/inbox",
       "exists": true,
       "exportName": "WalletPage"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 4331,
-      "ownerRoute": "/customer/cashin/bpi, /customer/cashin/gcash, /customer/cashin/maya",
+      "line": 4162,
+      "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/cashin",
       "exists": true,
       "exportName": "CashInQrPage"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 5687,
-      "ownerRoute": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy, /customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
+      "line": 5518,
+      "ownerRoute": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
       "target": "/customer-v2/add-rooster",
       "exists": true,
       "exportName": "CustomerInvoicePage"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 5688,
-      "ownerRoute": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy, /customer/inbox/invoice/care-request, /customer/inbox/invoice/cashin, /customer/inbox/invoice/farm-buy",
+      "line": 5519,
+      "ownerRoute": "/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
       "target": "/customer/inventory",
       "exists": true,
       "exportName": "CustomerInvoicePage"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 6296,
-      "ownerRoute": "/customer-v2/onboarding, /customer-v2/settings, /customer/settings",
+      "line": 6127,
+      "ownerRoute": "/customer-v2/onboarding, /customer-v2/settings",
       "target": "/customer-v2/roosters",
       "exists": true,
       "exportName": "SettingsPage"
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 7423,
+      "line": 7254,
       "ownerRoute": "/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
       "target": "/caretaker/chat",
       "exists": true,
@@ -4452,7 +4343,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 7775,
+      "line": 7606,
       "ownerRoute": "/caretaker/dashboard",
       "target": "/caretaker/tasks",
       "exists": true,
@@ -4460,7 +4351,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 7778,
+      "line": 7609,
       "ownerRoute": "/caretaker/dashboard",
       "target": "/caretaker/chat",
       "exists": true,
@@ -4468,7 +4359,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 8218,
+      "line": 8049,
       "ownerRoute": "/admin, /admin/analytics",
       "target": "/admin/evidence",
       "exists": true,
@@ -4476,7 +4367,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 10566,
+      "line": 10397,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/account-verification",
       "exists": true,
@@ -4484,7 +4375,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12301,
+      "line": 12132,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/evidence",
       "exists": true,
@@ -4492,7 +4383,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12348,
+      "line": 12179,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/evidence",
       "exists": true,
@@ -4500,7 +4391,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12351,
+      "line": 12182,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/admin/customer-requests/resolved",
       "exists": true,
@@ -4508,7 +4399,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12460,
+      "line": 12291,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer-v2/onboarding",
       "exists": true,
@@ -4516,7 +4407,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12492,
+      "line": 12323,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/customer/register",
       "exists": true,
@@ -4524,7 +4415,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12495,
+      "line": 12326,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/caretaker/signup",
       "exists": true,
@@ -4532,7 +4423,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12498,
+      "line": 12329,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/",
       "exists": true,
@@ -4540,7 +4431,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12572,
+      "line": 12403,
       "ownerRoute": "/signup",
       "target": "/customer-v2/onboarding",
       "exists": true,
@@ -4548,7 +4439,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12602,
+      "line": 12433,
       "ownerRoute": "/signup",
       "target": "/login",
       "exists": true,
@@ -4556,7 +4447,7 @@
     },
     {
       "source": "lib/farmconnect-v1.tsx",
-      "line": 12784,
+      "line": 12615,
       "ownerRoute": "lib/farmconnect-v1.tsx",
       "target": "/login",
       "exists": true,
@@ -4631,7 +4522,7 @@
       "operation": "setItem",
       "key": "farmconnect_payment_context",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 1995,
+      "line": 1826,
       "role": "customer",
       "route": "/customer-v2/roosters/diary"
     },
@@ -4640,7 +4531,7 @@
       "operation": "setItem",
       "key": "farmconnect_payment_context",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2001,
+      "line": 1832,
       "role": "customer",
       "route": "/customer-v2/roosters/diary"
     },
@@ -4649,7 +4540,7 @@
       "operation": "setItem",
       "key": "farmconnect_payment_context",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 2620,
+      "line": 2451,
       "role": "customer",
       "route": "/customer-v2/add-rooster"
     },
@@ -4658,34 +4549,34 @@
       "operation": "setItem",
       "key": "farmconnect_payment_context",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3001,
+      "line": 2832,
       "role": "customer",
-      "route": "/customer-v2/care, /customer/farm-requests, /customer/live-camera, /customer/photo-updates, /customer/weight-updates"
+      "route": "/customer-v2/care"
     },
     {
       "storage": "localStorage",
       "operation": "setItem",
       "key": "farmconnect_payment_context",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3058,
+      "line": 2889,
       "role": "customer",
-      "route": "/customer-v2/care, /customer/farm-requests, /customer/live-camera, /customer/photo-updates, /customer/weight-updates"
+      "route": "/customer-v2/care"
     },
     {
       "storage": "localStorage",
       "operation": "setItem",
       "key": "farmconnect_payment_context",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3087,
+      "line": 2918,
       "role": "customer",
-      "route": "/customer-v2/care, /customer/farm-requests, /customer/live-camera, /customer/photo-updates, /customer/weight-updates"
+      "route": "/customer-v2/care"
     },
     {
       "storage": "localStorage",
       "operation": "setItem",
       "key": "farmconnect_payment_context",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 3230,
+      "line": 3061,
       "role": "system",
       "route": "lib/farmconnect-v1.tsx"
     },
@@ -4694,36 +4585,36 @@
       "operation": "getItem",
       "key": "farmconnect_payment_context",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5243,
+      "line": 5074,
       "role": "customer",
-      "route": "/customer-v2/payment, /customer/payment"
+      "route": "/customer-v2/payment"
     },
     {
       "storage": "localStorage",
       "operation": "getItem",
       "key": "farmconnect.pending.${operationScope}",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5278,
+      "line": 5109,
       "role": "customer",
-      "route": "/customer-v2/payment, /customer/payment"
+      "route": "/customer-v2/payment"
     },
     {
       "storage": "localStorage",
       "operation": "removeItem",
       "key": "farmconnect.pending.${operationScope}",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5286,
+      "line": 5117,
       "role": "customer",
-      "route": "/customer-v2/payment, /customer/payment"
+      "route": "/customer-v2/payment"
     },
     {
       "storage": "localStorage",
       "operation": "removeItem",
       "key": "farmconnect_payment_context",
       "file": "lib/farmconnect-v1.tsx",
-      "line": 5312,
+      "line": 5143,
       "role": "customer",
-      "route": "/customer-v2/payment, /customer/payment"
+      "route": "/customer-v2/payment"
     },
     {
       "storage": "localStorage",
@@ -5519,47 +5410,47 @@
     },
     {
       "file": "app/customer/care-logs/page.tsx",
-      "sha256": "0f59d8e8acbb0d7b993650f6161d50ecfc74ceb62164377b6d1512e720beb0e7"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/care-plans/page.tsx",
-      "sha256": "40bde9974e2b7119a323db4182c3421e7de4cf54847a905d62046ab51c6d04a0"
+      "sha256": "2d49f63accda6430c08371298ecba1a50efbe724f6f0548989f5b3024adcb6cc"
     },
     {
       "file": "app/customer/caretakers/dashboard/page.tsx",
-      "sha256": "2249329f602bf6c9ab9267afca2ef64bfae8998b4448db8631d8a49c8ce1fb16"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/caretakers/page.tsx",
-      "sha256": "2249329f602bf6c9ab9267afca2ef64bfae8998b4448db8631d8a49c8ce1fb16"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/cashin/bpi/page.tsx",
-      "sha256": "3196e0bf2d080410321235daf600f99a6783d38d33f6223a4f6aaaa178bce4c2"
+      "sha256": "bda39d9c5b5fc0f601178c86cbbba6bbd5fdbb011653fa79abdc8dbb162cbd7c"
     },
     {
       "file": "app/customer/cashin/gcash/page.tsx",
-      "sha256": "5bf5fb16154906801ac1d09ce1239ef2729809d23ae5ab77950a487d7e415b0c"
+      "sha256": "bda39d9c5b5fc0f601178c86cbbba6bbd5fdbb011653fa79abdc8dbb162cbd7c"
     },
     {
       "file": "app/customer/cashin/maya/page.tsx",
-      "sha256": "2dce479c78458f0c222ef04ee1634d743b22a9e7066319f4078ed671ff934d04"
+      "sha256": "bda39d9c5b5fc0f601178c86cbbba6bbd5fdbb011653fa79abdc8dbb162cbd7c"
     },
     {
       "file": "app/customer/cashin/page.tsx",
-      "sha256": "c5533f5764f7131652f04209ed58cc1f90f9af21cebe9a3ff052a959650008f5"
+      "sha256": "bda39d9c5b5fc0f601178c86cbbba6bbd5fdbb011653fa79abdc8dbb162cbd7c"
     },
     {
       "file": "app/customer/chicks/page.tsx",
-      "sha256": "2249329f602bf6c9ab9267afca2ef64bfae8998b4448db8631d8a49c8ce1fb16"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/customer-service/page.tsx",
-      "sha256": "03dba72960e30e1510adbe0fa52dea0d5ee79798c382644ea5fa06f0e2038d97"
+      "sha256": "6b10dbd56ee3e2da15257065d0b64aed800df418895ea954115109c94971cbbc"
     },
     {
       "file": "app/customer/dashboard/page.tsx",
-      "sha256": "1cb48438f176528abbc1e5ef6707c24e13c4ef45377d02fdf8e2aeb43535b77b"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/farm-buy/page.tsx",
@@ -5567,27 +5458,27 @@
     },
     {
       "file": "app/customer/farm-requests/page.tsx",
-      "sha256": "ba7f8f0fc8212d17da8786649f491e585c08348273450fd06e844bd68a6a2df9"
+      "sha256": "2d49f63accda6430c08371298ecba1a50efbe724f6f0548989f5b3024adcb6cc"
     },
     {
       "file": "app/customer/inbox/invoice/care-request/page.tsx",
-      "sha256": "a194f507c32fc85b5e8f6059eef21ea3cc391058d84fbff236f51283cc8b72b8"
+      "sha256": "0d946008e03873eea1d02a2d60a746e5a0f5063e38989734b1d5957b3406103c"
     },
     {
       "file": "app/customer/inbox/invoice/cashin/page.tsx",
-      "sha256": "9055d04afc9ce9c8c6f342bb50fdec2f88aad2c28587016c1dea5c43f6873d31"
+      "sha256": "85493c377a7c8ce0becbb5bd7aef18beeded85857632f572d71d846314f6e2c1"
     },
     {
       "file": "app/customer/inbox/invoice/farm-buy/page.tsx",
-      "sha256": "751ab5a51e1d97cb45b346e4ece35a34dbbeb782c871e8ce99728d60eeffa71f"
+      "sha256": "8f3818cd4525f8cf49465afafd42ddfdfb2b9b2c4954143b75ace17ef435cebf"
     },
     {
       "file": "app/customer/inbox/page.tsx",
-      "sha256": "822e7cc3b98c672eeab496fd7040794271c9e26b057fb74464bb723f4b5c7ba4"
+      "sha256": "a993cfe8a0130571ca06f2dd7a8feebd7d6daeb391be15d5031dbb86b81fe947"
     },
     {
       "file": "app/customer/inventory/page.tsx",
-      "sha256": "ed8b37038ffead2a5b4fb833498eedbf604bc0abd8aa0544b4ed9c60a274da98"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/layout.tsx",
@@ -5595,7 +5486,7 @@
     },
     {
       "file": "app/customer/live-camera/page.tsx",
-      "sha256": "be8f4cdbe4cb5c54e8997a13db2c306ab94964bb76367e97c91f2a6637b32e70"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/login/page.tsx",
@@ -5611,23 +5502,23 @@
     },
     {
       "file": "app/customer/membership/page.tsx",
-      "sha256": "aa26b71771c5993fbd051dd8c721d31cfc7a5c64945c80b69c50ca8440916cf1"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/notifications/page.tsx",
-      "sha256": "822e7cc3b98c672eeab496fd7040794271c9e26b057fb74464bb723f4b5c7ba4"
+      "sha256": "a993cfe8a0130571ca06f2dd7a8feebd7d6daeb391be15d5031dbb86b81fe947"
     },
     {
       "file": "app/customer/page.tsx",
-      "sha256": "07513d47491c2dfd41c6507958b32ece0df4a0cae768ed86b01290e840273630"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/payment/page.tsx",
-      "sha256": "ae24af2128c7910db2182c076a1657c11e03209b7e54f5dc9915e74af4767542"
+      "sha256": "52c60494e2ac61208cd9cf745ff135531efdf244b50ef1bf42bf7241c7323ec5"
     },
     {
       "file": "app/customer/photo-updates/page.tsx",
-      "sha256": "b9be135619d1424750fa0e5f48507b6834b6bfbc9dbc3272ab798de38caf499d"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/register/page.tsx",
@@ -5635,7 +5526,7 @@
     },
     {
       "file": "app/customer/roosters/page.tsx",
-      "sha256": "050bf5029b3614d8945dcac393f9a96388094fd8d2d3d64ecac95b561d7c81d1"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/sell-chicken/page.tsx",
@@ -5647,7 +5538,7 @@
     },
     {
       "file": "app/customer/settings/page.tsx",
-      "sha256": "e8a9e8970c98255c76ac3552707be40dcbd0580bc117c619df56bdbc1cba03e8"
+      "sha256": "6cf83ec3e11d3f7a55efb1098a47c15cf5a3ec50469ec54b256c5c7bc74b2cf6"
     },
     {
       "file": "app/customer/store/page.tsx",
@@ -5655,23 +5546,23 @@
     },
     {
       "file": "app/customer/support/page.tsx",
-      "sha256": "03dba72960e30e1510adbe0fa52dea0d5ee79798c382644ea5fa06f0e2038d97"
+      "sha256": "6b10dbd56ee3e2da15257065d0b64aed800df418895ea954115109c94971cbbc"
     },
     {
       "file": "app/customer/wallet/page.tsx",
-      "sha256": "aa26b71771c5993fbd051dd8c721d31cfc7a5c64945c80b69c50ca8440916cf1"
+      "sha256": "bda39d9c5b5fc0f601178c86cbbba6bbd5fdbb011653fa79abdc8dbb162cbd7c"
     },
     {
       "file": "app/customer/weight-updates/page.tsx",
-      "sha256": "32b789330c52fe1ce96cd1bfce2e1cc7aea201946676a9de8d88aa65660a3af2"
+      "sha256": "e8b5df1359b7f2a187358c391dd8a9d8c5b1325f0767d04ed67b2ab2936ba7b6"
     },
     {
       "file": "app/customer/withdraw/add-payout/page.tsx",
-      "sha256": "04db38677c45ff847e8a298d7079d262d86ad1cb77021044449a92f8f5621ff2"
+      "sha256": "239fa2f88e9b6fd6ca7016b113fbe60c745f6a084ec0ca9ef0abc96b67c6070b"
     },
     {
       "file": "app/customer/withdraw/page.tsx",
-      "sha256": "ad7fee00080b5cd9a7acd4749c239452f896569c091fcd9b7812fe1c58930c0e"
+      "sha256": "31c9f87bd46f8c53adbd3a160dd2631d845d8b5dafc5488ec6a40ca40a1e66ea"
     },
     {
       "file": "app/forgot-password/page.tsx",
@@ -5714,6 +5605,10 @@
       "sha256": "4c5eea4981bdea12e817f27e75c9d00320dc0f23afb54de1f3401115cf8f6c74"
     },
     {
+      "file": "lib/customer-route-redirect.ts",
+      "sha256": "75c358c204bfc3bfb11ee13d41a3c5e384f9d1cd1b1f039da1ab9c0e66d862d9"
+    },
+    {
       "file": "lib/customer-signup.ts",
       "sha256": "562ab768ba49451dd632b20b07f8dee5e0995f0b4adc44098c5a56d089bdbfcd"
     },
@@ -5727,7 +5622,7 @@
     },
     {
       "file": "lib/farmconnect-v1.tsx",
-      "sha256": "c58592ebd229d4a2b3febc6aa58e7b7c36b849436dfcddbee1de6191e8624e73"
+      "sha256": "a4a40ad2c4377a146e39768eae11d24e9208de4c3649215a9588ea26d67e88e9"
     },
     {
       "file": "lib/kafarm-brain.ts",
