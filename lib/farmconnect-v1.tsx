@@ -202,19 +202,17 @@ const nav = {
     ["Settings", "/customer-v2/settings", "settings"],
   ],
   caretaker: [
-    ["Active Tasks", "/caretaker/tasks", "clipboard"],
-    ["Completed", "/caretaker/completed", "check"],
-    ["Chat Admin", "/caretaker/chat", "chat"],
+    ["Today's Care", "/caretaker/tasks", "clipboard"],
+    ["Care History", "/caretaker/completed", "check"],
+    ["Support", "/caretaker/chat", "chat"],
     ["Profile", "/caretaker/profile", "user"],
   ],
   admin: [
-    ["Dashboard", "/admin", "home"],
-    ["Customer Requests", "/admin/customer-requests", "clipboard"],
-    ["Caretaker Management", "/admin/caretaker-management", "user"],
-    ["Farm Operations", "/admin/farm-operations", "rooster"],
-    ["Issue Management", "/admin/issue-management", "alert"],
     ["Account Verification", "/admin/account-verification", "shield"],
-    ["Evidence Logs", "/admin/evidence", "file"],
+    ["Rooster & Care Payments", "/admin/customer-requests/payment", "coins"],
+    ["Care Tasks & Updates", "/admin/customer-requests/task", "clipboard"],
+    ["Withdrawals", "/admin/customer-requests/withdraw", "wallet"],
+    ["Support", "/admin/live-chat", "chat"],
     ["KaFarm", "/admin/kafarm", "support"],
   ],
 } as const;
@@ -6902,8 +6900,8 @@ export function CaretakerTasks() {
   }
 
   return (
-    <Shell role="caretaker" title="Active Tasks">
-      <PageTitle title="Active Tasks" text="Document the work, attach photos, then verify the rooster QR before sending." icon="clipboard" />
+    <Shell role="caretaker" title="Today's Care">
+      <PageTitle title="Today's Care" text="Open one assigned rooster, record each care time, add photos and findings, then send the daily report." icon="clipboard" />
       <div id="caretaker-task-status" role="status" aria-live="polite">
         <KaFarm>{taskNote}</KaFarm>
         <span className="sr-only">Submit validation attempt {submitAttempt}</span>
@@ -6911,7 +6909,7 @@ export function CaretakerTasks() {
       <div className="mt-5 grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-black">Task Queue</h2>
+            <h2 className="text-xl font-black">Today&apos;s Schedule</h2>
             <Badge tone={tasks.length ? "warn" : "neutral"}>{tasks.length} active</Badge>
           </div>
           <div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto pr-2">
@@ -6929,8 +6927,8 @@ export function CaretakerTasks() {
             ))}
             {!tasks.length && (
               <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-6 text-center">
-                <b>No active task</b>
-                <p className="mt-2 text-sm font-bold text-[#667267]">Assigned and returned backjob tasks appear here.</p>
+                <b>No care scheduled</b>
+                <p className="mt-2 text-sm font-bold text-[#667267]">New assignments and reports returned for correction appear here.</p>
               </div>
             )}
           </div>
@@ -6939,8 +6937,8 @@ export function CaretakerTasks() {
           {!selected ? (
             <div className="grid min-h-[520px] place-items-center text-center">
               <div>
-                <h2 className="text-2xl font-black">Waiting for assignment</h2>
-                <p className="mt-2 text-sm font-bold text-[#667267]">Admin-assigned customer requests will appear in the task queue.</p>
+                <h2 className="text-2xl font-black">Choose today&apos;s care</h2>
+                <p className="mt-2 text-sm font-bold text-[#667267]">Select an assigned rooster from today&apos;s schedule.</p>
               </div>
             </div>
           ) : (
@@ -8557,11 +8555,17 @@ function AdminCustomerRequestsPage() {
   );
 }
 export function AdminCustomerRequestsSection({ section }: { section: string }) {
+  const [workspaceTab, setWorkspaceTab] = useState<"primary" | "secondary" | "tertiary">("primary");
   if (section === "payment") {
     return (
-      <Shell role="admin" title="Payment Requests">
-        <PageTitle title="Payment Requests" text="Review Farm Buy payment receipts and reference numbers from Supabase." icon="coins" />
-        <AdminManualPaymentQueue sourceType="farm_buy" />
+      <Shell role="admin" title="Rooster & Care Payments">
+        <PageTitle title="Rooster & Care Payments" text="Review rooster orders and Daily or Monthly Care payments in one workflow." icon="coins" />
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:max-w-3xl">
+          <button type="button" onClick={() => setWorkspaceTab("primary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "primary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Rooster Payments</button>
+          <button type="button" onClick={() => setWorkspaceTab("secondary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "secondary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Care Payments</button>
+          <button type="button" onClick={() => setWorkspaceTab("tertiary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "tertiary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Rooster Sales</button>
+        </div>
+        {workspaceTab === "primary" ? <AdminManualPaymentQueue sourceType="farm_buy" /> : workspaceTab === "secondary" ? <AdminManualPaymentQueue sourceType="care" /> : <AdminRoosterSaleQueue />}
       </Shell>
     );
   }
@@ -8575,9 +8579,13 @@ export function AdminCustomerRequestsSection({ section }: { section: string }) {
   }
   if (section === "task") {
     return (
-      <Shell role="admin" title="Task Management">
-        <PageTitle title="Task Management" text="Assign a specific active caretaker to paid and approved care requests." icon="clipboard" />
-        <AdminLiveCareRequestQueue mode="task" />
+      <Shell role="admin" title="Care Tasks & Updates">
+        <PageTitle title="Care Tasks & Updates" text="Assign paid care, then review the caretaker's daily report before it reaches the customer Diary." icon="clipboard" />
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:max-w-xl">
+          <button type="button" onClick={() => setWorkspaceTab("primary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "primary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Assign Care</button>
+          <button type="button" onClick={() => setWorkspaceTab("secondary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "secondary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Review Updates</button>
+        </div>
+        {workspaceTab === "primary" ? <AdminLiveCareRequestQueue mode="task" /> : <AdminLiveTaskProofQueue />}
       </Shell>
     );
   }
@@ -8776,12 +8784,13 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     }
   }
 
-  const queueTitle = sourceType === "care" ? "Customer Care Queue" : sourceType === "care_request" ? "Care Request Payment Review" : sourceType === "care_plan" ? "Care Plan Payment Review" : sourceType === "farm_buy" ? "Farm Buy Payment Review" : "Pending Manual Payments";
+  const queueTitle = sourceType === "care" ? "Daily & Monthly Care Payments" : sourceType === "care_request" ? "Daily Care Payment" : sourceType === "care_plan" ? "Monthly Care Payment" : sourceType === "farm_buy" ? "Rooster Payment Review" : "Pending Payments";
   const profile = selected ? (Array.isArray(selected.profiles) ? selected.profiles[0] : selected.profiles) : null;
   const customer = profile?.display_name || profile?.full_name || profile?.email || selected?.sender_name || "Customer";
   const summary = selected?.summary || {};
   const selectedSource = String(selected?.source_type || selected?.sourceType || "").toLowerCase();
   const summaryItems = selected ? (Array.isArray(summary.lines) ? summary.lines : Array.isArray(summary.items) ? summary.items : Array.isArray(summary.cartItems) ? summary.cartItems : Array.isArray(summary.products) ? summary.products : []) : [];
+  const carePreference = String(summary.care_preference || "skip").toLowerCase() === "monthly" ? "Monthly Care requested after rooster approval" : "Rooster only — care can be added from the Diary";
   const rooster = summary.rooster?.name || summary.rooster_name || selected?.rooster_name || "Recorded rooster";
   const service = summary.service?.name || summary.service_name || selected?.service_name || "Care request";
   const receiptUrl = selected?.receipt_image_url || selected?.receiptImageUrl || "";
@@ -8831,7 +8840,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
                 </button>
               );
             })}
-            {!activeRows.length && <div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold leading-6 text-[#667267]">No pending {sourceType === "care" ? "customer care" : sourceType === "care_request" ? "care-request" : sourceType === "care_plan" ? "Care Plan" : "Farm Buy"} payment right now.</div>}
+            {!activeRows.length && <div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold leading-6 text-[#667267]">No pending {sourceType === "care" ? "care" : sourceType === "care_request" ? "Daily Care" : sourceType === "care_plan" ? "Monthly Care" : "rooster"} payment right now.</div>}
           </div>
         </Card>
         <Card className="min-h-[620px]">
@@ -8861,7 +8870,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
                 </div>
               ) : (
                 <div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4">
-                  <p className="text-xs font-black uppercase text-[#667267]">Farm Buy Items</p>
+                  <p className="text-xs font-black uppercase text-[#667267]">Rooster Order</p>
                   <div className="mt-3 space-y-2">
                     {summaryItems.length ? (
                       summaryItems.map((item: any, index: number) => {
@@ -8881,6 +8890,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
                       <p className="rounded-xl bg-white p-3 text-sm font-bold text-[#667267]">Order summary is linked to this payment record.</p>
                     )}
                   </div>
+                  <div className="mt-3 rounded-xl bg-[#dff5f3] p-3 text-sm font-black text-[#063b3f]">Care choice: {carePreference}</div>
                 </div>
               )}
               {customerCorrection && (

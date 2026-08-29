@@ -1,5 +1,6 @@
 import { AdminWorkspace } from "@/lib/farmconnect-v1";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <AdminWorkspace kind="customer" />;
+  redirect("/admin/customer-requests/payment");
 }
