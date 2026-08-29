@@ -209,9 +209,9 @@ const nav = {
   ],
   admin: [
     ["Account Verification", "/admin/account-verification", "shield"],
-    ["Rooster & Care Payments", "/admin/customer-requests/payment", "coins"],
-    ["Care Tasks & Updates", "/admin/customer-requests/task", "clipboard"],
-    ["Withdrawals", "/admin/customer-requests/withdraw", "wallet"],
+    ["Orders & Payments", "/admin/customer-requests/payment", "coins"],
+    ["Care Operations", "/admin/customer-requests/task", "clipboard"],
+    ["Selling & Payout", "/admin/selling-payout", "wallet"],
     ["Support", "/admin/live-chat", "chat"],
     ["KaFarm", "/admin/kafarm", "support"],
   ],
@@ -620,7 +620,7 @@ function Shell({ role, title, children }: { role: Role; title: string; children:
     ["Settings", "/customer-v2/settings", "settings"],
   ] as const;
   const links = isCustomerV2 ? customerV2Links : nav[role];
-  const headerLinks = role === "admin" ? links.filter(([label]) => ["Dashboard", "Customer Requests", "Caretaker Management", "Farm Operations", "Issue Management", "Account Verification"].includes(label)) : links;
+  const headerLinks = links;
   const [inboxCount, setInboxCount] = useState(0);
   const [accessReady, setAccessReady] = useState(false);
   useEffect(() => {
@@ -8589,14 +8589,13 @@ export function AdminCustomerRequestsSection({ section }: { section: string }) {
   const [workspaceTab, setWorkspaceTab] = useState<"primary" | "secondary" | "tertiary">("primary");
   if (section === "payment") {
     return (
-      <Shell role="admin" title="Rooster & Care Payments">
-        <PageTitle title="Rooster & Care Payments" text="Review rooster orders and Daily or Monthly Care payments in one workflow." icon="coins" />
-        <div className="mt-4 grid grid-cols-3 gap-3 sm:max-w-3xl">
+      <Shell role="admin" title="Orders & Payments">
+        <PageTitle title="Orders & Payments" text="Review Add Rooster orders and Daily or Monthly Care payments in one workflow." icon="coins" />
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:max-w-xl">
           <button type="button" onClick={() => setWorkspaceTab("primary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "primary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Rooster Payments</button>
           <button type="button" onClick={() => setWorkspaceTab("secondary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "secondary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Care Payments</button>
-          <button type="button" onClick={() => setWorkspaceTab("tertiary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "tertiary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Rooster Sales</button>
         </div>
-        {workspaceTab === "primary" ? <AdminManualPaymentQueue sourceType="farm_buy" /> : workspaceTab === "secondary" ? <AdminManualPaymentQueue sourceType="care" /> : <AdminRoosterSaleQueue />}
+        {workspaceTab === "primary" ? <AdminManualPaymentQueue sourceType="farm_buy" /> : <AdminManualPaymentQueue sourceType="care" />}
       </Shell>
     );
   }
@@ -8610,8 +8609,8 @@ export function AdminCustomerRequestsSection({ section }: { section: string }) {
   }
   if (section === "task") {
     return (
-      <Shell role="admin" title="Care Tasks & Updates">
-        <PageTitle title="Care Tasks & Updates" text="Assign paid care, then review the caretaker's daily report before it reaches the customer Diary." icon="clipboard" />
+      <Shell role="admin" title="Care Operations">
+        <PageTitle title="Care Operations" text="Assign paid care, then review the caretaker's daily report before it reaches the customer Diary." icon="clipboard" />
         <div className="mt-4 grid grid-cols-2 gap-3 sm:max-w-xl">
           <button type="button" onClick={() => setWorkspaceTab("primary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "primary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Assign Care</button>
           <button type="button" onClick={() => setWorkspaceTab("secondary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "secondary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Review Updates</button>
@@ -8633,6 +8632,18 @@ export function AdminCustomerRequestsSection({ section }: { section: string }) {
       <Shell role="admin" title="Sell Requests">
         <PageTitle title="Sell Requests" text="Approve or reject customer-confirmed rooster sales. Approved requests move to final caretaker release." icon="coins" />
         <AdminRoosterSaleQueue />
+      </Shell>
+    );
+  }
+  if (section === "selling-payout") {
+    return (
+      <Shell role="admin" title="Selling & Payout">
+        <PageTitle title="Selling & Payout" text="Evaluate and complete rooster sales, then process the customer's payout in one workspace." icon="wallet" />
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:max-w-xl">
+          <button type="button" onClick={() => setWorkspaceTab("primary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "primary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Rooster Selling</button>
+          <button type="button" onClick={() => setWorkspaceTab("secondary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "secondary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Customer Payout</button>
+        </div>
+        {workspaceTab === "primary" ? <AdminRoosterSaleQueue /> : <AdminWithdrawalReviewQueue />}
       </Shell>
     );
   }
@@ -11316,7 +11327,6 @@ function AdminIssueManagementPage({ config }: { config: string[] }) {
       return [];
     }
   }
-
   useEffect(() => {
     void loadIssues();
   }, []);
