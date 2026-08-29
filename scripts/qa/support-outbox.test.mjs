@@ -20,6 +20,7 @@ async function mount(store=new Map(),options={}){
   if(name==='react/jsx-runtime')return {jsx,jsxs:jsx};
   if(name==='@/lib/farmconnect-data')return {getCurrentProfile:async()=>{profileCalls++;if(options.stallProfile && profileCalls>1)return new Promise(()=>{});return {id:options.profileId || 'p',role:options.role || 'customer'}}};
   if(name==='@/lib/kafarm-brain')return {shouldEscalateToAdmin:()=>!!options.escalate};
+  if(name==='@/lib/recovery-guard')return {safeFingerprint:async()=> 'safe-fingerprint',retrySafeRead:fn=>fn(),beginRecoveryOperation:async()=>({status:'created',duplicate:false}),markRecoverySending:async()=>({status:'sending',duplicate:false}),reconcileRecoveryOperation:async()=>({state:'completed',verified:true,result_reference:receipt})};
   if(name==='@/lib/supabase')return {supabase:{rpc:async(name,args)=>{calls.push({name,args});return options.rpc?options.rpc(name,args):{data:receipt}}}};
   if(name==='@/lib/backend/support-chat')return {getLatestSupportSessionId:async()=>({data:{id:receipt}}),getSupportMessages:async()=>({data:[]}),getSupportSessionStatus:async()=>({data:{status:'open'}}),saveKaFarmSupportMessage:async key=>{replies.push(key);return options.reply?options.reply(key):{error:null}}};
   throw Error(name);

@@ -29,6 +29,13 @@ async function supportRecovery(result,options={}){
    if(name==='react')return {useState(){const n=i++;return [states[n],v=>states[n]=v]},useRef(initial){const n=r++;return {current:n===0?false:n===1?'farmconnect.support.pending.p':initial}},useCallback:fn=>fn,useEffect(){}};
    if(name==='react/jsx-runtime')return {jsx,jsxs:jsx};
    if(name==='@/lib/supabase')return {supabase:{rpc:async(name,args)=>{calls++;if(name==='support_send_guarded'){payload=args;return options.sendResponse || {error:{code:'P0001',message:options.errorMessage || ''}}}return result}}};
+   if(name==='@/lib/recovery-guard')return {
+     safeFingerprint:async()=> 'fingerprint',
+     retrySafeRead:async(fn)=>fn(),
+     beginRecoveryOperation:async()=>({duplicate:false,status:'created'}),
+     markRecoverySending:async()=>({status:'sending'}),
+     reconcileRecoveryOperation:async()=>({state:'completed',status:'completed',result_reference:result?.data?.session_id || options.sendResponse?.data || 'receipt'}),
+   };
    if(name==='@/lib/backend/support-chat')return {getSupportMessages:async()=>({data:[]}),getSupportSessionStatus:async()=>({data:{status:'escalated'}}),saveKaFarmSupportMessage:async()=>({})};
    if(name==='@/lib/kafarm-brain')return {shouldEscalateToAdmin:()=>false,getKaFarmReply:()=> 'reply'};
    if(name==='@/lib/farmconnect-data')return {getCurrentProfile:async()=>({id:options.profileId || 'p',role:'customer'})};

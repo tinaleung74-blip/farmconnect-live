@@ -99,7 +99,7 @@
         {"id": "withdrawal_request", "label": "Withdrawal request", "any": ["withdrawal_request", "withdrawal requests"]},
         {"id": "real_reference", "label": "Admin-entered transfer reference", "any": ["transfer_reference", "payout_reference", "reference_number"]},
         {"id": "payout_receipt", "label": "Payout receipt", "any": ["payout_receipt", "transfer proof"]},
-        {"id": "customer_confirmation", "label": "Customer confirmation or dispute", "any": ["confirm payout", "payout_confirmation", "incorrect payout"]}
+        {"id": "customer_confirmation", "label": "Customer confirmation or dispute", "any": ["customer_confirm_withdrawal_result", "customer_report_withdrawal_problem", "confirm payout", "payout_confirmation", "incorrect payout"]}
       ]
     },
     {

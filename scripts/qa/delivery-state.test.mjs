@@ -26,7 +26,11 @@ test('different users do not share pending keys',async()=>{
 test('support only clears draft after a confirmed receipt',()=>{
   const source=fs.readFileSync('lib/support-conversation.tsx','utf8');
   const send=source.slice(source.indexOf('async function send('));
-  assert.ok(send.indexOf('if(typeof data!=="string"')<send.indexOf('setBody("")'));
+  const receiptGuard=send.indexOf('if(typeof data!=="string"');
+  const ledgerVerification=send.indexOf('const verified=await reconcileRecoveryOperation(item.key)');
+  const confirmedClear=send.indexOf('acknowledged=true;setSession(data);setBody("")');
+  assert.ok(receiptGuard>=0 && receiptGuard<ledgerVerification && ledgerVerification<confirmedClear);
+  assert.match(send,/ledger\.status==="completed" && ledger\.result_reference/);
   assert.match(source,/p_key:item.key/);
   assert.match(source,/setTimeout\(poll,5000\)/);
 });
