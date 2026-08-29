@@ -2301,7 +2301,6 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 export function FarmBuy() {
   const router = useRouter();
-  const [cat, setCat] = useState("All");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [liveProducts, setLiveProducts] = useState<FarmProductCard[]>(products);
   const [marketNote, setMarketNote] = useState("Add items to Cart first. When your wallet is enough, tap Buy.");
@@ -2312,15 +2311,15 @@ export function FarmBuy() {
     qty: string;
     reason: string;
   } | null>(null);
-  const [balance, setBalance] = useState(0);
+  const [wizardStep, setWizardStep] = useState<0 | 1>(0);
+  const [careOption, setCareOption] = useState<"skip" | "monthly">("skip");
 
   useEffect(() => {
     let mounted = true;
     getCurrentProfile()
       .then((profile) => {
         if (!mounted) return;
-        if (profile) setBalance(Number(profile.wallet_balance || 0));
-        else setMarketNote("Please login so Farm Buy can read your wallet and save your receipt.");
+        if (!profile) setMarketNote("Please login so Farm Buy can save your order and receipt.");
       })
       .catch(() => setMarketNote("Please login so Farm Buy can read your wallet and save your receipt."));
     return () => {
@@ -2394,8 +2393,7 @@ export function FarmBuy() {
   }, []);
 
   const roosterProducts = liveProducts.filter((p) => p.category === "Breed Chicks" || p.product_type === "breed_chick");
-  const cats = ["All", ...Array.from(new Set(roosterProducts.map((p) => p.category)))];
-  const visible = cat === "All" ? roosterProducts : roosterProducts.filter((p) => p.category === cat);
+  const visible = roosterProducts;
   const cartEntries = Object.entries(cart)
     .filter(([, qty]) => qty > 0)
     .map(([id, qty]) => ({
@@ -2403,14 +2401,7 @@ export function FarmBuy() {
       qty,
     }))
     .filter((row): row is { product: FarmProductCard; qty: number } => Boolean(row.product));
-  const itemCount = cartEntries.reduce((sum, row) => sum + row.qty, 0);
   const total = cartEntries.reduce((sum, row) => sum + row.product.price * row.qty, 0);
-
-  function setQty(productId: string, qty: number) {
-    const next = { ...cart, [productId]: Math.max(0, qty) };
-    if (next[productId] === 0) delete next[productId];
-    setCart(next);
-  }
 
   async function buyCart() {
     if (total <= 0) {
@@ -2445,6 +2436,7 @@ export function FarmBuy() {
           category: row.product.category,
         })),
         total,
+        care_preference: careOption,
         carePurpose,
         previewOnly: hasPreviewProduct,
       };
@@ -2466,113 +2458,48 @@ export function FarmBuy() {
 
   return (
     <Shell role="customer" title="Add Rooster">
-      <PageTitle title="Add Rooster" text="Choose your rooster, then continue to payment." icon="bag" />
-      <KaFarm>{marketNote}</KaFarm>
-      {carePurpose && (
-        <Card className="mb-5 border-2 border-amber-300 bg-amber-50">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-black">Linked Care Purchase</h2>
-              <p className="mt-1 text-sm font-bold text-[#667267]">
-                {carePurpose.item} ({carePurpose.qty}) for {carePurpose.rooster}
-              </p>
-              <p className="mt-1 text-sm text-[#667267]">
-                Caretaker: {carePurpose.caretaker} - {carePurpose.reason}
-              </p>
-            </div>
-            <button onClick={() => setCarePurpose(null)} className="rounded-xl bg-white px-4 py-3 font-black">
-              Clear Link
-            </button>
+      <section className="mx-auto max-w-6xl space-y-5">
+        <header className="overflow-hidden rounded-[28px] border border-[#f4c430]/55 border-l-4 border-l-[#c9232d] bg-[#fffdf7]/96 p-5 shadow-xl sm:p-7">
+          <p className="text-xs font-black uppercase tracking-[.16em] text-[#087f83]">Add Rooster</p>
+          <h1 className="mt-1 text-3xl font-black text-[#041f22] sm:text-4xl">Choose your rooster</h1>
+          <p className="mt-2 max-w-2xl text-sm font-bold text-[#536a68]">Choose one breed, decide if you want Monthly Care later, then continue to payment.</p>
+          <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-black sm:max-w-xl">
+            {["1 · Rooster", "2 · Care", "3 · Payment"].map((label, index) => <div key={label} className={`rounded-xl px-2 py-3 ${index <= wizardStep ? "bg-[#087f83] text-white" : "bg-[#edf3ef] text-[#65746b]"}`}>{label}</div>)}
           </div>
-        </Card>
-      )}
-      <div className="fc-farmbuy-layout mt-5 grid min-w-0 max-w-full gap-5 overflow-hidden lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="fc-farmbuy-products min-w-0 max-w-full">
-          <div className="fc-scroll-row mb-4 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap">
-            {cats.map((c) => (
-              <button key={c} onClick={() => setCat(c)} className={"shrink-0 rounded-full px-4 py-2 text-sm font-black " + (cat === c ? "bg-[#1f6b45] text-white" : "bg-white")}>
-                {c}
-              </button>
-            ))}
-          </div>
-          <div className="fc-farmbuy-product-grid grid gap-3 md:max-h-[760px] md:grid-cols-2 md:overflow-y-auto md:pr-2 xl:grid-cols-3">
-            {visible.map((p) => (
-              <section key={p.id} className={"fc-farmbuy-product-card overflow-hidden rounded-2xl border bg-white shadow-sm transition " + ((cart[p.id] || 0) > 0 ? "border-[#1f6b45] ring-2 ring-emerald-100" : "border-[#e3ded0]")}>
-                <div className="fc-farmbuy-product-media relative">
-                  <img src={p.image} alt="" className="fc-farmbuy-product-image h-44 w-full object-cover" />
-                  <Badge tone={(cart[p.id] || 0) > 0 ? "good" : "neutral"}>{p.category}</Badge>
+        </header>
+
+        <p role="status" className="rounded-2xl border border-[#087f83]/15 bg-[#dff5f3] px-4 py-3 text-sm font-bold text-[#063b3f]">{marketNote}</p>
+
+        {wizardStep === 0 && <section className="rounded-[28px] bg-white p-4 shadow-xl sm:p-6">
+          <div><p className="text-xs font-black uppercase tracking-[.14em] text-[#087f83]">Step 1 · Breed</p><h2 className="mt-1 text-2xl font-black">Choose a rooster breed</h2><p className="mt-2 text-sm font-bold text-[#65746b]">Available breeds and prices come from the live farm catalog.</p></div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visible.map((product) => {
+              const selected=(cart[product.id]||0)>0;
+              const metadata=product.product_metadata||{};
+              return <button type="button" key={product.id} onClick={()=>{setCart({[product.id]:1});setMarketNote(`${product.name} selected. Continue when ready.`);}} className={`overflow-hidden rounded-[22px] border-2 bg-[#fffdf7] text-left transition ${selected?"border-[#087f83] ring-4 ring-[#087f83]/10":"border-[#e5dfd0] hover:border-[#f4c430]"}`}>
+                <img src={product.image} alt={product.name} className="h-48 w-full object-cover" />
+                <div className="p-4"><div className="flex items-start justify-between gap-3"><div><b className="text-lg text-[#041f22]">{product.name}</b><p className="mt-1 text-sm font-black text-[#087f83]">{product.bloodline||product.breed||"Farm breed"}</p></div>{selected&&<span className="rounded-full bg-[#087f83] px-3 py-1 text-xs font-black text-white">Selected</span>}</div>
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold text-[#536a68]"><span className="rounded-xl bg-[#f4f2e8] p-2">{String(metadata.age_days||metadata.age||"Farm age")}</span><span className="rounded-xl bg-[#f4f2e8] p-2">{String(metadata.weight||metadata.weight_kg||"Weight verified later")}</span></div>
+                  <div className="mt-4 flex items-center justify-between"><strong className="text-2xl">{peso(product.price)}</strong><span className="text-xs font-black text-[#65746b]">{product.stock} available</span></div>
                 </div>
-                <div className="fc-farmbuy-product-body p-4">
-                  <h3 className="text-base font-black leading-tight sm:text-lg">{p.name}</h3>
-                  {(p.bloodline || p.breed) && <p className="mt-1 text-sm font-black text-[#1f6b45]">{p.bloodline || p.breed}</p>}
-                  <div className="mt-3 flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-2xl font-black">{peso(p.price)}</p>
-                      <p className="text-sm font-bold text-[#667267]">{p.unit}</p>
-                    </div>
-                    <p className="rounded-xl bg-[#f6f3e8] px-3 py-2 text-sm font-black">{p.stock} left</p>
-                  </div>
-                  <div className="fc-farmbuy-product-qty mt-3 flex items-center justify-between rounded-2xl bg-[#f6f3e8] p-2 sm:mt-4">
-                    <button aria-label={`Remove ${p.name}`} onClick={() => setQty(p.id, (cart[p.id] || 0) - 1)} className="grid h-11 w-11 place-items-center rounded-xl bg-white text-xl font-black shadow-sm">
-                      -
-                    </button>
-                    <div className="text-center">
-                      <p className="text-xs font-black uppercase text-[#667267]">Qty</p>
-                      <p className="text-xl font-black">{cart[p.id] || 0}</p>
-                    </div>
-                    <button aria-label={`Add one ${p.name}`} onClick={() => setQty(p.id, (cart[p.id] || 0) + 1)} className="grid h-11 w-11 place-items-center rounded-xl bg-[#1f6b45] text-xl font-black text-white shadow-sm">
-                      +
-                    </button>
-                  </div>
-                </div>
-              </section>
-            ))}
+              </button>;
+            })}
           </div>
-        </div>
-        <Card id="farm-buy-cart" className="h-fit scroll-mt-24 border-2 border-[#1f6b45] lg:sticky lg:top-32">
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-2xl font-black">
-              <Icon name="bag" /> Cart
-            </h2>
-            <Badge tone={itemCount > 0 ? "good" : "neutral"}>{itemCount}</Badge>
+          {!visible.length&&<div className="mt-5 rounded-2xl border border-dashed p-8 text-center font-bold text-[#65746b]">No rooster breed is available right now.</div>}
+          <button type="button" disabled={total<=0} onClick={()=>{setWizardStep(1);setMarketNote("Rooster selected. Choose your care preference.");window.scrollTo({top:0,behavior:"smooth"});}} className="mt-6 min-h-12 w-full rounded-xl bg-[#f4c430] px-5 py-3 font-black text-[#041f22] disabled:bg-[#d8d2c3] disabled:text-[#7a766b]">Continue to Care</button>
+        </section>}
+
+        {wizardStep === 1 && <section className="rounded-[28px] bg-white p-4 shadow-xl sm:p-6">
+          <p className="text-xs font-black uppercase tracking-[.14em] text-[#087f83]">Step 2 · Care choice</p><h2 className="mt-1 text-2xl font-black">Add care later?</h2><p className="mt-2 text-sm font-bold text-[#65746b]">Your rooster must be approved first. Monthly Care payment starts after ownership is active.</p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <button type="button" onClick={()=>setCareOption("skip")} className={`rounded-[22px] border-2 p-5 text-left ${careOption==="skip"?"border-[#087f83] bg-[#eaf8f5]":"border-[#e3ded0] bg-[#fffdf7]"}`}><b className="text-xl">Skip for now</b><p className="mt-2 text-sm font-bold text-[#65746b]">Buy the rooster only. Choose Daily or Monthly Care later from its Diary.</p><strong className="mt-5 block text-2xl">₱0</strong></button>
+            <button type="button" onClick={()=>setCareOption("monthly")} className={`rounded-[22px] border-2 p-5 text-left ${careOption==="monthly"?"border-[#d6a600] bg-[#fff3cf]":"border-[#e3ded0] bg-[#fffdf7]"}`}><b className="text-xl">30-Day Monthly Care</b><p className="mt-2 text-sm font-bold text-[#65746b]">Feed, water, cleaning, routine observation, caretaker work, photos, and Diary updates.</p><strong className="mt-5 block text-2xl">₱5,000 after approval</strong></button>
           </div>
-          <div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto pr-2">
-            {cartEntries.map(({ product, qty }) => (
-              <div key={product.id} className="rounded-xl bg-[#f6f3e8] p-3">
-                <div className="flex justify-between gap-3 text-sm">
-                  <span>
-                    <b>{product.name}</b>
-                    <br />
-                    <span className="text-[#667267]">
-                      {qty} x {peso(product.price)}
-                    </span>
-                  </span>
-                  <b>{peso(product.price * qty)}</b>
-                </div>
-              </div>
-            ))}
-            {total === 0 && <p className="rounded-xl bg-[#f6f3e8] p-3 text-sm text-[#667267]">Cart is empty. Use plus on a product.</p>}
-          </div>
-          <div className="mt-4 border-t pt-4">
-            <Info label="Manual Payment" value="Admin review required" />
-            <div className="mt-3 flex justify-between text-lg font-black">
-              <span>Total</span>
-              <span>{peso(total)}</span>
-            </div>
-            {total === 0 && (
-              <button disabled className="mt-4 w-full rounded-xl bg-[#d8d2c3] px-4 py-3 font-black text-[#7a766b]">
-                Pay
-              </button>
-            )}
-            {total > 0 && (
-              <button onClick={buyCart} className="mt-4 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
-                Pay
-              </button>
-            )}
-            <p className="mt-2 text-xs font-bold text-[#667267]">External payment only. Upload reference and receipt; admin approves before items appear.</p>
-          </div>
-        </Card>
-      </div>
+          {careOption==="monthly"&&<div className="mt-4 rounded-2xl border border-[#f4c430]/60 bg-[#fff9df] p-4 text-sm font-bold text-[#6a5200]">This records your preference only. It will not charge or activate care until the rooster is approved and you confirm the separate Monthly Care payment.</div>}
+          <div className="mt-6 rounded-2xl bg-[#f4f2e8] p-4"><div className="flex items-center justify-between gap-3"><span className="font-black">Rooster payment</span><strong className="text-2xl">{peso(total)}</strong></div><p className="mt-2 text-xs font-bold text-[#65746b]">Next: payment method, reference number, sender name, and receipt upload.</p></div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2"><button type="button" onClick={()=>setWizardStep(0)} className="min-h-12 rounded-xl bg-[#edf3ef] px-5 py-3 font-black text-[#063b3f]">Back</button><button type="button" onClick={()=>void buyCart()} disabled={total<=0} className="min-h-12 rounded-xl bg-[#f4c430] px-5 py-3 font-black text-[#041f22] disabled:opacity-50">Continue to Payment</button></div>
+        </section>}
+      </section>
     </Shell>
   );
 }
@@ -3778,6 +3705,7 @@ export function WalletPage() {
               <span className="grid h-20 w-20 shrink-0 place-items-center rounded-[22px] bg-[#dff5f3] p-2 shadow-inner ring-1 ring-[#087f83]/20 sm:h-24 sm:w-24">
                 <img src="/farmconnect/customer-v2-icons/wallet-v2.png" alt="FarmConnect Wallet" className="h-full w-full object-contain" />
               </span>
+              <h1 className="text-3xl font-black tracking-tight text-[#041f22] sm:text-4xl">Wallet</h1>
             </div>
             <button type="button" onClick={() => setShowAmounts((current) => !current)} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#087f83]/20 bg-[#dff5f3] px-4 font-black text-[#063b3f]">
               <Icon name={showAmounts ? "eyeOff" : "eye"} className="h-5 w-5" />
@@ -3787,9 +3715,10 @@ export function WalletPage() {
 
           <section className="overflow-hidden rounded-[26px] border border-white/80 bg-[#fffdf7]/96 shadow-xl">
             <div className="bg-[linear-gradient(115deg,#041f22_0%,#087f83_62%,#063b3f_100%)] p-5 text-white sm:p-7">
-              <div className="flex items-end gap-3">
-                <span className="pb-1 text-xl font-black text-white/75">FC</span>
-                <strong className="text-5xl font-black tracking-tight sm:text-6xl">{showAmounts ? fcCoin(availableBalance) : "••••••"}</strong>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Available Balance</p>
+              <div className="mt-3 flex min-w-0 items-center gap-3">
+                <span className="rounded-lg border border-white/15 bg-white/10 px-2.5 py-1 text-sm font-black text-[#f4c430]">FC</span>
+                <strong className="min-w-0 truncate text-4xl font-black tracking-tight sm:text-5xl">{showAmounts ? fcCoin(availableBalance) : "••••••"}</strong>
               </div>
             </div>
             <div className="p-4 sm:p-5">
