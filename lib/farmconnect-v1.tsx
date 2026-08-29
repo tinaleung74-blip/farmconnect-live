@@ -1686,6 +1686,7 @@ export function CustomerRoostersV2() {
   const [renameError, setRenameError] = useState("");
   const [careChoice, setCareChoice] = useState<{ id: string; type: "daily" | "monthly" } | null>(null);
   const [addOrderOpen, setAddOrderOpen] = useState(false);
+  const [sellRoosterId, setSellRoosterId] = useState<string | null>(null);
   const [pendingOrders, setPendingOrders] = useState<PendingRoosterOrder[]>([]);
   const railRef = useRef<HTMLDivElement | null>(null);
 
@@ -1785,7 +1786,7 @@ export function CustomerRoostersV2() {
               </section>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <Link href={`/customer-v2/roosters/diary?id=${rooster.id}`} className="flex min-h-20 items-center gap-2 rounded-2xl border border-[#cfe2d7] bg-[#edf6ef] p-3 text-left text-[#07563f] transition hover:-translate-y-0.5 hover:shadow-md sm:gap-3 sm:p-4"><img src="/farmconnect/customer-v2-icons/rooster-diary.png" alt="" className="h-11 w-11 shrink-0 object-contain sm:h-14 sm:w-14" /><span><b className="block text-xs font-black sm:text-sm">Rooster Diary</b><small className="mt-1 hidden text-xs font-bold text-[#536a68] sm:block">Updates, photos, and care journey</small></span></Link>
-                <Link href={`/customer-v2/sell-rooster?id=${rooster.id}`} className="flex min-h-20 items-center gap-2 rounded-2xl border border-[#f0d48a] bg-[#fff3cf] p-3 text-left text-[#6a3b00] transition hover:-translate-y-0.5 hover:shadow-md sm:gap-3 sm:p-4"><img src="/farmconnect/customer-v2-icons/sell-rooster.png" alt="" className="h-11 w-11 shrink-0 object-contain sm:h-14 sm:w-14" /><span><b className="block text-xs font-black sm:text-sm">Sell Rooster</b><small className="mt-1 hidden text-xs font-bold text-[#76551e] sm:block">Evaluate price or view your offer</small></span></Link>
+                <button type="button" onClick={() => setSellRoosterId(rooster.id)} className="flex min-h-20 items-center gap-2 rounded-2xl border border-[#f0d48a] bg-[#fff3cf] p-3 text-left text-[#6a3b00] transition hover:-translate-y-0.5 hover:shadow-md sm:gap-3 sm:p-4"><img src="/farmconnect/customer-v2-icons/sell-rooster.png" alt="" className="h-11 w-11 shrink-0 object-contain sm:h-14 sm:w-14" /><span><b className="block text-xs font-black sm:text-sm">Sell Rooster</b><small className="mt-1 hidden text-xs font-bold text-[#76551e] sm:block">Evaluate price or view your offer</small></span></button>
               </div>
               </div></div></article>; })}
           </div></>}
@@ -1793,6 +1794,7 @@ export function CustomerRoostersV2() {
       {renameRooster && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => !renaming && setRenameRooster(null)}><form className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); void saveRoosterName(); }}><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-[#087f83]">Rooster name</p><h2 className="mt-1 text-2xl font-black">Rename your rooster</h2></div><button type="button" disabled={renaming} onClick={() => setRenameRooster(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black disabled:opacity-50">×</button></div><input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} maxLength={40} placeholder="Enter rooster name" className="mt-5 w-full rounded-xl border border-[#dce7df] px-4 py-3 font-bold outline-none focus:border-[#087f83]" />{renameError && <p role="alert" className="mt-2 text-sm font-bold text-red-700">{renameError}</p>}<button type="submit" disabled={renaming || renameValue.trim().length < 2} className="mt-4 w-full rounded-xl bg-[#f4c430] px-4 py-3 font-black text-[#041f22] disabled:opacity-50">{renaming ? "Saving..." : "Save Name"}</button></form></div>}
       {qrRooster && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setQrRooster(null)}><div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex justify-between"><h2 className="text-2xl font-black">{qrRooster.name} QR</h2><button type="button" onClick={() => setQrRooster(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black">×</button></div><div className="mx-auto mt-5 inline-block rounded-2xl border border-[#dce7df] bg-white p-4"><QRCodeSVG value={qrValue(qrRooster)} size={220} level="H" marginSize={2} /></div><p className="mt-4 text-sm font-bold text-[#65746b]">The assigned caretaker scans this QR to verify the correct rooster before submitting work.</p></div></div>}
       {addOrderOpen && <AddRoosterOrderModal onClose={() => setAddOrderOpen(false)} onSubmitted={(order) => setPendingOrders((current) => current.some((item) => item.id === order.id) ? current : [order, ...current])} />}
+      {sellRoosterId && <div className="fixed inset-0 z-50 overflow-y-auto bg-[#041f22]/75 p-2 backdrop-blur-sm sm:p-4" onClick={() => setSellRoosterId(null)}><div className="mx-auto min-h-full w-full max-w-4xl" onClick={(event) => event.stopPropagation()}><CustomerSellRooster animalIdOverride={sellRoosterId} embedded onClose={() => setSellRoosterId(null)} /></div></div>}
     </main>
   );
 }
@@ -2037,9 +2039,9 @@ export function CustomerRoosters() {
   );
 }
 
-export function CustomerSellRooster() {
+export function CustomerSellRooster({ animalIdOverride = "", embedded = false, onClose }: { animalIdOverride?: string; embedded?: boolean; onClose?: () => void } = {}) {
   const search = useSearchParams();
-  const animalId = search.get("id") || "";
+  const animalId = animalIdOverride || search.get("id") || "";
   const [animal, setAnimal] = useState<any>(null);
   const [sale, setSale] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -2109,9 +2111,8 @@ export function CustomerSellRooster() {
     }
   }
 
-  return <Shell role="customer" title="Sell Rooster">
-    <div className="mx-auto max-w-3xl space-y-4">
-      <Link href="/customer-v2/roosters" className="inline-flex rounded-xl bg-white px-4 py-3 font-bold">Back to roosters</Link>
+  const content = <div className="mx-auto max-w-3xl space-y-4">
+      {embedded ? <button type="button" onClick={onClose} className="inline-flex rounded-xl bg-[#087f83] px-4 py-3 font-bold text-white">Close</button> : <Link href="/customer-v2/roosters" className="inline-flex rounded-xl bg-white px-4 py-3 font-bold">Back to roosters</Link>}
       <Card className="overflow-hidden">
         {loading ? <p role="status">Loading rooster…</p> : animal ? <>
           <div className="grid items-center gap-5 sm:grid-cols-[180px_1fr]">
@@ -2133,8 +2134,8 @@ export function CustomerSellRooster() {
         {message && <p role="status" className="mt-4 text-sm">{message}</p>}
         <button type="button" disabled={busy || loading} onClick={() => void load()} className="mt-4 text-sm font-bold text-[#087f83] underline disabled:opacity-40">{busy ? "Sending…" : "Refresh status"}</button>
       </Card>
-    </div>
-  </Shell>;
+    </div>;
+  return embedded ? <main className="my-2 min-h-[70vh] rounded-[28px] bg-[#f8f5e8] p-4 text-[#10251d] shadow-2xl sm:p-6">{content}</main> : <Shell role="customer" title="Sell Rooster">{content}</Shell>;
 }
 export function CareLogsPage() {
   const [selected, setSelected] = useState<RoosterCard | null>(null);
