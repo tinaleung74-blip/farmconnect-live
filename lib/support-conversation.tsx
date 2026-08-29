@@ -4,8 +4,9 @@ import { supabase } from "@/lib/supabase";
 import { getLatestSupportSessionId, getSupportMessages, getSupportSessionStatus, saveKaFarmSupportMessage, type SupportRole } from "@/lib/backend/support-chat";
 import { shouldEscalateToAdmin } from "@/lib/kafarm-brain";
 import { getCurrentProfile } from "@/lib/farmconnect-data";
+import { beginRecoveryOperation, markRecoverySending, reconcileRecoveryOperation, retrySafeRead, safeFingerprint } from "@/lib/recovery-guard";
 type Message = { id: string; sender_role: string; body: string; created_at: string };
-type Pending = { key: string; session: string | null; body: string; escalate: boolean; phase?: "reply"; receipt?: string };
+type Pending = { key: string; correlation?: string; session: string | null; body: string; escalate: boolean; phase?: "reply"; receipt?: string };
 type DamagedDraft = { storageKey: string; raw: string };
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const operationStorageKey=(account: string,key: string)=>`${account}.operation.${key}`;
@@ -13,6 +14,7 @@ function parseOperation(raw: string): Pending {
   const item=JSON.parse(raw) as Pending;
   if(!item || typeof item.key!=="string" || !uuid.test(item.key) || typeof item.body!=="string" || typeof item.escalate!=="boolean"
     || !(item.session===null || (typeof item.session==="string" && uuid.test(item.session)))
+    || (item.correlation!==undefined && (typeof item.correlation!=="string" || !uuid.test(item.correlation)))
     || (item.phase!==undefined && item.phase!=="reply")
     || (item.phase==="reply" && (typeof item.receipt!=="string" || !uuid.test(item.receipt))))throw new Error("Invalid saved draft");
   return item;
@@ -66,7 +68,10 @@ export function SupportConversation({ role }: { role: SupportRole }) {
   const invalidateRefresh=useCallback(()=>{refreshSequence.current++;},[]);
   const refresh=useCallback(async (id: string) => {
     const sequence=++refreshSequence.current;
-    const [result,status]=await Promise.all([getSupportMessages(id),getSupportSessionStatus(id)]);
+    const [result,status]=await Promise.all([
+      retrySafeRead(async()=>{const value=await getSupportMessages(id);if(value.error)throw value.error;return value;}),
+      retrySafeRead(async()=>{const value=await getSupportSessionStatus(id);if(value.error)throw value.error;return value;}),
+    ]);
     if(sequence!==refreshSequence.current)return;
     if(result.error) throw result.error;
     if(status.error) throw status.error;
@@ -91,7 +96,7 @@ export function SupportConversation({ role }: { role: SupportRole }) {
         const item=saved.items.find(item=>item.phase!=="reply");
         if(item){setPending(item);setBody(item.body);setNote("Previous message is unconfirmed. Retry checks the same submission.");}
         if(saved.damaged)setNote("Your saved draft could not be restored. Check the conversation before starting a new draft.");
-        const result=await getLatestSupportSessionId();
+        const result=await retrySafeRead(async()=>{const value=await getLatestSupportSessionId();if(value.error)throw value.error;return value;});
         if(result.error) throw result.error;
         if(active){setSession(result.data?.id || null);storage.current=key;setReady(true);setLoadError("");}
       } catch {if(active){setReady(false);setSession(null);setMessages([]);setLoadError("Support could not be loaded. Check your connection and account.");}}
@@ -162,7 +167,8 @@ export function SupportConversation({ role }: { role: SupportRole }) {
     try{
       const profile=await getCurrentProfile();
       if(!profile || profile.role!==role || storage.current!==`farmconnect.support.pending.${profile.id}`){setReady(false);setNote("Your account changed. Reopen Support before sending.");return;}
-      const item: Pending=pending || {key:crypto.randomUUID(),session:closed ? null : session,body:body.trim(),escalate:force || (!closed && escalated) || shouldEscalateToAdmin(body,role)};
+      const draft: Pending=pending || {key:crypto.randomUUID(),session:closed ? null : session,body:body.trim(),escalate:force || (!closed && escalated) || shouldEscalateToAdmin(body,role)};
+      const item: Pending={...draft,correlation:draft.correlation || crypto.randomUUID()};
       const account=storage.current;
       const itemStorageKey=operationStorageKey(account,item.key);
       const finish=()=>{
@@ -175,6 +181,21 @@ export function SupportConversation({ role }: { role: SupportRole }) {
         return next;
       };
       localStorage.setItem(itemStorageKey,JSON.stringify(item));setPending(item);
+      const fingerprint=await safeFingerprint({role,session:item.session,body:item.body,escalate:item.escalate});
+      const ledger=await beginRecoveryOperation({
+        operationId:item.key,
+        correlationId:item.correlation!,
+        workflow:"support_delivery",
+        action:"send_message",
+        route:role==="customer"?"/customer-v2/support":"/caretaker/chat",
+        targetType:"support_session",
+        targetId:item.session,
+        fingerprint,
+      });
+      if(ledger.status==="completed" && ledger.result_reference){
+        acknowledged=true;setSession(ledger.result_reference);setBody("");setNote("Sent");finish();return;
+      }
+      await markRecoverySending(item.key);
       const response=await supabase.rpc("support_send_guarded",{p_key:item.key,p_role:role,p_session_id:item.session,p_body:item.body,p_force_escalate:item.escalate});
       let data=response.data;
       const error=response.error;
@@ -182,7 +203,8 @@ export function SupportConversation({ role }: { role: SupportRole }) {
         // Serialize recovery with delivery, then retire an unsaved key before editing.
         const recovery=await supabase.rpc("support_reconcile_delivery",{p_key:item.key});
         if(recovery.error) throw recovery.error;
-        if(recovery.data?.state==="sent") data=recovery.data.session_id;
+        const ledgerRecovery=await reconcileRecoveryOperation(item.key);
+        if(recovery.data?.state==="sent" && ledgerRecovery.state==="completed") data=recovery.data.session_id;
         else if(recovery.data?.state==="not_sent"){
           const next=finish();if(!next)setBody(item.body);setNote("Not sent. You can edit your message and send again.");
           if(error.message?.includes("CHAT_CLOSED")){setSession(null);setClosed(false);setEscalated(false);setNote("That conversation is closed. Send again to start a new conversation.");}
@@ -192,6 +214,8 @@ export function SupportConversation({ role }: { role: SupportRole }) {
         }
       }
       if(typeof data!=="string" || !data)throw new Error("Missing receipt");
+      const verified=await reconcileRecoveryOperation(item.key);
+      if(verified.state!=="completed" || verified.result_reference!==data)throw new Error("Delivery receipt was not verified");
       acknowledged=true;setSession(data);setBody("");setNote("Sent");
       // Only a confirmed user message can trigger a reply. A reply failure must not resend the user message.
       if(!item.escalate){

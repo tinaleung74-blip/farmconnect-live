@@ -1,13 +1,28 @@
 {
   "schemaVersion": "2.2.0",
-  "generatedAt": "2026-08-28T05:27:26.132Z",
-  "sourceFingerprint": "f1ba2bbbce7be5b55f693d076c3994feb66438be1069663d4b6b44719dbc5b46",
+  "generatedAt": "2026-08-29T05:31:26.945Z",
+  "sourceFingerprint": "6edfb666ae6fa896a2cd9a3d81548c7bd4cf7691f045c2b9e250387ba4553f7c",
   "git": {
-    "commit": "40a887551caf95fefacfac8b227106c57f581f16",
-    "branch": "agent/independent-operations",
+    "commit": "b8e0ffdc5752e9b9cf2cdd579b422fbc3692c3c9",
+    "branch": "agent/kafarm-recovery-guard-mvp",
     "dirtyFiles": [
-      "app/globals.css",
-      "lib/farmconnect-v1.tsx"
+      "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "lib/kafarm-system-snapshot.generated.json",
+      "lib/kafarm/guardian/system-map.generated.json",
+      "lib/support-conversation.tsx",
+      "package.json",
+      "scripts/kafarm/farmconnect-system-contract.json",
+      "scripts/qa/093-support-recovery.test.mjs",
+      "scripts/qa/database-contract.mjs",
+      "scripts/qa/delivery-state.test.mjs",
+      "scripts/qa/reaudit-behavior.test.mjs",
+      "scripts/qa/support-outbox.test.mjs",
+      "app/admin/kafarm/recovery-guard/",
+      "database/applied/094_kafarm_recovery_guard_mvp.sql",
+      "lib/recovery-guard.ts",
+      "scripts/qa/094-recovery-guard-contract.test.mjs",
+      "scripts/qa/local-page-smoke.mjs",
+      "scripts/qa/recovery-guard-e2e.mjs"
     ]
   },
   "safety": {
@@ -38,14 +53,14 @@
     ]
   },
   "counts": {
-    "routes": 131,
+    "routes": 132,
     "apiEndpoints": 5,
     "clientStorageKeys": 18,
-    "activeFiles": 168,
+    "activeFiles": 170,
     "unreachableFiles": 3,
-    "actions": 151,
-    "backendReferences": 137,
-    "findings": 1
+    "actions": 156,
+    "backendReferences": 143,
+    "findings": 0
   },
   "routes": [
     {
@@ -236,6 +251,11 @@
     {
       "route": "/admin/kafarm/qa-test-lab",
       "file": "app/admin/kafarm/qa-test-lab/page.tsx",
+      "role": "admin"
+    },
+    {
+      "route": "/admin/kafarm/recovery-guard",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
       "role": "admin"
     },
     {
@@ -763,7 +783,7 @@
       "kind": "button",
       "label": "Logout / Switch Account",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1094,
+      "line": 1095,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter",
@@ -774,7 +794,7 @@
       "kind": "button",
       "label": "{incident.http_status ? HTTP : null} {incident.email ? : null}",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2153,
+      "line": 2154,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -785,7 +805,7 @@
       "kind": "button",
       "label": "Show Read-Only Checker SQL",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2216,
+      "line": 2217,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -796,7 +816,7 @@
       "kind": "button",
       "label": "Generate SQL Audit Report",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2217,
+      "line": 2218,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -807,7 +827,7 @@
       "kind": "button",
       "label": "Clear",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2218,
+      "line": 2219,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -818,7 +838,7 @@
       "kind": "button",
       "label": "Missing / unclear",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2223,
+      "line": 2224,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -829,7 +849,7 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2255,
+      "line": 2256,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -840,7 +860,7 @@
       "kind": "button",
       "label": "Generate Report",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2268,
+      "line": 2269,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -851,7 +871,7 @@
       "kind": "button",
       "label": "Clear",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2269,
+      "line": 2270,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
@@ -862,10 +882,65 @@
       "kind": "button",
       "label": "Unlabeled button",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2353,
+      "line": 2354,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "kind": "button",
+      "label": "Refresh",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 44,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "exportName": "RecoveryGuardPage",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "kind": "button",
+      "label": "Unlabeled button",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 53,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "exportName": "RecoveryGuardPage",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "kind": "button",
+      "label": "Manual Review",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 54,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "exportName": "RecoveryGuardPage",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "kind": "button",
+      "label": "Dead Letter",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 55,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "exportName": "RecoveryGuardPage",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "kind": "button",
+      "label": "Resolve",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 56,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "exportName": "RecoveryGuardPage",
       "wiring": "handled-unproven",
       "handler": null
     },
@@ -2433,7 +2508,7 @@
       "kind": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 790,
+      "line": 791,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter"
@@ -2442,7 +2517,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 831,
+      "line": 832,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter"
@@ -2451,7 +2526,7 @@
       "kind": "table",
       "name": "profiles",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 917,
+      "line": 918,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter"
@@ -2460,7 +2535,7 @@
       "kind": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 947,
+      "line": 948,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter"
@@ -2469,7 +2544,7 @@
       "kind": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2078,
+      "line": 2079,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "exportName": "KafarmFocusPage"
@@ -2478,7 +2553,7 @@
       "kind": "rpc",
       "name": "kafarm_database_health_snapshot",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 944,
+      "line": 945,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter"
@@ -2487,7 +2562,7 @@
       "kind": "rpc",
       "name": "kafarm_care_plan_health_snapshot",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 945,
+      "line": 946,
       "role": "admin",
       "route": "/admin/kafarm",
       "exportName": "KafarmCommandCenter"
@@ -2509,6 +2584,33 @@
       "role": "admin",
       "route": "/admin/kafarm/guardian",
       "exportName": "GuardianClient"
+    },
+    {
+      "kind": "table",
+      "name": "kafarm_recovery_operations",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 19,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "exportName": "RecoveryGuardPage"
+    },
+    {
+      "kind": "rpc",
+      "name": "kafarm_recovery_reconcile",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 29,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "exportName": "RecoveryGuardPage"
+    },
+    {
+      "kind": "rpc",
+      "name": "kafarm_recovery_admin_action",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 36,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "exportName": "RecoveryGuardPage"
     },
     {
       "kind": "table",
@@ -3628,9 +3730,36 @@
     },
     {
       "kind": "rpc",
+      "name": "kafarm_recovery_begin",
+      "file": "lib/recovery-guard.ts",
+      "line": 24,
+      "role": "system",
+      "route": "lib/recovery-guard.ts",
+      "exportName": "beginRecoveryOperation"
+    },
+    {
+      "kind": "rpc",
+      "name": "kafarm_recovery_mark_sending",
+      "file": "lib/recovery-guard.ts",
+      "line": 39,
+      "role": "system",
+      "route": "lib/recovery-guard.ts",
+      "exportName": "markRecoverySending"
+    },
+    {
+      "kind": "rpc",
+      "name": "kafarm_recovery_reconcile",
+      "file": "lib/recovery-guard.ts",
+      "line": 45,
+      "role": "system",
+      "route": "lib/recovery-guard.ts",
+      "exportName": "reconcileRecoveryOperation"
+    },
+    {
+      "kind": "rpc",
       "name": "support_send_guarded",
       "file": "lib/support-conversation.tsx",
-      "line": 178,
+      "line": 199,
       "role": "system",
       "route": "lib/support-conversation.tsx",
       "exportName": "SupportConversation"
@@ -3639,7 +3768,7 @@
       "kind": "rpc",
       "name": "support_reconcile_delivery",
       "file": "lib/support-conversation.tsx",
-      "line": 183,
+      "line": 204,
       "role": "system",
       "route": "lib/support-conversation.tsx",
       "exportName": "SupportConversation"
@@ -3648,7 +3777,7 @@
   "routeReferences": [
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 862,
+      "line": 863,
       "ownerRoute": "/admin/kafarm",
       "target": "/",
       "exists": true,
@@ -3656,7 +3785,7 @@
     },
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1093,
+      "line": 1094,
       "ownerRoute": "/admin/kafarm",
       "target": "/",
       "exists": true,
@@ -3664,7 +3793,7 @@
     },
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1120,
+      "line": 1121,
       "ownerRoute": "/admin/kafarm",
       "target": "/admin/kafarm/guardian",
       "exists": true,
@@ -3672,17 +3801,9 @@
     },
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1129,
-      "ownerRoute": "/admin/kafarm",
-      "target": "/admin/kafarm/whole-app-reader",
-      "exists": true,
-      "exportName": "KafarmCommandCenter"
-    },
-    {
-      "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
       "line": 1130,
       "ownerRoute": "/admin/kafarm",
-      "target": "/admin/kafarm/troubleshooting",
+      "target": "/admin/kafarm/whole-app-reader",
       "exists": true,
       "exportName": "KafarmCommandCenter"
     },
@@ -3690,15 +3811,15 @@
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
       "line": 1131,
       "ownerRoute": "/admin/kafarm",
-      "target": "/admin",
+      "target": "/admin/kafarm/troubleshooting",
       "exists": true,
       "exportName": "KafarmCommandCenter"
     },
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1181,
+      "line": 1132,
       "ownerRoute": "/admin/kafarm",
-      "target": "/admin/kafarm/whole-app-reader",
+      "target": "/admin",
       "exists": true,
       "exportName": "KafarmCommandCenter"
     },
@@ -3706,13 +3827,21 @@
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
       "line": 1182,
       "ownerRoute": "/admin/kafarm",
+      "target": "/admin/kafarm/whole-app-reader",
+      "exists": true,
+      "exportName": "KafarmCommandCenter"
+    },
+    {
+      "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "line": 1183,
+      "ownerRoute": "/admin/kafarm",
       "target": "/admin",
       "exists": true,
       "exportName": "KafarmCommandCenter"
     },
     {
       "source": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2110,
+      "line": 2111,
       "ownerRoute": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "target": "/admin/kafarm",
       "exists": true,
@@ -3741,6 +3870,14 @@
       "target": "/admin",
       "exists": true,
       "exportName": "GuardianClient"
+    },
+    {
+      "source": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 44,
+      "ownerRoute": "/admin/kafarm/recovery-guard",
+      "target": "/admin/kafarm",
+      "exists": true,
+      "exportName": "RecoveryGuardPage"
     },
     {
       "source": "app/admin/kafarm/troubleshooting/page.tsx",
@@ -4437,7 +4574,7 @@
       "operation": "getItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 767,
+      "line": 768,
       "role": "admin",
       "route": "/admin/kafarm"
     },
@@ -4446,7 +4583,7 @@
       "operation": "setItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 772,
+      "line": 773,
       "role": "admin",
       "route": "/admin/kafarm"
     },
@@ -4455,7 +4592,7 @@
       "operation": "removeItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1043,
+      "line": 1044,
       "role": "admin",
       "route": "/admin/kafarm"
     },
@@ -4464,7 +4601,7 @@
       "operation": "removeItem",
       "key": "farmconnect_kafarm_incident_throttle",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1044,
+      "line": 1045,
       "role": "admin",
       "route": "/admin/kafarm"
     },
@@ -4473,7 +4610,7 @@
       "operation": "getItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2059,
+      "line": 2060,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health"
     },
@@ -4482,7 +4619,7 @@
       "operation": "setItem",
       "key": "farmconnect_kafarm_incidents",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2064,
+      "line": 2065,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health"
     },
@@ -4590,7 +4727,7 @@
       "operation": "setItem",
       "key": "${storage.current}.recovery.${crypto.randomUUID()}",
       "file": "lib/support-conversation.tsx",
-      "line": 114,
+      "line": 119,
       "role": "system",
       "route": "lib/support-conversation.tsx"
     }
@@ -4807,12 +4944,10 @@
         {
           "id": "customer_confirmation",
           "label": "Customer confirmation or dispute",
-          "present": false
+          "present": true
         }
       ],
-      "missing": [
-        "Customer confirmation or dispute"
-      ]
+      "missing": []
     },
     {
       "id": "kyc",
@@ -4976,22 +5111,7 @@
       "connected": true
     }
   ],
-  "findings": [
-    {
-      "id": "flow-gap-withdrawal",
-      "confidence": "possible",
-      "severity": "medium",
-      "scope": "flow",
-      "role": "customer -> admin",
-      "page": "Cross-role flow contract",
-      "action": "Customer withdrawal",
-      "title": "Cross-role flow support is incomplete in static evidence",
-      "expected": "Active source should expose all required signals for Customer withdrawal.",
-      "actual": "Missing static signals: Customer confirmation or dispute.",
-      "evidence": "6/7 contract signals were found across active source and database SQL references.",
-      "nextStep": "Review producer record, admin queue, receiver update, notification, and evidence chain. Confirm with real records before changing SQL."
-    }
-  ],
+  "findings": [],
   "activeManifest": [
     {
       "file": "app/_components/DatabaseTargetBanner.tsx",
@@ -5107,7 +5227,7 @@
     },
     {
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "sha256": "a3269921c71ac06a7591e422835ca23882907d77ee5638c5702b5de1c8ce4d26"
+      "sha256": "84eded7ff0894caae9d10b26b974340583da078dd090d5dfcb51930fc189e2f1"
     },
     {
       "file": "app/admin/kafarm/approvals/page.tsx",
@@ -5156,6 +5276,10 @@
     {
       "file": "app/admin/kafarm/qa-test-lab/page.tsx",
       "sha256": "4319f3c381c6f4b8b95b73744a7d0a3ed86e76bcc2d7358f20fb2fdc4fcf9254"
+    },
+    {
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "sha256": "82325482b8bcdc52721cca0fae1a5802dc80c058f190bb239e52a6a4b35bbb15"
     },
     {
       "file": "app/admin/kafarm/system-health/page.tsx",
@@ -5650,6 +5774,10 @@
       "sha256": "8ef8676f968f4b4333adaf8dafba907aa55234dae9f544fe5db4d576a0d1ec59"
     },
     {
+      "file": "lib/recovery-guard.ts",
+      "sha256": "5bfe79623103696f542ea0a016afc43db0b0bc02b03b28b09d21bdc0c5bc8ad4"
+    },
+    {
       "file": "lib/security/farmconnect-rate-limit.ts",
       "sha256": "a0b6232b11adca3b3cea5edfcb080c44bacd093c0d3da0566664f3a56c9bdc55"
     },
@@ -5663,7 +5791,7 @@
     },
     {
       "file": "lib/support-conversation.tsx",
-      "sha256": "bf81cc19255bb61c5ae6d9e86e832af142da7239aacc342da2416e733cb6a6a9"
+      "sha256": "58dadb36f7e63ee2997d6deacb76a0534b8dd5848987d79c3d3e91c03740147f"
     }
   ],
   "unreachableFiles": [

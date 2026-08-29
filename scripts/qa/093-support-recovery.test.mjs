@@ -48,6 +48,7 @@ async function support(options={}) {
   if(name==='react/jsx-runtime')return {jsx,jsxs:jsx};
   if(name==='@/lib/farmconnect-data')return {getCurrentProfile:async()=>({id:'p',role:'customer'})};
   if(name==='@/lib/backend/support-chat')return {getLatestSupportSessionId:async()=>{reads++;if(options.failFirst && reads===1)return {error:{message:'offline'}};return {data:{id:'session'}}},getSupportMessages:async()=>({data:[]}),getSupportSessionStatus:async()=>({data:{status:'open'}})};
+  if(name==='@/lib/recovery-guard')return {safeFingerprint:async()=> 'safe-fingerprint',retrySafeRead:fn=>fn(),beginRecoveryOperation:async()=>({status:'created',duplicate:false}),markRecoverySending:async()=>({status:'sending',duplicate:false}),reconcileRecoveryOperation:async()=>({state:'completed',verified:true,result_reference:receipt})};
   if(name==='@/lib/supabase')return {supabase:{rpc(){throw Error('Initialization must not send messages')}}};
   return {};
  }});

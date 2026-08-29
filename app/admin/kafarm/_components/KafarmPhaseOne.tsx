@@ -269,6 +269,7 @@ const pageLinks: Record<string, Array<{ label: string; href: string }>> = {
     { label: "Caretaker Management", href: "/admin/caretaker-management" },
   ],
   "system-health": [
+    { label: "Recovery Guard", href: "/admin/kafarm/recovery-guard" },
     { label: "Customer App", href: "/customer/dashboard" },
     { label: "Admin App", href: "/admin" },
     { label: "Caretaker App", href: "/caretaker/dashboard" },

@@ -49,6 +49,9 @@ const requiredTables = [
   "manual_care_inventory_reservations",
   "manual_care_inventory_usage",
   "care_plan_package_items",
+  "kafarm_recovery_operations",
+  "kafarm_recovery_audit",
+  "kafarm_recovery_incidents",
 ];
 
 const requiredDefinerFunctions = [
@@ -94,6 +97,11 @@ const requiredDefinerFunctions = [
   "admin_assign_care_plan",
   "customer_prepare_fixed_care_plan_payment",
   "sync_care_plan_day1_readiness",
+  "kafarm_recovery_begin",
+  "kafarm_recovery_mark_sending",
+  "kafarm_recovery_mark_error",
+  "kafarm_recovery_reconcile",
+  "kafarm_recovery_admin_action",
 ];
 
 const requiredInvokerFunctions = [
@@ -101,6 +109,7 @@ const requiredInvokerFunctions = [
   "care_mission_checklist_passes",
   "care_plan_customer_inventory_contract_version",
   "kafarm_care_plan_health_classifier_version",
+  "kafarm_recovery_transition_allowed",
 ];
 
 function fail(message) {

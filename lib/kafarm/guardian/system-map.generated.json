@@ -1,19 +1,33 @@
 {
   "schemaVersion": "1.0.0",
   "application": "FarmConnect",
-  "generatedAt": "2026-08-28T05:27:26.218Z",
+  "generatedAt": "2026-08-29T05:31:27.055Z",
   "sourceSnapshot": {
-    "generatedAt": "2026-08-28T05:27:26.132Z",
-    "sourceFingerprint": "f1ba2bbbce7be5b55f693d076c3994feb66438be1069663d4b6b44719dbc5b46",
+    "generatedAt": "2026-08-29T05:31:26.945Z",
+    "sourceFingerprint": "6edfb666ae6fa896a2cd9a3d81548c7bd4cf7691f045c2b9e250387ba4553f7c",
     "schemaVersion": "2.2.0"
   },
   "git": {
-    "commit": "40a887551caf95fefacfac8b227106c57f581f16",
-    "branch": "agent/independent-operations",
+    "commit": "b8e0ffdc5752e9b9cf2cdd579b422fbc3692c3c9",
+    "branch": "agent/kafarm-recovery-guard-mvp",
     "dirtyFiles": [
-      "M app/globals.css",
-      " M lib/farmconnect-v1.tsx",
-      " M lib/kafarm-system-snapshot.generated.json"
+      "M app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      " M lib/kafarm-system-snapshot.generated.json",
+      " M lib/kafarm/guardian/system-map.generated.json",
+      " M lib/support-conversation.tsx",
+      " M package.json",
+      " M scripts/kafarm/farmconnect-system-contract.json",
+      " M scripts/qa/093-support-recovery.test.mjs",
+      " M scripts/qa/database-contract.mjs",
+      " M scripts/qa/delivery-state.test.mjs",
+      " M scripts/qa/reaudit-behavior.test.mjs",
+      " M scripts/qa/support-outbox.test.mjs",
+      "?? app/admin/kafarm/recovery-guard/",
+      "?? database/applied/094_kafarm_recovery_guard_mvp.sql",
+      "?? lib/recovery-guard.ts",
+      "?? scripts/qa/094-recovery-guard-contract.test.mjs",
+      "?? scripts/qa/local-page-smoke.mjs",
+      "?? scripts/qa/recovery-guard-e2e.mjs"
     ]
   },
   "blueprint": {
@@ -22,12 +36,12 @@
     "updatedAt": "2026-08-18"
   },
   "counts": {
-    "pages": 131,
+    "pages": 132,
     "apiRoutes": 5,
-    "actions": 151,
-    "backendReferences": 137,
-    "edges": 281,
-    "tests": 23
+    "actions": 156,
+    "backendReferences": 143,
+    "edges": 302,
+    "tests": 26
   },
   "nodes": [
     {
@@ -294,6 +308,13 @@
       "type": "page",
       "name": "/admin/kafarm/qa-test-lab",
       "file": "app/admin/kafarm/qa-test-lab/page.tsx",
+      "role": "admin"
+    },
+    {
+      "id": "route:/admin/kafarm/recovery-guard",
+      "type": "page",
+      "name": "/admin/kafarm/recovery-guard",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
       "role": "admin"
     },
     {
@@ -1010,42 +1031,31 @@
       "handler": "async () => {\n    await installPrompt.prompt();\n    const choice = await installPrompt.userChoice;\n    if (choice.outcom"
     },
     {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094:1",
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1095:1",
       "type": "action",
       "name": "Logout / Switch Account",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 1094,
+      "line": 1095,
       "role": "admin",
       "route": "/admin/kafarm",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2153:2",
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2154:2",
       "type": "action",
       "name": "{incident.http_status ? HTTP : null} {incident.email ? : null}",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2153,
+      "line": 2154,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2216:3",
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2217:3",
       "type": "action",
       "name": "Show Read-Only Checker SQL",
-      "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2216,
-      "role": "admin",
-      "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "wiring": "handled-unproven",
-      "handler": null
-    },
-    {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2217:4",
-      "type": "action",
-      "name": "Generate SQL Audit Report",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
       "line": 2217,
       "role": "admin",
@@ -1054,9 +1064,9 @@
       "handler": null
     },
     {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2218:5",
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2218:4",
       "type": "action",
-      "name": "Clear",
+      "name": "Generate SQL Audit Report",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
       "line": 2218,
       "role": "admin",
@@ -1065,42 +1075,42 @@
       "handler": null
     },
     {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2223:6",
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2219:5",
       "type": "action",
-      "name": "Missing / unclear",
+      "name": "Clear",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2223,
+      "line": 2219,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2255:7",
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2224:6",
+      "type": "action",
+      "name": "Missing / unclear",
+      "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "line": 2224,
+      "role": "admin",
+      "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2256:7",
       "type": "action",
       "name": "Unlabeled button",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2255,
+      "line": 2256,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "wiring": "handled-unproven",
       "handler": "() => setSelectedRow(row)} className={\"grid w-full grid-cols-[1fr_1.5fr_1fr] gap-2 border-t border-[#dbe6d7] px-3 py-3 t"
     },
     {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2268:8",
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2269:8",
       "type": "action",
       "name": "Generate Report",
-      "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2268,
-      "role": "admin",
-      "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "wiring": "handled-unproven",
-      "handler": null
-    },
-    {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2269:9",
-      "type": "action",
-      "name": "Clear",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
       "line": 2269,
       "role": "admin",
@@ -1109,18 +1119,84 @@
       "handler": null
     },
     {
-      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2353:10",
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2270:9",
       "type": "action",
-      "name": "Unlabeled button",
+      "name": "Clear",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2353,
+      "line": 2270,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "wiring": "handled-unproven",
       "handler": null
     },
     {
-      "id": "action:app/admin/kafarm/troubleshooting/page.tsx:92:11",
+      "id": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2354:10",
+      "type": "action",
+      "name": "Unlabeled button",
+      "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
+      "line": 2354,
+      "role": "admin",
+      "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "id": "action:app/admin/kafarm/recovery-guard/page.tsx:44:11",
+      "type": "action",
+      "name": "Refresh",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 44,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "id": "action:app/admin/kafarm/recovery-guard/page.tsx:53:12",
+      "type": "action",
+      "name": "Unlabeled button",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 53,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "id": "action:app/admin/kafarm/recovery-guard/page.tsx:54:13",
+      "type": "action",
+      "name": "Manual Review",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 54,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "id": "action:app/admin/kafarm/recovery-guard/page.tsx:55:14",
+      "type": "action",
+      "name": "Dead Letter",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 55,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "id": "action:app/admin/kafarm/recovery-guard/page.tsx:56:15",
+      "type": "action",
+      "name": "Resolve",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 56,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard",
+      "wiring": "handled-unproven",
+      "handler": null
+    },
+    {
+      "id": "action:app/admin/kafarm/troubleshooting/page.tsx:92:16",
       "type": "action",
       "name": "Unlabeled button",
       "file": "app/admin/kafarm/troubleshooting/page.tsx",
@@ -1131,7 +1207,7 @@
       "handler": null
     },
     {
-      "id": "action:app/admin/kafarm/troubleshooting/page.tsx:97:12",
+      "id": "action:app/admin/kafarm/troubleshooting/page.tsx:97:17",
       "type": "action",
       "name": "·",
       "file": "app/admin/kafarm/troubleshooting/page.tsx",
@@ -1142,7 +1218,7 @@
       "handler": "() => { setSelectedId(row.id); setPrepared(false); }} className={`w-full rounded-2xl border p-3 text-left ${selected.id "
     },
     {
-      "id": "action:app/admin/kafarm/troubleshooting/page.tsx:101:13",
+      "id": "action:app/admin/kafarm/troubleshooting/page.tsx:101:18",
       "type": "action",
       "name": "Prepare Safe Recovery",
       "file": "app/admin/kafarm/troubleshooting/page.tsx",
@@ -1153,7 +1229,7 @@
       "handler": null
     },
     {
-      "id": "action:app/admin/kafarm/troubleshooting/page.tsx:102:14",
+      "id": "action:app/admin/kafarm/troubleshooting/page.tsx:102:19",
       "type": "action",
       "name": "Unlabeled button",
       "file": "app/admin/kafarm/troubleshooting/page.tsx",
@@ -1164,7 +1240,7 @@
       "handler": null
     },
     {
-      "id": "action:app/forgot-password/page.tsx:43:15",
+      "id": "action:app/forgot-password/page.tsx:43:20",
       "type": "action",
       "name": "Unlabeled button",
       "file": "app/forgot-password/page.tsx",
@@ -1175,7 +1251,7 @@
       "handler": null
     },
     {
-      "id": "action:app/page.tsx:189:16",
+      "id": "action:app/page.tsx:189:21",
       "type": "action",
       "name": "Unlabeled button",
       "file": "app/page.tsx",
@@ -1186,7 +1262,7 @@
       "handler": null
     },
     {
-      "id": "action:app/page.tsx:198:17",
+      "id": "action:app/page.tsx:198:22",
       "type": "action",
       "name": "Unlabeled button",
       "file": "app/page.tsx",
@@ -1197,7 +1273,7 @@
       "handler": null
     },
     {
-      "id": "action:app/page.tsx:201:18",
+      "id": "action:app/page.tsx:201:23",
       "type": "action",
       "name": "Sign Up",
       "file": "app/page.tsx",
@@ -1208,7 +1284,7 @@
       "handler": null
     },
     {
-      "id": "action:app/page.tsx:232:19",
+      "id": "action:app/page.tsx:232:24",
       "type": "action",
       "name": "Unlabeled button",
       "file": "app/page.tsx",
@@ -1219,7 +1295,7 @@
       "handler": null
     },
     {
-      "id": "action:app/page.tsx:243:20",
+      "id": "action:app/page.tsx:243:25",
       "type": "action",
       "name": "Unlabeled button",
       "file": "app/page.tsx",
@@ -1230,7 +1306,7 @@
       "handler": null
     },
     {
-      "id": "action:app/page.tsx:245:21",
+      "id": "action:app/page.tsx:245:26",
       "type": "action",
       "name": "Sign In",
       "file": "app/page.tsx",
@@ -1241,7 +1317,7 @@
       "handler": null
     },
     {
-      "id": "action:app/reset-password/page.tsx:80:22",
+      "id": "action:app/reset-password/page.tsx:80:27",
       "type": "action",
       "name": "Unlabeled button",
       "file": "app/reset-password/page.tsx",
@@ -1252,7 +1328,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:166:23",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:166:28",
       "type": "action",
       "name": "Logout",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1263,7 +1339,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:359:24",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:359:29",
       "type": "action",
       "name": "Check Again",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1274,7 +1350,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:369:25",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:369:30",
       "type": "action",
       "name": "Verification Queue Waiting for a real admin decision.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1285,7 +1361,7 @@
       "handler": "()=>setTab(\"queue\")} className={`rounded-2xl border p-4 text-left ${tab === \"queue\" ? \"border-[#1f6b45] bg-emerald-50\" :"
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:369:26",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:369:31",
       "type": "action",
       "name": "Verified Accounts Approved customers and caretakers.",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1296,7 +1372,7 @@
       "handler": "()=>setTab(\"verified\")} className={`rounded-2xl border p-4 text-left ${tab === \"verified\" ? \"border-[#1f6b45] bg-emerald"
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:371:27",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:371:32",
       "type": "action",
       "name": "Customers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1307,7 +1383,7 @@
       "handler": "()=>setMode(\"customer\")} className={`rounded-xl px-3 py-3 text-sm font-black ${mode === \"customer\" ? \"bg-[#1f6b45] text-"
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:371:28",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:371:33",
       "type": "action",
       "name": "Caretakers",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1318,7 +1394,7 @@
       "handler": "()=>setMode(\"caretaker\")} className={`rounded-xl px-3 py-3 text-sm font-black ${mode === \"caretaker\" ? \"bg-[#1f6b45] tex"
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:371:29",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:371:34",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1329,7 +1405,7 @@
       "handler": "()=>setSelectedId(row.id)} className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left ${selected?.id =="
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:372:30",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:372:35",
       "type": "action",
       "name": "Open",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1340,7 +1416,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:373:31",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:373:36",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1351,7 +1427,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:373:32",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:373:37",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1362,7 +1438,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:375:33",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:375:38",
       "type": "action",
       "name": "Close",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1373,7 +1449,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-unified-account-verification.tsx:449:34",
+      "id": "action:lib/farmconnect-unified-account-verification.tsx:449:39",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -1384,7 +1460,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1741:35",
+      "id": "action:lib/farmconnect-v1.tsx:1741:40",
       "type": "action",
       "name": "+ Add Rooster",
       "file": "lib/farmconnect-v1.tsx",
@@ -1395,7 +1471,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1742:36",
+      "id": "action:lib/farmconnect-v1.tsx:1742:41",
       "type": "action",
       "name": "×",
       "file": "lib/farmconnect-v1.tsx",
@@ -1406,7 +1482,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1744:37",
+      "id": "action:lib/farmconnect-v1.tsx:1744:42",
       "type": "action",
       "name": "Try Again",
       "file": "lib/farmconnect-v1.tsx",
@@ -1417,7 +1493,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1746:38",
+      "id": "action:lib/farmconnect-v1.tsx:1746:43",
       "type": "action",
       "name": "←",
       "file": "lib/farmconnect-v1.tsx",
@@ -1428,7 +1504,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1746:39",
+      "id": "action:lib/farmconnect-v1.tsx:1746:44",
       "type": "action",
       "name": "→",
       "file": "lib/farmconnect-v1.tsx",
@@ -1439,7 +1515,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1748:40",
+      "id": "action:lib/farmconnect-v1.tsx:1748:45",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1450,7 +1526,7 @@
       "handler": "() => setQrRooster(rooster)} className=\"rounded-2xl border border-[#dce7df] bg-white p-1.5 shadow-sm sm:p-2\" aria-label="
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1748:41",
+      "id": "action:lib/farmconnect-v1.tsx:1748:46",
       "type": "action",
       "name": "Rename",
       "file": "lib/farmconnect-v1.tsx",
@@ -1461,7 +1537,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1767:42",
+      "id": "action:lib/farmconnect-v1.tsx:1767:47",
       "type": "action",
       "name": "×",
       "file": "lib/farmconnect-v1.tsx",
@@ -1472,7 +1548,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1767:43",
+      "id": "action:lib/farmconnect-v1.tsx:1767:48",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1483,7 +1559,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1768:44",
+      "id": "action:lib/farmconnect-v1.tsx:1768:49",
       "type": "action",
       "name": "×",
       "file": "lib/farmconnect-v1.tsx",
@@ -1494,7 +1570,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1846:45",
+      "id": "action:lib/farmconnect-v1.tsx:1846:50",
       "type": "action",
       "name": "Care options Choose care for ⌄",
       "file": "lib/farmconnect-v1.tsx",
@@ -1505,7 +1581,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1847:46",
+      "id": "action:lib/farmconnect-v1.tsx:1847:51",
       "type": "action",
       "name": "Daily Care ₱160 One-day care",
       "file": "lib/farmconnect-v1.tsx",
@@ -1516,7 +1592,7 @@
       "handler": "() => setSelectedCare(\"daily\")} className={`rounded-2xl border p-4 text-left transition ${selectedCare === \"daily\" ? \"bo"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1847:47",
+      "id": "action:lib/farmconnect-v1.tsx:1847:52",
       "type": "action",
       "name": "Monthly Care ₱5,000 30-day coverage",
       "file": "lib/farmconnect-v1.tsx",
@@ -1527,7 +1603,7 @@
       "handler": "() => setSelectedCare(\"monthly\")} className={`rounded-2xl border p-4 text-left transition ${selectedCare === \"monthly\" ?"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1848:48",
+      "id": "action:lib/farmconnect-v1.tsx:1848:53",
       "type": "action",
       "name": "{paying ? \"Preparing Payment...\" : `Pay $ `}",
       "file": "lib/farmconnect-v1.tsx",
@@ -1538,7 +1614,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:1852:49",
+      "id": "action:lib/farmconnect-v1.tsx:1852:54",
       "type": "action",
       "name": "Try Again",
       "file": "lib/farmconnect-v1.tsx",
@@ -1549,7 +1625,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2101:50",
+      "id": "action:lib/farmconnect-v1.tsx:2101:55",
       "type": "action",
       "name": "Evaluate Price",
       "file": "lib/farmconnect-v1.tsx",
@@ -1560,7 +1636,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2102:51",
+      "id": "action:lib/farmconnect-v1.tsx:2102:56",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1571,7 +1647,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2107:52",
+      "id": "action:lib/farmconnect-v1.tsx:2107:57",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1582,7 +1658,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2483:53",
+      "id": "action:lib/farmconnect-v1.tsx:2483:58",
       "type": "action",
       "name": "Clear Link",
       "file": "lib/farmconnect-v1.tsx",
@@ -1593,7 +1669,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2493:54",
+      "id": "action:lib/farmconnect-v1.tsx:2493:59",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1604,7 +1680,7 @@
       "handler": "() => setCat(c)} className={\"shrink-0 rounded-full px-4 py-2 text-sm font-black \" + (cat === c ? \"bg-[#1f6b45] text-whit"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2516:55",
+      "id": "action:lib/farmconnect-v1.tsx:2516:60",
       "type": "action",
       "name": "-",
       "file": "lib/farmconnect-v1.tsx",
@@ -1615,7 +1691,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2523:56",
+      "id": "action:lib/farmconnect-v1.tsx:2523:61",
       "type": "action",
       "name": "+",
       "file": "lib/farmconnect-v1.tsx",
@@ -1626,7 +1702,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2563:57",
+      "id": "action:lib/farmconnect-v1.tsx:2563:62",
       "type": "action",
       "name": "Pay",
       "file": "lib/farmconnect-v1.tsx",
@@ -1637,7 +1713,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2568:58",
+      "id": "action:lib/farmconnect-v1.tsx:2568:63",
       "type": "action",
       "name": "Pay",
       "file": "lib/farmconnect-v1.tsx",
@@ -1648,7 +1724,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2955:59",
+      "id": "action:lib/farmconnect-v1.tsx:2955:64",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1659,7 +1735,7 @@
       "handler": "() => setRooster(r)} className={\"flex w-full items-center gap-3 rounded-xl border p-3 text-left \" + (rooster?.id === r.i"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2970:60",
+      "id": "action:lib/farmconnect-v1.tsx:2970:65",
       "type": "action",
       "name": "-",
       "file": "lib/farmconnect-v1.tsx",
@@ -1670,7 +1746,7 @@
       "handler": "() => setService(s)} className={\"w-full rounded-xl border p-3 text-left \" + (service.name === s.name ? \"border-[#1f6b45]"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2983:61",
+      "id": "action:lib/farmconnect-v1.tsx:2983:66",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1681,7 +1757,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:2998:62",
+      "id": "action:lib/farmconnect-v1.tsx:2998:67",
       "type": "action",
       "name": "View Care",
       "file": "lib/farmconnect-v1.tsx",
@@ -1692,7 +1768,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:3008:63",
+      "id": "action:lib/farmconnect-v1.tsx:3008:68",
       "type": "action",
       "name": "Continue ₱5,000 Payment",
       "file": "lib/farmconnect-v1.tsx",
@@ -1703,7 +1779,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:3012:64",
+      "id": "action:lib/farmconnect-v1.tsx:3012:69",
       "type": "action",
       "name": "View Status",
       "file": "lib/farmconnect-v1.tsx",
@@ -1714,7 +1790,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:3782:65",
+      "id": "action:lib/farmconnect-v1.tsx:3782:70",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1725,7 +1801,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:3885:66",
+      "id": "action:lib/farmconnect-v1.tsx:3885:71",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1736,7 +1812,7 @@
       "handler": "() => setShowAmounts(!showAmounts)} className=\"grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-[#19704"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:3900:67",
+      "id": "action:lib/farmconnect-v1.tsx:3900:72",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1747,7 +1823,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:3956:68",
+      "id": "action:lib/farmconnect-v1.tsx:3956:73",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1758,7 +1834,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:3970:69",
+      "id": "action:lib/farmconnect-v1.tsx:3970:74",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1769,7 +1845,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4382:70",
+      "id": "action:lib/farmconnect-v1.tsx:4382:75",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1780,7 +1856,7 @@
       "handler": "() => setSelectedId(row.id)} className={\"rounded-2xl border p-4 text-left transition \" + (selected?.id === row.id ? \"bor"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4409:71",
+      "id": "action:lib/farmconnect-v1.tsx:4409:76",
       "type": "action",
       "name": "Request Withdrawal",
       "file": "lib/farmconnect-v1.tsx",
@@ -1791,7 +1867,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4437:72",
+      "id": "action:lib/farmconnect-v1.tsx:4437:77",
       "type": "action",
       "name": "View Uploaded Receipt",
       "file": "lib/farmconnect-v1.tsx",
@@ -1802,7 +1878,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4446:73",
+      "id": "action:lib/farmconnect-v1.tsx:4446:78",
       "type": "action",
       "name": "I Received the Payout",
       "file": "lib/farmconnect-v1.tsx",
@@ -1813,7 +1889,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4453:74",
+      "id": "action:lib/farmconnect-v1.tsx:4453:79",
       "type": "action",
       "name": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
@@ -1824,7 +1900,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4463:75",
+      "id": "action:lib/farmconnect-v1.tsx:4463:80",
       "type": "action",
       "name": "Send Problem",
       "file": "lib/farmconnect-v1.tsx",
@@ -1835,7 +1911,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4470:76",
+      "id": "action:lib/farmconnect-v1.tsx:4470:81",
       "type": "action",
       "name": "Report a Problem",
       "file": "lib/farmconnect-v1.tsx",
@@ -1846,7 +1922,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4521:77",
+      "id": "action:lib/farmconnect-v1.tsx:4521:82",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1857,7 +1933,7 @@
       "handler": "() => setProvider(row)} className={\"w-full rounded-xl border p-3 text-left font-black \" + (provider.name === row.name ? "
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4546:78",
+      "id": "action:lib/farmconnect-v1.tsx:4546:83",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1868,7 +1944,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4911:79",
+      "id": "action:lib/farmconnect-v1.tsx:4911:84",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1879,7 +1955,7 @@
       "handler": "() => { setCategory(c.name); setQuery(\"\"); setCategoryMenuOpen(false); }} className={\"flex w-full items-center gap-3 rou"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4920:80",
+      "id": "action:lib/farmconnect-v1.tsx:4920:85",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1890,7 +1966,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4926:81",
+      "id": "action:lib/farmconnect-v1.tsx:4926:86",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1901,7 +1977,7 @@
       "handler": "() => { setSort(option); setSortMenuOpen(false); }} className={\"w-full rounded-xl px-3 py-2.5 text-left text-sm font-bla"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4931:82",
+      "id": "action:lib/farmconnect-v1.tsx:4931:87",
       "type": "action",
       "name": "Mark All as Read",
       "file": "lib/farmconnect-v1.tsx",
@@ -1912,7 +1988,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4994:83",
+      "id": "action:lib/farmconnect-v1.tsx:4994:88",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1923,7 +1999,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:4998:84",
+      "id": "action:lib/farmconnect-v1.tsx:4998:89",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1934,7 +2010,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5171:85",
+      "id": "action:lib/farmconnect-v1.tsx:5171:90",
       "type": "action",
       "name": "x",
       "file": "lib/farmconnect-v1.tsx",
@@ -1945,7 +2021,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5232:86",
+      "id": "action:lib/farmconnect-v1.tsx:5232:91",
       "type": "action",
       "name": "FarmConnect",
       "file": "lib/farmconnect-v1.tsx",
@@ -1956,7 +2032,7 @@
       "handler": "() => setMethod(row)} className={\"relative aspect-[1.58/1] w-full overflow-hidden rounded-[22px] bg-gradient-to-br p-4 t"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5248:87",
+      "id": "action:lib/farmconnect-v1.tsx:5248:92",
       "type": "action",
       "name": "View QR",
       "file": "lib/farmconnect-v1.tsx",
@@ -1967,7 +2043,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5261:88",
+      "id": "action:lib/farmconnect-v1.tsx:5261:93",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -1978,7 +2054,7 @@
       "handler": "submitPayment} disabled={submitting || Boolean(submittedId)} className={\"mt-4 w-full rounded-2xl px-4 py-4 font-black te"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5417:89",
+      "id": "action:lib/farmconnect-v1.tsx:5417:94",
       "type": "action",
       "name": "Close",
       "file": "lib/farmconnect-v1.tsx",
@@ -1989,7 +2065,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5451:90",
+      "id": "action:lib/farmconnect-v1.tsx:5451:95",
       "type": "action",
       "name": "View Uploaded Receipt",
       "file": "lib/farmconnect-v1.tsx",
@@ -2000,7 +2076,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5489:91",
+      "id": "action:lib/farmconnect-v1.tsx:5489:96",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2011,7 +2087,7 @@
       "handler": "() => setCorrectionMethod(row)} className={\"rounded-2xl border p-4 text-left \" + (correctionMethod.method === row.method"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:5504:92",
+      "id": "action:lib/farmconnect-v1.tsx:5504:97",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2022,7 +2098,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6133:93",
+      "id": "action:lib/farmconnect-v1.tsx:6133:98",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2033,7 +2109,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6139:94",
+      "id": "action:lib/farmconnect-v1.tsx:6139:99",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2044,7 +2120,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6203:95",
+      "id": "action:lib/farmconnect-v1.tsx:6203:100",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2055,7 +2131,7 @@
       "handler": "() => card.key && openPanel(card.key, card.title)} className={\"flex w-full items-center gap-3 rounded-2xl border p-3 tex"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6315:96",
+      "id": "action:lib/farmconnect-v1.tsx:6315:101",
       "type": "action",
       "name": "ID Front chooseKycPhoto(\"front\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
@@ -2066,7 +2142,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6323:97",
+      "id": "action:lib/farmconnect-v1.tsx:6323:102",
       "type": "action",
       "name": "ID Back chooseKycPhoto(\"back\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
@@ -2077,7 +2153,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6331:98",
+      "id": "action:lib/farmconnect-v1.tsx:6331:103",
       "type": "action",
       "name": "Selfie chooseKycPhoto(\"selfie\", e.target.files?.[0])} />",
       "file": "lib/farmconnect-v1.tsx",
@@ -2088,7 +2164,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6348:99",
+      "id": "action:lib/farmconnect-v1.tsx:6348:104",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2099,7 +2175,7 @@
       "handler": "submitKyc} disabled={!kycConsent || kycSubmitting} className={\"rounded-2xl px-4 py-4 font-black text-white md:col-span-2"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6397:100",
+      "id": "action:lib/farmconnect-v1.tsx:6397:105",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2110,7 +2186,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6407:101",
+      "id": "action:lib/farmconnect-v1.tsx:6407:106",
       "type": "action",
       "name": "Change Password",
       "file": "lib/farmconnect-v1.tsx",
@@ -2121,7 +2197,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6418:102",
+      "id": "action:lib/farmconnect-v1.tsx:6418:107",
       "type": "action",
       "name": "Save Contact Details",
       "file": "lib/farmconnect-v1.tsx",
@@ -2132,7 +2208,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:6990:103",
+      "id": "action:lib/farmconnect-v1.tsx:6990:108",
       "type": "action",
       "name": "/",
       "file": "lib/farmconnect-v1.tsx",
@@ -2143,7 +2219,7 @@
       "handler": "() => resetDraft(task)} className={\"w-full rounded-xl border p-3 text-left \" + (selected?.id === task.id ? \"border-[#1f6"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7144:104",
+      "id": "action:lib/farmconnect-v1.tsx:7144:109",
       "type": "action",
       "name": "Download QR",
       "file": "lib/farmconnect-v1.tsx",
@@ -2154,7 +2230,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7148:105",
+      "id": "action:lib/farmconnect-v1.tsx:7148:110",
       "type": "action",
       "name": "Print Tag",
       "file": "lib/farmconnect-v1.tsx",
@@ -2165,7 +2241,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7184:106",
+      "id": "action:lib/farmconnect-v1.tsx:7184:111",
       "type": "action",
       "name": "Add to Today",
       "file": "lib/farmconnect-v1.tsx",
@@ -2176,7 +2252,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7185:107",
+      "id": "action:lib/farmconnect-v1.tsx:7185:112",
       "type": "action",
       "name": "Remove",
       "file": "lib/farmconnect-v1.tsx",
@@ -2187,7 +2263,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7225:108",
+      "id": "action:lib/farmconnect-v1.tsx:7225:113",
       "type": "action",
       "name": "Add Evidence",
       "file": "lib/farmconnect-v1.tsx",
@@ -2198,7 +2274,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7236:109",
+      "id": "action:lib/farmconnect-v1.tsx:7236:114",
       "type": "action",
       "name": "x",
       "file": "lib/farmconnect-v1.tsx",
@@ -2209,7 +2285,7 @@
       "handler": "() => isDailyCareReportTask ? removeCareEntry(index) : setExistingProofs((items) => items.filter((_, itemIndex) => itemI"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7242:110",
+      "id": "action:lib/farmconnect-v1.tsx:7242:115",
       "type": "action",
       "name": "x",
       "file": "lib/farmconnect-v1.tsx",
@@ -2220,7 +2296,7 @@
       "handler": "() => isDailyCareReportTask ? removeCareEntry(existingProofs.length + index) : setProofFiles((files) => files.filter((_,"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7251:111",
+      "id": "action:lib/farmconnect-v1.tsx:7251:116",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2231,7 +2307,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7274:112",
+      "id": "action:lib/farmconnect-v1.tsx:7274:117",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2242,7 +2318,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7309:113",
+      "id": "action:lib/farmconnect-v1.tsx:7309:118",
       "type": "action",
       "name": "Verify QR",
       "file": "lib/farmconnect-v1.tsx",
@@ -2253,7 +2329,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7312:114",
+      "id": "action:lib/farmconnect-v1.tsx:7312:119",
       "type": "action",
       "name": "Skip QR",
       "file": "lib/farmconnect-v1.tsx",
@@ -2264,7 +2340,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7325:115",
+      "id": "action:lib/farmconnect-v1.tsx:7325:120",
       "type": "action",
       "name": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
@@ -2275,7 +2351,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7373:116",
+      "id": "action:lib/farmconnect-v1.tsx:7373:121",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2286,7 +2362,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7376:117",
+      "id": "action:lib/farmconnect-v1.tsx:7376:122",
       "type": "action",
       "name": "Cancel",
       "file": "lib/farmconnect-v1.tsx",
@@ -2297,7 +2373,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7562:118",
+      "id": "action:lib/farmconnect-v1.tsx:7562:123",
       "type": "action",
       "name": "-",
       "file": "lib/farmconnect-v1.tsx",
@@ -2308,7 +2384,7 @@
       "handler": "() => setSelected(t)} className={\"w-full rounded-xl border p-3 text-left transition \" + (selected?.id === t.id ? \"border"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7960:119",
+      "id": "action:lib/farmconnect-v1.tsx:7960:124",
       "type": "action",
       "name": "Refresh Database Queue",
       "file": "lib/farmconnect-v1.tsx",
@@ -2319,7 +2395,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:7966:120",
+      "id": "action:lib/farmconnect-v1.tsx:7966:125",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2330,7 +2406,7 @@
       "handler": "() => setSelected(chat)} className={\"w-full rounded-2xl border p-3 text-left transition \" + (selected.id === chat.id ? \""
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8030:121",
+      "id": "action:lib/farmconnect-v1.tsx:8030:126",
       "type": "action",
       "name": "Send",
       "file": "lib/farmconnect-v1.tsx",
@@ -2341,7 +2417,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8040:122",
+      "id": "action:lib/farmconnect-v1.tsx:8040:127",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2352,7 +2428,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8043:123",
+      "id": "action:lib/farmconnect-v1.tsx:8043:128",
       "type": "action",
       "name": "End Chat",
       "file": "lib/farmconnect-v1.tsx",
@@ -2363,7 +2439,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8046:124",
+      "id": "action:lib/farmconnect-v1.tsx:8046:129",
       "type": "action",
       "name": "Complete Chat",
       "file": "lib/farmconnect-v1.tsx",
@@ -2374,7 +2450,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8276:125",
+      "id": "action:lib/farmconnect-v1.tsx:8276:130",
       "type": "action",
       "name": "{section.id === \"sell\" ? liveSellCount : customerRequestJobs.filter((job) => job.queue === section.i",
       "file": "lib/farmconnect-v1.tsx",
@@ -2385,7 +2461,7 @@
       "handler": "() => setActiveSection(section.id)} className={\"rounded-2xl border p-4 text-left shadow-sm transition \" + (activeSection"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8330:126",
+      "id": "action:lib/farmconnect-v1.tsx:8330:131",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2396,7 +2472,7 @@
       "handler": "() => {\r\n                      setSelected(job);\r\n                      setDecision(\"open\");\r\n                      setN"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8435:127",
+      "id": "action:lib/farmconnect-v1.tsx:8435:132",
       "type": "action",
       "name": "View Payout Proof",
       "file": "lib/farmconnect-v1.tsx",
@@ -2407,7 +2483,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8451:128",
+      "id": "action:lib/farmconnect-v1.tsx:8451:133",
       "type": "action",
       "name": "View Receipt",
       "file": "lib/farmconnect-v1.tsx",
@@ -2418,7 +2494,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8469:129",
+      "id": "action:lib/farmconnect-v1.tsx:8469:134",
       "type": "action",
       "name": "/",
       "file": "lib/farmconnect-v1.tsx",
@@ -2429,7 +2505,7 @@
       "handler": "() => setSelectedCaretaker(caretaker.name)} className={\"w-full rounded-2xl border p-3 text-left transition \" + (selected"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8477:130",
+      "id": "action:lib/farmconnect-v1.tsx:8477:135",
       "type": "action",
       "name": "Assign Task",
       "file": "lib/farmconnect-v1.tsx",
@@ -2440,7 +2516,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8485:131",
+      "id": "action:lib/farmconnect-v1.tsx:8485:136",
       "type": "action",
       "name": "Approve",
       "file": "lib/farmconnect-v1.tsx",
@@ -2451,7 +2527,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8488:132",
+      "id": "action:lib/farmconnect-v1.tsx:8488:137",
       "type": "action",
       "name": "Reject",
       "file": "lib/farmconnect-v1.tsx",
@@ -2462,7 +2538,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8497:133",
+      "id": "action:lib/farmconnect-v1.tsx:8497:138",
       "type": "action",
       "name": "View Invoice",
       "file": "lib/farmconnect-v1.tsx",
@@ -2473,7 +2549,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8501:134",
+      "id": "action:lib/farmconnect-v1.tsx:8501:139",
       "type": "action",
       "name": "Submit Decision",
       "file": "lib/farmconnect-v1.tsx",
@@ -2484,7 +2560,7 @@
       "handler": "completeRequest} disabled={decision === \"open\"} className={\"mt-4 w-full rounded-2xl px-4 py-4 font-black text-white \" + "
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8521:135",
+      "id": "action:lib/farmconnect-v1.tsx:8521:140",
       "type": "action",
       "name": "Close",
       "file": "lib/farmconnect-v1.tsx",
@@ -2495,7 +2571,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8730:136",
+      "id": "action:lib/farmconnect-v1.tsx:8730:141",
       "type": "action",
       "name": "/",
       "file": "lib/farmconnect-v1.tsx",
@@ -2506,7 +2582,7 @@
       "handler": "() => {\r\n                setSelectedId(row.id);\r\n                setAdminNote(\"\");\r\n              }}\r\n              clas"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8779:137",
+      "id": "action:lib/farmconnect-v1.tsx:8779:142",
       "type": "action",
       "name": "Approve for Final Release",
       "file": "lib/farmconnect-v1.tsx",
@@ -2517,7 +2593,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8782:138",
+      "id": "action:lib/farmconnect-v1.tsx:8782:143",
       "type": "action",
       "name": "Reject with Note",
       "file": "lib/farmconnect-v1.tsx",
@@ -2528,7 +2604,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8888:139",
+      "id": "action:lib/farmconnect-v1.tsx:8888:144",
       "type": "action",
       "name": "/ Ref {sourceType === \"care\" && }",
       "file": "lib/farmconnect-v1.tsx",
@@ -2539,7 +2615,7 @@
       "handler": "() => selectRequest(row.id)} className={\"w-full rounded-2xl border p-3 text-left transition \" + (selected?.id === row.id"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:8978:140",
+      "id": "action:lib/farmconnect-v1.tsx:8978:145",
       "type": "action",
       "name": "View Receipt",
       "file": "lib/farmconnect-v1.tsx",
@@ -2550,7 +2626,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9015:141",
+      "id": "action:lib/farmconnect-v1.tsx:9015:146",
       "type": "action",
       "name": "View Invoice",
       "file": "lib/farmconnect-v1.tsx",
@@ -2561,7 +2637,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9019:142",
+      "id": "action:lib/farmconnect-v1.tsx:9019:147",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2572,7 +2648,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9035:143",
+      "id": "action:lib/farmconnect-v1.tsx:9035:148",
       "type": "action",
       "name": "Close",
       "file": "lib/farmconnect-v1.tsx",
@@ -2583,7 +2659,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9119:144",
+      "id": "action:lib/farmconnect-v1.tsx:9119:149",
       "type": "action",
       "name": "-",
       "file": "lib/farmconnect-v1.tsx",
@@ -2594,7 +2670,7 @@
       "handler": "() => setSelectedId(row.id)} className={\"w-full rounded-2xl border p-3 text-left \" + (selected?.id === row.id ? \"border-"
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9185:145",
+      "id": "action:lib/farmconnect-v1.tsx:9185:150",
       "type": "action",
       "name": "Approve",
       "file": "lib/farmconnect-v1.tsx",
@@ -2605,7 +2681,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9188:146",
+      "id": "action:lib/farmconnect-v1.tsx:9188:151",
       "type": "action",
       "name": "Needs Info",
       "file": "lib/farmconnect-v1.tsx",
@@ -2616,7 +2692,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:9191:147",
+      "id": "action:lib/farmconnect-v1.tsx:9191:152",
       "type": "action",
       "name": "Reject",
       "file": "lib/farmconnect-v1.tsx",
@@ -2627,7 +2703,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/farmconnect-v1.tsx:12430:148",
+      "id": "action:lib/farmconnect-v1.tsx:12430:153",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/farmconnect-v1.tsx",
@@ -2638,7 +2714,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/live-evidence-pages.tsx:45:149",
+      "id": "action:lib/live-evidence-pages.tsx:45:154",
       "type": "action",
       "name": "Unlabeled button",
       "file": "lib/live-evidence-pages.tsx",
@@ -2649,7 +2725,7 @@
       "handler": null
     },
     {
-      "id": "action:lib/live-evidence-pages.tsx:45:150",
+      "id": "action:lib/live-evidence-pages.tsx:45:155",
       "type": "action",
       "name": "View evidence",
       "file": "lib/live-evidence-pages.tsx",
@@ -2678,65 +2754,65 @@
       "route": "/"
     },
     {
-      "id": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:790:2",
+      "id": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:791:2",
       "type": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 790,
+      "line": 791,
       "role": "admin",
       "route": "/admin/kafarm"
     },
     {
-      "id": "backend:table:profiles:app/admin/kafarm/_components/KafarmPhaseOne.tsx:831:3",
+      "id": "backend:table:profiles:app/admin/kafarm/_components/KafarmPhaseOne.tsx:832:3",
       "type": "table",
       "name": "profiles",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 831,
+      "line": 832,
       "role": "admin",
       "route": "/admin/kafarm"
     },
     {
-      "id": "backend:table:profiles:app/admin/kafarm/_components/KafarmPhaseOne.tsx:917:4",
+      "id": "backend:table:profiles:app/admin/kafarm/_components/KafarmPhaseOne.tsx:918:4",
       "type": "table",
       "name": "profiles",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 917,
+      "line": 918,
       "role": "admin",
       "route": "/admin/kafarm"
     },
     {
-      "id": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:947:5",
+      "id": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:948:5",
       "type": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 947,
+      "line": 948,
       "role": "admin",
       "route": "/admin/kafarm"
     },
     {
-      "id": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078:6",
+      "id": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079:6",
       "type": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 2078,
+      "line": 2079,
       "role": "admin",
       "route": "/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health"
     },
     {
-      "id": "backend:rpc:kafarm_database_health_snapshot:app/admin/kafarm/_components/KafarmPhaseOne.tsx:944:7",
+      "id": "backend:rpc:kafarm_database_health_snapshot:app/admin/kafarm/_components/KafarmPhaseOne.tsx:945:7",
       "type": "rpc",
       "name": "kafarm_database_health_snapshot",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 944,
+      "line": 945,
       "role": "admin",
       "route": "/admin/kafarm"
     },
     {
-      "id": "backend:rpc:kafarm_care_plan_health_snapshot:app/admin/kafarm/_components/KafarmPhaseOne.tsx:945:8",
+      "id": "backend:rpc:kafarm_care_plan_health_snapshot:app/admin/kafarm/_components/KafarmPhaseOne.tsx:946:8",
       "type": "rpc",
       "name": "kafarm_care_plan_health_snapshot",
       "file": "app/admin/kafarm/_components/KafarmPhaseOne.tsx",
-      "line": 945,
+      "line": 946,
       "role": "admin",
       "route": "/admin/kafarm"
     },
@@ -2759,7 +2835,34 @@
       "route": "/admin/kafarm/guardian"
     },
     {
-      "id": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:11",
+      "id": "backend:table:kafarm_recovery_operations:app/admin/kafarm/recovery-guard/page.tsx:19:11",
+      "type": "table",
+      "name": "kafarm_recovery_operations",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 19,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard"
+    },
+    {
+      "id": "backend:rpc:kafarm_recovery_reconcile:app/admin/kafarm/recovery-guard/page.tsx:29:12",
+      "type": "rpc",
+      "name": "kafarm_recovery_reconcile",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 29,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard"
+    },
+    {
+      "id": "backend:rpc:kafarm_recovery_admin_action:app/admin/kafarm/recovery-guard/page.tsx:36:13",
+      "type": "rpc",
+      "name": "kafarm_recovery_admin_action",
+      "file": "app/admin/kafarm/recovery-guard/page.tsx",
+      "line": 36,
+      "role": "admin",
+      "route": "/admin/kafarm/recovery-guard"
+    },
+    {
+      "id": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:14",
       "type": "table",
       "name": "profiles",
       "file": "app/admin/kafarm/troubleshooting/page.tsx",
@@ -2768,7 +2871,7 @@
       "route": "/admin/kafarm/troubleshooting"
     },
     {
-      "id": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:12",
+      "id": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:15",
       "type": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/admin/kafarm/troubleshooting/page.tsx",
@@ -2777,7 +2880,7 @@
       "route": "/admin/kafarm/troubleshooting"
     },
     {
-      "id": "backend:api:/api/kafarm/whole-app-reader?scope=${encodeURIComponent(scope)}:app/admin/kafarm/whole-app-reader/page.tsx:76:13",
+      "id": "backend:api:/api/kafarm/whole-app-reader?scope=${encodeURIComponent(scope)}:app/admin/kafarm/whole-app-reader/page.tsx:76:16",
       "type": "api",
       "name": "/api/kafarm/whole-app-reader?scope=${encodeURIComponent(scope)}",
       "file": "app/admin/kafarm/whole-app-reader/page.tsx",
@@ -2786,7 +2889,7 @@
       "route": "/admin/kafarm/whole-app-reader"
     },
     {
-      "id": "backend:rpc:generate_due_care_plan_missions:app/api/care-plans/daily/route.ts:47:14",
+      "id": "backend:rpc:generate_due_care_plan_missions:app/api/care-plans/daily/route.ts:47:17",
       "type": "rpc",
       "name": "generate_due_care_plan_missions",
       "file": "app/api/care-plans/daily/route.ts",
@@ -2795,7 +2898,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_incidents:app/api/kafarm/guardian/monitor/route.ts:131:15",
+      "id": "backend:table:kafarm_incidents:app/api/kafarm/guardian/monitor/route.ts:131:18",
       "type": "table",
       "name": "kafarm_incidents",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
@@ -2804,7 +2907,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_guardian_monitor_runs:app/api/kafarm/guardian/monitor/route.ts:140:16",
+      "id": "backend:table:kafarm_guardian_monitor_runs:app/api/kafarm/guardian/monitor/route.ts:140:19",
       "type": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
@@ -2813,7 +2916,7 @@
       "route": "/"
     },
     {
-      "id": "backend:rpc:kafarm_guardian_monitor_snapshot:app/api/kafarm/guardian/monitor/route.ts:73:17",
+      "id": "backend:rpc:kafarm_guardian_monitor_snapshot:app/api/kafarm/guardian/monitor/route.ts:73:20",
       "type": "rpc",
       "name": "kafarm_guardian_monitor_snapshot",
       "file": "app/api/kafarm/guardian/monitor/route.ts",
@@ -2822,7 +2925,7 @@
       "route": "/"
     },
     {
-      "id": "backend:rpc:farmconnect_rate_limit_version:app/api/kafarm/guardian/route.ts:38:18",
+      "id": "backend:rpc:farmconnect_rate_limit_version:app/api/kafarm/guardian/route.ts:38:21",
       "type": "rpc",
       "name": "farmconnect_rate_limit_version",
       "file": "app/api/kafarm/guardian/route.ts",
@@ -2831,7 +2934,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:profiles:app/api/kafarm/whole-app-reader/route.ts:75:19",
+      "id": "backend:table:profiles:app/api/kafarm/whole-app-reader/route.ts:75:22",
       "type": "table",
       "name": "profiles",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2840,7 +2943,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_incidents:app/api/kafarm/whole-app-reader/route.ts:97:20",
+      "id": "backend:table:kafarm_incidents:app/api/kafarm/whole-app-reader/route.ts:97:23",
       "type": "table",
       "name": "kafarm_incidents",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2849,7 +2952,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:admin_kafarm_incident_queue:app/api/kafarm/whole-app-reader/route.ts:97:21",
+      "id": "backend:table:admin_kafarm_incident_queue:app/api/kafarm/whole-app-reader/route.ts:97:24",
       "type": "table",
       "name": "admin_kafarm_incident_queue",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2858,7 +2961,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:kafarm_device_usage_logs:app/api/kafarm/whole-app-reader/route.ts:127:22",
+      "id": "backend:table:kafarm_device_usage_logs:app/api/kafarm/whole-app-reader/route.ts:127:25",
       "type": "table",
       "name": "kafarm_device_usage_logs",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2867,7 +2970,7 @@
       "route": "/"
     },
     {
-      "id": "backend:rpc:kafarm_workflow_chain_snapshot:app/api/kafarm/whole-app-reader/route.ts:106:23",
+      "id": "backend:rpc:kafarm_workflow_chain_snapshot:app/api/kafarm/whole-app-reader/route.ts:106:26",
       "type": "rpc",
       "name": "kafarm_workflow_chain_snapshot",
       "file": "app/api/kafarm/whole-app-reader/route.ts",
@@ -2876,7 +2979,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:support_delivery_operations:app/api/support/reply/route.ts:28:24",
+      "id": "backend:table:support_delivery_operations:app/api/support/reply/route.ts:28:27",
       "type": "table",
       "name": "support_delivery_operations",
       "file": "app/api/support/reply/route.ts",
@@ -2885,7 +2988,7 @@
       "route": "/"
     },
     {
-      "id": "backend:rpc:support_save_trusted_reply:app/api/support/reply/route.ts:38:25",
+      "id": "backend:rpc:support_save_trusted_reply:app/api/support/reply/route.ts:38:28",
       "type": "rpc",
       "name": "support_save_trusted_reply",
       "file": "app/api/support/reply/route.ts",
@@ -2894,7 +2997,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:profiles:app/page.tsx:50:26",
+      "id": "backend:table:profiles:app/page.tsx:50:29",
       "type": "table",
       "name": "profiles",
       "file": "app/page.tsx",
@@ -2903,7 +3006,7 @@
       "route": "/login"
     },
     {
-      "id": "backend:table:support_chat_messages:lib/backend/support-chat.ts:8:27",
+      "id": "backend:table:support_chat_messages:lib/backend/support-chat.ts:8:30",
       "type": "table",
       "name": "support_chat_messages",
       "file": "lib/backend/support-chat.ts",
@@ -2912,7 +3015,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:table:support_chat_sessions:lib/backend/support-chat.ts:16:28",
+      "id": "backend:table:support_chat_sessions:lib/backend/support-chat.ts:16:31",
       "type": "table",
       "name": "support_chat_sessions",
       "file": "lib/backend/support-chat.ts",
@@ -2921,7 +3024,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:table:support_chat_sessions:lib/backend/support-chat.ts:24:29",
+      "id": "backend:table:support_chat_sessions:lib/backend/support-chat.ts:24:32",
       "type": "table",
       "name": "support_chat_sessions",
       "file": "lib/backend/support-chat.ts",
@@ -2930,7 +3033,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:table:admin_support_escalated_chats:lib/backend/support-chat.ts:79:30",
+      "id": "backend:table:admin_support_escalated_chats:lib/backend/support-chat.ts:79:33",
       "type": "table",
       "name": "admin_support_escalated_chats",
       "file": "lib/backend/support-chat.ts",
@@ -2939,7 +3042,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:api:/api/support/reply:lib/backend/support-chat.ts:60:31",
+      "id": "backend:api:/api/support/reply:lib/backend/support-chat.ts:60:34",
       "type": "api",
       "name": "/api/support/reply",
       "file": "lib/backend/support-chat.ts",
@@ -2948,7 +3051,7 @@
       "route": "lib/backend/support-chat.ts"
     },
     {
-      "id": "backend:table:profiles:lib/customer-signup.ts:42:32",
+      "id": "backend:table:profiles:lib/customer-signup.ts:42:35",
       "type": "table",
       "name": "profiles",
       "file": "lib/customer-signup.ts",
@@ -2957,7 +3060,7 @@
       "route": "/"
     },
     {
-      "id": "backend:rpc:customer_ensure_signup_profile:lib/customer-signup.ts:32:33",
+      "id": "backend:rpc:customer_ensure_signup_profile:lib/customer-signup.ts:32:36",
       "type": "rpc",
       "name": "customer_ensure_signup_profile",
       "file": "lib/customer-signup.ts",
@@ -2966,7 +3069,7 @@
       "route": "/"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:19:34",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:19:37",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -2975,7 +3078,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:29:35",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:29:38",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -2984,7 +3087,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_products:lib/farmconnect-data.ts:36:36",
+      "id": "backend:table:farm_products:lib/farmconnect-data.ts:36:39",
       "type": "table",
       "name": "farm_products",
       "file": "lib/farmconnect-data.ts",
@@ -2993,7 +3096,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:73:37",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:73:40",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -3002,7 +3105,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:77:38",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:77:41",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -3011,7 +3114,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:77:39",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:77:42",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -3020,7 +3123,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:89:40",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:89:43",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -3029,7 +3132,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:89:41",
+      "id": "backend:table:farm_cart_items:lib/farmconnect-data.ts:89:44",
       "type": "table",
       "name": "farm_cart_items",
       "file": "lib/farmconnect-data.ts",
@@ -3038,7 +3141,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:animals:lib/farmconnect-data.ts:105:42",
+      "id": "backend:table:animals:lib/farmconnect-data.ts:105:45",
       "type": "table",
       "name": "animals",
       "file": "lib/farmconnect-data.ts",
@@ -3047,7 +3150,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_animals:lib/farmconnect-data.ts:115:43",
+      "id": "backend:table:customer_animals:lib/farmconnect-data.ts:115:46",
       "type": "table",
       "name": "customer_animals",
       "file": "lib/farmconnect-data.ts",
@@ -3056,7 +3159,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_inventory_items:lib/farmconnect-data.ts:125:44",
+      "id": "backend:table:customer_inventory_items:lib/farmconnect-data.ts:125:47",
       "type": "table",
       "name": "customer_inventory_items",
       "file": "lib/farmconnect-data.ts",
@@ -3065,7 +3168,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_care_requests:lib/farmconnect-data.ts:162:45",
+      "id": "backend:table:farm_care_requests:lib/farmconnect-data.ts:162:48",
       "type": "table",
       "name": "farm_care_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3074,7 +3177,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_care_requests:lib/farmconnect-data.ts:169:46",
+      "id": "backend:table:farm_care_requests:lib/farmconnect-data.ts:169:49",
       "type": "table",
       "name": "farm_care_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3083,7 +3186,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:197:47",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:197:50",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -3092,7 +3195,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:204:48",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:204:51",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -3101,7 +3204,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:211:49",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:211:52",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -3110,7 +3213,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:221:50",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:221:53",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3119,7 +3222,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:227:51",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:227:54",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -3128,7 +3231,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:240:52",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:240:55",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -3137,7 +3240,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:246:53",
+      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:246:56",
       "type": "table",
       "name": "task_proofs",
       "file": "lib/farmconnect-data.ts",
@@ -3146,7 +3249,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:rooster_care_plans:lib/farmconnect-data.ts:264:54",
+      "id": "backend:table:rooster_care_plans:lib/farmconnect-data.ts:264:57",
       "type": "table",
       "name": "rooster_care_plans",
       "file": "lib/farmconnect-data.ts",
@@ -3155,7 +3258,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:care_mission_templates:lib/farmconnect-data.ts:321:55",
+      "id": "backend:table:care_mission_templates:lib/farmconnect-data.ts:321:58",
       "type": "table",
       "name": "care_mission_templates",
       "file": "lib/farmconnect-data.ts",
@@ -3164,7 +3267,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:rooster_care_plans:lib/farmconnect-data.ts:373:56",
+      "id": "backend:table:rooster_care_plans:lib/farmconnect-data.ts:373:59",
       "type": "table",
       "name": "rooster_care_plans",
       "file": "lib/farmconnect-data.ts",
@@ -3173,7 +3276,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_inventory_items:lib/farmconnect-data.ts:379:57",
+      "id": "backend:table:customer_inventory_items:lib/farmconnect-data.ts:379:60",
       "type": "table",
       "name": "customer_inventory_items",
       "file": "lib/farmconnect-data.ts",
@@ -3182,7 +3285,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:farm_products:lib/farmconnect-data.ts:385:58",
+      "id": "backend:table:farm_products:lib/farmconnect-data.ts:385:61",
       "type": "table",
       "name": "farm_products",
       "file": "lib/farmconnect-data.ts",
@@ -3191,7 +3294,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:627:59",
+      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:627:62",
       "type": "table",
       "name": "task_proofs",
       "file": "lib/farmconnect-data.ts",
@@ -3200,7 +3303,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:636:60",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:636:63",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -3209,7 +3312,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:643:61",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:643:64",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -3218,7 +3321,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:657:62",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:657:65",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3227,7 +3330,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:rooster_sale_requests:lib/farmconnect-data.ts:692:63",
+      "id": "backend:table:rooster_sale_requests:lib/farmconnect-data.ts:692:66",
       "type": "table",
       "name": "rooster_sale_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3236,7 +3339,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:rooster_sale_requests:lib/farmconnect-data.ts:716:64",
+      "id": "backend:table:rooster_sale_requests:lib/farmconnect-data.ts:716:67",
       "type": "table",
       "name": "rooster_sale_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3245,7 +3348,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:wallet_transactions:lib/farmconnect-data.ts:745:65",
+      "id": "backend:table:wallet_transactions:lib/farmconnect-data.ts:745:68",
       "type": "table",
       "name": "wallet_transactions",
       "file": "lib/farmconnect-data.ts",
@@ -3254,7 +3357,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:inbox_items:lib/farmconnect-data.ts:752:66",
+      "id": "backend:table:inbox_items:lib/farmconnect-data.ts:752:69",
       "type": "table",
       "name": "inbox_items",
       "file": "lib/farmconnect-data.ts",
@@ -3263,7 +3366,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:inventory_usage_logs:lib/farmconnect-data.ts:853:67",
+      "id": "backend:table:inventory_usage_logs:lib/farmconnect-data.ts:853:70",
       "type": "table",
       "name": "inventory_usage_logs",
       "file": "lib/farmconnect-data.ts",
@@ -3272,7 +3375,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:899:68",
+      "id": "backend:table:task_proofs:lib/farmconnect-data.ts:899:71",
       "type": "table",
       "name": "task_proofs",
       "file": "lib/farmconnect-data.ts",
@@ -3281,7 +3384,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:910:69",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:910:72",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -3290,7 +3393,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/farmconnect-data.ts:916:70",
+      "id": "backend:table:caretakers:lib/farmconnect-data.ts:916:73",
       "type": "table",
       "name": "caretakers",
       "file": "lib/farmconnect-data.ts",
@@ -3299,7 +3402,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:962:71",
+      "id": "backend:table:caretaker_tasks:lib/farmconnect-data.ts:962:74",
       "type": "table",
       "name": "caretaker_tasks",
       "file": "lib/farmconnect-data.ts",
@@ -3308,7 +3411,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:support_conversations:lib/farmconnect-data.ts:971:72",
+      "id": "backend:table:support_conversations:lib/farmconnect-data.ts:971:75",
       "type": "table",
       "name": "support_conversations",
       "file": "lib/farmconnect-data.ts",
@@ -3317,7 +3420,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:manual_payment_requests:lib/farmconnect-data.ts:1032:73",
+      "id": "backend:table:manual_payment_requests:lib/farmconnect-data.ts:1032:76",
       "type": "table",
       "name": "manual_payment_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3326,7 +3429,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:manual_payment_requests:lib/farmconnect-data.ts:1039:74",
+      "id": "backend:table:manual_payment_requests:lib/farmconnect-data.ts:1039:77",
       "type": "table",
       "name": "manual_payment_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3335,7 +3438,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:1046:75",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:1046:78",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3344,7 +3447,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_payout_methods:lib/farmconnect-data.ts:1089:76",
+      "id": "backend:table:customer_payout_methods:lib/farmconnect-data.ts:1089:79",
       "type": "table",
       "name": "customer_payout_methods",
       "file": "lib/farmconnect-data.ts",
@@ -3353,7 +3456,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:withdrawal_requests:lib/farmconnect-data.ts:1129:77",
+      "id": "backend:table:withdrawal_requests:lib/farmconnect-data.ts:1129:80",
       "type": "table",
       "name": "withdrawal_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3362,7 +3465,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:withdrawal_requests:lib/farmconnect-data.ts:1136:78",
+      "id": "backend:table:withdrawal_requests:lib/farmconnect-data.ts:1136:81",
       "type": "table",
       "name": "withdrawal_requests",
       "file": "lib/farmconnect-data.ts",
@@ -3371,7 +3474,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:withdrawal_disputes:lib/farmconnect-data.ts:1215:79",
+      "id": "backend:table:withdrawal_disputes:lib/farmconnect-data.ts:1215:82",
       "type": "table",
       "name": "withdrawal_disputes",
       "file": "lib/farmconnect-data.ts",
@@ -3380,7 +3483,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:caretaker_applications:lib/farmconnect-data.ts:1257:80",
+      "id": "backend:table:caretaker_applications:lib/farmconnect-data.ts:1257:83",
       "type": "table",
       "name": "caretaker_applications",
       "file": "lib/farmconnect-data.ts",
@@ -3389,7 +3492,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_kyc_profiles:lib/farmconnect-data.ts:1295:81",
+      "id": "backend:table:customer_kyc_profiles:lib/farmconnect-data.ts:1295:84",
       "type": "table",
       "name": "customer_kyc_profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3398,7 +3501,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:customer_kyc_profiles:lib/farmconnect-data.ts:1339:82",
+      "id": "backend:table:customer_kyc_profiles:lib/farmconnect-data.ts:1339:85",
       "type": "table",
       "name": "customer_kyc_profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3407,7 +3510,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-data.ts:1347:83",
+      "id": "backend:table:profiles:lib/farmconnect-data.ts:1347:86",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-data.ts",
@@ -3416,7 +3519,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:table:kyc_documents:lib/farmconnect-data.ts:1351:84",
+      "id": "backend:table:kyc_documents:lib/farmconnect-data.ts:1351:87",
       "type": "table",
       "name": "kyc_documents",
       "file": "lib/farmconnect-data.ts",
@@ -3425,7 +3528,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_buy_cart:lib/farmconnect-data.ts:99:85",
+      "id": "backend:rpc:customer_buy_cart:lib/farmconnect-data.ts:99:88",
       "type": "rpc",
       "name": "customer_buy_cart",
       "file": "lib/farmconnect-data.ts",
@@ -3434,7 +3537,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_create_care_request:lib/farmconnect-data.ts:143:86",
+      "id": "backend:rpc:customer_create_care_request:lib/farmconnect-data.ts:143:89",
       "type": "rpc",
       "name": "customer_create_care_request",
       "file": "lib/farmconnect-data.ts",
@@ -3443,7 +3546,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_assign_care_request:lib/farmconnect-data.ts:186:87",
+      "id": "backend:rpc:admin_assign_care_request:lib/farmconnect-data.ts:186:90",
       "type": "rpc",
       "name": "admin_assign_care_request",
       "file": "lib/farmconnect-data.ts",
@@ -3452,7 +3555,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_request_care_plan:lib/farmconnect-data.ts:345:88",
+      "id": "backend:rpc:customer_request_care_plan:lib/farmconnect-data.ts:345:91",
       "type": "rpc",
       "name": "customer_request_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3461,7 +3564,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_prepare_fixed_care_plan_payment:lib/farmconnect-data.ts:355:89",
+      "id": "backend:rpc:customer_prepare_fixed_care_plan_payment:lib/farmconnect-data.ts:355:92",
       "type": "rpc",
       "name": "customer_prepare_fixed_care_plan_payment",
       "file": "lib/farmconnect-data.ts",
@@ -3470,7 +3573,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_prepare_care_plan_quote_v2:lib/farmconnect-data.ts:391:90",
+      "id": "backend:rpc:admin_prepare_care_plan_quote_v2:lib/farmconnect-data.ts:391:93",
       "type": "rpc",
       "name": "admin_prepare_care_plan_quote_v2",
       "file": "lib/farmconnect-data.ts",
@@ -3479,7 +3582,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_activate_care_plan:lib/farmconnect-data.ts:415:91",
+      "id": "backend:rpc:admin_activate_care_plan:lib/farmconnect-data.ts:415:94",
       "type": "rpc",
       "name": "admin_activate_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3488,7 +3591,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_assign_care_plan:lib/farmconnect-data.ts:424:92",
+      "id": "backend:rpc:admin_assign_care_plan:lib/farmconnect-data.ts:424:95",
       "type": "rpc",
       "name": "admin_assign_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3497,7 +3600,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_cancel_care_plan:lib/farmconnect-data.ts:438:93",
+      "id": "backend:rpc:customer_cancel_care_plan:lib/farmconnect-data.ts:438:96",
       "type": "rpc",
       "name": "customer_cancel_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3506,7 +3609,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_control_care_plan:lib/farmconnect-data.ts:447:94",
+      "id": "backend:rpc:admin_control_care_plan:lib/farmconnect-data.ts:447:97",
       "type": "rpc",
       "name": "admin_control_care_plan",
       "file": "lib/farmconnect-data.ts",
@@ -3515,7 +3618,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_record_care_plan_refund:lib/farmconnect-data.ts:458:95",
+      "id": "backend:rpc:admin_record_care_plan_refund:lib/farmconnect-data.ts:458:98",
       "type": "rpc",
       "name": "admin_record_care_plan_refund",
       "file": "lib/farmconnect-data.ts",
@@ -3524,7 +3627,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:generate_due_care_plan_missions:lib/farmconnect-data.ts:471:96",
+      "id": "backend:rpc:generate_due_care_plan_missions:lib/farmconnect-data.ts:471:99",
       "type": "rpc",
       "name": "generate_due_care_plan_missions",
       "file": "lib/farmconnect-data.ts",
@@ -3533,7 +3636,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:kafarm_care_plan_health_snapshot:lib/farmconnect-data.ts:477:97",
+      "id": "backend:rpc:kafarm_care_plan_health_snapshot:lib/farmconnect-data.ts:477:100",
       "type": "rpc",
       "name": "kafarm_care_plan_health_snapshot",
       "file": "lib/farmconnect-data.ts",
@@ -3542,7 +3645,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:caretaker_get_task_inventory:lib/farmconnect-data.ts:506:98",
+      "id": "backend:rpc:caretaker_get_task_inventory:lib/farmconnect-data.ts:506:101",
       "type": "rpc",
       "name": "caretaker_get_task_inventory",
       "file": "lib/farmconnect-data.ts",
@@ -3551,7 +3654,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_manual_mission_proof_guarded:lib/farmconnect-data.ts:594:99",
+      "id": "backend:rpc:admin_review_manual_mission_proof_guarded:lib/farmconnect-data.ts:594:102",
       "type": "rpc",
       "name": "admin_review_manual_mission_proof_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3560,7 +3663,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:caretaker_submit_report_guarded:lib/farmconnect-data.ts:623:100",
+      "id": "backend:rpc:caretaker_submit_report_guarded:lib/farmconnect-data.ts:623:103",
       "type": "rpc",
       "name": "caretaker_submit_report_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3569,7 +3672,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_task_proof_guarded:lib/farmconnect-data.ts:671:101",
+      "id": "backend:rpc:admin_review_task_proof_guarded:lib/farmconnect-data.ts:671:104",
       "type": "rpc",
       "name": "admin_review_task_proof_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3578,7 +3681,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_mission_proof_guarded:lib/farmconnect-data.ts:682:102",
+      "id": "backend:rpc:admin_review_mission_proof_guarded:lib/farmconnect-data.ts:682:105",
       "type": "rpc",
       "name": "admin_review_mission_proof_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3587,7 +3690,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_request_rooster_sale_price:lib/farmconnect-data.ts:698:103",
+      "id": "backend:rpc:customer_request_rooster_sale_price:lib/farmconnect-data.ts:698:106",
       "type": "rpc",
       "name": "customer_request_rooster_sale_price",
       "file": "lib/farmconnect-data.ts",
@@ -3596,7 +3699,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_confirm_rooster_sale:lib/farmconnect-data.ts:707:104",
+      "id": "backend:rpc:customer_confirm_rooster_sale:lib/farmconnect-data.ts:707:107",
       "type": "rpc",
       "name": "customer_confirm_rooster_sale",
       "file": "lib/farmconnect-data.ts",
@@ -3605,7 +3708,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_rooster_sale_guarded:lib/farmconnect-data.ts:722:105",
+      "id": "backend:rpc:admin_review_rooster_sale_guarded:lib/farmconnect-data.ts:722:108",
       "type": "rpc",
       "name": "admin_review_rooster_sale_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3614,7 +3717,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_mark_inbox_item_read:lib/farmconnect-data.ts:759:106",
+      "id": "backend:rpc:customer_mark_inbox_item_read:lib/farmconnect-data.ts:759:109",
       "type": "rpc",
       "name": "customer_mark_inbox_item_read",
       "file": "lib/farmconnect-data.ts",
@@ -3623,7 +3726,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_get_rooster_diary:lib/farmconnect-data.ts:788:107",
+      "id": "backend:rpc:customer_get_rooster_diary:lib/farmconnect-data.ts:788:110",
       "type": "rpc",
       "name": "customer_get_rooster_diary",
       "file": "lib/farmconnect-data.ts",
@@ -3632,7 +3735,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_submit_manual_payment_guarded:lib/farmconnect-data.ts:1009:108",
+      "id": "backend:rpc:customer_submit_manual_payment_guarded:lib/farmconnect-data.ts:1009:111",
       "type": "rpc",
       "name": "customer_submit_manual_payment_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3641,7 +3744,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_manual_payment_guarded:lib/farmconnect-data.ts:1056:109",
+      "id": "backend:rpc:admin_review_manual_payment_guarded:lib/farmconnect-data.ts:1056:112",
       "type": "rpc",
       "name": "admin_review_manual_payment_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3650,7 +3753,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_save_payout_method:lib/farmconnect-data.ts:1096:110",
+      "id": "backend:rpc:customer_save_payout_method:lib/farmconnect-data.ts:1096:113",
       "type": "rpc",
       "name": "customer_save_payout_method",
       "file": "lib/farmconnect-data.ts",
@@ -3659,7 +3762,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_submit_withdrawal_request_guarded:lib/farmconnect-data.ts:1108:111",
+      "id": "backend:rpc:customer_submit_withdrawal_request_guarded:lib/farmconnect-data.ts:1108:114",
       "type": "rpc",
       "name": "customer_submit_withdrawal_request_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3668,7 +3771,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_withdrawal_request_guarded:lib/farmconnect-data.ts:1143:112",
+      "id": "backend:rpc:admin_review_withdrawal_request_guarded:lib/farmconnect-data.ts:1143:115",
       "type": "rpc",
       "name": "admin_review_withdrawal_request_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3677,7 +3780,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:submit_caretaker_application:lib/farmconnect-data.ts:1173:113",
+      "id": "backend:rpc:submit_caretaker_application:lib/farmconnect-data.ts:1173:116",
       "type": "rpc",
       "name": "submit_caretaker_application",
       "file": "lib/farmconnect-data.ts",
@@ -3686,7 +3789,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_confirm_withdrawal_result:lib/farmconnect-data.ts:1195:114",
+      "id": "backend:rpc:customer_confirm_withdrawal_result:lib/farmconnect-data.ts:1195:117",
       "type": "rpc",
       "name": "customer_confirm_withdrawal_result",
       "file": "lib/farmconnect-data.ts",
@@ -3695,7 +3798,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:customer_report_withdrawal_problem:lib/farmconnect-data.ts:1205:115",
+      "id": "backend:rpc:customer_report_withdrawal_problem:lib/farmconnect-data.ts:1205:118",
       "type": "rpc",
       "name": "customer_report_withdrawal_problem",
       "file": "lib/farmconnect-data.ts",
@@ -3704,7 +3807,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:rename_customer_rooster:lib/farmconnect-data.ts:1227:116",
+      "id": "backend:rpc:rename_customer_rooster:lib/farmconnect-data.ts:1227:119",
       "type": "rpc",
       "name": "rename_customer_rooster",
       "file": "lib/farmconnect-data.ts",
@@ -3713,7 +3816,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_resolve_withdrawal_dispute:lib/farmconnect-data.ts:1244:117",
+      "id": "backend:rpc:admin_resolve_withdrawal_dispute:lib/farmconnect-data.ts:1244:120",
       "type": "rpc",
       "name": "admin_resolve_withdrawal_dispute",
       "file": "lib/farmconnect-data.ts",
@@ -3722,7 +3825,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_caretaker_application_guarded:lib/farmconnect-data.ts:1268:118",
+      "id": "backend:rpc:admin_review_caretaker_application_guarded:lib/farmconnect-data.ts:1268:121",
       "type": "rpc",
       "name": "admin_review_caretaker_application_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3731,7 +3834,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_review_customer_kyc_guarded:lib/farmconnect-data.ts:1373:119",
+      "id": "backend:rpc:admin_review_customer_kyc_guarded:lib/farmconnect-data.ts:1373:122",
       "type": "rpc",
       "name": "admin_review_customer_kyc_guarded",
       "file": "lib/farmconnect-data.ts",
@@ -3740,7 +3843,7 @@
       "route": "lib/farmconnect-data.ts"
     },
     {
-      "id": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:119:120",
+      "id": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:119:123",
       "type": "rpc",
       "name": "admin_session_guard_status",
       "file": "lib/farmconnect-unified-account-verification.tsx",
@@ -3749,7 +3852,7 @@
       "route": "lib/farmconnect-unified-account-verification.tsx"
     },
     {
-      "id": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:121",
+      "id": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:124",
       "type": "table",
       "name": "workflow_operation_keys",
       "file": "lib/farmconnect-v1.tsx",
@@ -3758,7 +3861,7 @@
       "route": "/customer-v2/payment"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:5976:122",
+      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:5976:125",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
@@ -3767,7 +3870,7 @@
       "route": "/customer-v2/onboarding, /customer-v2/settings"
     },
     {
-      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:12275:123",
+      "id": "backend:table:profiles:lib/farmconnect-v1.tsx:12275:126",
       "type": "table",
       "name": "profiles",
       "file": "lib/farmconnect-v1.tsx",
@@ -3776,7 +3879,7 @@
       "route": "lib/farmconnect-v1.tsx"
     },
     {
-      "id": "backend:rpc:customer_record_kyc_consent:lib/farmconnect-v1.tsx:5868:124",
+      "id": "backend:rpc:customer_record_kyc_consent:lib/farmconnect-v1.tsx:5868:127",
       "type": "rpc",
       "name": "customer_record_kyc_consent",
       "file": "lib/farmconnect-v1.tsx",
@@ -3785,7 +3888,7 @@
       "route": "/customer-v2/onboarding, /customer-v2/settings"
     },
     {
-      "id": "backend:rpc:customer_submit_kyc:lib/farmconnect-v1.tsx:5875:125",
+      "id": "backend:rpc:customer_submit_kyc:lib/farmconnect-v1.tsx:5875:128",
       "type": "rpc",
       "name": "customer_submit_kyc",
       "file": "lib/farmconnect-v1.tsx",
@@ -3794,7 +3897,7 @@
       "route": "/customer-v2/onboarding, /customer-v2/settings"
     },
     {
-      "id": "backend:rpc:change_wallet_pin:lib/farmconnect-v1.tsx:5930:126",
+      "id": "backend:rpc:change_wallet_pin:lib/farmconnect-v1.tsx:5930:129",
       "type": "rpc",
       "name": "change_wallet_pin",
       "file": "lib/farmconnect-v1.tsx",
@@ -3803,7 +3906,7 @@
       "route": "/customer-v2/onboarding, /customer-v2/settings"
     },
     {
-      "id": "backend:table:profiles:lib/kafarm/guardian/admin-auth.ts:48:127",
+      "id": "backend:table:profiles:lib/kafarm/guardian/admin-auth.ts:48:130",
       "type": "table",
       "name": "profiles",
       "file": "lib/kafarm/guardian/admin-auth.ts",
@@ -3812,7 +3915,7 @@
       "route": "lib/kafarm/guardian/admin-auth.ts"
     },
     {
-      "id": "backend:rpc:kafarm_database_health_snapshot:lib/kafarm/guardian/evidence-tools.ts:100:128",
+      "id": "backend:rpc:kafarm_database_health_snapshot:lib/kafarm/guardian/evidence-tools.ts:100:131",
       "type": "rpc",
       "name": "kafarm_database_health_snapshot",
       "file": "lib/kafarm/guardian/evidence-tools.ts",
@@ -3821,7 +3924,7 @@
       "route": "lib/kafarm/guardian/evidence-tools.ts"
     },
     {
-      "id": "backend:rpc:kafarm_workflow_chain_snapshot:lib/kafarm/guardian/evidence-tools.ts:106:129",
+      "id": "backend:rpc:kafarm_workflow_chain_snapshot:lib/kafarm/guardian/evidence-tools.ts:106:132",
       "type": "rpc",
       "name": "kafarm_workflow_chain_snapshot",
       "file": "lib/kafarm/guardian/evidence-tools.ts",
@@ -3830,7 +3933,7 @@
       "route": "lib/kafarm/guardian/evidence-tools.ts"
     },
     {
-      "id": "backend:api:https://api.openai.com/v1/responses:lib/kafarm/guardian/reasoning.ts:278:130",
+      "id": "backend:api:https://api.openai.com/v1/responses:lib/kafarm/guardian/reasoning.ts:278:133",
       "type": "api",
       "name": "https://api.openai.com/v1/responses",
       "file": "lib/kafarm/guardian/reasoning.ts",
@@ -3839,7 +3942,7 @@
       "route": "lib/kafarm/guardian/reasoning.ts"
     },
     {
-      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:143:131",
+      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:143:134",
       "type": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "lib/kafarm/guardian/truth-reference.ts",
@@ -3848,7 +3951,7 @@
       "route": "lib/kafarm/guardian/truth-reference.ts"
     },
     {
-      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:169:132",
+      "id": "backend:table:kafarm_guardian_monitor_runs:lib/kafarm/guardian/truth-reference.ts:169:135",
       "type": "table",
       "name": "kafarm_guardian_monitor_runs",
       "file": "lib/kafarm/guardian/truth-reference.ts",
@@ -3857,7 +3960,7 @@
       "route": "lib/kafarm/guardian/truth-reference.ts"
     },
     {
-      "id": "backend:table:caretakers:lib/live-evidence-pages.tsx:18:133",
+      "id": "backend:table:caretakers:lib/live-evidence-pages.tsx:18:136",
       "type": "table",
       "name": "caretakers",
       "file": "lib/live-evidence-pages.tsx",
@@ -3866,7 +3969,7 @@
       "route": "/admin/evidence, /caretaker/completed"
     },
     {
-      "id": "backend:table:task_proofs:lib/live-evidence-pages.tsx:22:134",
+      "id": "backend:table:task_proofs:lib/live-evidence-pages.tsx:22:137",
       "type": "table",
       "name": "task_proofs",
       "file": "lib/live-evidence-pages.tsx",
@@ -3875,20 +3978,47 @@
       "route": "/admin/evidence, /caretaker/completed"
     },
     {
-      "id": "backend:rpc:support_send_guarded:lib/support-conversation.tsx:178:135",
+      "id": "backend:rpc:kafarm_recovery_begin:lib/recovery-guard.ts:24:138",
+      "type": "rpc",
+      "name": "kafarm_recovery_begin",
+      "file": "lib/recovery-guard.ts",
+      "line": 24,
+      "role": "system",
+      "route": "lib/recovery-guard.ts"
+    },
+    {
+      "id": "backend:rpc:kafarm_recovery_mark_sending:lib/recovery-guard.ts:39:139",
+      "type": "rpc",
+      "name": "kafarm_recovery_mark_sending",
+      "file": "lib/recovery-guard.ts",
+      "line": 39,
+      "role": "system",
+      "route": "lib/recovery-guard.ts"
+    },
+    {
+      "id": "backend:rpc:kafarm_recovery_reconcile:lib/recovery-guard.ts:45:140",
+      "type": "rpc",
+      "name": "kafarm_recovery_reconcile",
+      "file": "lib/recovery-guard.ts",
+      "line": 45,
+      "role": "system",
+      "route": "lib/recovery-guard.ts"
+    },
+    {
+      "id": "backend:rpc:support_send_guarded:lib/support-conversation.tsx:199:141",
       "type": "rpc",
       "name": "support_send_guarded",
       "file": "lib/support-conversation.tsx",
-      "line": 178,
+      "line": 199,
       "role": "system",
       "route": "lib/support-conversation.tsx"
     },
     {
-      "id": "backend:rpc:support_reconcile_delivery:lib/support-conversation.tsx:183:136",
+      "id": "backend:rpc:support_reconcile_delivery:lib/support-conversation.tsx:204:142",
       "type": "rpc",
       "name": "support_reconcile_delivery",
       "file": "lib/support-conversation.tsx",
-      "line": 183,
+      "line": 204,
       "role": "system",
       "route": "lib/support-conversation.tsx"
     }
@@ -3903,1274 +4033,1414 @@
     },
     {
       "from": "route:/admin/kafarm",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094:1",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1095:1",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1095"
     },
     {
-      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094:1",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:947:5",
+      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1095:1",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:948:5",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:947"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1095 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:948"
     },
     {
-      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094:1",
-      "to": "backend:rpc:kafarm_care_plan_health_snapshot:app/admin/kafarm/_components/KafarmPhaseOne.tsx:945:8",
+      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1095:1",
+      "to": "backend:rpc:kafarm_care_plan_health_snapshot:app/admin/kafarm/_components/KafarmPhaseOne.tsx:946:8",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:945"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1095 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:946"
     },
     {
-      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094:1",
-      "to": "backend:rpc:kafarm_database_health_snapshot:app/admin/kafarm/_components/KafarmPhaseOne.tsx:944:7",
+      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:1095:1",
+      "to": "backend:rpc:kafarm_database_health_snapshot:app/admin/kafarm/_components/KafarmPhaseOne.tsx:945:7",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:944"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1095 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:945"
     },
     {
       "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2153:2",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2154:2",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2153"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2154"
     },
     {
-      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2153:2",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078:6",
+      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2154:2",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079:6",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2153 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2154 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079"
     },
     {
       "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2216:3",
-      "relation": "contains_action",
-      "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2216"
-    },
-    {
-      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2216:3",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078:6",
-      "relation": "nearby_backend_reference",
-      "confidence": "possible",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2216 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078"
-    },
-    {
-      "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2217:4",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2217:3",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2217"
     },
     {
-      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2217:4",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078:6",
+      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2217:3",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079:6",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2217 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2217 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079"
     },
     {
       "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2218:5",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2218:4",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2218"
     },
     {
-      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2218:5",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078:6",
+      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2218:4",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079:6",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2218 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2218 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079"
     },
     {
       "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2223:6",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2219:5",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2223"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2219"
     },
     {
-      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2223:6",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078:6",
+      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2219:5",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079:6",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2223 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2078"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2219 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079"
     },
     {
       "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2255:7",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2224:6",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2255"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2224"
+    },
+    {
+      "from": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2224:6",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079:6",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2224 near app/admin/kafarm/_components/KafarmPhaseOne.tsx:2079"
     },
     {
       "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2268:8",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2256:7",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2268"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2256"
     },
     {
       "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2269:9",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2269:8",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2269"
     },
     {
       "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
-      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2353:10",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2270:9",
       "relation": "contains_action",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2353"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2270"
+    },
+    {
+      "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
+      "to": "action:app/admin/kafarm/_components/KafarmPhaseOne.tsx:2354:10",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2354"
+    },
+    {
+      "from": "route:/admin/kafarm/recovery-guard",
+      "to": "action:app/admin/kafarm/recovery-guard/page.tsx:44:11",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:44"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:44:11",
+      "to": "backend:rpc:kafarm_recovery_admin_action:app/admin/kafarm/recovery-guard/page.tsx:36:13",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:44 near app/admin/kafarm/recovery-guard/page.tsx:36"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:44:11",
+      "to": "backend:rpc:kafarm_recovery_reconcile:app/admin/kafarm/recovery-guard/page.tsx:29:12",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:44 near app/admin/kafarm/recovery-guard/page.tsx:29"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:44:11",
+      "to": "backend:table:kafarm_recovery_operations:app/admin/kafarm/recovery-guard/page.tsx:19:11",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:44 near app/admin/kafarm/recovery-guard/page.tsx:19"
+    },
+    {
+      "from": "route:/admin/kafarm/recovery-guard",
+      "to": "action:app/admin/kafarm/recovery-guard/page.tsx:53:12",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:53"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:53:12",
+      "to": "backend:rpc:kafarm_recovery_admin_action:app/admin/kafarm/recovery-guard/page.tsx:36:13",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:53 near app/admin/kafarm/recovery-guard/page.tsx:36"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:53:12",
+      "to": "backend:rpc:kafarm_recovery_reconcile:app/admin/kafarm/recovery-guard/page.tsx:29:12",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:53 near app/admin/kafarm/recovery-guard/page.tsx:29"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:53:12",
+      "to": "backend:table:kafarm_recovery_operations:app/admin/kafarm/recovery-guard/page.tsx:19:11",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:53 near app/admin/kafarm/recovery-guard/page.tsx:19"
+    },
+    {
+      "from": "route:/admin/kafarm/recovery-guard",
+      "to": "action:app/admin/kafarm/recovery-guard/page.tsx:54:13",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:54"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:54:13",
+      "to": "backend:rpc:kafarm_recovery_admin_action:app/admin/kafarm/recovery-guard/page.tsx:36:13",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:54 near app/admin/kafarm/recovery-guard/page.tsx:36"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:54:13",
+      "to": "backend:rpc:kafarm_recovery_reconcile:app/admin/kafarm/recovery-guard/page.tsx:29:12",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:54 near app/admin/kafarm/recovery-guard/page.tsx:29"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:54:13",
+      "to": "backend:table:kafarm_recovery_operations:app/admin/kafarm/recovery-guard/page.tsx:19:11",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:54 near app/admin/kafarm/recovery-guard/page.tsx:19"
+    },
+    {
+      "from": "route:/admin/kafarm/recovery-guard",
+      "to": "action:app/admin/kafarm/recovery-guard/page.tsx:55:14",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:55"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:55:14",
+      "to": "backend:rpc:kafarm_recovery_admin_action:app/admin/kafarm/recovery-guard/page.tsx:36:13",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:55 near app/admin/kafarm/recovery-guard/page.tsx:36"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:55:14",
+      "to": "backend:rpc:kafarm_recovery_reconcile:app/admin/kafarm/recovery-guard/page.tsx:29:12",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:55 near app/admin/kafarm/recovery-guard/page.tsx:29"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:55:14",
+      "to": "backend:table:kafarm_recovery_operations:app/admin/kafarm/recovery-guard/page.tsx:19:11",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:55 near app/admin/kafarm/recovery-guard/page.tsx:19"
+    },
+    {
+      "from": "route:/admin/kafarm/recovery-guard",
+      "to": "action:app/admin/kafarm/recovery-guard/page.tsx:56:15",
+      "relation": "contains_action",
+      "confidence": "confirmed",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:56"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:56:15",
+      "to": "backend:rpc:kafarm_recovery_admin_action:app/admin/kafarm/recovery-guard/page.tsx:36:13",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:56 near app/admin/kafarm/recovery-guard/page.tsx:36"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:56:15",
+      "to": "backend:rpc:kafarm_recovery_reconcile:app/admin/kafarm/recovery-guard/page.tsx:29:12",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:56 near app/admin/kafarm/recovery-guard/page.tsx:29"
+    },
+    {
+      "from": "action:app/admin/kafarm/recovery-guard/page.tsx:56:15",
+      "to": "backend:table:kafarm_recovery_operations:app/admin/kafarm/recovery-guard/page.tsx:19:11",
+      "relation": "nearby_backend_reference",
+      "confidence": "possible",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:56 near app/admin/kafarm/recovery-guard/page.tsx:19"
     },
     {
       "from": "route:/admin/kafarm/troubleshooting",
-      "to": "action:app/admin/kafarm/troubleshooting/page.tsx:92:11",
+      "to": "action:app/admin/kafarm/troubleshooting/page.tsx:92:16",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:92"
     },
     {
-      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:92:11",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:12",
+      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:92:16",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:15",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:92 near app/admin/kafarm/troubleshooting/page.tsx:79"
     },
     {
-      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:92:11",
-      "to": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:11",
+      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:92:16",
+      "to": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:14",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:92 near app/admin/kafarm/troubleshooting/page.tsx:77"
     },
     {
       "from": "route:/admin/kafarm/troubleshooting",
-      "to": "action:app/admin/kafarm/troubleshooting/page.tsx:97:12",
+      "to": "action:app/admin/kafarm/troubleshooting/page.tsx:97:17",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:97"
     },
     {
-      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:97:12",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:12",
+      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:97:17",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:15",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:97 near app/admin/kafarm/troubleshooting/page.tsx:79"
     },
     {
-      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:97:12",
-      "to": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:11",
+      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:97:17",
+      "to": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:14",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:97 near app/admin/kafarm/troubleshooting/page.tsx:77"
     },
     {
       "from": "route:/admin/kafarm/troubleshooting",
-      "to": "action:app/admin/kafarm/troubleshooting/page.tsx:101:13",
+      "to": "action:app/admin/kafarm/troubleshooting/page.tsx:101:18",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:101"
     },
     {
-      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:101:13",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:12",
+      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:101:18",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:15",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:101 near app/admin/kafarm/troubleshooting/page.tsx:79"
     },
     {
-      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:101:13",
-      "to": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:11",
+      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:101:18",
+      "to": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:14",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:101 near app/admin/kafarm/troubleshooting/page.tsx:77"
     },
     {
       "from": "route:/admin/kafarm/troubleshooting",
-      "to": "action:app/admin/kafarm/troubleshooting/page.tsx:102:14",
+      "to": "action:app/admin/kafarm/troubleshooting/page.tsx:102:19",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:102"
     },
     {
-      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:102:14",
-      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:12",
+      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:102:19",
+      "to": "backend:table:admin_kafarm_incident_queue:app/admin/kafarm/troubleshooting/page.tsx:79:15",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:102 near app/admin/kafarm/troubleshooting/page.tsx:79"
     },
     {
-      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:102:14",
-      "to": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:11",
+      "from": "action:app/admin/kafarm/troubleshooting/page.tsx:102:19",
+      "to": "backend:table:profiles:app/admin/kafarm/troubleshooting/page.tsx:77:14",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/admin/kafarm/troubleshooting/page.tsx:102 near app/admin/kafarm/troubleshooting/page.tsx:77"
     },
     {
       "from": "route:/forgot-password",
-      "to": "action:app/forgot-password/page.tsx:43:15",
+      "to": "action:app/forgot-password/page.tsx:43:20",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/forgot-password/page.tsx:43"
     },
     {
       "from": "route:/login",
-      "to": "action:app/page.tsx:189:16",
+      "to": "action:app/page.tsx:189:21",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/page.tsx:189"
     },
     {
-      "from": "action:app/page.tsx:189:16",
-      "to": "backend:table:profiles:app/page.tsx:50:26",
+      "from": "action:app/page.tsx:189:21",
+      "to": "backend:table:profiles:app/page.tsx:50:29",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/page.tsx:189 near app/page.tsx:50"
     },
     {
       "from": "route:/login",
-      "to": "action:app/page.tsx:198:17",
+      "to": "action:app/page.tsx:198:22",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/page.tsx:198"
     },
     {
-      "from": "action:app/page.tsx:198:17",
-      "to": "backend:table:profiles:app/page.tsx:50:26",
+      "from": "action:app/page.tsx:198:22",
+      "to": "backend:table:profiles:app/page.tsx:50:29",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/page.tsx:198 near app/page.tsx:50"
     },
     {
       "from": "route:/login",
-      "to": "action:app/page.tsx:201:18",
+      "to": "action:app/page.tsx:201:23",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/page.tsx:201"
     },
     {
-      "from": "action:app/page.tsx:201:18",
-      "to": "backend:table:profiles:app/page.tsx:50:26",
+      "from": "action:app/page.tsx:201:23",
+      "to": "backend:table:profiles:app/page.tsx:50:29",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "app/page.tsx:201 near app/page.tsx:50"
     },
     {
       "from": "route:/login",
-      "to": "action:app/page.tsx:232:19",
+      "to": "action:app/page.tsx:232:24",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/page.tsx:232"
     },
     {
       "from": "route:/login",
-      "to": "action:app/page.tsx:243:20",
+      "to": "action:app/page.tsx:243:25",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/page.tsx:243"
     },
     {
       "from": "route:/login",
-      "to": "action:app/page.tsx:245:21",
+      "to": "action:app/page.tsx:245:26",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/page.tsx:245"
     },
     {
       "from": "route:/reset-password",
-      "to": "action:app/reset-password/page.tsx:80:22",
+      "to": "action:app/reset-password/page.tsx:80:27",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "app/reset-password/page.tsx:80"
     },
     {
       "from": "route:lib/farmconnect-unified-account-verification.tsx",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:166:23",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:166:28",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:166"
     },
     {
-      "from": "action:lib/farmconnect-unified-account-verification.tsx:166:23",
-      "to": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:119:120",
+      "from": "action:lib/farmconnect-unified-account-verification.tsx:166:28",
+      "to": "backend:rpc:admin_session_guard_status:lib/farmconnect-unified-account-verification.tsx:119:123",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:166 near lib/farmconnect-unified-account-verification.tsx:119"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:359:24",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:359:29",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:359"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:369:25",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:369:30",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:369"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:369:26",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:369:31",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:369"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:371:27",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:371:32",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:371"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:371:28",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:371:33",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:371"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:371:29",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:371:34",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:371"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:372:30",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:372:35",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:372"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:373:31",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:373:36",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:373"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:373:32",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:373:37",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:373"
     },
     {
       "from": "route:/admin/account-verification",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:375:33",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:375:38",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:375"
     },
     {
       "from": "route:/apply-caretaker, /caretaker/signup",
-      "to": "action:lib/farmconnect-unified-account-verification.tsx:449:34",
+      "to": "action:lib/farmconnect-unified-account-verification.tsx:449:39",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-unified-account-verification.tsx:449"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1741:35",
+      "to": "action:lib/farmconnect-v1.tsx:1741:40",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1741"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1742:36",
+      "to": "action:lib/farmconnect-v1.tsx:1742:41",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1742"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1744:37",
+      "to": "action:lib/farmconnect-v1.tsx:1744:42",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1744"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1746:38",
+      "to": "action:lib/farmconnect-v1.tsx:1746:43",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1746"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1746:39",
+      "to": "action:lib/farmconnect-v1.tsx:1746:44",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1746"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1748:40",
+      "to": "action:lib/farmconnect-v1.tsx:1748:45",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1748"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1748:41",
+      "to": "action:lib/farmconnect-v1.tsx:1748:46",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1748"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1767:42",
+      "to": "action:lib/farmconnect-v1.tsx:1767:47",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1767"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1767:43",
+      "to": "action:lib/farmconnect-v1.tsx:1767:48",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1767"
     },
     {
       "from": "route:/customer-v2/roosters",
-      "to": "action:lib/farmconnect-v1.tsx:1768:44",
+      "to": "action:lib/farmconnect-v1.tsx:1768:49",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1768"
     },
     {
       "from": "route:/customer-v2/roosters/diary",
-      "to": "action:lib/farmconnect-v1.tsx:1846:45",
+      "to": "action:lib/farmconnect-v1.tsx:1846:50",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1846"
     },
     {
       "from": "route:/customer-v2/roosters/diary",
-      "to": "action:lib/farmconnect-v1.tsx:1847:46",
+      "to": "action:lib/farmconnect-v1.tsx:1847:51",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1847"
     },
     {
       "from": "route:/customer-v2/roosters/diary",
-      "to": "action:lib/farmconnect-v1.tsx:1847:47",
+      "to": "action:lib/farmconnect-v1.tsx:1847:52",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1847"
     },
     {
       "from": "route:/customer-v2/roosters/diary",
-      "to": "action:lib/farmconnect-v1.tsx:1848:48",
+      "to": "action:lib/farmconnect-v1.tsx:1848:53",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1848"
     },
     {
       "from": "route:/customer-v2/roosters/diary",
-      "to": "action:lib/farmconnect-v1.tsx:1852:49",
+      "to": "action:lib/farmconnect-v1.tsx:1852:54",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:1852"
     },
     {
       "from": "route:/customer-v2/sell-rooster",
-      "to": "action:lib/farmconnect-v1.tsx:2101:50",
+      "to": "action:lib/farmconnect-v1.tsx:2101:55",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2101"
     },
     {
       "from": "route:/customer-v2/sell-rooster",
-      "to": "action:lib/farmconnect-v1.tsx:2102:51",
+      "to": "action:lib/farmconnect-v1.tsx:2102:56",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2102"
     },
     {
       "from": "route:/customer-v2/sell-rooster",
-      "to": "action:lib/farmconnect-v1.tsx:2107:52",
+      "to": "action:lib/farmconnect-v1.tsx:2107:57",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2107"
     },
     {
       "from": "route:/customer-v2/add-rooster",
-      "to": "action:lib/farmconnect-v1.tsx:2483:53",
+      "to": "action:lib/farmconnect-v1.tsx:2483:58",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2483"
     },
     {
       "from": "route:/customer-v2/add-rooster",
-      "to": "action:lib/farmconnect-v1.tsx:2493:54",
+      "to": "action:lib/farmconnect-v1.tsx:2493:59",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2493"
     },
     {
       "from": "route:/customer-v2/add-rooster",
-      "to": "action:lib/farmconnect-v1.tsx:2516:55",
+      "to": "action:lib/farmconnect-v1.tsx:2516:60",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2516"
     },
     {
       "from": "route:/customer-v2/add-rooster",
-      "to": "action:lib/farmconnect-v1.tsx:2523:56",
+      "to": "action:lib/farmconnect-v1.tsx:2523:61",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2523"
     },
     {
       "from": "route:/customer-v2/add-rooster",
-      "to": "action:lib/farmconnect-v1.tsx:2563:57",
+      "to": "action:lib/farmconnect-v1.tsx:2563:62",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2563"
     },
     {
       "from": "route:/customer-v2/add-rooster",
-      "to": "action:lib/farmconnect-v1.tsx:2568:58",
+      "to": "action:lib/farmconnect-v1.tsx:2568:63",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2568"
     },
     {
       "from": "route:/customer-v2/care",
-      "to": "action:lib/farmconnect-v1.tsx:2955:59",
+      "to": "action:lib/farmconnect-v1.tsx:2955:64",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2955"
     },
     {
       "from": "route:/customer-v2/care",
-      "to": "action:lib/farmconnect-v1.tsx:2970:60",
+      "to": "action:lib/farmconnect-v1.tsx:2970:65",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2970"
     },
     {
       "from": "route:/customer-v2/care",
-      "to": "action:lib/farmconnect-v1.tsx:2983:61",
+      "to": "action:lib/farmconnect-v1.tsx:2983:66",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2983"
     },
     {
       "from": "route:/customer-v2/care",
-      "to": "action:lib/farmconnect-v1.tsx:2998:62",
+      "to": "action:lib/farmconnect-v1.tsx:2998:67",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:2998"
     },
     {
       "from": "route:/customer-v2/care",
-      "to": "action:lib/farmconnect-v1.tsx:3008:63",
+      "to": "action:lib/farmconnect-v1.tsx:3008:68",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:3008"
     },
     {
       "from": "route:/customer-v2/care",
-      "to": "action:lib/farmconnect-v1.tsx:3012:64",
+      "to": "action:lib/farmconnect-v1.tsx:3012:69",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:3012"
     },
     {
       "from": "route:/customer-v2/wallet",
-      "to": "action:lib/farmconnect-v1.tsx:3782:65",
+      "to": "action:lib/farmconnect-v1.tsx:3782:70",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:3782"
     },
     {
       "from": "route:/customer-v2/wallet",
-      "to": "action:lib/farmconnect-v1.tsx:3885:66",
+      "to": "action:lib/farmconnect-v1.tsx:3885:71",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:3885"
     },
     {
       "from": "route:/customer-v2/wallet",
-      "to": "action:lib/farmconnect-v1.tsx:3900:67",
+      "to": "action:lib/farmconnect-v1.tsx:3900:72",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:3900"
     },
     {
       "from": "route:/customer-v2/wallet",
-      "to": "action:lib/farmconnect-v1.tsx:3956:68",
+      "to": "action:lib/farmconnect-v1.tsx:3956:73",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:3956"
     },
     {
       "from": "route:/customer-v2/wallet",
-      "to": "action:lib/farmconnect-v1.tsx:3970:69",
+      "to": "action:lib/farmconnect-v1.tsx:3970:74",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:3970"
     },
     {
       "from": "route:/customer-v2/withdraw",
-      "to": "action:lib/farmconnect-v1.tsx:4382:70",
+      "to": "action:lib/farmconnect-v1.tsx:4382:75",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4382"
     },
     {
       "from": "route:/customer-v2/withdraw",
-      "to": "action:lib/farmconnect-v1.tsx:4409:71",
+      "to": "action:lib/farmconnect-v1.tsx:4409:76",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4409"
     },
     {
       "from": "route:/customer-v2/withdraw",
-      "to": "action:lib/farmconnect-v1.tsx:4437:72",
+      "to": "action:lib/farmconnect-v1.tsx:4437:77",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4437"
     },
     {
       "from": "route:/customer-v2/withdraw",
-      "to": "action:lib/farmconnect-v1.tsx:4446:73",
+      "to": "action:lib/farmconnect-v1.tsx:4446:78",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4446"
     },
     {
       "from": "route:/customer-v2/withdraw",
-      "to": "action:lib/farmconnect-v1.tsx:4453:74",
+      "to": "action:lib/farmconnect-v1.tsx:4453:79",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4453"
     },
     {
       "from": "route:/customer-v2/withdraw",
-      "to": "action:lib/farmconnect-v1.tsx:4463:75",
+      "to": "action:lib/farmconnect-v1.tsx:4463:80",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4463"
     },
     {
       "from": "route:/customer-v2/withdraw",
-      "to": "action:lib/farmconnect-v1.tsx:4470:76",
+      "to": "action:lib/farmconnect-v1.tsx:4470:81",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4470"
     },
     {
       "from": "route:/customer-v2/withdraw/add-payout",
-      "to": "action:lib/farmconnect-v1.tsx:4521:77",
+      "to": "action:lib/farmconnect-v1.tsx:4521:82",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4521"
     },
     {
       "from": "route:/customer-v2/withdraw/add-payout",
-      "to": "action:lib/farmconnect-v1.tsx:4546:78",
+      "to": "action:lib/farmconnect-v1.tsx:4546:83",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4546"
     },
     {
       "from": "route:/customer-v2/inbox",
-      "to": "action:lib/farmconnect-v1.tsx:4911:79",
+      "to": "action:lib/farmconnect-v1.tsx:4911:84",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4911"
     },
     {
       "from": "route:/customer-v2/inbox",
-      "to": "action:lib/farmconnect-v1.tsx:4920:80",
+      "to": "action:lib/farmconnect-v1.tsx:4920:85",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4920"
     },
     {
       "from": "route:/customer-v2/inbox",
-      "to": "action:lib/farmconnect-v1.tsx:4926:81",
+      "to": "action:lib/farmconnect-v1.tsx:4926:86",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4926"
     },
     {
       "from": "route:/customer-v2/inbox",
-      "to": "action:lib/farmconnect-v1.tsx:4931:82",
+      "to": "action:lib/farmconnect-v1.tsx:4931:87",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4931"
     },
     {
       "from": "route:/customer-v2/inbox",
-      "to": "action:lib/farmconnect-v1.tsx:4994:83",
+      "to": "action:lib/farmconnect-v1.tsx:4994:88",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4994"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:4994:83",
-      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:121",
+      "from": "action:lib/farmconnect-v1.tsx:4994:88",
+      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:124",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:4994 near lib/farmconnect-v1.tsx:5112"
     },
     {
       "from": "route:/customer-v2/inbox",
-      "to": "action:lib/farmconnect-v1.tsx:4998:84",
+      "to": "action:lib/farmconnect-v1.tsx:4998:89",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:4998"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:4998:84",
-      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:121",
+      "from": "action:lib/farmconnect-v1.tsx:4998:89",
+      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:124",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:4998 near lib/farmconnect-v1.tsx:5112"
     },
     {
       "from": "route:/customer-v2/payment",
-      "to": "action:lib/farmconnect-v1.tsx:5171:85",
+      "to": "action:lib/farmconnect-v1.tsx:5171:90",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:5171"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:5171:85",
-      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:121",
+      "from": "action:lib/farmconnect-v1.tsx:5171:90",
+      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:124",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:5171 near lib/farmconnect-v1.tsx:5112"
     },
     {
       "from": "route:/customer-v2/payment",
-      "to": "action:lib/farmconnect-v1.tsx:5232:86",
+      "to": "action:lib/farmconnect-v1.tsx:5232:91",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:5232"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:5232:86",
-      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:121",
+      "from": "action:lib/farmconnect-v1.tsx:5232:91",
+      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:124",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:5232 near lib/farmconnect-v1.tsx:5112"
     },
     {
       "from": "route:/customer-v2/payment",
-      "to": "action:lib/farmconnect-v1.tsx:5248:87",
+      "to": "action:lib/farmconnect-v1.tsx:5248:92",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:5248"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:5248:87",
-      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:121",
+      "from": "action:lib/farmconnect-v1.tsx:5248:92",
+      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:124",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:5248 near lib/farmconnect-v1.tsx:5112"
     },
     {
       "from": "route:/customer-v2/payment",
-      "to": "action:lib/farmconnect-v1.tsx:5261:88",
+      "to": "action:lib/farmconnect-v1.tsx:5261:93",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:5261"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:5261:88",
-      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:121",
+      "from": "action:lib/farmconnect-v1.tsx:5261:93",
+      "to": "backend:table:workflow_operation_keys:lib/farmconnect-v1.tsx:5112:124",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:5261 near lib/farmconnect-v1.tsx:5112"
     },
     {
       "from": "route:/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
-      "to": "action:lib/farmconnect-v1.tsx:5417:89",
+      "to": "action:lib/farmconnect-v1.tsx:5417:94",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:5417"
     },
     {
       "from": "route:/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
-      "to": "action:lib/farmconnect-v1.tsx:5451:90",
+      "to": "action:lib/farmconnect-v1.tsx:5451:95",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:5451"
     },
     {
       "from": "route:/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
-      "to": "action:lib/farmconnect-v1.tsx:5489:91",
+      "to": "action:lib/farmconnect-v1.tsx:5489:96",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:5489"
     },
     {
       "from": "route:/customer-v2/inbox/invoice/care-request, /customer-v2/inbox/invoice/cashin, /customer-v2/inbox/invoice/farm-buy",
-      "to": "action:lib/farmconnect-v1.tsx:5504:92",
+      "to": "action:lib/farmconnect-v1.tsx:5504:97",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:5504"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6133:93",
+      "to": "action:lib/farmconnect-v1.tsx:6133:98",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6133"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:6133:93",
-      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:5976:122",
+      "from": "action:lib/farmconnect-v1.tsx:6133:98",
+      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:5976:125",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:6133 near lib/farmconnect-v1.tsx:5976"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6139:94",
+      "to": "action:lib/farmconnect-v1.tsx:6139:99",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6139"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6203:95",
+      "to": "action:lib/farmconnect-v1.tsx:6203:100",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6203"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6315:96",
+      "to": "action:lib/farmconnect-v1.tsx:6315:101",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6315"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6323:97",
+      "to": "action:lib/farmconnect-v1.tsx:6323:102",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6323"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6331:98",
+      "to": "action:lib/farmconnect-v1.tsx:6331:103",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6331"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6348:99",
+      "to": "action:lib/farmconnect-v1.tsx:6348:104",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6348"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6397:100",
+      "to": "action:lib/farmconnect-v1.tsx:6397:105",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6397"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6407:101",
+      "to": "action:lib/farmconnect-v1.tsx:6407:106",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6407"
     },
     {
       "from": "route:/customer-v2/onboarding, /customer-v2/settings",
-      "to": "action:lib/farmconnect-v1.tsx:6418:102",
+      "to": "action:lib/farmconnect-v1.tsx:6418:107",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6418"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:6990:103",
+      "to": "action:lib/farmconnect-v1.tsx:6990:108",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:6990"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7144:104",
+      "to": "action:lib/farmconnect-v1.tsx:7144:109",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7144"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7148:105",
+      "to": "action:lib/farmconnect-v1.tsx:7148:110",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7148"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7184:106",
+      "to": "action:lib/farmconnect-v1.tsx:7184:111",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7184"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7185:107",
+      "to": "action:lib/farmconnect-v1.tsx:7185:112",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7185"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7225:108",
+      "to": "action:lib/farmconnect-v1.tsx:7225:113",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7225"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7236:109",
+      "to": "action:lib/farmconnect-v1.tsx:7236:114",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7236"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7242:110",
+      "to": "action:lib/farmconnect-v1.tsx:7242:115",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7242"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7251:111",
+      "to": "action:lib/farmconnect-v1.tsx:7251:116",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7251"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7274:112",
+      "to": "action:lib/farmconnect-v1.tsx:7274:117",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7274"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7309:113",
+      "to": "action:lib/farmconnect-v1.tsx:7309:118",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7309"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7312:114",
+      "to": "action:lib/farmconnect-v1.tsx:7312:119",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7312"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7325:115",
+      "to": "action:lib/farmconnect-v1.tsx:7325:120",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7325"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7373:116",
+      "to": "action:lib/farmconnect-v1.tsx:7373:121",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7373"
     },
     {
       "from": "route:/caretaker/feeding, /caretaker/photos, /caretaker/tasks, /caretaker/weight",
-      "to": "action:lib/farmconnect-v1.tsx:7376:117",
+      "to": "action:lib/farmconnect-v1.tsx:7376:122",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7376"
     },
     {
       "from": "route:/caretaker/dashboard",
-      "to": "action:lib/farmconnect-v1.tsx:7562:118",
+      "to": "action:lib/farmconnect-v1.tsx:7562:123",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7562"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:7960:119",
+      "to": "action:lib/farmconnect-v1.tsx:7960:124",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7960"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:7966:120",
+      "to": "action:lib/farmconnect-v1.tsx:7966:125",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:7966"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8030:121",
+      "to": "action:lib/farmconnect-v1.tsx:8030:126",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8030"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8040:122",
+      "to": "action:lib/farmconnect-v1.tsx:8040:127",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8040"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8043:123",
+      "to": "action:lib/farmconnect-v1.tsx:8043:128",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8043"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8046:124",
+      "to": "action:lib/farmconnect-v1.tsx:8046:129",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8046"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8276:125",
+      "to": "action:lib/farmconnect-v1.tsx:8276:130",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8276"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8330:126",
+      "to": "action:lib/farmconnect-v1.tsx:8330:131",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8330"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8435:127",
+      "to": "action:lib/farmconnect-v1.tsx:8435:132",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8435"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8451:128",
+      "to": "action:lib/farmconnect-v1.tsx:8451:133",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8451"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8469:129",
+      "to": "action:lib/farmconnect-v1.tsx:8469:134",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8469"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8477:130",
+      "to": "action:lib/farmconnect-v1.tsx:8477:135",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8477"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8485:131",
+      "to": "action:lib/farmconnect-v1.tsx:8485:136",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8485"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8488:132",
+      "to": "action:lib/farmconnect-v1.tsx:8488:137",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8488"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8497:133",
+      "to": "action:lib/farmconnect-v1.tsx:8497:138",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8497"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8501:134",
+      "to": "action:lib/farmconnect-v1.tsx:8501:139",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8501"
     },
     {
       "from": "route:/admin, /admin/analytics",
-      "to": "action:lib/farmconnect-v1.tsx:8521:135",
+      "to": "action:lib/farmconnect-v1.tsx:8521:140",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8521"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8730:136",
+      "to": "action:lib/farmconnect-v1.tsx:8730:141",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8730"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8779:137",
+      "to": "action:lib/farmconnect-v1.tsx:8779:142",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8779"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8782:138",
+      "to": "action:lib/farmconnect-v1.tsx:8782:143",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8782"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8888:139",
+      "to": "action:lib/farmconnect-v1.tsx:8888:144",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8888"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:8978:140",
+      "to": "action:lib/farmconnect-v1.tsx:8978:145",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:8978"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9015:141",
+      "to": "action:lib/farmconnect-v1.tsx:9015:146",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:9015"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9019:142",
+      "to": "action:lib/farmconnect-v1.tsx:9019:147",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:9019"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9035:143",
+      "to": "action:lib/farmconnect-v1.tsx:9035:148",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:9035"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9119:144",
+      "to": "action:lib/farmconnect-v1.tsx:9119:149",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:9119"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9185:145",
+      "to": "action:lib/farmconnect-v1.tsx:9185:150",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:9185"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9188:146",
+      "to": "action:lib/farmconnect-v1.tsx:9188:151",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:9188"
     },
     {
       "from": "route:/admin/customer-requests/care, /admin/customer-requests/payment, /admin/customer-requests/sell, /admin/customer-requests/task, /admin/customer-requests/withdraw, /admin/sell-requests",
-      "to": "action:lib/farmconnect-v1.tsx:9191:147",
+      "to": "action:lib/farmconnect-v1.tsx:9191:152",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:9191"
     },
     {
       "from": "route:/signup",
-      "to": "action:lib/farmconnect-v1.tsx:12430:148",
+      "to": "action:lib/farmconnect-v1.tsx:12430:153",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/farmconnect-v1.tsx:12430"
     },
     {
-      "from": "action:lib/farmconnect-v1.tsx:12430:148",
-      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:12275:123",
+      "from": "action:lib/farmconnect-v1.tsx:12430:153",
+      "to": "backend:table:profiles:lib/farmconnect-v1.tsx:12275:126",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/farmconnect-v1.tsx:12430 near lib/farmconnect-v1.tsx:12275"
     },
     {
       "from": "route:/admin/evidence, /caretaker/completed",
-      "to": "action:lib/live-evidence-pages.tsx:45:149",
+      "to": "action:lib/live-evidence-pages.tsx:45:154",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/live-evidence-pages.tsx:45"
     },
     {
-      "from": "action:lib/live-evidence-pages.tsx:45:149",
-      "to": "backend:table:task_proofs:lib/live-evidence-pages.tsx:22:134",
+      "from": "action:lib/live-evidence-pages.tsx:45:154",
+      "to": "backend:table:task_proofs:lib/live-evidence-pages.tsx:22:137",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/live-evidence-pages.tsx:45 near lib/live-evidence-pages.tsx:22"
     },
     {
-      "from": "action:lib/live-evidence-pages.tsx:45:149",
-      "to": "backend:table:caretakers:lib/live-evidence-pages.tsx:18:133",
+      "from": "action:lib/live-evidence-pages.tsx:45:154",
+      "to": "backend:table:caretakers:lib/live-evidence-pages.tsx:18:136",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/live-evidence-pages.tsx:45 near lib/live-evidence-pages.tsx:18"
     },
     {
       "from": "route:/admin/evidence, /caretaker/completed",
-      "to": "action:lib/live-evidence-pages.tsx:45:150",
+      "to": "action:lib/live-evidence-pages.tsx:45:155",
       "relation": "contains_action",
       "confidence": "confirmed",
       "evidence": "lib/live-evidence-pages.tsx:45"
     },
     {
-      "from": "action:lib/live-evidence-pages.tsx:45:150",
-      "to": "backend:table:task_proofs:lib/live-evidence-pages.tsx:22:134",
+      "from": "action:lib/live-evidence-pages.tsx:45:155",
+      "to": "backend:table:task_proofs:lib/live-evidence-pages.tsx:22:137",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/live-evidence-pages.tsx:45 near lib/live-evidence-pages.tsx:22"
     },
     {
-      "from": "action:lib/live-evidence-pages.tsx:45:150",
-      "to": "backend:table:caretakers:lib/live-evidence-pages.tsx:18:133",
+      "from": "action:lib/live-evidence-pages.tsx:45:155",
+      "to": "backend:table:caretakers:lib/live-evidence-pages.tsx:18:136",
       "relation": "nearby_backend_reference",
       "confidence": "possible",
       "evidence": "lib/live-evidence-pages.tsx:45 near lib/live-evidence-pages.tsx:18"
@@ -5180,63 +5450,63 @@
       "to": "route:/",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:862"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:863"
     },
     {
       "from": "route:/admin/kafarm",
       "to": "route:/",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1093"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1094"
     },
     {
       "from": "route:/admin/kafarm",
       "to": "route:/admin/kafarm/guardian",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1120"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1121"
     },
     {
       "from": "route:/admin/kafarm",
       "to": "route:/admin/kafarm/whole-app-reader",
-      "relation": "navigates_to",
-      "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1129"
-    },
-    {
-      "from": "route:/admin/kafarm",
-      "to": "route:/admin/kafarm/troubleshooting",
       "relation": "navigates_to",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1130"
     },
     {
       "from": "route:/admin/kafarm",
-      "to": "route:/admin",
+      "to": "route:/admin/kafarm/troubleshooting",
       "relation": "navigates_to",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1131"
     },
     {
       "from": "route:/admin/kafarm",
+      "to": "route:/admin",
+      "relation": "navigates_to",
+      "confidence": "confirmed",
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1132"
+    },
+    {
+      "from": "route:/admin/kafarm",
       "to": "route:/admin/kafarm/whole-app-reader",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1181"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1182"
     },
     {
       "from": "route:/admin/kafarm",
       "to": "route:/admin",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1182"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:1183"
     },
     {
       "from": "route:/admin/kafarm/approvals, /admin/kafarm/ask, /admin/kafarm/auto-fixed-logs, /admin/kafarm/buddy-reports, /admin/kafarm/daily-briefing, /admin/kafarm/database-health, /admin/kafarm/escalated-chats, /admin/kafarm/evidence-finder, /admin/kafarm/qa-test-lab, /admin/kafarm/system-health",
       "to": "route:/admin/kafarm",
       "relation": "navigates_to",
       "confidence": "confirmed",
-      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2110"
+      "evidence": "app/admin/kafarm/_components/KafarmPhaseOne.tsx:2111"
     },
     {
       "from": "route:/admin/kafarm/guardian",
@@ -5258,6 +5528,13 @@
       "relation": "navigates_to",
       "confidence": "confirmed",
       "evidence": "app/admin/kafarm/guardian/_components/GuardianClient.tsx:157"
+    },
+    {
+      "from": "route:/admin/kafarm/recovery-guard",
+      "to": "route:/admin/kafarm",
+      "relation": "navigates_to",
+      "confidence": "confirmed",
+      "evidence": "app/admin/kafarm/recovery-guard/page.tsx:44"
     },
     {
       "from": "route:/admin/kafarm/troubleshooting",
@@ -6108,12 +6385,10 @@
         {
           "id": "customer_confirmation",
           "label": "Customer confirmation or dispute",
-          "present": false
+          "present": true
         }
       ],
-      "missing": [
-        "Customer confirmation or dispute"
-      ]
+      "missing": []
     },
     {
       "id": "kyc",
@@ -6311,6 +6586,24 @@
       "currentReleaseStatus": "NOT_RUN_CURRENT_RELEASE"
     },
     {
+      "name": "test:recovery-guard",
+      "command": "node --test scripts/qa/094-recovery-guard-contract.test.mjs scripts/qa/093-support-recovery.test.mjs scripts/qa/support-outbox.test.mjs scripts/qa/support-reply-timeout.test.mjs",
+      "exists": true,
+      "currentReleaseStatus": "NOT_RUN_CURRENT_RELEASE"
+    },
+    {
+      "name": "test:e2e:recovery-guard",
+      "command": "node scripts/qa/recovery-guard-e2e.mjs",
+      "exists": true,
+      "currentReleaseStatus": "NOT_RUN_CURRENT_RELEASE"
+    },
+    {
+      "name": "test:pages:local",
+      "command": "node scripts/qa/local-page-smoke.mjs",
+      "exists": true,
+      "currentReleaseStatus": "NOT_RUN_CURRENT_RELEASE"
+    },
+    {
       "name": "test:workflow",
       "command": "node scripts/qa/workflow-reconciliation.mjs",
       "exists": true,
@@ -6389,5 +6682,5 @@
     "A test script existing does not mean it passed on this commit or deployment.",
     "The generated map contains source references, not unrestricted runtime source-code access."
   ],
-  "fingerprint": "c2d88132f7aecd2e213befed9978c6cb3b3cb55e8b7505b43198cb8e66b6a5f9"
+  "fingerprint": "c868574627eaefab60c016c3b278c155b2773541dd38daf45612bfcc60b37658"
 }
