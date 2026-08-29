@@ -146,12 +146,12 @@ function Info({ label, value }: { label: string; value: string }) {
 function AdminVerificationShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const links = [
-    ["Dashboard", "/admin"],
-    ["Customer Requests", "/admin/customer-requests"],
-    ["Caretaker Management", "/admin/caretaker-management"],
-    ["Farm Operations", "/admin/farm-operations"],
-    ["Issue Management", "/admin/issue-management"],
     ["Account Verification", "/admin/account-verification"],
+    ["Orders & Payments", "/admin/customer-requests/payment"],
+    ["Care Operations", "/admin/customer-requests/task"],
+    ["Selling & Payout", "/admin/selling-payout"],
+    ["Support", "/admin/live-chat"],
+    ["KaFarm", "/admin/kafarm"],
   ];
   async function logout() {
     await supabase.auth.signOut();
@@ -163,7 +163,7 @@ function AdminVerificationShell({ children }: { children: React.ReactNode }) {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
         <Link href="/admin" className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl">FC</span><span><b className="block">FarmConnect</b><small className="font-bold text-white/80">Account Verification</small></span></Link>
         <nav className="hidden items-center gap-1 lg:flex">{links.map(([label,href])=><Link key={href} href={href} className={`rounded-xl px-3 py-2 text-xs font-black transition hover:bg-white/15 ${href === "/admin/account-verification" ? "bg-white/20" : ""}`}>{label}</Link>)}</nav>
-        <div className="flex gap-2"><Link href="/admin/kafarm" className="rounded-xl bg-white/90 px-3 py-2 text-xs font-black text-[#075c3a]">KaFarm</Link><button type="button" onClick={logout} className="rounded-xl bg-white/90 px-3 py-2 text-xs font-black text-[#075c3a]">Logout</button></div>
+        <button type="button" onClick={logout} className="rounded-xl bg-white/90 px-3 py-2 text-xs font-black text-[#075c3a]">Logout</button>
       </div>
     </header>
     <div className="mx-auto max-w-7xl px-4 py-5">{children}</div>
