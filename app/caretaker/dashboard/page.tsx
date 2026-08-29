@@ -1,2 +1,3 @@
 ﻿import { CaretakerOperationChecker } from "@/lib/farmconnect-v1";
-export default CaretakerOperationChecker;
+import { redirect } from "next/navigation";
+export default function Page(){ redirect("/caretaker/tasks"); }

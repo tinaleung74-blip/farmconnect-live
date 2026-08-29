@@ -115,9 +115,9 @@ const rules: Rule[] = [
     intent: "farm_buy",
     risk: "low",
     keywords: [/farm buy|buy|bili|cart|product|feed|feeds|vitamin|vaccine|supplement|electrolyte|equipment|sisiw|chick/i],
-    reply: "For Farm Buy: pili ng product, plus/minus quantity, check Cart, then Buy kapag enough ang FC balance. Kung kulang funds, Add Cash muna; cart should stay saved.",
+    reply: "For Add Rooster: pumili ng isang available rooster, piliin kung care later o skip muna, then submit payment proof. Admin approval creates the owned rooster; care starts only after its own approved payment and assignment.",
     routes: { customer: "/customer-v2/add-rooster" },
-    followUp: ["Anong product?", "Ilang quantity?", "Kulang ba wallet balance?", "May item bang hindi pumasok sa inventory?"],
+    followUp: ["Aling rooster ang pinili?", "Rooster only o may Monthly Care preference?", "Na-submit ba ang payment proof?", "Pending pa ba ang admin approval?"],
   },
   {
     intent: "cashin",
@@ -188,24 +188,24 @@ const rules: Rule[] = [
     intent: "rooster_status",
     risk: "low",
     keywords: [/rooster|manok|chicken|bantay|red ace|thunder|alaga|kumusta manok|status ng manok|yung manok ko|manok.*(kumusta|ano na|buhay|okay|ayos|alaga)/i],
-    reply: "For rooster status, open My Roosters first, then Care Logs for dated updates, proof photos, product cost, labor cost, and caretaker notes.",
-    routes: { customer: "/customer/roosters" },
+    reply: "Open your rooster, then Rooster Diary para makita ang dated care times, photos, ginawa, findings, coverage, at status.",
+    routes: { customer: "/customer-v2/roosters" },
     followUp: ["Aling rooster?", "Status ba, care logs, or value estimate ang hinahanap?"],
   },
   {
     intent: "care_request",
     risk: "medium",
     keywords: [/care request|farm request|request care|vitamins|premium feed|health check|vet|photo update|video proof|vaccine|weight check|pacheck|pa check|pakain|painom|pavideo|papicture|paalaga/i],
-    reply: "For care request: choose rooster, choose service, add note, then submit/pay. Admin assigns to caretaker, then caretaker uploads proof for review.",
+    reply: "Open the Rooster Diary, choose Daily or Monthly Care, review the package and pay. Admin assigns the approved care to a caretaker, then reviews the daily report before it appears in the Diary.",
     evidence: ["care request", "payment/invoice", "customer note", "assigned caretaker", "task proof"],
-    routes: { customer: "/customer/farm-requests", admin: "/admin/customer-requests/care" },
+    routes: { customer: "/customer-v2/roosters", admin: "/admin/customer-requests/payment" },
   },
   {
     intent: "care_logs",
     risk: "low",
     keywords: [/care log|care logs|history|records|update history|ginawa|proof history|timeline/i],
-    reply: "Care Logs show dated records: time, caretaker, proof, item used, product cost, labor cost, and review status.",
-    routes: { customer: "/customer/care-logs" },
+    reply: "The Rooster Diary shows each approved daily report: time, care performed, photo, findings, and current coverage.",
+    routes: { customer: "/customer-v2/roosters/diary" },
   },
   {
     intent: "sell_rooster",
@@ -631,15 +631,15 @@ function getOperatorRunbook(message: string, role: KaFarmRole, analysis: KaFarmA
     case "farm_buy":
     case "cart_inventory":
       return {
-        mode: "Manual Payment / Farm Buy Mode",
-        route: role === "admin" ? "/admin/customer-requests" : "/customer/payment?type=farm_buy",
+        mode: "Rooster / Care Payment Mode",
+        route: role === "admin" ? "/admin/customer-requests/payment" : "/customer-v2/payment?type=farm_buy",
         buttons: ["View Receipt", "View Invoice", "Approve", "Reject With Notes", "Submit Decision"],
         steps: [
-          "Customer selects items and submits payment proof/reference.",
+          "Customer selects one rooster, chooses a care preference, and submits payment proof/reference.",
           "Admin opens payment request and views uploaded receipt.",
           "Admin checks method, amount, reference number, and cart items.",
           "If valid, admin approves and system creates invoice.",
-          "Approved Farm Buy adds rooster/product inventory to customer.",
+          "Approved rooster payment creates the owned rooster exactly once.",
           "If rejected, customer sees notes and can resubmit.",
         ],
         evidence: ["receipt upload", "reference number", "payment method", "cart items", "invoice", "admin decision log"],
@@ -651,7 +651,7 @@ function getOperatorRunbook(message: string, role: KaFarmRole, analysis: KaFarmA
     case "withdraw":
       return {
         mode: "Withdrawal Review Mode",
-        route: role === "admin" ? "/admin/customer-requests" : "/customer/withdraw",
+        route: role === "admin" ? "/admin/customer-requests/withdraw" : "/customer-v2/withdraw",
         buttons: ["View Withdrawal Method", "Upload Payout Receipt", "View Invoice", "Approve", "Reject With Notes"],
         steps: [
           "Check customer KYC and payout account.",
@@ -694,15 +694,15 @@ function getOperatorRunbook(message: string, role: KaFarmRole, analysis: KaFarmA
     case "wrong_rooster":
       return {
         mode: "Care Task / Caretaker Ops Mode",
-        route: role === "caretaker" ? "/caretaker/tasks" : "/admin/customer-requests",
+        route: role === "caretaker" ? "/caretaker/tasks" : "/admin/customer-requests/task",
         buttons: ["Assign Caretaker", "Request Backjob", "View Proof", "Approve Task", "Reject With Notes"],
         steps: [
           "Customer care request must be paid/approved first.",
           "Admin assigns caretaker to the approved task.",
           "Caretaker verifies rooster QR/serial before upload.",
-          "Caretaker submits proof, notes, and exact feed kg if feed was used.",
+          "Caretaker records each care time, work, photo, findings, and exact feed kg if feed was used.",
           "Admin approves or rejects task proof.",
-          "Approved proof becomes customer care log and evidence record.",
+          "Approved daily report becomes a customer Rooster Diary update and evidence record.",
         ],
         evidence: ["care request", "rooster QR/serial", "assigned caretaker", "proof photo/video", "caretaker notes", "feed kg used", "admin decision"],
         buddyHandoff: "Send request id, rooster, caretaker, submitted proof, admin action, and customer-visible care log result.",

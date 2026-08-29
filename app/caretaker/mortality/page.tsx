@@ -1,2 +1,3 @@
 import { CaretakerChat } from "@/lib/farmconnect-v1";
-export default CaretakerChat;
+import { redirect } from "next/navigation";
+export default function Page(){ redirect("/caretaker/chat"); }

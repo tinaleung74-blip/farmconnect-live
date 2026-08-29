@@ -1,6 +1,5 @@
-import { Suspense } from "react";
-import { FarmRequests } from "@/lib/farmconnect-v1";
+import { redirect } from "next/navigation";
 
 export default function CustomerCareV2Page() {
-  return <Suspense fallback={null}><FarmRequests /></Suspense>;
+  redirect("/customer-v2/roosters");
 }

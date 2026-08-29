@@ -202,19 +202,17 @@ const nav = {
     ["Settings", "/customer-v2/settings", "settings"],
   ],
   caretaker: [
-    ["Active Tasks", "/caretaker/tasks", "clipboard"],
-    ["Completed", "/caretaker/completed", "check"],
-    ["Chat Admin", "/caretaker/chat", "chat"],
+    ["Today's Care", "/caretaker/tasks", "clipboard"],
+    ["Care History", "/caretaker/completed", "check"],
+    ["Support", "/caretaker/chat", "chat"],
     ["Profile", "/caretaker/profile", "user"],
   ],
   admin: [
-    ["Dashboard", "/admin", "home"],
-    ["Customer Requests", "/admin/customer-requests", "clipboard"],
-    ["Caretaker Management", "/admin/caretaker-management", "user"],
-    ["Farm Operations", "/admin/farm-operations", "rooster"],
-    ["Issue Management", "/admin/issue-management", "alert"],
     ["Account Verification", "/admin/account-verification", "shield"],
-    ["Evidence Logs", "/admin/evidence", "file"],
+    ["Rooster & Care Payments", "/admin/customer-requests/payment", "coins"],
+    ["Care Tasks & Updates", "/admin/customer-requests/task", "clipboard"],
+    ["Withdrawals", "/admin/customer-requests/withdraw", "wallet"],
+    ["Support", "/admin/live-chat", "chat"],
     ["KaFarm", "/admin/kafarm", "support"],
   ],
 } as const;
@@ -1651,6 +1649,31 @@ export function CustomerRoostersResponsive() {
   );
 }
 
+type PendingRoosterOrder = { id: string; name: string; breed: string; image: string; amount: number; care: "skip" | "monthly"; status: string };
+
+function AddRoosterOrderModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitted: (order: PendingRoosterOrder) => void }) {
+  const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
+  const [catalog, setCatalog] = useState<FarmProductCard[]>([]);
+  const [selected, setSelected] = useState<FarmProductCard | null>(null);
+  const [care, setCare] = useState<"skip" | "monthly">("skip");
+  const [method, setMethod] = useState(paymentReceivers[0]);
+  const [sender, setSender] = useState("");
+  const [reference, setReference] = useState("");
+  const [receipt, setReceipt] = useState("");
+  const [message, setMessage] = useState("Choose one available rooster.");
+  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => { let mounted = true; getFarmProducts().then((rows) => { if (!mounted) return; const products = rows.filter((row) => row.product_type === "breed_chick" || normalizeFarmProductCategory(String(row.category || "")) === "Breed Chicks").map((row) => ({ id: row.id, name: normalizeFarmProductName(row.name, "Breed Chicks"), category: "Breed Chicks", unit: row.unit_label || "per rooster", price: Number(row.unit_price || 0), stock: Number(row.stock_quantity || 0), image: row.image_url || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg", product_type: row.product_type, stage: row.stage, bloodline: row.bloodline, breed: row.breed, product_metadata: row.product_metadata })); setCatalog(products); setSelected(products[0] || null); setMessage(products.length ? "Choose one available rooster." : "No rooster is available for a real order right now."); }).catch(() => setMessage("The live rooster catalog could not load. Try again before submitting an order.")); return () => { mounted = false; }; }, []);
+  function chooseReceipt(file?: File) { if (!file) return; const reader = new FileReader(); reader.onload = () => setReceipt(String(reader.result || "")); reader.readAsDataURL(file); }
+  async function submitOrder() { if (!selected || submitting) return; if (sender.trim().length < 3 || reference.trim().length < 4 || !receipt) return setMessage("Complete sender name, reference number, and receipt image."); try { setSubmitting(true); setMessage("Sending your rooster order for Admin review..."); const profile = await getCurrentProfile(); if (!profile) throw new Error("LOGIN_REQUIRED"); if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selected.id)) throw new Error("This preview rooster cannot create a real order. Reload the live catalog."); await saveCartItem(selected.id, 1, selected.price, { productType: "breed_chick", bloodline: selected.bloodline || selected.breed || null, breed: selected.breed || selected.bloodline || null, productName: selected.name }); const summary = { source: "Add Rooster", lines: [{ id: selected.id, name: selected.name, quantity: 1, unit_price: selected.price, total: selected.price, category: "Breed Chicks" }], total: selected.price, care_preference: care, carePurpose: null, previewOnly: false }; const operation = await pendingOperation(`payment.${profile.id}.farm_buy.active-cart`, { context: summary, method: method.method, receiver: method.account, sender, reference, receipt }); const result = await submitManualPaymentRequest({ sourceType: "farm_buy", sourceRef: "active-cart", amountExpected: selected.price, summary, paymentMethod: method.method, receiverAccount: method.account, senderName: sender, referenceNumber: reference, receiptImageUrl: receipt, idempotencyKey: operation.key }); localStorage.removeItem(operation.storageKey); onSubmitted({ id: result.id, name: selected.name, breed: selected.bloodline || selected.breed || selected.name, image: selected.image, amount: selected.price, care, status: "for_review" }); setStage(3); setMessage(result.duplicate ? "This order was already received. No duplicate was created." : "Purchase submitted. It is now waiting for Admin verification."); } catch (error) { setMessage(`Order not confirmed: ${readableAppError(error) || "Check the same order details and try again."}`); } finally { setSubmitting(false); } }
+  const canContinue = stage === 0 ? Boolean(selected) : stage === 1 ? true : sender.trim().length >= 3 && reference.trim().length >= 4 && Boolean(receipt);
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-[#041f22]/70 p-3 backdrop-blur-sm" onClick={() => !submitting && onClose()}><section className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-[28px] bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}><header className="sticky top-0 z-10 flex items-center justify-between border-b border-[#dce7df] bg-white px-5 py-4"><div><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#087f83]">Add Rooster</p><h2 className="text-2xl font-black">{stage === 0 ? "Choose a rooster breed" : stage === 1 ? "Add care now?" : stage === 2 ? "Submit payment proof" : "Purchase submitted"}</h2></div><button type="button" onClick={onClose} disabled={submitting} className="grid h-10 w-10 place-items-center rounded-full bg-[#edf3ef] font-black">×</button></header><div className="p-5"><div className="mb-5 grid grid-cols-4 gap-2">{[0,1,2,3].map((item) => <span key={item} className={`h-2 rounded-full ${item <= stage ? "bg-[#087f83]" : "bg-[#e5ece7]"}`} />)}</div>
+    {stage === 0 && <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{catalog.map((product) => <button key={product.id} type="button" onClick={() => setSelected(product)} className={`overflow-hidden rounded-2xl border-2 text-left ${selected?.id === product.id ? "border-[#087f83] bg-[#f0faf4]" : "border-[#dce7df]"}`}><img src={product.image} alt={product.name} className="h-36 w-full object-cover" /><div className="p-3"><b>{product.name}</b><small className="mt-1 block font-bold text-[#65746b]">{product.bloodline || product.breed || "Farm breed"}</small><strong className="mt-2 block text-[#07563f]">{peso(product.price)}</strong></div></button>)}{!catalog.length && <p className="sm:col-span-2 rounded-2xl bg-amber-50 p-5 font-bold text-amber-900">No live rooster order is available.</p>}</div>}
+    {stage === 1 && <div><p className="mb-4 text-sm font-bold text-[#65746b]">Daily Care can be ordered later. Monthly Care starts only after its own verified payment and ownership approval.</p><div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={() => setCare("skip")} className={`rounded-2xl border-2 p-5 text-left ${care === "skip" ? "border-[#087f83] bg-[#f0faf4]" : "border-[#dce7df]"}`}><b className="text-xl">Skip for now</b><p className="mt-2 text-sm font-bold text-[#65746b]">Buy the rooster only. Choose care later from this screen.</p><strong className="mt-4 block text-2xl">₱0</strong></button><button type="button" onClick={() => setCare("monthly")} className={`rounded-2xl border-2 p-5 text-left ${care === "monthly" ? "border-[#d6a600] bg-[#fff7d9]" : "border-[#dce7df]"}`}><b className="text-xl">30-Day Monthly Care</b><p className="mt-2 text-sm font-bold text-[#65746b]">Feed, water, cleaning, observation, caretaker work, photos, and Diary updates.</p><strong className="mt-4 block text-2xl">₱5,000 after approval</strong></button></div></div>}
+    {stage === 2 && <div className="space-y-4"><div className="rounded-2xl bg-[#f5f8f5] p-4"><div className="flex justify-between gap-3"><b>{selected?.name}</b><strong>{peso(selected?.price || 0)}</strong></div><p className="mt-1 text-sm font-bold text-[#65746b]">{care === "monthly" ? "Monthly Care preference; separate payment after ownership approval." : "Rooster only"}</p></div><div className="grid gap-3 sm:grid-cols-3">{paymentReceivers.map((row) => <button key={row.method} type="button" onClick={() => setMethod(row)} className={`rounded-2xl border-2 p-3 text-left ${method.method === row.method ? "border-[#087f83] bg-[#dff5f3]" : "border-[#dce7df]"}`}><b>{row.method}</b><small className="block font-bold text-[#65746b]">{row.detail}</small></button>)}</div><div className="grid gap-3 sm:grid-cols-2"><input value={sender} onChange={(event) => setSender(event.target.value)} placeholder="Sender name" className="rounded-xl border border-[#cfdcd3] p-3 font-bold" /><input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Reference number" className="rounded-xl border border-[#cfdcd3] p-3 font-bold" /><label className="cursor-pointer rounded-xl border-2 border-dashed border-[#cfdcd3] p-4 text-center font-black sm:col-span-2"><input type="file" accept="image/*" className="hidden" onChange={(event) => chooseReceipt(event.target.files?.[0])} />{receipt ? "Receipt attached" : "Upload receipt image"}</label>{receipt && <img src={receipt} alt="Receipt preview" className="max-h-52 w-full rounded-xl object-contain sm:col-span-2" />}</div></div>}
+    {stage === 3 && <div className="py-10 text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#dff5f3] text-4xl font-black text-[#087f83]">✓</div><h3 className="mt-4 text-3xl font-black">Purchase Pending</h3><p className="mx-auto mt-3 max-w-lg font-bold text-[#65746b]">The order now appears on this rooster screen. Care and Sell stay locked until Admin approves ownership.</p></div>}
+    <p role="status" className="mt-5 rounded-2xl bg-[#fff7d9] p-3 text-sm font-bold text-[#6f6548]">{message}</p></div><footer className="sticky bottom-0 flex justify-end gap-3 border-t border-[#dce7df] bg-white px-5 py-4">{stage > 0 && stage < 3 && <button type="button" onClick={() => setStage((stage - 1) as 0 | 1 | 2)} disabled={submitting} className="rounded-xl bg-[#edf3ef] px-5 py-3 font-black">Back</button>}{stage < 2 && <button type="button" disabled={!canContinue} onClick={() => setStage((stage + 1) as 1 | 2)} className="rounded-xl bg-[#087f83] px-5 py-3 font-black text-white disabled:opacity-40">Continue</button>}{stage === 2 && <button type="button" disabled={!canContinue || submitting} onClick={() => void submitOrder()} className="rounded-xl bg-[#f4c430] px-5 py-3 font-black text-[#041f22] disabled:opacity-40">{submitting ? "Submitting..." : "Submit Purchase"}</button>}{stage === 3 && <button type="button" onClick={onClose} className="rounded-xl bg-[#087f83] px-5 py-3 font-black text-white">Done</button>}</footer></section></div>;
+}
+
 export function CustomerRoostersV2() {
   const [roosters, setRoosters] = useState<RoosterCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1662,12 +1685,14 @@ export function CustomerRoostersV2() {
   const [renaming, setRenaming] = useState(false);
   const [renameError, setRenameError] = useState("");
   const [careChoice, setCareChoice] = useState<{ id: string; type: "daily" | "monthly" } | null>(null);
+  const [addOrderOpen, setAddOrderOpen] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState<PendingRoosterOrder[]>([]);
   const railRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews()])
-      .then(([items, careOverviews]) => {
+    Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews(), getCustomerManualPaymentRequests()])
+      .then(([items, careOverviews, payments]) => {
         if (!mounted) return;
         setLoadError("");
         const careByAnimal = new Map(careOverviews.map((overview) => [overview.customerAnimalId, overview]));
@@ -1676,6 +1701,7 @@ export function CustomerRoostersV2() {
           const metadata = (row.ownership_metadata || {}) as Record<string, unknown>;
           return { id: row.id, name: row.animal_name || `${breed} Rooster`, breed, tag: row.animal_code || `FC-${index + 1}`, stage: row.acquired_from === "farm_buy" ? "Growing" : "Owned Rooster", status: row.status === "sold" ? "Sold" : "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: row.approved_sale_price == null ? "Waiting for reviewed price" : peso(Number(row.approved_sale_price)), image: String(metadata.image_url || metadata.photo_url || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg"), pen: String(metadata.pen || metadata.pen_name || "Pending assignment"), caretaker: String(metadata.caretaker_name || "Pending assignment"), saleStatus: row.sale_status || "not_listed", approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price), ownershipMetadata: metadata, careOverview: careByAnimal.get(row.id) || null } as RoosterCard;
         }));
+        setPendingOrders((payments || []).filter((row: any) => String(row.source_type || "") === "farm_buy" && ["for_review", "needs_info"].includes(String(row.status || "for_review"))).map((row: any) => { const summary = row.summary || {}; const line = Array.isArray(summary.lines) ? summary.lines[0] || {} : {}; return { id: row.id, name: String(line.name || "Rooster order"), breed: String(line.bloodline || line.breed || line.name || "Selected breed"), image: String(line.image || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg"), amount: Number(row.amount_expected || line.total || 0), care: String(summary.care_preference || "skip") === "monthly" ? "monthly" : "skip", status: String(row.status || "for_review") } as PendingRoosterOrder; }));
       })
       .catch((error: unknown) => {
         if (!mounted) return;
@@ -1738,8 +1764,8 @@ export function CustomerRoostersV2() {
         </div>
       </header>
       <section className="mx-auto max-w-[1180px] px-3 py-4 sm:px-5 sm:py-6 lg:px-6 lg:py-8">
-        <div className="mb-4 grid gap-4 rounded-[22px] border border-[#f4c430]/55 border-l-4 border-l-[#c9232d] bg-[#fffdf7]/96 p-4 shadow-xl sm:grid-cols-[1fr_auto] sm:items-center sm:rounded-[26px] sm:p-6"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#087f83]">Your farm assets</p><h1 className="mt-1 text-3xl font-black text-[#041f22] sm:text-4xl">Your Roosters</h1><p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-[#536a68]">Ownership, growth, care, QR, logs, and selling journey in one place.</p></div><button type="button" onClick={() => setCareChoice({ id: "__add__", type: "daily" })} className="min-h-12 w-full rounded-xl bg-[#f4c430] px-5 py-3 text-sm font-black text-[#041f22] shadow-[0_8px_18px_rgba(244,196,48,.25)] sm:w-auto">+ Add Rooster</button></div>
-        {careChoice?.id === "__add__" && <div className="mb-4 rounded-[24px] border border-emerald-200 bg-white p-5 shadow-xl"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#24724d]">Add a rooster</p><h2 className="mt-1 text-2xl font-black">Choose your rooster, then choose care</h2><p className="mt-2 text-sm font-bold text-[#65746b]">The next screen shows available breeds, Daily Care or Monthly Care, and one combined payment review.</p></div><button type="button" onClick={() => setCareChoice(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black">×</button></div><Link href="/customer-v2/add-rooster?category=Breed%20Chicks" className="mt-4 inline-flex rounded-xl bg-[#0a7654] px-5 py-3 text-sm font-black text-white">Choose Rooster Breed</Link></div>}
+        <div className="mb-4 grid gap-4 rounded-[22px] border border-[#f4c430]/55 border-l-4 border-l-[#c9232d] bg-[#fffdf7]/96 p-4 shadow-xl sm:grid-cols-[1fr_auto] sm:items-center sm:rounded-[26px] sm:p-6"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#087f83]">Your farm assets</p><h1 className="mt-1 text-3xl font-black text-[#041f22] sm:text-4xl">Your Roosters</h1><p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-[#536a68]">Ownership, growth, care, QR, logs, selling, and new orders stay on this screen.</p></div><button type="button" onClick={() => setAddOrderOpen(true)} className="min-h-12 w-full rounded-xl bg-[#f4c430] px-5 py-3 text-sm font-black text-[#041f22] shadow-[0_8px_18px_rgba(244,196,48,.25)] sm:w-auto">+ Add Rooster</button></div>
+        {pendingOrders.length > 0 && <section className="mb-4 grid gap-3 sm:grid-cols-2">{pendingOrders.map((order) => <article key={order.id} className="flex gap-3 rounded-[22px] border border-[#f0cd58] bg-[#fff8da] p-4 shadow-lg"><img src={order.image} alt="" className="h-20 w-20 rounded-2xl object-cover" /><div className="min-w-0"><span className="rounded-full bg-[#f4c430] px-2 py-1 text-[9px] font-black uppercase">Purchase Pending</span><h2 className="mt-2 truncate text-xl font-black">{order.name}</h2><p className="text-xs font-bold text-[#6f6548]">{peso(order.amount)} · {order.care === "monthly" ? "Monthly Care preference" : "Rooster only"}</p><p className="mt-2 text-xs font-black text-[#087f83]">Waiting for Admin verification</p></div></article>)}</section>}
         {loading && <div className="rounded-3xl bg-white p-10 text-center font-black shadow-xl">Loading your rooster records...</div>}
         {!loading && loadError && <div role="alert" className="mb-4 rounded-3xl border border-amber-300 bg-amber-50 p-5 shadow-xl"><h2 className="text-lg font-black text-amber-950">We could not load your rooster records yet.</h2><p className="mt-2 text-sm font-bold text-amber-900">{loadError}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-xl bg-amber-300 px-4 py-2 text-sm font-black text-amber-950">Try Again</button></div>}
         {!loading && !loadError && roosters.length === 0 && <div className="rounded-3xl border border-dashed border-[#b9cdbf] bg-white p-10 text-center shadow-xl"><img src="/farmconnect/icons/my-rooster.png" alt="" className="mx-auto h-24 w-24 object-contain" /><h2 className="mt-3 text-2xl font-black">No approved rooster yet</h2><p className="mt-2 font-bold text-[#65746b]">Use Add Rooster above. Your rooster appears here after Admin verifies the payment and ownership.</p></div>}
@@ -1766,6 +1792,7 @@ export function CustomerRoostersV2() {
       </section>
       {renameRooster && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => !renaming && setRenameRooster(null)}><form className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); void saveRoosterName(); }}><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-[#087f83]">Rooster name</p><h2 className="mt-1 text-2xl font-black">Rename your rooster</h2></div><button type="button" disabled={renaming} onClick={() => setRenameRooster(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black disabled:opacity-50">×</button></div><input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} maxLength={40} placeholder="Enter rooster name" className="mt-5 w-full rounded-xl border border-[#dce7df] px-4 py-3 font-bold outline-none focus:border-[#087f83]" />{renameError && <p role="alert" className="mt-2 text-sm font-bold text-red-700">{renameError}</p>}<button type="submit" disabled={renaming || renameValue.trim().length < 2} className="mt-4 w-full rounded-xl bg-[#f4c430] px-4 py-3 font-black text-[#041f22] disabled:opacity-50">{renaming ? "Saving..." : "Save Name"}</button></form></div>}
       {qrRooster && <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setQrRooster(null)}><div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex justify-between"><h2 className="text-2xl font-black">{qrRooster.name} QR</h2><button type="button" onClick={() => setQrRooster(null)} className="rounded-full bg-[#edf3ef] px-3 py-1 font-black">×</button></div><div className="mx-auto mt-5 inline-block rounded-2xl border border-[#dce7df] bg-white p-4"><QRCodeSVG value={qrValue(qrRooster)} size={220} level="H" marginSize={2} /></div><p className="mt-4 text-sm font-bold text-[#65746b]">The assigned caretaker scans this QR to verify the correct rooster before submitting work.</p></div></div>}
+      {addOrderOpen && <AddRoosterOrderModal onClose={() => setAddOrderOpen(false)} onSubmitted={(order) => setPendingOrders((current) => current.some((item) => item.id === order.id) ? current : [order, ...current])} />}
     </main>
   );
 }
@@ -2301,7 +2328,6 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 export function FarmBuy() {
   const router = useRouter();
-  const [cat, setCat] = useState("All");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [liveProducts, setLiveProducts] = useState<FarmProductCard[]>(products);
   const [marketNote, setMarketNote] = useState("Add items to Cart first. When your wallet is enough, tap Buy.");
@@ -2312,15 +2338,15 @@ export function FarmBuy() {
     qty: string;
     reason: string;
   } | null>(null);
-  const [balance, setBalance] = useState(0);
+  const [wizardStep, setWizardStep] = useState<0 | 1>(0);
+  const [careOption, setCareOption] = useState<"skip" | "monthly">("skip");
 
   useEffect(() => {
     let mounted = true;
     getCurrentProfile()
       .then((profile) => {
         if (!mounted) return;
-        if (profile) setBalance(Number(profile.wallet_balance || 0));
-        else setMarketNote("Please login so Farm Buy can read your wallet and save your receipt.");
+        if (!profile) setMarketNote("Please login so Farm Buy can save your order and receipt.");
       })
       .catch(() => setMarketNote("Please login so Farm Buy can read your wallet and save your receipt."));
     return () => {
@@ -2394,8 +2420,7 @@ export function FarmBuy() {
   }, []);
 
   const roosterProducts = liveProducts.filter((p) => p.category === "Breed Chicks" || p.product_type === "breed_chick");
-  const cats = ["All", ...Array.from(new Set(roosterProducts.map((p) => p.category)))];
-  const visible = cat === "All" ? roosterProducts : roosterProducts.filter((p) => p.category === cat);
+  const visible = roosterProducts;
   const cartEntries = Object.entries(cart)
     .filter(([, qty]) => qty > 0)
     .map(([id, qty]) => ({
@@ -2403,14 +2428,7 @@ export function FarmBuy() {
       qty,
     }))
     .filter((row): row is { product: FarmProductCard; qty: number } => Boolean(row.product));
-  const itemCount = cartEntries.reduce((sum, row) => sum + row.qty, 0);
   const total = cartEntries.reduce((sum, row) => sum + row.product.price * row.qty, 0);
-
-  function setQty(productId: string, qty: number) {
-    const next = { ...cart, [productId]: Math.max(0, qty) };
-    if (next[productId] === 0) delete next[productId];
-    setCart(next);
-  }
 
   async function buyCart() {
     if (total <= 0) {
@@ -2445,6 +2463,7 @@ export function FarmBuy() {
           category: row.product.category,
         })),
         total,
+        care_preference: careOption,
         carePurpose,
         previewOnly: hasPreviewProduct,
       };
@@ -2466,113 +2485,48 @@ export function FarmBuy() {
 
   return (
     <Shell role="customer" title="Add Rooster">
-      <PageTitle title="Add Rooster" text="Choose your rooster, then continue to payment." icon="bag" />
-      <KaFarm>{marketNote}</KaFarm>
-      {carePurpose && (
-        <Card className="mb-5 border-2 border-amber-300 bg-amber-50">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-black">Linked Care Purchase</h2>
-              <p className="mt-1 text-sm font-bold text-[#667267]">
-                {carePurpose.item} ({carePurpose.qty}) for {carePurpose.rooster}
-              </p>
-              <p className="mt-1 text-sm text-[#667267]">
-                Caretaker: {carePurpose.caretaker} - {carePurpose.reason}
-              </p>
-            </div>
-            <button onClick={() => setCarePurpose(null)} className="rounded-xl bg-white px-4 py-3 font-black">
-              Clear Link
-            </button>
+      <section className="mx-auto max-w-6xl space-y-5">
+        <header className="overflow-hidden rounded-[28px] border border-[#f4c430]/55 border-l-4 border-l-[#c9232d] bg-[#fffdf7]/96 p-5 shadow-xl sm:p-7">
+          <p className="text-xs font-black uppercase tracking-[.16em] text-[#087f83]">Add Rooster</p>
+          <h1 className="mt-1 text-3xl font-black text-[#041f22] sm:text-4xl">Choose your rooster</h1>
+          <p className="mt-2 max-w-2xl text-sm font-bold text-[#536a68]">Choose one breed, decide if you want Monthly Care later, then continue to payment.</p>
+          <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-black sm:max-w-xl">
+            {["1 · Rooster", "2 · Care", "3 · Payment"].map((label, index) => <div key={label} className={`rounded-xl px-2 py-3 ${index <= wizardStep ? "bg-[#087f83] text-white" : "bg-[#edf3ef] text-[#65746b]"}`}>{label}</div>)}
           </div>
-        </Card>
-      )}
-      <div className="fc-farmbuy-layout mt-5 grid min-w-0 max-w-full gap-5 overflow-hidden lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="fc-farmbuy-products min-w-0 max-w-full">
-          <div className="fc-scroll-row mb-4 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap">
-            {cats.map((c) => (
-              <button key={c} onClick={() => setCat(c)} className={"shrink-0 rounded-full px-4 py-2 text-sm font-black " + (cat === c ? "bg-[#1f6b45] text-white" : "bg-white")}>
-                {c}
-              </button>
-            ))}
-          </div>
-          <div className="fc-farmbuy-product-grid grid gap-3 md:max-h-[760px] md:grid-cols-2 md:overflow-y-auto md:pr-2 xl:grid-cols-3">
-            {visible.map((p) => (
-              <section key={p.id} className={"fc-farmbuy-product-card overflow-hidden rounded-2xl border bg-white shadow-sm transition " + ((cart[p.id] || 0) > 0 ? "border-[#1f6b45] ring-2 ring-emerald-100" : "border-[#e3ded0]")}>
-                <div className="fc-farmbuy-product-media relative">
-                  <img src={p.image} alt="" className="fc-farmbuy-product-image h-44 w-full object-cover" />
-                  <Badge tone={(cart[p.id] || 0) > 0 ? "good" : "neutral"}>{p.category}</Badge>
+        </header>
+
+        <p role="status" className="rounded-2xl border border-[#087f83]/15 bg-[#dff5f3] px-4 py-3 text-sm font-bold text-[#063b3f]">{marketNote}</p>
+
+        {wizardStep === 0 && <section className="rounded-[28px] bg-white p-4 shadow-xl sm:p-6">
+          <div><p className="text-xs font-black uppercase tracking-[.14em] text-[#087f83]">Step 1 · Breed</p><h2 className="mt-1 text-2xl font-black">Choose a rooster breed</h2><p className="mt-2 text-sm font-bold text-[#65746b]">Available breeds and prices come from the live farm catalog.</p></div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visible.map((product) => {
+              const selected=(cart[product.id]||0)>0;
+              const metadata=product.product_metadata||{};
+              return <button type="button" key={product.id} onClick={()=>{setCart({[product.id]:1});setMarketNote(`${product.name} selected. Continue when ready.`);}} className={`overflow-hidden rounded-[22px] border-2 bg-[#fffdf7] text-left transition ${selected?"border-[#087f83] ring-4 ring-[#087f83]/10":"border-[#e5dfd0] hover:border-[#f4c430]"}`}>
+                <img src={product.image} alt={product.name} className="h-48 w-full object-cover" />
+                <div className="p-4"><div className="flex items-start justify-between gap-3"><div><b className="text-lg text-[#041f22]">{product.name}</b><p className="mt-1 text-sm font-black text-[#087f83]">{product.bloodline||product.breed||"Farm breed"}</p></div>{selected&&<span className="rounded-full bg-[#087f83] px-3 py-1 text-xs font-black text-white">Selected</span>}</div>
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold text-[#536a68]"><span className="rounded-xl bg-[#f4f2e8] p-2">{String(metadata.age_days||metadata.age||"Farm age")}</span><span className="rounded-xl bg-[#f4f2e8] p-2">{String(metadata.weight||metadata.weight_kg||"Weight verified later")}</span></div>
+                  <div className="mt-4 flex items-center justify-between"><strong className="text-2xl">{peso(product.price)}</strong><span className="text-xs font-black text-[#65746b]">{product.stock} available</span></div>
                 </div>
-                <div className="fc-farmbuy-product-body p-4">
-                  <h3 className="text-base font-black leading-tight sm:text-lg">{p.name}</h3>
-                  {(p.bloodline || p.breed) && <p className="mt-1 text-sm font-black text-[#1f6b45]">{p.bloodline || p.breed}</p>}
-                  <div className="mt-3 flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-2xl font-black">{peso(p.price)}</p>
-                      <p className="text-sm font-bold text-[#667267]">{p.unit}</p>
-                    </div>
-                    <p className="rounded-xl bg-[#f6f3e8] px-3 py-2 text-sm font-black">{p.stock} left</p>
-                  </div>
-                  <div className="fc-farmbuy-product-qty mt-3 flex items-center justify-between rounded-2xl bg-[#f6f3e8] p-2 sm:mt-4">
-                    <button aria-label={`Remove ${p.name}`} onClick={() => setQty(p.id, (cart[p.id] || 0) - 1)} className="grid h-11 w-11 place-items-center rounded-xl bg-white text-xl font-black shadow-sm">
-                      -
-                    </button>
-                    <div className="text-center">
-                      <p className="text-xs font-black uppercase text-[#667267]">Qty</p>
-                      <p className="text-xl font-black">{cart[p.id] || 0}</p>
-                    </div>
-                    <button aria-label={`Add one ${p.name}`} onClick={() => setQty(p.id, (cart[p.id] || 0) + 1)} className="grid h-11 w-11 place-items-center rounded-xl bg-[#1f6b45] text-xl font-black text-white shadow-sm">
-                      +
-                    </button>
-                  </div>
-                </div>
-              </section>
-            ))}
+              </button>;
+            })}
           </div>
-        </div>
-        <Card id="farm-buy-cart" className="h-fit scroll-mt-24 border-2 border-[#1f6b45] lg:sticky lg:top-32">
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-2xl font-black">
-              <Icon name="bag" /> Cart
-            </h2>
-            <Badge tone={itemCount > 0 ? "good" : "neutral"}>{itemCount}</Badge>
+          {!visible.length&&<div className="mt-5 rounded-2xl border border-dashed p-8 text-center font-bold text-[#65746b]">No rooster breed is available right now.</div>}
+          <button type="button" disabled={total<=0} onClick={()=>{setWizardStep(1);setMarketNote("Rooster selected. Choose your care preference.");window.scrollTo({top:0,behavior:"smooth"});}} className="mt-6 min-h-12 w-full rounded-xl bg-[#f4c430] px-5 py-3 font-black text-[#041f22] disabled:bg-[#d8d2c3] disabled:text-[#7a766b]">Continue to Care</button>
+        </section>}
+
+        {wizardStep === 1 && <section className="rounded-[28px] bg-white p-4 shadow-xl sm:p-6">
+          <p className="text-xs font-black uppercase tracking-[.14em] text-[#087f83]">Step 2 · Care choice</p><h2 className="mt-1 text-2xl font-black">Add care later?</h2><p className="mt-2 text-sm font-bold text-[#65746b]">Your rooster must be approved first. Monthly Care payment starts after ownership is active.</p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <button type="button" onClick={()=>setCareOption("skip")} className={`rounded-[22px] border-2 p-5 text-left ${careOption==="skip"?"border-[#087f83] bg-[#eaf8f5]":"border-[#e3ded0] bg-[#fffdf7]"}`}><b className="text-xl">Skip for now</b><p className="mt-2 text-sm font-bold text-[#65746b]">Buy the rooster only. Choose Daily or Monthly Care later from its Diary.</p><strong className="mt-5 block text-2xl">₱0</strong></button>
+            <button type="button" onClick={()=>setCareOption("monthly")} className={`rounded-[22px] border-2 p-5 text-left ${careOption==="monthly"?"border-[#d6a600] bg-[#fff3cf]":"border-[#e3ded0] bg-[#fffdf7]"}`}><b className="text-xl">30-Day Monthly Care</b><p className="mt-2 text-sm font-bold text-[#65746b]">Feed, water, cleaning, routine observation, caretaker work, photos, and Diary updates.</p><strong className="mt-5 block text-2xl">₱5,000 after approval</strong></button>
           </div>
-          <div className="mt-4 max-h-[360px] space-y-3 overflow-y-auto pr-2">
-            {cartEntries.map(({ product, qty }) => (
-              <div key={product.id} className="rounded-xl bg-[#f6f3e8] p-3">
-                <div className="flex justify-between gap-3 text-sm">
-                  <span>
-                    <b>{product.name}</b>
-                    <br />
-                    <span className="text-[#667267]">
-                      {qty} x {peso(product.price)}
-                    </span>
-                  </span>
-                  <b>{peso(product.price * qty)}</b>
-                </div>
-              </div>
-            ))}
-            {total === 0 && <p className="rounded-xl bg-[#f6f3e8] p-3 text-sm text-[#667267]">Cart is empty. Use plus on a product.</p>}
-          </div>
-          <div className="mt-4 border-t pt-4">
-            <Info label="Manual Payment" value="Admin review required" />
-            <div className="mt-3 flex justify-between text-lg font-black">
-              <span>Total</span>
-              <span>{peso(total)}</span>
-            </div>
-            {total === 0 && (
-              <button disabled className="mt-4 w-full rounded-xl bg-[#d8d2c3] px-4 py-3 font-black text-[#7a766b]">
-                Pay
-              </button>
-            )}
-            {total > 0 && (
-              <button onClick={buyCart} className="mt-4 w-full rounded-xl bg-[#1f6b45] px-4 py-3 font-black text-white">
-                Pay
-              </button>
-            )}
-            <p className="mt-2 text-xs font-bold text-[#667267]">External payment only. Upload reference and receipt; admin approves before items appear.</p>
-          </div>
-        </Card>
-      </div>
+          {careOption==="monthly"&&<div className="mt-4 rounded-2xl border border-[#f4c430]/60 bg-[#fff9df] p-4 text-sm font-bold text-[#6a5200]">This records your preference only. It will not charge or activate care until the rooster is approved and you confirm the separate Monthly Care payment.</div>}
+          <div className="mt-6 rounded-2xl bg-[#f4f2e8] p-4"><div className="flex items-center justify-between gap-3"><span className="font-black">Rooster payment</span><strong className="text-2xl">{peso(total)}</strong></div><p className="mt-2 text-xs font-bold text-[#65746b]">Next: payment method, reference number, sender name, and receipt upload.</p></div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2"><button type="button" onClick={()=>setWizardStep(0)} className="min-h-12 rounded-xl bg-[#edf3ef] px-5 py-3 font-black text-[#063b3f]">Back</button><button type="button" onClick={()=>void buyCart()} disabled={total<=0} className="min-h-12 rounded-xl bg-[#f4c430] px-5 py-3 font-black text-[#041f22] disabled:opacity-50">Continue to Payment</button></div>
+        </section>}
+      </section>
     </Shell>
   );
 }
@@ -3778,6 +3732,7 @@ export function WalletPage() {
               <span className="grid h-20 w-20 shrink-0 place-items-center rounded-[22px] bg-[#dff5f3] p-2 shadow-inner ring-1 ring-[#087f83]/20 sm:h-24 sm:w-24">
                 <img src="/farmconnect/customer-v2-icons/wallet-v2.png" alt="FarmConnect Wallet" className="h-full w-full object-contain" />
               </span>
+              <h1 className="text-3xl font-black tracking-tight text-[#041f22] sm:text-4xl">Wallet</h1>
             </div>
             <button type="button" onClick={() => setShowAmounts((current) => !current)} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#087f83]/20 bg-[#dff5f3] px-4 font-black text-[#063b3f]">
               <Icon name={showAmounts ? "eyeOff" : "eye"} className="h-5 w-5" />
@@ -3787,9 +3742,10 @@ export function WalletPage() {
 
           <section className="overflow-hidden rounded-[26px] border border-white/80 bg-[#fffdf7]/96 shadow-xl">
             <div className="bg-[linear-gradient(115deg,#041f22_0%,#087f83_62%,#063b3f_100%)] p-5 text-white sm:p-7">
-              <div className="flex items-end gap-3">
-                <span className="pb-1 text-xl font-black text-white/75">FC</span>
-                <strong className="text-5xl font-black tracking-tight sm:text-6xl">{showAmounts ? fcCoin(availableBalance) : "••••••"}</strong>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Available Balance</p>
+              <div className="mt-3 flex min-w-0 items-center gap-3">
+                <span className="rounded-lg border border-white/15 bg-white/10 px-2.5 py-1 text-sm font-black text-[#f4c430]">FC</span>
+                <strong className="min-w-0 truncate text-4xl font-black tracking-tight sm:text-5xl">{showAmounts ? fcCoin(availableBalance) : "••••••"}</strong>
               </div>
             </div>
             <div className="p-4 sm:p-5">
@@ -6973,8 +6929,8 @@ export function CaretakerTasks() {
   }
 
   return (
-    <Shell role="caretaker" title="Active Tasks">
-      <PageTitle title="Active Tasks" text="Document the work, attach photos, then verify the rooster QR before sending." icon="clipboard" />
+    <Shell role="caretaker" title="Today's Care">
+      <PageTitle title="Today's Care" text="Open one assigned rooster, record each care time, add photos and findings, then send the daily report." icon="clipboard" />
       <div id="caretaker-task-status" role="status" aria-live="polite">
         <KaFarm>{taskNote}</KaFarm>
         <span className="sr-only">Submit validation attempt {submitAttempt}</span>
@@ -6982,7 +6938,7 @@ export function CaretakerTasks() {
       <div className="mt-5 grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-black">Task Queue</h2>
+            <h2 className="text-xl font-black">Today&apos;s Schedule</h2>
             <Badge tone={tasks.length ? "warn" : "neutral"}>{tasks.length} active</Badge>
           </div>
           <div className="mt-4 max-h-[650px] space-y-3 overflow-y-auto pr-2">
@@ -7000,8 +6956,8 @@ export function CaretakerTasks() {
             ))}
             {!tasks.length && (
               <div className="rounded-2xl border border-dashed border-[#ded8c9] bg-[#fffdf7] p-6 text-center">
-                <b>No active task</b>
-                <p className="mt-2 text-sm font-bold text-[#667267]">Assigned and returned backjob tasks appear here.</p>
+                <b>No care scheduled</b>
+                <p className="mt-2 text-sm font-bold text-[#667267]">New assignments and reports returned for correction appear here.</p>
               </div>
             )}
           </div>
@@ -7010,8 +6966,8 @@ export function CaretakerTasks() {
           {!selected ? (
             <div className="grid min-h-[520px] place-items-center text-center">
               <div>
-                <h2 className="text-2xl font-black">Waiting for assignment</h2>
-                <p className="mt-2 text-sm font-bold text-[#667267]">Admin-assigned customer requests will appear in the task queue.</p>
+                <h2 className="text-2xl font-black">Choose today&apos;s care</h2>
+                <p className="mt-2 text-sm font-bold text-[#667267]">Select an assigned rooster from today&apos;s schedule.</p>
               </div>
             </div>
           ) : (
@@ -8628,11 +8584,17 @@ function AdminCustomerRequestsPage() {
   );
 }
 export function AdminCustomerRequestsSection({ section }: { section: string }) {
+  const [workspaceTab, setWorkspaceTab] = useState<"primary" | "secondary" | "tertiary">("primary");
   if (section === "payment") {
     return (
-      <Shell role="admin" title="Payment Requests">
-        <PageTitle title="Payment Requests" text="Review Farm Buy payment receipts and reference numbers from Supabase." icon="coins" />
-        <AdminManualPaymentQueue sourceType="farm_buy" />
+      <Shell role="admin" title="Rooster & Care Payments">
+        <PageTitle title="Rooster & Care Payments" text="Review rooster orders and Daily or Monthly Care payments in one workflow." icon="coins" />
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:max-w-3xl">
+          <button type="button" onClick={() => setWorkspaceTab("primary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "primary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Rooster Payments</button>
+          <button type="button" onClick={() => setWorkspaceTab("secondary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "secondary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Care Payments</button>
+          <button type="button" onClick={() => setWorkspaceTab("tertiary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "tertiary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Rooster Sales</button>
+        </div>
+        {workspaceTab === "primary" ? <AdminManualPaymentQueue sourceType="farm_buy" /> : workspaceTab === "secondary" ? <AdminManualPaymentQueue sourceType="care" /> : <AdminRoosterSaleQueue />}
       </Shell>
     );
   }
@@ -8646,9 +8608,13 @@ export function AdminCustomerRequestsSection({ section }: { section: string }) {
   }
   if (section === "task") {
     return (
-      <Shell role="admin" title="Task Management">
-        <PageTitle title="Task Management" text="Assign a specific active caretaker to paid and approved care requests." icon="clipboard" />
-        <AdminLiveCareRequestQueue mode="task" />
+      <Shell role="admin" title="Care Tasks & Updates">
+        <PageTitle title="Care Tasks & Updates" text="Assign paid care, then review the caretaker's daily report before it reaches the customer Diary." icon="clipboard" />
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:max-w-xl">
+          <button type="button" onClick={() => setWorkspaceTab("primary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "primary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Assign Care</button>
+          <button type="button" onClick={() => setWorkspaceTab("secondary")} className={`rounded-2xl px-4 py-3 font-black ${workspaceTab === "secondary" ? "bg-[#087f83] text-white" : "bg-white text-[#063b3f]"}`}>Review Updates</button>
+        </div>
+        {workspaceTab === "primary" ? <AdminLiveCareRequestQueue mode="task" /> : <AdminLiveTaskProofQueue />}
       </Shell>
     );
   }
@@ -8847,12 +8813,13 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     }
   }
 
-  const queueTitle = sourceType === "care" ? "Customer Care Queue" : sourceType === "care_request" ? "Care Request Payment Review" : sourceType === "care_plan" ? "Care Plan Payment Review" : sourceType === "farm_buy" ? "Farm Buy Payment Review" : "Pending Manual Payments";
+  const queueTitle = sourceType === "care" ? "Daily & Monthly Care Payments" : sourceType === "care_request" ? "Daily Care Payment" : sourceType === "care_plan" ? "Monthly Care Payment" : sourceType === "farm_buy" ? "Rooster Payment Review" : "Pending Payments";
   const profile = selected ? (Array.isArray(selected.profiles) ? selected.profiles[0] : selected.profiles) : null;
   const customer = profile?.display_name || profile?.full_name || profile?.email || selected?.sender_name || "Customer";
   const summary = selected?.summary || {};
   const selectedSource = String(selected?.source_type || selected?.sourceType || "").toLowerCase();
   const summaryItems = selected ? (Array.isArray(summary.lines) ? summary.lines : Array.isArray(summary.items) ? summary.items : Array.isArray(summary.cartItems) ? summary.cartItems : Array.isArray(summary.products) ? summary.products : []) : [];
+  const carePreference = String(summary.care_preference || "skip").toLowerCase() === "monthly" ? "Monthly Care requested after rooster approval" : "Rooster only — care can be added from the Diary";
   const rooster = summary.rooster?.name || summary.rooster_name || selected?.rooster_name || "Recorded rooster";
   const service = summary.service?.name || summary.service_name || selected?.service_name || "Care request";
   const receiptUrl = selected?.receipt_image_url || selected?.receiptImageUrl || "";
@@ -8902,7 +8869,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
                 </button>
               );
             })}
-            {!activeRows.length && <div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold leading-6 text-[#667267]">No pending {sourceType === "care" ? "customer care" : sourceType === "care_request" ? "care-request" : sourceType === "care_plan" ? "Care Plan" : "Farm Buy"} payment right now.</div>}
+            {!activeRows.length && <div className="rounded-2xl bg-[#f4efe4] p-5 text-sm font-bold leading-6 text-[#667267]">No pending {sourceType === "care" ? "care" : sourceType === "care_request" ? "Daily Care" : sourceType === "care_plan" ? "Monthly Care" : "rooster"} payment right now.</div>}
           </div>
         </Card>
         <Card className="min-h-[620px]">
@@ -8932,7 +8899,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
                 </div>
               ) : (
                 <div className="mt-4 rounded-2xl border border-[#ece6d8] bg-[#fffdf7] p-4">
-                  <p className="text-xs font-black uppercase text-[#667267]">Farm Buy Items</p>
+                  <p className="text-xs font-black uppercase text-[#667267]">Rooster Order</p>
                   <div className="mt-3 space-y-2">
                     {summaryItems.length ? (
                       summaryItems.map((item: any, index: number) => {
@@ -8952,6 +8919,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
                       <p className="rounded-xl bg-white p-3 text-sm font-bold text-[#667267]">Order summary is linked to this payment record.</p>
                     )}
                   </div>
+                  <div className="mt-3 rounded-xl bg-[#dff5f3] p-3 text-sm font-black text-[#063b3f]">Care choice: {carePreference}</div>
                 </div>
               )}
               {customerCorrection && (
