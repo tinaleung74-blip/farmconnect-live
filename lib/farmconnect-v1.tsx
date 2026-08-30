@@ -208,10 +208,10 @@ const nav = {
     ["Profile", "/caretaker/profile", "user"],
   ],
   admin: [
-    ["Account Verification", "/admin/account-verification", "shield"],
-    ["Orders & Payments", "/admin/customer-requests/payment", "coins"],
-    ["Care Operations", "/admin/customer-requests/task", "clipboard"],
-    ["Selling & Payout", "/admin/selling-payout", "wallet"],
+    ["Dashboard", "/admin", "home"],
+    ["Accounts", "/admin/account-verification", "shield"],
+    ["Roosters", "/admin/roosters", "rooster"],
+    ["Tasks", "/admin/tasks", "clipboard"],
     ["Support", "/admin/live-chat", "chat"],
     ["KaFarm", "/admin/kafarm", "support"],
   ],
@@ -220,6 +220,28 @@ const nav = {
 const gamefowlBloodlines = ["Hatch", "Kelso", "Sweater", "Roundhead", "Lemon", "Claret", "Albany", "Grey", "Lacy Roundhead", "Radio", "Whitehackle", "Yellow Leg Hatch"];
 
 const gamefowlBloodlineKeys = new Set(gamefowlBloodlines.map((bloodline) => bloodline.toLowerCase()));
+
+function recognizedRoosterBreed(...values: unknown[]) {
+  const combined = values.map((value) => String(value || "").toLowerCase()).join(" ");
+  return [...gamefowlBloodlines]
+    .sort((left, right) => right.length - left.length)
+    .find((breed) => combined.includes(breed.toLowerCase())) || "Hatch";
+}
+
+function roosterGrowthStage(dayOrStage?: unknown): "chick" | "juvenile" | "young" | "growth" | "adult" {
+  const raw = String(dayOrStage || "").toLowerCase();
+  const day = Number(dayOrStage);
+  if (raw.includes("adult") || raw.includes("mature") || (Number.isFinite(day) && day >= 151)) return "adult";
+  if (raw.includes("growth") || raw.includes("growing") || (Number.isFinite(day) && day >= 91)) return "growth";
+  if (raw.includes("young") || (Number.isFinite(day) && day >= 61)) return "young";
+  if (raw.includes("juvenile") || (Number.isFinite(day) && day >= 31)) return "juvenile";
+  return "chick";
+}
+
+function roosterBreedImage(breed: unknown, dayOrStage?: unknown) {
+  const slug = recognizedRoosterBreed(breed).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return `/farmconnect/roosters/breeds/${slug}-${roosterGrowthStage(dayOrStage)}.png`;
+}
 
 const breedChickProducts = gamefowlBloodlines.map((breed, index) => ({
   id: `breed-chick-${breed
@@ -231,7 +253,7 @@ const breedChickProducts = gamefowlBloodlines.map((breed, index) => ({
   unit: "per head",
   price: 450 + (index % 8) * 75,
   stock: Math.max(6, 30 - (index % 7) * 3),
-  image: "/farmconnect/roosters/fc-stage-1-chick-base.jpg",
+  image: roosterBreedImage(breed, "chick"),
 }));
 
 const products = [
@@ -1663,9 +1685,9 @@ function AddRoosterOrderModal({ onClose, onSubmitted }: { onClose: () => void; o
   const [receipt, setReceipt] = useState("");
   const [message, setMessage] = useState("Choose one available rooster.");
   const [submitting, setSubmitting] = useState(false);
-  useEffect(() => { let mounted = true; getFarmProducts().then((rows) => { if (!mounted) return; const products = rows.filter((row) => row.product_type === "breed_chick" || normalizeFarmProductCategory(String(row.category || "")) === "Breed Chicks").map((row) => ({ id: row.id, name: normalizeFarmProductName(row.name, "Breed Chicks"), category: "Breed Chicks", unit: row.unit_label || "per rooster", price: Number(row.unit_price || 0), stock: Number(row.stock_quantity || 0), image: row.image_url || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg", product_type: row.product_type, stage: row.stage, bloodline: row.bloodline, breed: row.breed, product_metadata: row.product_metadata })); setCatalog(products); setSelected(products[0] || null); setMessage(products.length ? "Choose one available rooster." : "No rooster is available for a real order right now."); }).catch(() => setMessage("The live rooster catalog could not load. Try again before submitting an order.")); return () => { mounted = false; }; }, []);
+  useEffect(() => { let mounted = true; getFarmProducts().then((rows) => { if (!mounted) return; const products = rows.filter((row) => row.product_type === "breed_chick" || normalizeFarmProductCategory(String(row.category || "")) === "Breed Chicks").map((row) => { const name = normalizeFarmProductName(row.name, "Breed Chicks"); const breed = recognizedRoosterBreed(row.breed, row.bloodline, name); return ({ id: row.id, name, category: "Breed Chicks", unit: row.unit_label || "per rooster", price: Number(row.unit_price || 0), stock: Number(row.stock_quantity || 0), image: roosterBreedImage(breed, row.stage || "chick"), product_type: row.product_type, stage: row.stage, bloodline: row.bloodline || breed, breed: row.breed || breed, product_metadata: row.product_metadata }); }); setCatalog(products); setSelected(products[0] || null); setMessage(products.length ? "Choose one available rooster." : "No rooster is available for a real order right now."); }).catch(() => setMessage("The live rooster catalog could not load. Try again before submitting an order.")); return () => { mounted = false; }; }, []);
   function chooseReceipt(file?: File) { if (!file) return; const reader = new FileReader(); reader.onload = () => setReceipt(String(reader.result || "")); reader.readAsDataURL(file); }
-  async function submitOrder() { if (!selected || submitting) return; if (sender.trim().length < 3 || reference.trim().length < 4 || !receipt) return setMessage("Complete sender name, reference number, and receipt image."); try { setSubmitting(true); setMessage("Sending your rooster order for Admin review..."); const profile = await getCurrentProfile(); if (!profile) throw new Error("LOGIN_REQUIRED"); if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selected.id)) throw new Error("This preview rooster cannot create a real order. Reload the live catalog."); await saveCartItem(selected.id, 1, selected.price, { productType: "breed_chick", bloodline: selected.bloodline || selected.breed || null, breed: selected.breed || selected.bloodline || null, productName: selected.name }); const summary = { source: "Add Rooster", lines: [{ id: selected.id, name: selected.name, quantity: 1, unit_price: selected.price, total: selected.price, category: "Breed Chicks" }], total: selected.price, care_preference: care, carePurpose: null, previewOnly: false }; const operation = await pendingOperation(`payment.${profile.id}.farm_buy.active-cart`, { context: summary, method: method.method, receiver: method.account, sender, reference, receipt }); const result = await submitManualPaymentRequest({ sourceType: "farm_buy", sourceRef: "active-cart", amountExpected: selected.price, summary, paymentMethod: method.method, receiverAccount: method.account, senderName: sender, referenceNumber: reference, receiptImageUrl: receipt, idempotencyKey: operation.key }); localStorage.removeItem(operation.storageKey); onSubmitted({ id: result.id, name: selected.name, breed: selected.bloodline || selected.breed || selected.name, image: selected.image, amount: selected.price, care, status: "for_review" }); setStage(3); setMessage(result.duplicate ? "This order was already received. No duplicate was created." : "Purchase submitted. It is now waiting for Admin verification."); } catch (error) { setMessage(`Order not confirmed: ${readableAppError(error) || "Check the same order details and try again."}`); } finally { setSubmitting(false); } }
+  async function submitOrder() { if (!selected || submitting) return; if (sender.trim().length < 3 || reference.trim().length < 4 || !receipt) return setMessage("Complete sender name, reference number, and receipt image."); try { setSubmitting(true); setMessage("Sending your rooster order for Admin review..."); const profile = await getCurrentProfile(); if (!profile) throw new Error("LOGIN_REQUIRED"); if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selected.id)) throw new Error("This preview rooster cannot create a real order. Reload the live catalog."); const selectedBreed = recognizedRoosterBreed(selected.breed, selected.bloodline, selected.name); await saveCartItem(selected.id, 1, selected.price, { productType: "breed_chick", bloodline: selected.bloodline || selectedBreed, breed: selected.breed || selectedBreed, productName: selected.name }); const summary = { source: "Add Rooster", lines: [{ id: selected.id, name: selected.name, breed: selectedBreed, bloodline: selectedBreed, image: selected.image || roosterBreedImage(selectedBreed, "chick"), stage: "chick", quantity: 1, unit_price: selected.price, total: selected.price, category: "Breed Chicks" }], total: selected.price, care_preference: care, carePurpose: null, previewOnly: false }; const operation = await pendingOperation(`payment.${profile.id}.farm_buy.active-cart`, { context: summary, method: method.method, receiver: method.account, sender, reference, receipt }); const result = await submitManualPaymentRequest({ sourceType: "farm_buy", sourceRef: "active-cart", amountExpected: selected.price, summary, paymentMethod: method.method, receiverAccount: method.account, senderName: sender, referenceNumber: reference, receiptImageUrl: receipt, idempotencyKey: operation.key }); localStorage.removeItem(operation.storageKey); onSubmitted({ id: result.id, name: selected.name, breed: selectedBreed, image: selected.image || roosterBreedImage(selectedBreed, "chick"), amount: selected.price, care, status: "for_review" }); setStage(3); setMessage(result.duplicate ? "This order was already received. No duplicate was created." : "Purchase submitted. It is now waiting for Admin verification."); } catch (error) { setMessage(`Order not confirmed: ${readableAppError(error) || "Check the same order details and try again."}`); } finally { setSubmitting(false); } }
   const canContinue = stage === 0 ? Boolean(selected) : stage === 1 ? true : sender.trim().length >= 3 && reference.trim().length >= 4 && Boolean(receipt);
   return <div className="fixed inset-0 z-50 grid place-items-center bg-[#041f22]/70 p-3 backdrop-blur-sm" onClick={() => !submitting && onClose()}><section className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-[28px] bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}><header className="sticky top-0 z-10 flex items-center justify-between border-b border-[#dce7df] bg-white px-5 py-4"><div><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#087f83]">Add Rooster</p><h2 className="text-2xl font-black">{stage === 0 ? "Choose a rooster breed" : stage === 1 ? "Add care now?" : stage === 2 ? "Submit payment proof" : "Purchase submitted"}</h2></div><button type="button" onClick={onClose} disabled={submitting} className="grid h-10 w-10 place-items-center rounded-full bg-[#edf3ef] font-black">×</button></header><div className="p-5"><div className="mb-5 grid grid-cols-4 gap-2">{[0,1,2,3].map((item) => <span key={item} className={`h-2 rounded-full ${item <= stage ? "bg-[#087f83]" : "bg-[#e5ece7]"}`} />)}</div>
     {stage === 0 && <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{catalog.map((product) => <button key={product.id} type="button" onClick={() => setSelected(product)} className={`overflow-hidden rounded-2xl border-2 text-left ${selected?.id === product.id ? "border-[#087f83] bg-[#f0faf4]" : "border-[#dce7df]"}`}><img src={product.image} alt={product.name} className="h-36 w-full object-cover" /><div className="p-3"><b>{product.name}</b><small className="mt-1 block font-bold text-[#65746b]">{product.bloodline || product.breed || "Farm breed"}</small><strong className="mt-2 block text-[#07563f]">{peso(product.price)}</strong></div></button>)}{!catalog.length && <p className="sm:col-span-2 rounded-2xl bg-amber-50 p-5 font-bold text-amber-900">No live rooster order is available.</p>}</div>}
@@ -1701,9 +1723,11 @@ export function CustomerRoostersV2() {
         setRoosters(items.filter(isRealOwnedAnimal).map((row, index) => {
           const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Bloodline";
           const metadata = (row.ownership_metadata || {}) as Record<string, unknown>;
-          return { id: row.id, name: row.animal_name || `${breed} Rooster`, breed, tag: row.animal_code || `FC-${index + 1}`, stage: row.acquired_from === "farm_buy" ? "Growing" : "Owned Rooster", status: row.status === "sold" ? "Sold" : "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: row.approved_sale_price == null ? "Waiting for reviewed price" : peso(Number(row.approved_sale_price)), image: String(metadata.image_url || metadata.photo_url || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg"), pen: String(metadata.pen || metadata.pen_name || "Pending assignment"), caretaker: String(metadata.caretaker_name || "Pending assignment"), saleStatus: row.sale_status || "not_listed", approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price), ownershipMetadata: metadata, careOverview: careByAnimal.get(row.id) || null } as RoosterCard;
+          const overview = careByAnimal.get(row.id) || null;
+          const growthDay = Number(metadata.growth_day || overview?.catalogDay || 1);
+          return { id: row.id, name: row.animal_name || `${breed} Rooster`, breed, tag: row.animal_code || `FC-${index + 1}`, stage: row.acquired_from === "farm_buy" ? "Growing" : "Owned Rooster", status: row.status === "sold" ? "Sold" : "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: row.approved_sale_price == null ? "Waiting for reviewed price" : peso(Number(row.approved_sale_price)), image: roosterBreedImage(breed, growthDay), pen: String(metadata.pen || metadata.pen_name || "Pending assignment"), caretaker: String(metadata.caretaker_name || "Pending assignment"), saleStatus: row.sale_status || "not_listed", approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price), ownershipMetadata: metadata, careOverview: overview } as RoosterCard;
         }));
-        setPendingOrders((payments || []).filter((row: any) => String(row.source_type || "") === "farm_buy" && ["for_review", "needs_info"].includes(String(row.status || "for_review"))).map((row: any) => { const summary = row.summary || {}; const line = Array.isArray(summary.lines) ? summary.lines[0] || {} : {}; return { id: row.id, name: String(line.name || "Rooster order"), breed: String(line.bloodline || line.breed || line.name || "Selected breed"), image: String(line.image || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg"), amount: Number(row.amount_expected || line.total || 0), care: String(summary.care_preference || "skip") === "monthly" ? "monthly" : "skip", status: String(row.status || "for_review") } as PendingRoosterOrder; }));
+        setPendingOrders((payments || []).filter((row: any) => String(row.source_type || "") === "farm_buy" && ["for_review", "needs_info"].includes(String(row.status || "for_review"))).map((row: any) => { const summary = row.summary || {}; const line = Array.isArray(summary.lines) ? summary.lines[0] || {} : {}; const breed = recognizedRoosterBreed(line.bloodline, line.breed, line.name); return { id: row.id, name: String(line.name || "Rooster order"), breed, image: String(line.image || roosterBreedImage(breed, line.stage || "chick")), amount: Number(row.amount_expected || line.total || 0), care: String(summary.care_preference || "skip") === "monthly" ? "monthly" : "skip", status: String(row.status || "for_review") } as PendingRoosterOrder; }));
       })
       .catch((error: unknown) => {
         if (!mounted) return;
@@ -1826,9 +1850,11 @@ export function CustomerRoosterDiaryV2() {
         const row: any = animals.find((item: any) => item.id === roosterId) || animals[0] || null;
         if (!row) return;
         const metadata = (row.ownership_metadata || {}) as Record<string, unknown>;
-        const mapped: RoosterCard = { id: row.id, name: row.animal_name || "Rooster", breed: row.breed_snapshot || row.bloodline_snapshot || "Recorded Breed", tag: row.animal_code || "", stage: "Owned Rooster", status: row.status || "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: "", image: String(metadata.image_url || metadata.photo_url || "/farmconnect/roosters/fc-stage-3-young-rooster-base.jpg"), pen: "", caretaker: "", ownershipMetadata: metadata };
+        const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Breed";
+        const animalOverview = overviews.find((item) => item.customerAnimalId === row.id) || null;
+        const mapped: RoosterCard = { id: row.id, name: row.animal_name || "Rooster", breed, tag: row.animal_code || "", stage: "Owned Rooster", status: row.status || "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: "", image: roosterBreedImage(breed, metadata.growth_day || animalOverview?.catalogDay || 1), pen: "", caretaker: "", ownershipMetadata: metadata };
         setRooster(mapped);
-        setOverview(overviews.find((item) => item.customerAnimalId === row.id) || null);
+        setOverview(animalOverview);
         setLogs(diary.rows);
       })
       .catch((error) => {
@@ -1909,7 +1935,7 @@ export function CustomerRoosters() {
             status: row.status === "sold" ? "Sold" : "In Care",
             health: "New",
             value: "Estimating",
-            image: "/farmconnect/roosters/fc-stage-1-chick-base.jpg",
+            image: roosterBreedImage(breed, row.ownership_metadata?.growth_day || careByAnimal.get(row.id)?.catalogDay || 1),
             pen: "Pending assignment",
             caretaker: "Pending assignment",
             saleStatus: row.sale_status || "not_listed",
@@ -2117,7 +2143,7 @@ export function CustomerSellRooster({ animalIdOverride = "", embedded = false, o
       <Card className="overflow-hidden">
         {loading ? <p role="status">Loading rooster…</p> : animal ? <>
           <div className="grid items-center gap-5 sm:grid-cols-[180px_1fr]">
-            <img src="/farmconnect/roosters/fc-stage-4-adult-rooster-base.jpg" alt={animal.animal_name || "Rooster"} className="aspect-square w-full max-w-64 rounded-2xl object-cover" />
+            <img src={roosterBreedImage(animal.breed_snapshot || animal.bloodline_snapshot, animal.ownership_metadata?.growth_day || "adult")} alt={animal.animal_name || "Rooster"} className="aspect-square w-full max-w-64 rounded-2xl object-cover" />
             <div>
               <h1 className="text-3xl font-black text-[#073b3d]">{animal.animal_name || animal.breed_snapshot || "Rooster"}</h1>
               <p className="mt-1 text-sm text-[#526567]">{animal.breed_snapshot || animal.bloodline_snapshot || ""}</p>
@@ -7704,26 +7730,53 @@ const adminDashboardIndicators = [
 ];
 
 export function AdminHome() {
+  const [loading, setLoading] = useState(true);
+  const [problem, setProblem] = useState("");
+  const [counts, setCounts] = useState({ orders: 0, tasks: 0, selling: 0, payouts: 0, support: 0 });
+  async function loadDashboard() {
+    setLoading(true);
+    setProblem("");
+    try {
+      const [payments, tasks, sales, payouts, chats] = await Promise.all([
+        getAdminManualPaymentRequests(),
+        getAdminCaretakerTasks(),
+        getAdminRoosterSaleRequests(),
+        getAdminWithdrawalRequests(),
+        getAdminEscalatedChats().then((result) => { if (result.error) throw result.error; return result.data || []; }),
+      ]);
+      setCounts({
+        orders: payments.filter((row: any) => ["for_review", "needs_info"].includes(String(row.status || ""))).length,
+        tasks: tasks.filter((row: any) => !["completed", "approved", "cancelled"].includes(String(row.status || ""))).length,
+        selling: sales.filter((row: any) => !["completed", "rejected", "cancelled"].includes(String(row.status || ""))).length,
+        payouts: payouts.filter((row: any) => !["completed", "rejected", "cancelled"].includes(String(row.status || ""))).length,
+        support: chats.filter((row: any) => !["completed", "ended"].includes(String(row.status || ""))).length,
+      });
+    } catch (error) {
+      setProblem(readableAppError(error) || "Some live records could not be checked.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { void loadDashboard(); }, []);
+  const attention = counts.orders + counts.tasks + counts.selling + counts.payouts + counts.support;
+  const cards = [
+    { label: "Accounts", value: "Review", text: "Customer and caretaker verification", href: "/admin/account-verification", icon: "shield" as IconName },
+    { label: "Roosters", value: counts.orders + counts.selling + counts.payouts, text: "Orders, selling, and payouts waiting", href: "/admin/roosters", icon: "rooster" as IconName },
+    { label: "Tasks", value: counts.tasks, text: "Care work needing action", href: "/admin/tasks", icon: "clipboard" as IconName },
+    { label: "Support", value: counts.support, text: "Open customer and caretaker concerns", href: "/admin/live-chat", icon: "chat" as IconName },
+  ];
   return (
     <Shell role="admin" title="Admin Dashboard">
-      <PageTitle title="Admin Dashboard" text="Indicator board lang: tingnan kung saan may issue, request, task review, priority, at pera." icon="shield" />
+      <PageTitle title="Admin Dashboard" text="See what needs attention, what is working, and what to do next." icon="shield" />
+      <section className={`mb-5 rounded-[26px] border p-5 shadow-sm ${problem ? "border-red-200 bg-red-50" : attention ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
+        <div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#667267]">System health</p><h2 className="mt-1 text-3xl font-black">{loading ? "Checking…" : problem ? "Needs attention" : "Connected"}</h2><p className="mt-2 font-bold text-[#526567]">{problem || (attention ? `${attention} item${attention === 1 ? "" : "s"} waiting across the app.` : "No waiting item was found in the live queues.")}</p></div><button type="button" onClick={() => void loadDashboard()} disabled={loading} className="rounded-xl bg-[#087f83] px-5 py-3 font-black text-white disabled:opacity-50">Check Again</button></div>
+      </section>
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {adminDashboardIndicators.map((item) => (
-            <Link key={item.title} href={item.href} className="rounded-2xl border border-[#e3ded0] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-start justify-between gap-3">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#f6f3e8] text-[#1f6b45]">
-                  <Icon name={item.icon} />
-                </span>
-                <Badge tone={item.tone}>{item.sub}</Badge>
-              </div>
-              <p className="mt-4 text-xs font-black uppercase text-[#667267]">{item.title}</p>
-              <h2 className="mt-1 text-3xl font-black">{item.value}</h2>
-              <p className="mt-2 min-h-[48px] text-sm font-bold leading-6 text-[#667267]">{item.detail}</p>
-              <span className="mt-3 inline-block rounded-xl bg-[#1f6b45] px-3 py-2 text-sm font-black text-white">Open Desk</span>
-            </Link>
+        <div><div className="grid gap-4 sm:grid-cols-2">
+          {cards.map((item) => (
+            <Link key={item.label} href={item.href} className="rounded-2xl border border-[#e3ded0] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><div className="flex items-center justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#edf6ef] text-[#1f6b45]"><Icon name={item.icon} /></span><span className="rounded-full bg-[#f6c72b] px-3 py-1 text-sm font-black">{item.value}</span></div><h2 className="mt-4 text-xl font-black">{item.label}</h2><p className="mt-2 text-sm font-bold text-[#667267]">{item.text}</p><span className="mt-4 inline-block text-sm font-black text-[#087f83]">Open →</span></Link>
           ))}
-        </div>
+        </div><div className="mt-5 grid gap-4 sm:grid-cols-2"><Link href="/admin/kafarm/system-health" className="rounded-2xl bg-[#073b3d] p-5 text-white"><p className="text-xs font-black uppercase text-[#f6c72b]">Pages & cloud</p><h3 className="mt-2 text-xl font-black">Check app health</h3><p className="mt-2 text-sm font-bold text-white/75">Pages, database, connections, and recent problems.</p></Link><Link href="/admin/kafarm/recovery-guard" className="rounded-2xl bg-[#fff3cf] p-5 text-[#5c3a00]"><p className="text-xs font-black uppercase">Recovery panel</p><h3 className="mt-2 text-xl font-black">Safely recover</h3><p className="mt-2 text-sm font-bold text-[#76551e]">Recheck failed work or send it for manual review.</p></Link></div></div>
         <KaFarmAdmin />
       </div>
     </Shell>
@@ -7807,6 +7860,7 @@ function AdminLiveChatPage() {
   ];
   const [chats, setChats] = useState<EscalatedChat[]>(placeholderChats);
   const [selected, setSelected] = useState<EscalatedChat>(placeholderChats[0]);
+  const [supportMode, setSupportMode] = useState<"all" | "customer" | "caretaker">("all");
   const [reply, setReply] = useState("");
   const [dbNote, setDbNote] = useState("Loading escalated chats from database...");
   function initials(name: string) {
@@ -7906,9 +7960,16 @@ function AdminLiveChatPage() {
     runAdminAction("complete");
   }
   const isPlaceholderChat = selected.id.startsWith("demo-");
+  const visibleChats = supportMode === "all" ? chats : chats.filter((chat) => chat.role === supportMode);
+  function changeSupportMode(mode: "all" | "customer" | "caretaker") {
+    setSupportMode(mode);
+    const first = mode === "all" ? chats[0] : chats.find((chat) => chat.role === mode);
+    if (first) setSelected(first);
+  }
   return (
     <Shell role="admin" title="Live Chat">
-      <PageTitle title="Escalated Chats" text="Only chats escalated by KaFarm appear here. Admin can join, reply, end, and complete the chat." icon="chat" />
+      <PageTitle title="Support" text="Customer and caretaker conversations stay separate. KaFarm summarizes the concern and suggests the next step." icon="chat" />
+      <div className="mb-5 grid grid-cols-3 gap-2 sm:max-w-lg">{(["all", "customer", "caretaker"] as const).map((mode) => <button key={mode} type="button" onClick={() => changeSupportMode(mode)} className={`rounded-2xl px-3 py-3 text-sm font-black capitalize ${supportMode === mode ? "bg-[#087f83] text-white" : "bg-white text-[#073b3d]"}`}>{mode === "all" ? "All" : mode}</button>)}</div>
       <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)_320px]">
         <Card>
           <div className="flex items-center justify-between gap-3">
@@ -7920,7 +7981,7 @@ function AdminLiveChatPage() {
           </button>
           <p className="mt-2 text-xs font-bold leading-5 text-[#667267]">{dbNote}</p>
           <div className="mt-4 max-h-[640px] space-y-3 overflow-y-auto pr-2">
-            {chats.map((chat) => (
+            {visibleChats.map((chat) => (
               <button key={chat.id} onClick={() => setSelected(chat)} className={"w-full rounded-2xl border p-3 text-left transition " + (selected.id === chat.id ? "border-[#1f6b45] bg-emerald-50" : "border-[#ece6d8] bg-[#fffdf7]")}>
                 <div className="flex items-center gap-3">
                   <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#1f6b45] font-black text-white">{chat.avatar}</div>
@@ -7935,6 +7996,7 @@ function AdminLiveChatPage() {
                 <p className="mt-2 text-xs font-black text-[#1f6b45]">{chat.last}</p>
               </button>
             ))}
+            {!visibleChats.length && <div className="rounded-2xl border border-dashed border-[#cfdcd3] p-5 text-center text-sm font-bold text-[#667267]">No conversation in this mode.</div>}
           </div>
         </Card>
         <div className="grid gap-5">
@@ -8585,6 +8647,22 @@ function AdminCustomerRequestsPage() {
     </Shell>
   );
 }
+export function AdminRoosterOperations() {
+  const [tab, setTab] = useState<"orders" | "care" | "selling" | "payout">("orders");
+  const tabs = [
+    ["orders", "Orders"],
+    ["care", "Care Payments"],
+    ["selling", "Selling"],
+    ["payout", "Payout"],
+  ] as const;
+  return <Shell role="admin" title="Roosters"><PageTitle title="Roosters" text="Follow every rooster from order and payment to selling and payout." icon="rooster" /><div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{tabs.map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} className={`rounded-2xl px-3 py-3 text-sm font-black ${tab === key ? "bg-[#087f83] text-white" : "bg-white text-[#073b3d]"}`}>{label}</button>)}</div>{tab === "orders" ? <AdminManualPaymentQueue sourceType="farm_buy" /> : tab === "care" ? <AdminManualPaymentQueue sourceType="care" /> : tab === "selling" ? <AdminRoosterSaleQueue /> : <AdminWithdrawalReviewQueue />}</Shell>;
+}
+
+export function AdminTasksPage() {
+  const [tab, setTab] = useState<"assign" | "review">("assign");
+  return <Shell role="admin" title="Tasks"><PageTitle title="Tasks" text="Assign care work, check daily reports, and request corrections in one place." icon="clipboard" /><div className="mb-5 grid grid-cols-2 gap-3 sm:max-w-xl"><button type="button" onClick={() => setTab("assign")} className={`rounded-2xl px-4 py-3 font-black ${tab === "assign" ? "bg-[#087f83] text-white" : "bg-white"}`}>Assign Care</button><button type="button" onClick={() => setTab("review")} className={`rounded-2xl px-4 py-3 font-black ${tab === "review" ? "bg-[#087f83] text-white" : "bg-white"}`}>Review Reports</button></div>{tab === "assign" ? <AdminLiveCareRequestQueue mode="task" /> : <AdminLiveTaskProofQueue />}</Shell>;
+}
+
 export function AdminCustomerRequestsSection({ section }: { section: string }) {
   const [workspaceTab, setWorkspaceTab] = useState<"primary" | "secondary" | "tertiary">("primary");
   if (section === "payment") {

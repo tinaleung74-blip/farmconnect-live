@@ -1,0 +1,17 @@
+{
+  "stages": ["chick", "juvenile", "young", "growth", "adult"],
+  "breeds": {
+    "Hatch": "/farmconnect/roosters/breeds/hatch-{stage}.png",
+    "Kelso": "/farmconnect/roosters/breeds/kelso-{stage}.png",
+    "Sweater": "/farmconnect/roosters/breeds/sweater-{stage}.png",
+    "Roundhead": "/farmconnect/roosters/breeds/roundhead-{stage}.png",
+    "Lemon": "/farmconnect/roosters/breeds/lemon-{stage}.png",
+    "Claret": "/farmconnect/roosters/breeds/claret-{stage}.png",
+    "Albany": "/farmconnect/roosters/breeds/albany-{stage}.png",
+    "Grey": "/farmconnect/roosters/breeds/grey-{stage}.png",
+    "Lacy Roundhead": "/farmconnect/roosters/breeds/lacy-roundhead-{stage}.png",
+    "Radio": "/farmconnect/roosters/breeds/radio-{stage}.png",
+    "Whitehackle": "/farmconnect/roosters/breeds/whitehackle-{stage}.png",
+    "Yellow Leg Hatch": "/farmconnect/roosters/breeds/yellow-leg-hatch-{stage}.png"
+  }
+}
