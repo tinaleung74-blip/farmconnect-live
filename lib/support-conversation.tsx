@@ -6,10 +6,17 @@ import { shouldEscalateToAdmin } from "@/lib/kafarm-brain";
 import { getCurrentProfile } from "@/lib/farmconnect-data";
 import { beginRecoveryOperation, markRecoverySending, reconcileRecoveryOperation, retrySafeRead, safeFingerprint } from "@/lib/recovery-guard";
 type Message = { id: string; sender_role: string; body: string; created_at: string };
+type QuickMessage = Message & { local: true };
 type Pending = { key: string; correlation?: string; session: string | null; body: string; escalate: boolean; phase?: "reply"; receipt?: string };
 type DamagedDraft = { storageKey: string; raw: string };
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const operationStorageKey=(account: string,key: string)=>`${account}.operation.${key}`;
+const quickSupportAnswers = [
+  { question: "How do I withdraw?", answer: "Open Wallet, tap Withdraw Funds, choose your payout method, enter the amount and account details, then submit. You can follow its status and open the payment proof from your Inbox." },
+  { question: "How do I add a rooster?", answer: "Open Your Roosters and tap Add Rooster. Choose a breed, select Daily or Monthly Care, choose a payment method, scan its QR, and submit your payment details." },
+  { question: "How do I request care?", answer: "Open your rooster's Diary, expand Choose Care, then select Daily Care or Monthly Care. Review what is included and continue to payment." },
+  { question: "How do I sell my rooster?", answer: "Open Your Roosters and tap Sell Rooster. Price evaluation becomes available from Day 91. After the reviewed offer appears, tap Sell to confirm." },
+] as const;
 function parseOperation(raw: string): Pending {
   const item=JSON.parse(raw) as Pending;
   if(!item || typeof item.key!=="string" || !uuid.test(item.key) || typeof item.body!=="string" || typeof item.escalate!=="boolean"
@@ -61,10 +68,15 @@ export function SupportConversation({ role }: { role: SupportRole }) {
   const [replyPending,setReplyPending]=useState<Pending[]>([]);
   const [replyWorking,setReplyWorking]=useState<string|null>(null);
   const [replyNote,setReplyNote]=useState("");
+  const [quickMessages,setQuickMessages]=useState<QuickMessage[]>([]);
+  const [typingQuestion,setTypingQuestion]=useState<string|null>(null);
+  const [offerLiveAgent,setOfferLiveAgent]=useState(false);
   const busy=useRef(false);
   const storage=useRef("");
   const refreshSequence=useRef(0);
   const replyBusy=useRef(false);
+  const quickTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const messageBox=useRef<HTMLTextAreaElement|null>(null);
   const invalidateRefresh=useCallback(()=>{refreshSequence.current++;},[]);
   const refresh=useCallback(async (id: string) => {
     const sequence=++refreshSequence.current;
@@ -103,6 +115,37 @@ export function SupportConversation({ role }: { role: SupportRole }) {
     })();
     return ()=>{active=false;};
   },[role,loadAttempt]);
+  useEffect(()=>()=>{if(quickTimer.current)clearTimeout(quickTimer.current);},[]);
+
+  function askQuickQuestion(question: string, answer: string){
+    if(typingQuestion)return;
+    setOfferLiveAgent(false);
+    const askedAt=new Date().toISOString();
+    setQuickMessages(current=>[...current,{id:`quick-user-${crypto.randomUUID()}`,sender_role:role,body:question,created_at:askedAt,local:true}]);
+    setTypingQuestion(question);
+    quickTimer.current=setTimeout(()=>{
+      setQuickMessages(current=>[...current,{id:`quick-kafarm-${crypto.randomUUID()}`,sender_role:"kafarm",body:answer,created_at:new Date().toISOString(),local:true}]);
+      setTypingQuestion(null);
+      setOfferLiveAgent(true);
+      quickTimer.current=null;
+    },1000);
+  }
+
+  function declineLiveAgent(){
+    setOfferLiveAgent(false);
+    const now=new Date().toISOString();
+    setQuickMessages(current=>[
+      ...current,
+      {id:`quick-user-${crypto.randomUUID()}`,sender_role:role,body:"No",created_at:now,local:true},
+      {id:`quick-kafarm-${crypto.randomUUID()}`,sender_role:"kafarm",body:"No problem. Choose another question below or type what else you need help with.",created_at:now,local:true},
+    ]);
+  }
+
+  function acceptLiveAgent(){
+    setOfferLiveAgent(false);
+    setQuickMessages(current=>[...current,{id:`quick-user-${crypto.randomUUID()}`,sender_role:role,body:"Yes",created_at:new Date().toISOString(),local:true}]);
+    void send(true,"Please connect me to a live support agent.");
+  }
   useEffect(()=>{
     const retry=()=>{if(!ready && !busy.current)setLoadAttempt(value=>value+1);};
     window.addEventListener("online",retry);
@@ -160,14 +203,15 @@ export function SupportConversation({ role }: { role: SupportRole }) {
     } catch {if(storage.current===account)setReplyNote("Automatic reply unavailable. You can retry or message the support team.");}
     finally {if(timer!==undefined)clearTimeout(timer);replyBusy.current=false;setReplyWorking(null);}
   }
-  async function send(force=false){
-    if(busy.current || !ready || damagedDraft || !storage.current || (!pending && !body.trim()))return;
+  async function send(force=false,overrideBody=""){
+    const messageBody=overrideBody.trim() || body.trim();
+    if(busy.current || !ready || damagedDraft || !storage.current || (!pending && !messageBody))return;
     busy.current=true;refreshSequence.current++;setSending(true);setNote("Sending…");
     let acknowledged=false;
     try{
       const profile=await getCurrentProfile();
       if(!profile || profile.role!==role || storage.current!==`farmconnect.support.pending.${profile.id}`){setReady(false);setNote("Your account changed. Reopen Support before sending.");return;}
-      const draft: Pending=pending || {key:crypto.randomUUID(),session:closed ? null : session,body:body.trim(),escalate:force || (!closed && escalated) || shouldEscalateToAdmin(body,role)};
+      const draft: Pending=pending || {key:crypto.randomUUID(),session:closed ? null : session,body:messageBody,escalate:force || replyPending.length>0 || (!closed && escalated) || shouldEscalateToAdmin(messageBody,role)};
       const item: Pending={...draft,correlation:draft.correlation || crypto.randomUUID()};
       const account=storage.current;
       const itemStorageKey=operationStorageKey(account,item.key);
@@ -193,7 +237,7 @@ export function SupportConversation({ role }: { role: SupportRole }) {
         fingerprint,
       });
       if(ledger.status==="completed" && ledger.result_reference){
-        acknowledged=true;setSession(ledger.result_reference);setBody("");setNote("Sent");finish();return;
+        acknowledged=true;setSession(ledger.result_reference);setBody("");setNote(item.escalate?"You’re in the support queue.":"Sent");finish();return;
       }
       await markRecoverySending(item.key);
       const response=await supabase.rpc("support_send_guarded",{p_key:item.key,p_role:role,p_session_id:item.session,p_body:item.body,p_force_escalate:item.escalate});
@@ -216,7 +260,7 @@ export function SupportConversation({ role }: { role: SupportRole }) {
       if(typeof data!=="string" || !data)throw new Error("Missing receipt");
       const verified=await reconcileRecoveryOperation(item.key);
       if(verified.state!=="completed" || verified.result_reference!==data)throw new Error("Delivery receipt was not verified");
-      acknowledged=true;setSession(data);setBody("");setNote("Sent");
+      acknowledged=true;setSession(data);setBody("");setNote(item.escalate?"You’re in the support queue.":"Sent");
       // Only a confirmed user message can trigger a reply. A reply failure must not resend the user message.
       if(!item.escalate){
         // Persist reply recovery BEFORE discarding the send recovery. If this write
@@ -235,6 +279,13 @@ export function SupportConversation({ role }: { role: SupportRole }) {
   }
   return <section className="rounded-2xl bg-white p-5 space-y-4">
     <h2 className="text-xl font-bold">Support</h2>
+    <div>
+      <p className="text-sm font-bold text-[#526567]">What do you need help with?</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {quickSupportAnswers.map(item=><button key={item.question} type="button" disabled={Boolean(typingQuestion)} onClick={()=>askQuickQuestion(item.question,item.answer)} className="rounded-full border border-[#b9d9d4] bg-[#edf7f5] px-4 py-2 text-left text-sm font-bold text-[#07563f] transition hover:border-[#087f83] hover:bg-[#dff3ee] disabled:opacity-50">{item.question}</button>)}
+        <button type="button" disabled={!ready || sending || Boolean(pending) || Boolean(damagedDraft)} onClick={()=>{setBody("");requestAnimationFrame(()=>messageBox.current?.focus());}} className="rounded-full border border-[#e1c05b] bg-[#fff3cf] px-4 py-2 text-left text-sm font-bold text-[#6a3b00] transition hover:border-[#f4c430] hover:bg-[#ffe9a3] disabled:opacity-50">Other</button>
+      </div>
+    </div>
     {loadError && <p role="alert">{loadError}</p>}
     {!ready && loadError && <button onClick={()=>setLoadAttempt(value=>value+1)} className="underline">Retry loading</button>}
     <div className="max-h-[55vh] overflow-y-auto space-y-3">
@@ -242,9 +293,15 @@ export function SupportConversation({ role }: { role: SupportRole }) {
         <strong>{message.sender_role===role?"You":message.sender_role==="admin"?"Support":"KaFarm"}</strong>
         <p className="whitespace-pre-wrap">{message.body}</p><time className="text-xs">{new Date(message.created_at).toLocaleString()}</time>
       </article>)}
+      {quickMessages.map(message=><article key={message.id} className={`rounded-xl p-3 ${message.sender_role===role?"ml-8 bg-[#fff3cf]":"mr-8 bg-[#edf7f5]"}`}>
+        <strong>{message.sender_role===role?"You":"KaFarm"}</strong>
+        <p className="whitespace-pre-wrap">{message.body}</p><time className="text-xs">{new Date(message.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</time>
+      </article>)}
+      {typingQuestion && <article className="mr-8 rounded-xl bg-[#edf7f5] p-3" role="status"><strong>KaFarm</strong><p className="mt-1 flex items-center gap-1" aria-label="KaFarm is typing"><span className="h-2 w-2 animate-bounce rounded-full bg-[#087f83]" /><span className="h-2 w-2 animate-bounce rounded-full bg-[#087f83] [animation-delay:120ms]" /><span className="h-2 w-2 animate-bounce rounded-full bg-[#087f83] [animation-delay:240ms]" /></p></article>}
+      {offerLiveAgent && <article className="mr-8 rounded-xl border border-[#b9d9d4] bg-white p-4 shadow-sm"><strong>KaFarm</strong><p className="mt-1 font-bold">Would you like to connect to a live agent?</p><div className="mt-3 flex gap-2"><button type="button" disabled={!ready || sending} onClick={acceptLiveAgent} className="rounded-xl bg-[#087f83] px-5 py-2 font-bold text-white disabled:opacity-50">Yes</button><button type="button" disabled={sending} onClick={declineLiveAgent} className="rounded-xl border border-[#b9d9d4] bg-white px-5 py-2 font-bold text-[#07563f] disabled:opacity-50">No</button></div></article>}
     </div>
     {damagedDraft && ready && <button onClick={()=>void startNewDraft()} className="underline">Keep recovery copy and start a new draft</button>}
-    <textarea aria-label="Message" value={body} disabled={!ready || sending || Boolean(pending) || Boolean(damagedDraft)} onChange={e=>setBody(e.target.value)} className="w-full rounded-xl border p-3" placeholder="How can we help?"/>
+    <textarea ref={messageBox} aria-label="Message" value={body} disabled={!ready || sending || Boolean(pending) || Boolean(damagedDraft)} onChange={e=>setBody(e.target.value)} className="w-full rounded-xl border p-3" placeholder="Type your concern here…"/>
     <p role="status">{note}</p>
     {(replyPending || []).map(item=><div key={item.key} className="rounded-xl border p-3">
       <p className="text-sm">Automatic reply pending</p>
@@ -256,6 +313,5 @@ export function SupportConversation({ role }: { role: SupportRole }) {
     <button disabled={!ready || sending || Boolean(damagedDraft) || (!pending && !body.trim())} onClick={()=>void send()} className="rounded-xl bg-[#087f83] px-5 py-2 text-white disabled:opacity-50">
       {sending?"Sending…":pending?.phase==="reply"?"Retry reply":pending?"Retry":"Send"}
     </button>
-    {!pending && <button disabled={!ready || sending || Boolean(damagedDraft) || !body.trim()} onClick={()=>void send(true)} className="ml-3 underline">Send to support team</button>}
   </section>;
 }
