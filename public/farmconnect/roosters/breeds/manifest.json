@@ -1,5 +1,5 @@
 {
-  "stages": ["chick", "juvenile", "young", "growth", "adult"],
+  "stages": ["chick", "juvenile", "young", "adult"],
   "breeds": {
     "Hatch": "/farmconnect/roosters/breeds/hatch-{stage}.png",
     "Kelso": "/farmconnect/roosters/breeds/kelso-{stage}.png",
