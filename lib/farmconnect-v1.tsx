@@ -239,6 +239,24 @@ function roosterGrowthStage(dayOrStage?: unknown): "chick" | "juvenile" | "young
   return "chick";
 }
 
+function roosterGrowthDay(metadata?: Record<string, unknown> | null, catalogDay?: unknown, acquiredAt?: unknown) {
+  const acquiredTime = Date.parse(String(acquiredAt || metadata?.acquired_at || ""));
+  if (Number.isFinite(acquiredTime)) {
+    const elapsedDays = Math.floor((Date.now() - acquiredTime) / 86_400_000) + 1;
+    if (elapsedDays > 0) return elapsedDays;
+  }
+  const candidates = [metadata?.growth_day, metadata?.age_days, catalogDay];
+  for (const candidate of candidates) {
+    const value = Number(candidate);
+    if (Number.isFinite(value) && value > 0) return Math.max(1, Math.floor(value));
+  }
+  return 1;
+}
+
+function roosterCanRequestEvaluation(day: number) {
+  return day >= 91;
+}
+
 function roosterBreedImage(breed: unknown, dayOrStage?: unknown) {
   const slug = recognizedRoosterBreed(breed).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   return `/farmconnect/roosters/breeds/${slug}-${roosterGrowthStage(dayOrStage)}.png`;
@@ -356,6 +374,7 @@ type RoosterCard = {
   approvedSalePrice?: number | null;
   ownershipMetadata?: Record<string, unknown>;
   careOverview?: CustomerRoosterCareOverview | null;
+  acquiredAt?: string | null;
 };
 
 function carePlanBox(overview?: CustomerRoosterCareOverview | null) {
@@ -1728,10 +1747,10 @@ export function CustomerRoostersV2() {
         const careByAnimal = new Map(careOverviews.map((overview) => [overview.customerAnimalId, overview]));
         setRoosters(items.filter(isRealOwnedAnimal).map((row, index) => {
           const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Bloodline";
-          const metadata = (row.ownership_metadata || {}) as Record<string, unknown>;
+          const metadata = { ...(row.ownership_metadata || {}), acquired_at: row.acquired_at } as Record<string, unknown>;
           const overview = careByAnimal.get(row.id) || null;
-          const growthDay = Number(metadata.growth_day || overview?.catalogDay || 1);
-          return { id: row.id, name: row.animal_name || `${breed} Rooster`, breed, tag: row.animal_code || `FC-${index + 1}`, stage: row.acquired_from === "farm_buy" ? "Growing" : "Owned Rooster", status: row.status === "sold" ? "Sold" : "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: row.approved_sale_price == null ? "Waiting for reviewed price" : peso(Number(row.approved_sale_price)), image: roosterBreedImage(breed, growthDay), pen: String(metadata.pen || metadata.pen_name || "Pending assignment"), caretaker: String(metadata.caretaker_name || "Pending assignment"), saleStatus: row.sale_status || "not_listed", approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price), ownershipMetadata: metadata, careOverview: overview } as RoosterCard;
+          const growthDay = roosterGrowthDay(metadata, overview?.catalogDay, row.acquired_at);
+          return { id: row.id, name: row.animal_name || `${breed} Rooster`, breed, tag: row.animal_code || `FC-${index + 1}`, stage: row.acquired_from === "farm_buy" ? "Growing" : "Owned Rooster", status: row.status === "sold" ? "Sold" : "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: row.approved_sale_price == null ? "Waiting for reviewed price" : peso(Number(row.approved_sale_price)), image: roosterBreedImage(breed, growthDay), pen: String(metadata.pen || metadata.pen_name || "Pending assignment"), caretaker: String(metadata.caretaker_name || "Pending assignment"), saleStatus: row.sale_status || "not_listed", approvedSalePrice: row.approved_sale_price == null ? null : Number(row.approved_sale_price), ownershipMetadata: metadata, careOverview: overview, acquiredAt: row.acquired_at || null } as RoosterCard;
         }));
         setPendingOrders((payments || []).filter((row: any) => String(row.source_type || "") === "farm_buy" && ["for_review", "needs_info"].includes(String(row.status || "for_review"))).map((row: any) => { const summary = row.summary || {}; const line = Array.isArray(summary.lines) ? summary.lines[0] || {} : {}; const breed = recognizedRoosterBreed(line.bloodline, line.breed, line.name); return { id: row.id, name: String(line.name || "Rooster order"), breed, image: String(line.image || roosterBreedImage(breed, line.stage || "chick")), amount: Number(row.amount_expected || line.total || 0), care: String(summary.care_preference || "skip") === "monthly" ? "monthly" : "skip", status: String(row.status || "for_review") } as PendingRoosterOrder; }));
       })
@@ -1803,7 +1822,7 @@ export function CustomerRoostersV2() {
         {!loading && !loadError && roosters.length === 0 && <div className="rounded-3xl border border-dashed border-[#b9cdbf] bg-white p-10 text-center shadow-xl"><img src="/farmconnect/icons/my-rooster.png" alt="" className="mx-auto h-24 w-24 object-contain" /><h2 className="mt-3 text-2xl font-black">No approved rooster yet</h2><p className="mt-2 font-bold text-[#65746b]">Use Add Rooster above. Your rooster appears here after Admin verifies the payment and ownership.</p></div>}
         {roosters.length > 0 && <><div className="mb-3 flex items-center justify-between text-sm font-black text-[#65746b]"><span>Rooster {activeIndex + 1} of {roosters.length}</span><div className="hidden gap-2 [@media(pointer:fine)]:flex"><button type="button" onClick={() => moveRooster(-1)} disabled={activeIndex === 0} className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl shadow disabled:opacity-35">←</button><button type="button" onClick={() => moveRooster(1)} disabled={activeIndex === roosters.length - 1} className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl shadow disabled:opacity-35">→</button></div><span className="hidden [@media(pointer:coarse)]:inline">Swipe to view</span></div>
           <div ref={railRef} onScroll={(event) => { const el = event.currentTarget; setActiveIndex(Math.max(0, Math.min(roosters.length - 1, Math.round(el.scrollLeft / (el.clientWidth || 1))))); }} className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden">
-            {roosters.map((rooster) => { const day = Number(rooster.ownershipMetadata?.growth_day || rooster.careOverview?.catalogDay || 1); const weight = rooster.ownershipMetadata?.weight_kg == null ? "Awaiting verified weight" : `${Number(rooster.ownershipMetadata.weight_kg).toFixed(2)} kg`; return <article key={rooster.id} className="min-w-full snap-start overflow-hidden rounded-[22px] border border-white/80 bg-white/96 shadow-xl sm:rounded-[28px]"><div className="fc-rooster-detail-layout"><div className="fc-rooster-portrait"><RoosterVisual src={rooster.image} alt={rooster.name} /></div><div className="p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase text-[#07563f]">Owned rooster</span><h2 className="mt-3 truncate text-2xl font-black sm:text-3xl">{rooster.name}</h2><p className="truncate font-black text-[#24724d]">{rooster.breed}</p></div><div className="shrink-0 text-center"><button type="button" onClick={() => setQrRooster(rooster)} className="rounded-2xl border border-[#dce7df] bg-white p-1.5 shadow-sm sm:p-2" aria-label={`Open ${rooster.name} QR`}><QRCodeSVG value={qrValue(rooster)} size={56} level="H" marginSize={1} /></button><button type="button" onClick={() => { setRenameRooster(rooster); setRenameValue(rooster.name); setRenameError(""); }} className="mt-1 block w-full text-xs font-black text-[#087f83] hover:underline">Rename</button></div></div>
+            {roosters.map((rooster) => { const day = roosterGrowthDay(rooster.ownershipMetadata, rooster.careOverview?.catalogDay); const canEvaluate = roosterCanRequestEvaluation(day); const weight = rooster.ownershipMetadata?.weight_kg == null ? "Awaiting verified weight" : `${Number(rooster.ownershipMetadata.weight_kg).toFixed(2)} kg`; return <article key={rooster.id} className="min-w-full snap-start overflow-hidden rounded-[22px] border border-white/80 bg-white/96 shadow-xl sm:rounded-[28px]"><div className="fc-rooster-detail-layout"><div className="fc-rooster-portrait"><RoosterVisual src={roosterBreedImage(rooster.breed, day)} alt={rooster.name} /></div><div className="p-4 sm:p-6"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase text-[#07563f]">Owned rooster</span><h2 className="mt-3 truncate text-2xl font-black sm:text-3xl">{rooster.name}</h2><p className="truncate font-black text-[#24724d]">{rooster.breed}</p></div><div className="shrink-0 text-center"><button type="button" onClick={() => setQrRooster(rooster)} className="rounded-2xl border border-[#dce7df] bg-white p-1.5 shadow-sm sm:p-2" aria-label={`Open ${rooster.name} QR`}><QRCodeSVG value={qrValue(rooster)} size={56} level="H" marginSize={1} /></button><button type="button" onClick={() => { setRenameRooster(rooster); setRenameValue(rooster.name); setRenameError(""); }} className="mt-1 block w-full text-xs font-black text-[#087f83] hover:underline">Rename</button></div></div>
               <section className="mt-5 rounded-[22px] border border-[#dce7df] bg-[linear-gradient(145deg,#fbfdf9,#f0f7f2)] p-4 shadow-[0_10px_28px_rgba(4,31,34,.06)] sm:p-5">
                 <div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-[.12em] text-[#07563f]"><img src="/farmconnect/customer-v2-icons/status-verified.png" alt="" className="h-8 w-8 object-contain" />Status</h3><span className="text-lg font-black text-[#087f83]">{Math.round((day / 180) * 100)}%</span></div>
                 <div className="mt-4 grid grid-cols-3 divide-x divide-[#dce7df] rounded-2xl border border-[#e1ebe4] bg-white/90 py-3 shadow-sm">
@@ -1817,7 +1836,7 @@ export function CustomerRoostersV2() {
               </section>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <Link href={`/customer-v2/roosters/diary?id=${rooster.id}`} className="flex min-h-20 items-center gap-2 rounded-2xl border border-[#cfe2d7] bg-[#edf6ef] p-3 text-left text-[#07563f] transition hover:-translate-y-0.5 hover:shadow-md sm:gap-3 sm:p-4"><img src="/farmconnect/customer-v2-icons/rooster-diary.png" alt="" className="h-11 w-11 shrink-0 object-contain sm:h-14 sm:w-14" /><span><b className="block text-xs font-black sm:text-sm">Rooster Diary</b><small className="mt-1 hidden text-xs font-bold text-[#536a68] sm:block">Updates, photos, and care journey</small></span></Link>
-                <button type="button" onClick={() => setSellRoosterId(rooster.id)} className="flex min-h-20 items-center gap-2 rounded-2xl border border-[#f0d48a] bg-[#fff3cf] p-3 text-left text-[#6a3b00] transition hover:-translate-y-0.5 hover:shadow-md sm:gap-3 sm:p-4"><img src="/farmconnect/customer-v2-icons/sell-rooster.png" alt="" className="h-11 w-11 shrink-0 object-contain sm:h-14 sm:w-14" /><span><b className="block text-xs font-black sm:text-sm">Sell Rooster</b><small className="mt-1 hidden text-xs font-bold text-[#76551e] sm:block">Evaluate price or view your offer</small></span></button>
+                <button type="button" disabled={!canEvaluate} onClick={() => canEvaluate && setSellRoosterId(rooster.id)} className="flex min-h-20 items-center gap-2 rounded-2xl border border-[#f0d48a] bg-[#fff3cf] p-3 text-left text-[#6a3b00] transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:border-[#dce7df] disabled:bg-[#f2f4f1] disabled:text-[#65746b] disabled:hover:translate-y-0 disabled:hover:shadow-none sm:gap-3 sm:p-4"><img src="/farmconnect/customer-v2-icons/sell-rooster.png" alt="" className="h-11 w-11 shrink-0 object-contain sm:h-14 sm:w-14" /><span><b className="block text-xs font-black sm:text-sm">{canEvaluate ? "Sell Rooster" : "Not Ready to Sell"}</b><small className="mt-1 hidden text-xs font-bold text-[#76551e] sm:block">{canEvaluate ? "Evaluate price or view your offer" : `Available for evaluation from Day 91 · Day ${day} now`}</small></span></button>
               </div>
               </div></div></article>; })}
           </div></>}
@@ -1855,7 +1874,7 @@ export function CustomerRoosterDiaryV2() {
         if (!mounted) return;
         const row: any = animals.find((item: any) => item.id === roosterId) || animals[0] || null;
         if (!row) return;
-        const metadata = (row.ownership_metadata || {}) as Record<string, unknown>;
+        const metadata = { ...(row.ownership_metadata || {}), acquired_at: row.acquired_at } as Record<string, unknown>;
         const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Breed";
         const animalOverview = overviews.find((item) => item.customerAnimalId === row.id) || null;
         const mapped: RoosterCard = { id: row.id, name: row.animal_name || "Rooster", breed, tag: row.animal_code || "", stage: "Owned Rooster", status: row.status || "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: "", image: roosterBreedImage(breed, metadata.growth_day || animalOverview?.catalogDay || 1), pen: "", caretaker: "", ownershipMetadata: metadata };
@@ -2113,7 +2132,9 @@ export function CustomerSellRooster({ animalIdOverride = "", embedded = false, o
 
   const status = String(sale?.status || "not_requested");
   const approvedPrice = Number(sale?.approved_sale_price || 0);
-  const canSell = ["price_ready", "sale_rejected"].includes(status) && approvedPrice > 0;
+  const growthDay = roosterGrowthDay(animal?.ownership_metadata, undefined, animal?.acquired_at);
+  const canEvaluateAge = roosterCanRequestEvaluation(growthDay);
+  const canSell = canEvaluateAge && ["price_ready", "sale_rejected"].includes(status) && approvedPrice > 0;
   const labels: Record<string, string> = {
     not_requested: "Not evaluated", price_requested: "Evaluation pending",
     price_assigned: "Evaluation in progress", price_submitted: "Evaluation pending",
@@ -2126,7 +2147,7 @@ export function CustomerSellRooster({ animalIdOverride = "", embedded = false, o
 
   async function act(kind: "evaluate" | "sell") {
     if (actionLock.current || loading || loadError || !animal) return;
-    if (kind === "evaluate" && sale) return;
+    if (kind === "evaluate" && (sale || !canEvaluateAge)) return;
     if (kind === "sell" && (!sale || !canSell)) return;
     actionLock.current = true;
     setBusy(true);
@@ -2149,7 +2170,7 @@ export function CustomerSellRooster({ animalIdOverride = "", embedded = false, o
       <Card className="overflow-hidden">
         {loading ? <p role="status">Loading rooster…</p> : animal ? <>
           <div className="grid items-center gap-5 sm:grid-cols-[180px_1fr]">
-            <RoosterVisual src={roosterBreedImage(animal.breed_snapshot || animal.bloodline_snapshot, animal.ownership_metadata?.growth_day || "adult")} alt={animal.animal_name || "Rooster"} variant="sell" />
+            <RoosterVisual src={roosterBreedImage(animal.breed_snapshot || animal.bloodline_snapshot, growthDay)} alt={animal.animal_name || "Rooster"} variant="sell" />
             <div>
               <h1 className="text-3xl font-black text-[#073b3d]">{animal.animal_name || animal.breed_snapshot || "Rooster"}</h1>
               <p className="mt-1 text-sm text-[#526567]">{animal.breed_snapshot || animal.bloodline_snapshot || ""}</p>
@@ -2159,10 +2180,10 @@ export function CustomerSellRooster({ animalIdOverride = "", embedded = false, o
             </div>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <button type="button" disabled={busy || Boolean(sale)} onClick={() => void act("evaluate")} className="rounded-2xl bg-[#087f83] px-4 py-4 font-bold text-white disabled:opacity-40">Evaluate Price</button>
+            <button type="button" disabled={busy || Boolean(sale) || !canEvaluateAge} onClick={() => void act("evaluate")} className="rounded-2xl bg-[#087f83] px-4 py-4 font-bold text-white disabled:opacity-40">{canEvaluateAge ? "Evaluate Price" : "Not Ready to Sell"}</button>
             <button type="button" disabled={busy || !canSell} onClick={() => void act("sell")} className="rounded-2xl bg-[#f6c72b] px-4 py-4 font-bold text-[#073b3d] disabled:opacity-40">{status === "completed" ? "Sold" : "Sell"}</button>
           </div>
-          {!canSell && status !== "completed" && <p className="mt-3 text-sm text-[#526567]">{sale ? "Your request is being processed." : "Evaluate your rooster to receive an offer."}</p>}
+          {!canSell && status !== "completed" && <p className="mt-3 text-sm text-[#526567]">{!canEvaluateAge ? `This rooster is on Day ${growthDay}. Price evaluation becomes available on Day 91.` : sale ? "Your request is being processed." : "Evaluate your rooster to receive an offer."}</p>}
         </> : null}
         {message && <p role="status" className="mt-4 text-sm">{message}</p>}
         <button type="button" disabled={busy || loading} onClick={() => void load()} className="mt-4 text-sm font-bold text-[#087f83] underline disabled:opacity-40">{busy ? "Sending…" : "Refresh status"}</button>

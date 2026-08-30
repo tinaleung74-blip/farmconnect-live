@@ -19,6 +19,7 @@
         "test:dependencies": "node scripts/qa/dependency-contract.mjs",
         "test:recovery": "node scripts/qa/recovery-contract.mjs",
         "test:recovery-guard": "node --test scripts/qa/094-recovery-guard-contract.test.mjs scripts/qa/093-support-recovery.test.mjs scripts/qa/support-outbox.test.mjs scripts/qa/support-reply-timeout.test.mjs",
+        "test:rooster-growth": "node --test scripts/qa/095-rooster-growth-stage-guard.test.mjs",
         "test:e2e:recovery-guard": "node scripts/qa/recovery-guard-e2e.mjs",
         "test:pages:local": "node scripts/qa/local-page-smoke.mjs",
         "test:workflow": "node scripts/qa/workflow-reconciliation.mjs",
