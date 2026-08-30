@@ -75,7 +75,7 @@ test('escalated user message completes without a bot reply recovery item',async(
 test('unavailable bot does not block a new message to human support',async()=>{
  const ui=await mount(new Map(),{reply:async()=>({error:{message:'unavailable'}})});
  await ui.type('hello');await ui.click('Send');await ui.render();
- await ui.type('please help');await ui.click('Send to support team');
+ await ui.type('please help');await ui.click('Send');
  assert.equal(ui.calls.at(-1).args.p_force_escalate,true);assert.equal(ui.states[5],false);assert.equal(ui.store.has(slot(a)),true);assert.equal(ui.store.has(slot(b)),false);
 });
 test('reply deadline also covers a stalled account recheck',async()=>{
