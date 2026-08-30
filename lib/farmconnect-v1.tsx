@@ -3748,7 +3748,18 @@ export function WalletPage() {
   const [pinGate, setPinGate] = useState<null | "balance" | "save">(null);
   const [walletNote, setWalletNote] = useState("Loading live wallet records...");
   const [walletRows, setWalletRows] = useState<WalletTransactionRow[]>([]);
+  const [walletOwner, setWalletOwner] = useState("FarmConnect Customer");
+  const [payoutAccounts, setPayoutAccounts] = useState<LivePayoutAccount[]>([]);
+  const [withdrawalRows, setWithdrawalRows] = useState<any[]>([]);
+  const [selectedPayoutId, setSelectedPayoutId] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawPinOpen, setWithdrawPinOpen] = useState(false);
+  const [withdrawSaving, setWithdrawSaving] = useState(false);
+  const [withdrawKycReady, setWithdrawKycReady] = useState(false);
+  const withdrawalKey = useRef("");
   const availableBalance = Math.max(0, balance - lockedSavings);
+  const selectedPayout = payoutAccounts.find((row) => row.id === selectedPayoutId) || payoutAccounts[0] || null;
+  const withdrawValue = Number(withdrawAmount || 0);
   useEffect(() => {
     let mounted = true;
     getCurrentProfile()
@@ -3778,6 +3789,43 @@ export function WalletPage() {
       mounted = false;
     };
   }, []);
+  useEffect(() => {
+    if (!isCustomerV2) return;
+    let active = true;
+    Promise.all([getCurrentProfile(), getCustomerPayoutMethods(), getCustomerWithdrawalRequests()])
+      .then(([profile, methods, withdrawals]) => {
+        if (!active) return;
+        const status = String(profile?.kyc_status || profile?.verification_status || "").toLowerCase();
+        setWalletOwner(String(profile?.display_name || profile?.full_name || "FarmConnect Customer"));
+        setWithdrawKycReady(["approved", "verified", "passed"].includes(status));
+        setPayoutAccounts(methods as LivePayoutAccount[]);
+        setWithdrawalRows(withdrawals || []);
+        setSelectedPayoutId((current) => (methods.some((row: any) => row.id === current) ? current : methods[0]?.id || ""));
+      })
+      .catch(() => setWalletNote("Withdrawal details could not load. Refresh and try again."));
+    return () => { active = false; };
+  }, [isCustomerV2]);
+
+  async function submitInlineWithdrawal(walletPin: string) {
+    if (!selectedPayout || !withdrawKycReady || withdrawValue < 100 || withdrawValue > availableBalance) return;
+    try {
+      setWithdrawSaving(true);
+      if (!withdrawalKey.current) withdrawalKey.current = `withdrawal-${crypto.randomUUID()}`;
+      const result = await submitWithdrawalRequest({ amount: withdrawValue, payoutMethod: selectedPayout.provider, payoutHolder: selectedPayout.account_holder, payoutAccount: selectedPayout.account_number, customerNote: "Customer submitted withdrawal from wallet page.", idempotencyKey: withdrawalKey.current, walletPin });
+      withdrawalKey.current = "";
+      setWithdrawAmount("");
+      setWalletNote(result.duplicate ? "This withdrawal was already received." : "Withdrawal submitted for review.");
+      const [profile, withdrawals, transactions] = await Promise.all([getCurrentProfile(), getCustomerWithdrawalRequests(), getCurrentProfile().then((p) => p ? getWalletTransactions(p.id) : [])]);
+      setBalance(Number(profile?.wallet_balance || 0));
+      setWithdrawalRows(withdrawals || []);
+      setWalletRows(transactions.map((row) => ({ type: row.transaction_type || "Wallet Transaction", date: row.created_at ? new Date(row.created_at).toLocaleDateString("en-PH") : "Today", status: row.status || "recorded", amount: Number(row.amount || 0), receipt: row.id })));
+    } catch (error) {
+      setWalletNote(`Withdrawal failed: ${readableAppError(error) || "Check your balance, payout account, KYC, and Wallet PIN."}`);
+    } finally {
+      setWithdrawSaving(false);
+      setWithdrawPinOpen(false);
+    }
+  }
   if (isCustomerV2) {
     return (
       <Shell role="customer" title="Wallet">
@@ -3795,28 +3843,34 @@ export function WalletPage() {
             </button>
           </header>
 
-          <section className="overflow-hidden rounded-[26px] border border-white/80 bg-[#fffdf7]/96 shadow-xl">
-            <div className="bg-[linear-gradient(115deg,#041f22_0%,#087f83_62%,#063b3f_100%)] p-5 text-white sm:p-7">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Available Balance</p>
-              <div className="mt-3 flex min-w-0 items-center gap-3">
-                <span className="rounded-lg border border-white/15 bg-white/10 px-2.5 py-1 text-sm font-black text-[#f4c430]">FC</span>
-                <strong className="min-w-0 truncate text-4xl font-black tracking-tight sm:text-5xl">{showAmounts ? fcCoin(availableBalance) : "••••••"}</strong>
+          {withdrawPinOpen && selectedPayout && <PinGate title="Confirm Withdrawal" onClose={() => setWithdrawPinOpen(false)} onConfirm={(pin) => void submitInlineWithdrawal(pin)} />}
+          <section className="grid gap-4 lg:grid-cols-[minmax(280px,.82fr)_minmax(0,1.18fr)]">
+            <article className="relative min-h-[310px] overflow-hidden rounded-[26px] bg-[linear-gradient(135deg,#041f22_0%,#087f83_58%,#063b3f_100%)] p-6 text-white shadow-xl sm:p-7">
+              <span className="absolute -right-12 -top-12 h-40 w-40 rounded-full border-[24px] border-white/5" />
+              <span className="absolute -bottom-16 -left-12 h-44 w-44 rounded-full border-[26px] border-[#f4c430]/10" />
+              <div className="relative flex h-full flex-col">
+                <p className="text-xs font-black uppercase tracking-[.18em] text-white/70">Available Balance</p>
+                <div className="mt-5 flex min-w-0 items-center gap-3"><span className="rounded-lg border border-[#f4c430]/45 bg-white/10 px-2.5 py-1 text-sm font-black text-[#f4c430]">FC</span><strong className="min-w-0 truncate text-4xl font-black sm:text-5xl">{showAmounts ? fcCoin(availableBalance) : "••••••"}</strong></div>
+                <div className="mt-auto"><p className="text-[10px] font-black uppercase tracking-[.14em] text-white/60">Account Name</p><p className="mt-1 text-lg font-black">{walletOwner}</p><p className="mt-5 text-right text-xs font-black uppercase tracking-[.16em] text-[#f4c430]">FarmConnect</p></div>
               </div>
-            </div>
-            <div className="p-4 sm:p-5">
-              <Link href="/customer-v2/withdraw" className="flex min-h-16 items-center justify-between rounded-[18px] bg-[#087f83] px-4 text-white shadow-[0_8px_20px_rgba(8,127,131,.22)] transition hover:bg-[#063b3f] sm:px-5">
-                <span className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#f4c430] p-1.5">
-                    <img src="/farmconnect/customer-v2-icons/wallet-v2.png" alt="" className="h-full w-full object-contain" />
-                  </span>
-                  <span>
-                    <b className="block text-base">Withdraw Funds</b>
-                  </span>
-                </span>
-                <span className="text-xl" aria-hidden="true">›</span>
-              </Link>
-            </div>
+            </article>
+
+            <article className="rounded-[26px] border border-[#f4c430]/30 bg-[#fffdf7]/96 p-5 shadow-xl sm:p-6">
+              <div className="flex items-center justify-between gap-3"><h2 className="text-2xl font-black text-[#041f22]">Withdraw Funds</h2>{!payoutAccounts.length && <Link href="/customer-v2/withdraw/add-payout" className="rounded-xl bg-[#f4c430] px-3 py-2 text-xs font-black text-[#041f22]">Add Payout</Link>}</div>
+              {!withdrawKycReady && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900">Complete KYC in Settings before withdrawing.</p>}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="text-xs font-black uppercase tracking-wide text-[#536a68]">Amount<input value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value.replace(/\D/g,""))} inputMode="numeric" placeholder="FC 0.00" className="mt-2 w-full rounded-xl border border-[#dce7df] bg-white px-4 py-3 text-base font-black text-[#041f22] outline-none focus:border-[#087f83]" /></label>
+                <label className="text-xs font-black uppercase tracking-wide text-[#536a68]">Payout Method<select value={selectedPayout?.id || ""} onChange={(event) => setSelectedPayoutId(event.target.value)} className="mt-2 w-full rounded-xl border border-[#dce7df] bg-white px-4 py-3 text-base font-black normal-case text-[#041f22] outline-none focus:border-[#087f83]"><option value="">Choose payout</option>{payoutAccounts.map((account) => <option key={account.id} value={account.id}>{account.provider}</option>)}</select></label>
+                <label className="text-xs font-black uppercase tracking-wide text-[#536a68]">Account Name<input readOnly value={selectedPayout?.account_holder || ""} placeholder="Saved account name" className="mt-2 w-full rounded-xl border border-[#dce7df] bg-[#f8faf7] px-4 py-3 text-base font-bold normal-case text-[#041f22]" /></label>
+                <label className="text-xs font-black uppercase tracking-wide text-[#536a68]">Account / Mobile Number<input readOnly value={selectedPayout?.account_number || ""} placeholder="Saved payout number" className="mt-2 w-full rounded-xl border border-[#dce7df] bg-[#f8faf7] px-4 py-3 text-base font-bold normal-case text-[#041f22]" /></label>
+              </div>
+              <div className="mt-4 grid grid-cols-3 rounded-2xl bg-[#f5f2e8] p-3 text-center"><div><p className="text-[9px] font-black uppercase text-[#65746b]">Withdraw</p><b className="text-sm">FC {fcCoin(withdrawValue)}</b></div><div><p className="text-[9px] font-black uppercase text-[#65746b]">Fee</p><b className="text-sm">FC 0.00</b></div><div><p className="text-[9px] font-black uppercase text-[#65746b]">You Receive</p><b className="text-sm text-[#087f83]">FC {fcCoin(withdrawValue)}</b></div></div>
+              <button type="button" disabled={!selectedPayout || !withdrawKycReady || withdrawValue < 100 || withdrawValue > availableBalance || withdrawSaving} onClick={() => setWithdrawPinOpen(true)} className="mt-4 w-full rounded-xl bg-[#f4c430] px-5 py-3.5 font-black text-[#041f22] shadow-[0_8px_18px_rgba(244,196,48,.25)] disabled:cursor-not-allowed disabled:bg-[#d5d5cb] disabled:text-[#73776f]">{withdrawSaving ? "Submitting…" : "Submit Withdrawal"}</button>
+              {walletNote && <p role="status" className="mt-3 text-xs font-bold text-[#536a68]">{walletNote}</p>}
+            </article>
           </section>
+
+          {withdrawalRows.some((row) => row.admin_reference_number || row.admin_receipt_url) && <section className="rounded-[26px] border border-[#f4c430]/35 bg-[#fffdf7]/96 p-5 shadow-xl"><h2 className="text-xl font-black text-[#041f22]">Payout Receipts</h2><div className="mt-3 space-y-2">{withdrawalRows.filter((row) => row.admin_reference_number || row.admin_receipt_url).slice(0,3).map((row) => <article key={row.id} className="flex flex-col gap-2 border-b border-[#dce7df] pb-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"><div><b>{row.payout_method} · FC {fcCoin(Number(row.amount || 0))}</b><p className="text-xs font-bold text-[#65746b]">{row.admin_reference_number || "Receipt attached"}</p></div><Link href="/customer-v2/inbox" className="text-sm font-black text-[#087f83] underline">View Receipt</Link></article>)}</div></section>}
 
           <section className="rounded-[26px] border border-[#f4c430]/35 bg-[#fffdf7]/96 p-4 shadow-xl sm:p-6">
             <div className="flex items-center justify-between gap-3">
