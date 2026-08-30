@@ -71,12 +71,14 @@ export function SupportConversation({ role }: { role: SupportRole }) {
   const [quickMessages,setQuickMessages]=useState<QuickMessage[]>([]);
   const [typingQuestion,setTypingQuestion]=useState<string|null>(null);
   const [offerLiveAgent,setOfferLiveAgent]=useState(false);
+  const [customQuestionMode,setCustomQuestionMode]=useState(false);
   const busy=useRef(false);
   const storage=useRef("");
   const refreshSequence=useRef(0);
   const replyBusy=useRef(false);
   const quickTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const messageBox=useRef<HTMLTextAreaElement|null>(null);
+  const offerAfterReply=useRef(false);
   const invalidateRefresh=useCallback(()=>{refreshSequence.current++;},[]);
   const refresh=useCallback(async (id: string) => {
     const sequence=++refreshSequence.current;
@@ -120,13 +122,13 @@ export function SupportConversation({ role }: { role: SupportRole }) {
   function askQuickQuestion(question: string, answer: string){
     if(typingQuestion)return;
     setOfferLiveAgent(false);
+    setCustomQuestionMode(false);
     const askedAt=new Date().toISOString();
     setQuickMessages(current=>[...current,{id:`quick-user-${crypto.randomUUID()}`,sender_role:role,body:question,created_at:askedAt,local:true}]);
     setTypingQuestion(question);
     quickTimer.current=setTimeout(()=>{
       setQuickMessages(current=>[...current,{id:`quick-kafarm-${crypto.randomUUID()}`,sender_role:"kafarm",body:answer,created_at:new Date().toISOString(),local:true}]);
       setTypingQuestion(null);
-      setOfferLiveAgent(true);
       quickTimer.current=null;
     },1000);
   }
@@ -196,6 +198,7 @@ export function SupportConversation({ role }: { role: SupportRole }) {
           if(storage.current===account){
             setReplyPending(readOperations(account).items.filter(item=>item.phase==="reply"));
             setReplyNote("Reply checked.");
+            if(offerAfterReply.current){offerAfterReply.current=false;setOfferLiveAgent(true);}
           }
         })(),
         new Promise<never>((_,reject)=>{timer=setTimeout(()=>{expired=true;reject(new Error("Reply timed out"));},20000);}),
@@ -213,6 +216,7 @@ export function SupportConversation({ role }: { role: SupportRole }) {
       if(!profile || profile.role!==role || storage.current!==`farmconnect.support.pending.${profile.id}`){setReady(false);setNote("Your account changed. Reopen Support before sending.");return;}
       const draft: Pending=pending || {key:crypto.randomUUID(),session:closed ? null : session,body:messageBody,escalate:force || replyPending.length>0 || (!closed && escalated) || shouldEscalateToAdmin(messageBody,role)};
       const item: Pending={...draft,correlation:draft.correlation || crypto.randomUUID()};
+      if(!pending && customQuestionMode && !item.escalate){offerAfterReply.current=true;setCustomQuestionMode(false);}
       const account=storage.current;
       const itemStorageKey=operationStorageKey(account,item.key);
       const finish=()=>{
@@ -283,7 +287,7 @@ export function SupportConversation({ role }: { role: SupportRole }) {
       <p className="text-sm font-bold text-[#526567]">What do you need help with?</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {quickSupportAnswers.map(item=><button key={item.question} type="button" disabled={Boolean(typingQuestion)} onClick={()=>askQuickQuestion(item.question,item.answer)} className="rounded-full border border-[#b9d9d4] bg-[#edf7f5] px-4 py-2 text-left text-sm font-bold text-[#07563f] transition hover:border-[#087f83] hover:bg-[#dff3ee] disabled:opacity-50">{item.question}</button>)}
-        <button type="button" disabled={!ready || sending || Boolean(pending) || Boolean(damagedDraft)} onClick={()=>{setBody("");requestAnimationFrame(()=>messageBox.current?.focus());}} className="rounded-full border border-[#e1c05b] bg-[#fff3cf] px-4 py-2 text-left text-sm font-bold text-[#6a3b00] transition hover:border-[#f4c430] hover:bg-[#ffe9a3] disabled:opacity-50">Other</button>
+        <button type="button" disabled={!ready || sending || Boolean(pending) || Boolean(damagedDraft)} onClick={()=>{setOfferLiveAgent(false);setCustomQuestionMode(true);setBody("");requestAnimationFrame(()=>messageBox.current?.focus());}} className="rounded-full border border-[#e1c05b] bg-[#fff3cf] px-4 py-2 text-left text-sm font-bold text-[#6a3b00] transition hover:border-[#f4c430] hover:bg-[#ffe9a3] disabled:opacity-50">Other</button>
       </div>
     </div>
     {loadError && <p role="alert">{loadError}</p>}
