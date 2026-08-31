@@ -20,7 +20,7 @@ export function LiveEvidencePage({ admin = false }: { admin?: boolean }) {
         if (caretakers.error) throw caretakers.error;
         const ids = (caretakers.data || []).map(row => row.id);
         if (!ids.length) return [];
-        const result = await supabase.from("task_proofs").select("id,admin_review_status,created_at,preset_note,free_note,proof_url,proof_file_urls,caretaker_tasks(task_type,rooster_name)").in("caretaker_id", ids).order("created_at", { ascending: false }).limit(100);
+        const result = await supabase.from("task_proofs").select("id,admin_review_status,created_at,preset_note,free_note,proof_url,proof_file_urls,caretaker_tasks!task_proofs_caretaker_task_id_fkey(task_type,rooster_name)").in("caretaker_id", ids).order("created_at", { ascending: false }).limit(100);
         if (result.error) throw result.error;
         return (result.data || []).map(row=>({
           ...row,
