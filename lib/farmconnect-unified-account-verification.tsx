@@ -146,10 +146,10 @@ function Info({ label, value }: { label: string; value: string }) {
 function AdminVerificationShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const links = [
+    ["Dashboard", "/admin"],
     ["Account Verification", "/admin/account-verification"],
-    ["Orders & Payments", "/admin/customer-requests/payment"],
-    ["Care Operations", "/admin/customer-requests/task"],
-    ["Selling & Payout", "/admin/selling-payout"],
+    ["Roosters", "/admin/roosters"],
+    ["Task Reports", "/admin/tasks"],
     ["Support", "/admin/live-chat"],
     ["KaFarm", "/admin/kafarm"],
   ];
@@ -158,10 +158,10 @@ function AdminVerificationShell({ children }: { children: React.ReactNode }) {
     router.push("/admin/login");
   }
 
-  return <main className="min-h-screen bg-[#f6f3e8] bg-cover bg-center bg-no-repeat text-[#17251d]" style={{ backgroundImage: "linear-gradient(180deg,rgba(255,253,247,.24),rgba(246,243,232,.18)),url('/farmconnect/farmconnect-hero-wallpaper.jpg')", backgroundAttachment: "fixed" }}>
-    <header className="sticky top-0 z-40 border-b-4 border-[#ffd43b] bg-gradient-to-r from-[#075c3a]/95 via-[#0b6fba]/94 to-[#075c3a]/95 text-white shadow-lg backdrop-blur-md">
+  return <main data-farmconnect-role="admin" className="min-h-screen bg-[#f6f3e8] bg-cover bg-center bg-no-repeat text-[#17251d]" style={{ backgroundImage: "linear-gradient(180deg,rgba(255,253,247,.50),rgba(246,243,232,.66)),url('/farmconnect/role-assets/admin-hero-v1.png')", backgroundAttachment: "fixed" }}>
+    <header className="sticky top-0 z-40 border-b-4 border-[#ffd43b] bg-gradient-to-r from-[#075c3a]/95 via-[#0b6fba]/94 to-[#075c3a]/95 text-white shadow-[0_12px_35px_rgba(7,92,58,0.24)] backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
-        <Link href="/admin" className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl">FC</span><span><b className="block">FarmConnect</b><small className="font-bold text-white/80">Account Verification</small></span></Link>
+        <Link href="/admin" className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-full bg-white text-sm font-black text-[#075c3a]">FC</span><span><b className="block">FarmConnect</b><small className="font-bold text-white/80">Admin</small></span></Link>
         <nav className="hidden items-center gap-1 lg:flex">{links.map(([label,href])=><Link key={href} href={href} className={`rounded-xl px-3 py-2 text-xs font-black transition hover:bg-white/15 ${href === "/admin/account-verification" ? "bg-white/20" : ""}`}>{label}</Link>)}</nav>
         <button type="button" onClick={logout} className="rounded-xl bg-white/90 px-3 py-2 text-xs font-black text-[#075c3a]">Logout</button>
       </div>

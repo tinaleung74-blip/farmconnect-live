@@ -202,16 +202,16 @@ const nav = {
     ["Settings", "/customer-v2/settings", "settings"],
   ],
   caretaker: [
-    ["Today's Care", "/caretaker/tasks", "clipboard"],
-    ["Care History", "/caretaker/completed", "check"],
+    ["My Tasks", "/caretaker/tasks", "clipboard"],
+    ["My Diary", "/caretaker/completed", "check"],
     ["Support", "/caretaker/chat", "chat"],
-    ["Profile", "/caretaker/profile", "user"],
+    ["Settings", "/caretaker/profile", "settings"],
   ],
   admin: [
     ["Dashboard", "/admin", "home"],
     ["Accounts", "/admin/account-verification", "shield"],
     ["Roosters", "/admin/roosters", "rooster"],
-    ["Tasks", "/admin/tasks", "clipboard"],
+    ["Task Reports", "/admin/tasks", "clipboard"],
     ["Support", "/admin/live-chat", "chat"],
     ["KaFarm", "/admin/kafarm", "support"],
   ],
@@ -1736,6 +1736,7 @@ export function CustomerRoostersV2() {
   const [addOrderOpen, setAddOrderOpen] = useState(false);
   const [sellRoosterId, setSellRoosterId] = useState<string | null>(null);
   const [pendingOrders, setPendingOrders] = useState<PendingRoosterOrder[]>([]);
+  const [roosterRefresh, setRoosterRefresh] = useState(0);
   const railRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -1764,6 +1765,17 @@ export function CustomerRoostersV2() {
       })
       .finally(() => mounted && setLoading(false));
     return () => { mounted = false; };
+  }, [roosterRefresh]);
+  useEffect(() => {
+    const refresh = () => setRoosterRefresh((value) => value + 1);
+    const timer = window.setInterval(refresh, 10000);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("farmconnect:roosters-changed", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("farmconnect:roosters-changed", refresh);
+    };
   }, []);
 
   function moveRooster(direction: number) {
@@ -5609,7 +5621,7 @@ export function SettingsPage({ verificationOnly = false }: { verificationOnly?: 
     payout: "Not added",
   };
   const [profile, setProfile] = useState(fallbackProfile);
-  const [settingsNote, setSettingsNote] = useState("Choose a settings item from the side menu. Sensitive actions need proof, PIN checks, or admin review.");
+  const [settingsNote, setSettingsNote] = useState("Manage your account details, password, and identity verification.");
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [kycIdPhoto, setKycIdPhoto] = useState<string | null>(null);
   const [kycSelfiePhoto, setKycSelfiePhoto] = useState<string | null>(null);
@@ -5761,14 +5773,6 @@ export function SettingsPage({ verificationOnly = false }: { verificationOnly?: 
       tone: "amber",
     },
     {
-      key: "pin",
-      title: "Wallet PIN",
-      text: "Change PIN only after current PIN check.",
-      icon: "qr",
-      action: "Manage PIN",
-      tone: "blue",
-    },
-    {
       key: "password",
       title: "Password",
       text: "Change login password securely.",
@@ -5776,25 +5780,11 @@ export function SettingsPage({ verificationOnly = false }: { verificationOnly?: 
       action: "Change Password",
     },
     {
-      title: "Payout Account",
-      text: "Manage GCash, Maya, or bank payout.",
-      icon: "wallet",
-      action: "Manage Payout",
-        href: isCustomerV2 ? "/customer-v2/withdraw/add-payout" : "/customer/withdraw/add-payout",
-    },
-    {
       key: "contact",
-      title: "Contact Details",
-      text: "Edit phone, email, and nickname.",
+      title: "Account Details",
+      text: "Edit your name, phone, email, and nickname.",
       icon: "user",
-      action: "Edit Contact",
-    },
-    {
-      title: "Activity Records",
-      text: "Open receipts, inbox, and records.",
-      icon: "file",
-      action: "Open Inbox",
-        href: isCustomerV2 ? "/customer-v2/inbox" : "/customer/inbox",
+      action: "Edit Details",
     },
   ];
   function cardClass(tone?: "green" | "amber" | "blue") {
@@ -8003,7 +7993,14 @@ function AdminLiveChatPage() {
     }
   }
   useEffect(() => {
-    loadChats();
+    void loadChats();
+    const timer = window.setInterval(() => void loadChats(), 5000);
+    const refresh = () => void loadChats();
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
   }, []);
   async function runAdminAction(action: "join" | "reply" | "end" | "complete") {
     if (selected.id.startsWith("demo-")) {
@@ -12415,7 +12412,14 @@ export function UnifiedLoginPage({ suggestedRole }: { suggestedRole?: Role }) {
       if (profileError) throw profileError;
 
       if (!profile) {
-        setMessage("No app profile found yet. Customer can sign up; caretaker needs application approval.");
+        const { data: application } = await supabase.from("caretaker_applications").select("status,admin_note").eq("auth_user_id", data.user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        const applicationStatus=String(application?.status || "").toLowerCase();
+        if (["rejected","needs_info"].includes(applicationStatus)) {
+          sessionStorage.setItem("farmconnect.caretaker.resubmit.reason", String(application?.admin_note || "Please correct your application and submit it again."));
+          router.push("/caretaker/signup?resubmit=1");
+          return;
+        }
+        setMessage(applicationStatus==="pending_approval" ? "Your caretaker application is waiting for Admin review." : "No app profile found yet. Customer can sign up; caretaker needs application approval.");
         return;
       }
 
@@ -12579,27 +12583,23 @@ export function FarmerSignupPage() {
 }
 
 export function CaretakerSignupPage() {
+  const searchParams=useSearchParams();
   const [form, setForm] = useState({
     fullName: "",
-    displayName: "",
     email: "",
     phone: "",
-    birthdate: "",
-    addressLine: "",
     avatarUrl: "",
     resumeUrl: "",
-    farmRole: "",
-    paymentMethod: "GCash",
-    paymentAccountName: "",
-    paymentAccountNumber: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
     password: "",
     confirmPassword: "",
-    workPin: "",
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("Caretaker signup is an application. Admin approval is required before the caretaker app opens.");
+  useEffect(()=>{
+    if(searchParams.get("resubmit")!=="1")return;
+    const reason=sessionStorage.getItem("farmconnect.caretaker.resubmit.reason") || "Admin requested corrections. Update your application and submit it again.";
+    setMessage(`Application needs correction: ${reason}`);
+  },[searchParams]);
 
   function update(key: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -12658,7 +12658,7 @@ export function CaretakerSignupPage() {
         options: {
           data: {
             full_name: form.fullName,
-            display_name: form.displayName,
+            display_name: form.fullName,
             phone: form.phone,
             role: "caretaker_applicant",
           },
@@ -12687,21 +12687,12 @@ export function CaretakerSignupPage() {
       }
       await submitCaretakerApplication({
         fullName: form.fullName,
-        displayName: form.displayName,
+        displayName: form.fullName,
         phone: form.phone,
-        birthdate: form.birthdate || null,
-        addressLine: form.addressLine,
         avatarUrl: form.avatarUrl,
         resumeUrl: form.resumeUrl,
-        farmRole: form.farmRole,
-        paymentMethod: form.paymentMethod,
-        paymentAccountName: form.paymentAccountName,
-        paymentAccountNumber: form.paymentAccountNumber,
-        emergencyContactName: form.emergencyContactName,
-        emergencyContactPhone: form.emergencyContactPhone,
-        workPinSet: form.workPin.length >= 4,
       });
-      setMessage("Application submitted. Admin will review your resume and payment details before activation.");
+      setMessage("Application submitted. Admin will review your identity, selfie, and resume before activation.");
     } catch (error) {
       setMessage(explainCaretakerApplicationError(error));
     } finally {
@@ -12711,15 +12702,11 @@ export function CaretakerSignupPage() {
 
   return (
     <AuthShell>
-      <AuthPanel icon="clipboard" title="Caretaker Application" text="For farm workers only. No salary/rate here. Admin reviews resume, payment method, and logs before activation.">
+      <AuthPanel icon="clipboard" title="Caretaker Application" text="Create your account, send a selfie and resume, then wait for Admin review.">
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           <input value={form.fullName} onChange={(e) => update("fullName", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Full name" />
-          <input value={form.displayName} onChange={(e) => update("displayName", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Nickname / display name" />
           <input value={form.email} onChange={(e) => update("email", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Email" type="email" />
           <input value={form.phone} onChange={(e) => update("phone", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Phone" />
-          <input value={form.birthdate} onChange={(e) => update("birthdate", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" type="date" />
-          <input value={form.farmRole} onChange={(e) => update("farmRole", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Farm role / job type" />
-          <input value={form.addressLine} onChange={(e) => update("addressLine", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold md:col-span-2" placeholder="Address" />
           <label className="rounded-xl border border-[#ded8c9] bg-white p-3 font-bold text-[#667267]">
             Selfie photo
             <input onChange={(e) => update("avatarUrl", e.target.files?.[0]?.name || "")} className="mt-2 block w-full text-sm" type="file" accept="image/*" />
@@ -12730,19 +12717,6 @@ export function CaretakerSignupPage() {
             <input onChange={(e) => update("resumeUrl", e.target.files?.[0]?.name || "")} className="mt-2 block w-full text-sm" type="file" accept=".pdf,.doc,.docx,image/*" />
             {form.resumeUrl && <span className="mt-2 block text-xs text-[#1f6b45]">Selected: {form.resumeUrl}</span>}
           </label>
-          <select value={form.paymentMethod} onChange={(e) => update("paymentMethod", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold">
-            <option>GCash</option>
-            <option>Maya</option>
-            <option>UnionBank</option>
-            <option>GoTyme</option>
-            <option>BPI</option>
-            <option>Other Bank</option>
-          </select>
-          <input value={form.paymentAccountName} onChange={(e) => update("paymentAccountName", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Payment account name" />
-          <input value={form.paymentAccountNumber} onChange={(e) => update("paymentAccountNumber", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Payment account number / mobile" />
-          <input value={form.emergencyContactName} onChange={(e) => update("emergencyContactName", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Emergency contact name" />
-          <input value={form.emergencyContactPhone} onChange={(e) => update("emergencyContactPhone", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Emergency contact number" />
-          <input value={form.workPin} onChange={(e) => update("workPin", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Work PIN setup" type="password" />
           <input value={form.password} onChange={(e) => update("password", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold" placeholder="Password" type="password" />
           <input value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} className="rounded-xl border border-[#ded8c9] p-3 font-bold md:col-span-2" placeholder="Confirm password" type="password" />
         </div>

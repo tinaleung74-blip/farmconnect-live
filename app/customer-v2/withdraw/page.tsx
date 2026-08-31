@@ -1,3 +1,5 @@
-import { WithdrawPageV2 } from "@/lib/farmconnect-v1";
+import { redirect } from "next/navigation";
 
-export default WithdrawPageV2;
+export default function CustomerWithdrawalRedirect() {
+  redirect("/customer-v2/wallet");
+}

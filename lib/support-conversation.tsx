@@ -11,11 +11,17 @@ type Pending = { key: string; correlation?: string; session: string | null; body
 type DamagedDraft = { storageKey: string; raw: string };
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const operationStorageKey=(account: string,key: string)=>`${account}.operation.${key}`;
-const quickSupportAnswers = [
+const customerSupportAnswers = [
   { question: "How do I withdraw?", answer: "Open Wallet, tap Withdraw Funds, choose your payout method, enter the amount and account details, then submit. You can follow its status and open the payment proof from your Inbox." },
   { question: "How do I add a rooster?", answer: "Open Your Roosters and tap Add Rooster. Choose a breed, select Daily or Monthly Care, choose a payment method, scan its QR, and submit your payment details." },
   { question: "How do I request care?", answer: "Open your rooster's Diary, expand Choose Care, then select Daily Care or Monthly Care. Review what is included and continue to payment." },
   { question: "How do I sell my rooster?", answer: "Open Your Roosters and tap Sell Rooster. Price evaluation becomes available from Day 91. After the reviewed offer appears, tap Sell to confirm." },
+] as const;
+const caretakerSupportAnswers = [
+  { question: "Where are my assigned tasks?", answer: "Open My Tasks to see the roosters assigned to you, the care period, due time, and required proof." },
+  { question: "How do I submit a daily report?", answer: "Open the assigned rooster in My Tasks. Add the time, work completed, a clear photo, and your findings, then submit it for review." },
+  { question: "How do I resubmit a rejected report?", answer: "Open My Diary, select the rooster, then open the rejected report. Read the reason, correct the report, and tap Resubmit." },
+  { question: "Why is my account still under review?", answer: "Open Settings to check your application status. If it was rejected, the reason and Resubmit option will appear there." },
 ] as const;
 function parseOperation(raw: string): Pending {
   const item=JSON.parse(raw) as Pending;
@@ -53,6 +59,7 @@ function readOperations(account: string): { items: Pending[]; damaged: DamagedDr
   return {items,damaged};
 }
 export function SupportConversation({ role }: { role: SupportRole }) {
+  const quickSupportAnswers=role==="caretaker"?caretakerSupportAnswers:customerSupportAnswers;
   const [messages,setMessages]=useState<Message[]>([]);
   const [session,setSession]=useState<string|null>(null);
   const [body,setBody]=useState("");
@@ -241,7 +248,7 @@ export function SupportConversation({ role }: { role: SupportRole }) {
         fingerprint,
       });
       if(ledger.status==="completed" && ledger.result_reference){
-        acknowledged=true;setSession(ledger.result_reference);setBody("");setNote(item.escalate?"You’re in the support queue.":"Sent");finish();return;
+        acknowledged=true;setSession(ledger.result_reference);setBody("");if(item.escalate)setNote("You’re in the support queue.");else setNote("Sent");finish();return;
       }
       await markRecoverySending(item.key);
       const response=await supabase.rpc("support_send_guarded",{p_key:item.key,p_role:role,p_session_id:item.session,p_body:item.body,p_force_escalate:item.escalate});
@@ -264,7 +271,7 @@ export function SupportConversation({ role }: { role: SupportRole }) {
       if(typeof data!=="string" || !data)throw new Error("Missing receipt");
       const verified=await reconcileRecoveryOperation(item.key);
       if(verified.state!=="completed" || verified.result_reference!==data)throw new Error("Delivery receipt was not verified");
-      acknowledged=true;setSession(data);setBody("");setNote(item.escalate?"You’re in the support queue.":"Sent");
+      acknowledged=true;setSession(data);setBody("");if(item.escalate)setNote("You’re in the support queue.");else setNote("Sent");
       // Only a confirmed user message can trigger a reply. A reply failure must not resend the user message.
       if(!item.escalate){
         // Persist reply recovery BEFORE discarding the send recovery. If this write
@@ -281,18 +288,19 @@ export function SupportConversation({ role }: { role: SupportRole }) {
       setNote(acknowledged ? "Your message was saved. Retry any pending reply; do not send the message again." : "Message not confirmed. Retry safely using the same message.");
     }finally{busy.current=false;setSending(false);}
   }
-  return <section className="rounded-2xl bg-white p-5 space-y-4">
+  return <section className="rounded-2xl bg-white p-4 sm:p-5 space-y-4">
     <h2 className="text-xl font-bold">Support</h2>
-    <div>
-      <p className="text-sm font-bold text-[#526567]">What do you need help with?</p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {quickSupportAnswers.map(item=><button key={item.question} type="button" disabled={Boolean(typingQuestion)} onClick={()=>askQuickQuestion(item.question,item.answer)} className="rounded-full border border-[#b9d9d4] bg-[#edf7f5] px-4 py-2 text-left text-sm font-bold text-[#07563f] transition hover:border-[#087f83] hover:bg-[#dff3ee] disabled:opacity-50">{item.question}</button>)}
-        <button type="button" disabled={!ready || sending || Boolean(pending) || Boolean(damagedDraft)} onClick={()=>{setOfferLiveAgent(false);setCustomQuestionMode(true);setBody("");requestAnimationFrame(()=>messageBox.current?.focus());}} className="rounded-full border border-[#e1c05b] bg-[#fff3cf] px-4 py-2 text-left text-sm font-bold text-[#6a3b00] transition hover:border-[#f4c430] hover:bg-[#ffe9a3] disabled:opacity-50">Other</button>
-      </div>
-    </div>
     {loadError && <p role="alert">{loadError}</p>}
     {!ready && loadError && <button onClick={()=>setLoadAttempt(value=>value+1)} className="underline">Retry loading</button>}
-    <div className="max-h-[55vh] overflow-y-auto space-y-3">
+    <div className="max-h-[55vh] overflow-y-auto space-y-3 rounded-2xl bg-[#f8faf7] p-3">
+      <article className="mr-4 rounded-xl bg-[#edf7f5] p-3 sm:mr-8">
+        <strong>KaFarm</strong>
+        <p className="mt-1 font-bold">What do you need help with?</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {quickSupportAnswers.map(item=><button key={item.question} type="button" disabled={Boolean(typingQuestion)} onClick={()=>askQuickQuestion(item.question,item.answer)} className="rounded-full border border-[#b9d9d4] bg-white px-4 py-2 text-left text-sm font-bold text-[#07563f] transition hover:border-[#087f83] hover:bg-[#dff3ee] disabled:opacity-50">{item.question}</button>)}
+          <button type="button" disabled={!ready || sending || Boolean(pending) || Boolean(damagedDraft)} onClick={()=>{setOfferLiveAgent(false);setCustomQuestionMode(true);setBody("");requestAnimationFrame(()=>messageBox.current?.focus());}} className="rounded-full border border-[#e1c05b] bg-[#fff3cf] px-4 py-2 text-left text-sm font-bold text-[#6a3b00] transition hover:border-[#f4c430] hover:bg-[#ffe9a3] disabled:opacity-50">Other</button>
+        </div>
+      </article>
       {messages.map(message=><article key={message.id} className="rounded-xl bg-[#edf7f5] p-3">
         <strong>{message.sender_role===role?"You":message.sender_role==="admin"?"Support":"KaFarm"}</strong>
         <p className="whitespace-pre-wrap">{message.body}</p><time className="text-xs">{new Date(message.created_at).toLocaleString()}</time>
