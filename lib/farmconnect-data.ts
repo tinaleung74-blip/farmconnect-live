@@ -619,6 +619,15 @@ export async function submitCaretakerTaskProof(payload: { taskId: string; proofU
   return data as string;
 }
 
+export async function createIncludedDailyCareRequest(customerAnimalId: string) {
+  const { data, error } = await supabase.rpc("customer_create_included_daily_care", {
+    p_customer_animal_id: customerAnimalId,
+  });
+
+  if (error) throw error;
+  return data as string;
+}
+
 function submitCaretakerProofRequest(request: Record<string, unknown>) {
   return supabase.rpc("caretaker_submit_report_guarded", { p_request: request });
 }
