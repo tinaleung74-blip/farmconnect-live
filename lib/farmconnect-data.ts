@@ -620,7 +620,7 @@ export async function submitCaretakerTaskProof(payload: { taskId: string; proofU
 }
 
 export async function createIncludedDailyCareRequest(customerAnimalId: string) {
-  const { data, error } = await supabase.rpc("customer_create_included_daily_care", {
+  const { data, error } = await supabase.rpc("customer_get_or_create_included_daily_care", {
     p_customer_animal_id: customerAnimalId,
   });
 
