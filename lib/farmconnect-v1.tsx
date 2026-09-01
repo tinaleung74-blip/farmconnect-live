@@ -1875,6 +1875,7 @@ export function CustomerRoosterDiaryV2() {
   const roosterId = searchParams.get("id") || "";
   const [rooster, setRooster] = useState<RoosterCard | null>(null);
   const [overview, setOverview] = useState<CustomerRoosterCareOverview | null>(null);
+  const [dailyCareRequest, setDailyCareRequest] = useState<any | null>(null);
   const [logs, setLogs] = useState<CareLogRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [diaryError, setDiaryError] = useState("");
@@ -1884,6 +1885,7 @@ export function CustomerRoosterDiaryV2() {
   const [paymentError, setPaymentError] = useState("");
   const [carePayment, setCarePayment] = useState<PaymentContext | null>(null);
   const [preparedCarePayment, setPreparedCarePayment] = useState<PaymentContext | null>(null);
+  const [careRefresh, setCareRefresh] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -1891,8 +1893,8 @@ export function CustomerRoosterDiaryV2() {
     const diaryPromise = roosterId
       ? getCustomerRoosterDiary(roosterId).then((rows) => ({ rows, exact: true }))
       : Promise.resolve({ rows: [] as CareLogRecord[], exact: true });
-    Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews(), diaryPromise])
-      .then(([animals, overviews, diary]) => {
+    Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews(), diaryPromise, getCustomerCareRequests()])
+      .then(([animals, overviews, diary, careRequests]) => {
         if (!mounted) return;
         const row: any = animals.find((item: any) => item.id === roosterId) || animals[0] || null;
         if (!row) return;
@@ -1902,6 +1904,7 @@ export function CustomerRoosterDiaryV2() {
         const mapped: RoosterCard = { id: row.id, name: row.animal_name || "Rooster", breed, tag: row.animal_code || "", stage: "Owned Rooster", status: row.status || "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: "", image: roosterBreedImage(breed, metadata.growth_day || animalOverview?.catalogDay || 1), pen: "", caretaker: "", ownershipMetadata: metadata };
         setRooster(mapped);
         setOverview(animalOverview);
+        setDailyCareRequest(careRequests.find((request: any) => request.customer_animal_id === row.id && request.service_category === "daily_care" && !["completed", "cancelled", "rejected"].includes(String(request.status || ""))) || null);
         setLogs(diary.rows);
       })
       .catch((error) => {
@@ -1911,9 +1914,22 @@ export function CustomerRoosterDiaryV2() {
       })
       .finally(() => mounted && setLoading(false));
     return () => { mounted = false; };
-  }, [roosterId]);
+  }, [roosterId, careRefresh]);
 
-  const coverageLabel = overview?.paid ? `${overview.planDay || 1} of ${overview.durationDays || 30} days` : overview?.planStatus ? String(overview.planStatus).replaceAll("_", " ") : "No active monthly coverage";
+  useEffect(() => {
+    const refresh = () => setCareRefresh((value) => value + 1);
+    const timer = window.setInterval(refresh, 10000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+
+  const monthlyStatus = String(overview?.planStatus || "");
+  const dailyStatus = String(dailyCareRequest?.status || "");
+  const coverageBadge = monthlyStatus === "active" ? "Monthly Active" : ["paid_pending_setup", "ready"].includes(monthlyStatus) ? "Monthly Paid" : ["payment_for_review", "payment_submitted"].includes(monthlyStatus) ? "Monthly Review" : dailyStatus === "paid_pending_assignment" ? "Daily Approved" : ["assigned", "in_progress", "proof_submitted"].includes(dailyStatus) ? "Daily In Progress" : dailyStatus === "payment_for_review" ? "Daily Payment Review" : "No Active Care";
+  const coverageLabel = monthlyStatus === "active" ? `${overview?.planDay || 1} of ${overview?.durationDays || 30} days` : ["paid_pending_setup", "ready"].includes(monthlyStatus) ? "Payment approved · waiting for caretaker assignment and activation" : ["payment_for_review", "payment_submitted"].includes(monthlyStatus) ? "Monthly Care payment is waiting for Admin review" : dailyStatus === "paid_pending_assignment" ? "Payment approved · waiting for caretaker assignment" : dailyStatus === "assigned" ? "Caretaker assigned · Daily Care is ready" : dailyStatus === "in_progress" ? "Caretaker is completing today's care" : dailyStatus === "proof_submitted" ? "Care proof submitted · waiting for Admin review" : dailyStatus === "payment_for_review" ? "Daily Care payment is waiting for Admin review" : "No active Daily or Monthly Care";
   async function startCarePayment() {
     if (!rooster || !selectedCare || paying) return;
     if (selectedCare === "daily" && overview?.paid) {
@@ -1958,11 +1974,11 @@ export function CustomerRoosterDiaryV2() {
     }
   }
   return <main className="min-h-screen bg-[#f8f5e8] text-[#10251d]">
-    {carePayment && <InlineCarePaymentModal context={carePayment} onClose={() => setCarePayment(null)} onSubmitted={() => { setCarePayment(null); setPreparedCarePayment(null); setSelectedCare(null); setCareOpen(false); setPaymentError(""); }} />}
+    {carePayment && <InlineCarePaymentModal context={carePayment} onClose={() => setCarePayment(null)} onSubmitted={() => { setCarePayment(null); setPreparedCarePayment(null); setSelectedCare(null); setCareOpen(false); setPaymentError(""); setCareRefresh((value) => value + 1); }} />}
     <header className="sticky top-0 z-30 border-b-4 border-[#f4c430] bg-[linear-gradient(110deg,#041f22,#087f83_54%,#063b3f)] text-white shadow-lg"><div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3"><Link href="/customer-v2/roosters" className="grid h-11 w-11 place-items-center rounded-full bg-white/15 text-xl font-black" aria-label="Back to roosters">←</Link><img src="/farmconnect/customer-v2-icons/rooster-diary.png" alt="" className="h-11 w-11 object-contain" /><div><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#f4c430]">Care journey</p><h1 className="text-xl font-black">{rooster ? `${rooster.name}'s Diary` : "Rooster Diary"}</h1></div></div></header>
     <section className="mx-auto max-w-3xl space-y-4 px-3 py-5 sm:px-5">
       {loading ? <div className="rounded-3xl bg-white p-8 text-center font-black shadow">Loading diary...</div> : !rooster ? <div className="rounded-3xl bg-white p-8 text-center shadow"><h2 className="text-xl font-black">Rooster not found</h2><Link href="/customer-v2/roosters" className="mt-4 inline-flex rounded-xl bg-[#087f83] px-4 py-3 font-black text-white">Back to Roosters</Link></div> : <>
-        <article className="overflow-hidden rounded-[26px] bg-white shadow-xl"><RoosterVisual src={rooster.image} alt={rooster.name} variant="diary" /><div className="p-5"><p className="text-xs font-black uppercase tracking-[.12em] text-[#087f83]">{rooster.breed}</p><h2 className="mt-1 text-3xl font-black">{rooster.name}'s Diary</h2><div className="mt-4 rounded-2xl bg-[#edf6ef] p-4"><div className="flex items-center justify-between gap-3"><span className="font-black text-[#07563f]">Current coverage</span><span className={`rounded-full px-3 py-1 text-xs font-black ${overview?.paid ? "bg-emerald-200 text-emerald-950" : "bg-white text-[#65746b]"}`}>{overview?.paid ? "Monthly Active" : "No Active Plan"}</span></div><p className="mt-2 text-sm font-bold text-[#536a68]">{coverageLabel}</p></div></div></article>
+        <article className="overflow-hidden rounded-[26px] bg-white shadow-xl"><RoosterVisual src={rooster.image} alt={rooster.name} variant="diary" /><div className="p-5"><p className="text-xs font-black uppercase tracking-[.12em] text-[#087f83]">{rooster.breed}</p><h2 className="mt-1 text-3xl font-black">{rooster.name}'s Diary</h2><div className="mt-4 rounded-2xl bg-[#edf6ef] p-4"><div className="flex items-center justify-between gap-3"><span className="font-black text-[#07563f]">Care status</span><span className={`rounded-full px-3 py-1 text-xs font-black ${coverageBadge === "No Active Care" ? "bg-white text-[#65746b]" : "bg-emerald-200 text-emerald-950"}`}>{coverageBadge}</span></div><p className="mt-2 text-sm font-bold text-[#536a68]">{coverageLabel}</p></div></div></article>
 
         <section className="rounded-[26px] bg-white p-4 shadow-xl sm:p-5"><button type="button" onClick={() => setCareOpen((open) => !open)} aria-expanded={careOpen} className="flex w-full items-center justify-between gap-4 text-left"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#087f83]">Care options</p><h2 className="mt-1 text-2xl font-black">Choose care for {rooster.name}</h2><p className="mt-2 text-sm font-bold text-[#65746b]">{careOpen ? "Select a package and review its coverage." : "Tap to view Daily and Monthly Care."}</p></div><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#edf6ef] text-xl font-black text-[#075f61] transition-transform ${careOpen ? "rotate-180" : ""}`}>⌄</span></button>
           {careOpen && <div><div className="mt-4 grid grid-cols-2 gap-3"><button type="button" onClick={() => setSelectedCare("daily")} className={`rounded-2xl border p-4 text-left transition ${selectedCare === "daily" ? "border-[#087f83] bg-[#dff3ee] ring-2 ring-[#087f83]/20" : "border-[#dce7df] bg-[#f8fbf9]"}`}><img src="/farmconnect/customer-v2-icons/status-day.png" alt="" className="h-12 w-12 object-contain" /><b className="mt-2 block">Daily Care</b><span className="mt-1 block text-xl font-black text-[#075f61]">₱160</span><small className="font-bold text-[#65746b]">One-day care</small></button><button type="button" onClick={() => setSelectedCare("monthly")} className={`rounded-2xl border p-4 text-left transition ${selectedCare === "monthly" ? "border-[#d6a600] bg-[#fff3cf] ring-2 ring-[#f4c430]/30" : "border-[#eadfbf] bg-[#fffaf0]"}`}><img src="/farmconnect/customer-v2-icons/status-verified.png" alt="" className="h-12 w-12 object-contain" /><b className="mt-2 block">Monthly Care</b><span className="mt-1 block text-xl font-black text-[#6a3b00]">₱5,000</span><small className="font-bold text-[#76551e]">30-day coverage</small></button></div>
