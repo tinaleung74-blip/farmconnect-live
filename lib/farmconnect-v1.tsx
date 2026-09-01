@@ -1871,7 +1871,6 @@ export function CustomerRoostersV2() {
 }
 
 export function CustomerRoosterDiaryV2() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const roosterId = searchParams.get("id") || "";
   const [rooster, setRooster] = useState<RoosterCard | null>(null);
@@ -1883,6 +1882,8 @@ export function CustomerRoosterDiaryV2() {
   const [selectedCare, setSelectedCare] = useState<"daily" | "monthly" | null>(null);
   const [paying, setPaying] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [carePayment, setCarePayment] = useState<PaymentContext | null>(null);
+  const [preparedCarePayment, setPreparedCarePayment] = useState<PaymentContext | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -1919,20 +1920,37 @@ export function CustomerRoosterDiaryV2() {
       setPaymentError("Daily care is already included in the active Monthly Care coverage.");
       return;
     }
+    const selectedSourceType = selectedCare === "monthly" ? "care_plan" : "care_request";
+    if (preparedCarePayment && preparedCarePayment.sourceType !== selectedSourceType) {
+      setPaymentError("Finish the prepared care payment before choosing another package.");
+      return;
+    }
     try {
       setPaying(true);
       setPaymentError("");
+      if (preparedCarePayment?.sourceType === selectedSourceType) {
+        setCarePayment(preparedCarePayment);
+        return;
+      }
       if (selectedCare === "monthly") {
         const carePlanId = await requestCustomerCarePlan(rooster.id, 30, overview?.catalogDay || 1);
         const prepared = await prepareCustomerCarePlanPayment(carePlanId);
-        window.localStorage.setItem("farmconnect_payment_context", JSON.stringify({ sourceType: "care_plan", sourceRef: carePlanId, amountExpected: 5000, summary: { source: "30-Day Care Plan", care_plan_id: carePlanId, rooster: { id: rooster.id, name: rooster.name, tag: rooster.tag, breed: rooster.breed }, duration_days: 30, requested_start_day: Number(prepared.requested_start_day || overview?.catalogDay || 1), feed_required_kg: Number(prepared.feed_required_kg || 0), average_daily_feed_kg: Number(prepared.average_daily_feed_kg || 0), feed_inventory_item_id: prepared.feed_inventory_item_id, feed_product_name: prepared.feed_product_name, daily_service_rate: Number(prepared.daily_service_rate || 0), package_total: 5000 } }));
-        router.push("/customer-v2/payment?type=care_plan");
+        const context: PaymentContext = { sourceType: "care_plan", sourceRef: carePlanId, amountExpected: 5000, summary: { source: "30-Day Care Plan", care_plan_id: carePlanId, rooster: { id: rooster.id, name: rooster.name, tag: rooster.tag, breed: rooster.breed }, duration_days: 30, requested_start_day: Number(prepared.requested_start_day || overview?.catalogDay || 1), feed_required_kg: Number(prepared.feed_required_kg || 0), average_daily_feed_kg: Number(prepared.average_daily_feed_kg || 0), feed_inventory_item_id: prepared.feed_inventory_item_id, feed_product_name: prepared.feed_product_name, daily_service_rate: Number(prepared.daily_service_rate || 0), package_total: 5000 } };
+        setPreparedCarePayment(context);
+        setCarePayment(context);
         return;
       }
       const dailyService = services[1];
       const careRequestId = await createIncludedDailyCareRequest(rooster.id);
-      window.localStorage.setItem("farmconnect_payment_context", JSON.stringify({ sourceType: "care_request", sourceRef: careRequestId, amountExpected: dailyService.price, summary: { source: "Daily Care", care_request_id: careRequestId, rooster: { id: rooster.id, name: rooster.name, tag: rooster.tag, breed: rooster.breed }, service: dailyService, total: dailyService.price } }));
-      router.push("/customer-v2/payment?type=care_request");
+      const existingPayments = await getCustomerManualPaymentRequests();
+      const existingPayment = existingPayments.find((row: any) => String(row.source_type || "") === "care_request" && String(row.source_ref || "") === careRequestId && !["rejected", "cancelled"].includes(String(row.status || "")));
+      if (existingPayment) {
+        setPaymentError("Daily Care payment is already submitted and waiting for Admin review.");
+        return;
+      }
+      const context: PaymentContext = { sourceType: "care_request", sourceRef: careRequestId, amountExpected: dailyService.price, summary: { source: "Daily Care", care_request_id: careRequestId, rooster: { id: rooster.id, name: rooster.name, tag: rooster.tag, breed: rooster.breed }, service: dailyService, total: dailyService.price } };
+      setPreparedCarePayment(context);
+      setCarePayment(context);
     } catch (error) {
       setPaymentError(readableAppError(error) || "Payment could not be prepared. Please try again.");
     } finally {
@@ -1940,6 +1958,7 @@ export function CustomerRoosterDiaryV2() {
     }
   }
   return <main className="min-h-screen bg-[#f8f5e8] text-[#10251d]">
+    {carePayment && <InlineCarePaymentModal context={carePayment} onClose={() => setCarePayment(null)} onSubmitted={() => { setCarePayment(null); setPreparedCarePayment(null); setSelectedCare(null); setCareOpen(false); setPaymentError(""); }} />}
     <header className="sticky top-0 z-30 border-b-4 border-[#f4c430] bg-[linear-gradient(110deg,#041f22,#087f83_54%,#063b3f)] text-white shadow-lg"><div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3"><Link href="/customer-v2/roosters" className="grid h-11 w-11 place-items-center rounded-full bg-white/15 text-xl font-black" aria-label="Back to roosters">←</Link><img src="/farmconnect/customer-v2-icons/rooster-diary.png" alt="" className="h-11 w-11 object-contain" /><div><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#f4c430]">Care journey</p><h1 className="text-xl font-black">{rooster ? `${rooster.name}'s Diary` : "Rooster Diary"}</h1></div></div></header>
     <section className="mx-auto max-w-3xl space-y-4 px-3 py-5 sm:px-5">
       {loading ? <div className="rounded-3xl bg-white p-8 text-center font-black shadow">Loading diary...</div> : !rooster ? <div className="rounded-3xl bg-white p-8 text-center shadow"><h2 className="text-xl font-black">Rooster not found</h2><Link href="/customer-v2/roosters" className="mt-4 inline-flex rounded-xl bg-[#087f83] px-4 py-3 font-black text-white">Back to Roosters</Link></div> : <>
@@ -1947,7 +1966,7 @@ export function CustomerRoosterDiaryV2() {
 
         <section className="rounded-[26px] bg-white p-4 shadow-xl sm:p-5"><button type="button" onClick={() => setCareOpen((open) => !open)} aria-expanded={careOpen} className="flex w-full items-center justify-between gap-4 text-left"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#087f83]">Care options</p><h2 className="mt-1 text-2xl font-black">Choose care for {rooster.name}</h2><p className="mt-2 text-sm font-bold text-[#65746b]">{careOpen ? "Select a package and review its coverage." : "Tap to view Daily and Monthly Care."}</p></div><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#edf6ef] text-xl font-black text-[#075f61] transition-transform ${careOpen ? "rotate-180" : ""}`}>⌄</span></button>
           {careOpen && <div><div className="mt-4 grid grid-cols-2 gap-3"><button type="button" onClick={() => setSelectedCare("daily")} className={`rounded-2xl border p-4 text-left transition ${selectedCare === "daily" ? "border-[#087f83] bg-[#dff3ee] ring-2 ring-[#087f83]/20" : "border-[#dce7df] bg-[#f8fbf9]"}`}><img src="/farmconnect/customer-v2-icons/status-day.png" alt="" className="h-12 w-12 object-contain" /><b className="mt-2 block">Daily Care</b><span className="mt-1 block text-xl font-black text-[#075f61]">₱160</span><small className="font-bold text-[#65746b]">One-day care</small></button><button type="button" onClick={() => setSelectedCare("monthly")} className={`rounded-2xl border p-4 text-left transition ${selectedCare === "monthly" ? "border-[#d6a600] bg-[#fff3cf] ring-2 ring-[#f4c430]/30" : "border-[#eadfbf] bg-[#fffaf0]"}`}><img src="/farmconnect/customer-v2-icons/status-verified.png" alt="" className="h-12 w-12 object-contain" /><b className="mt-2 block">Monthly Care</b><span className="mt-1 block text-xl font-black text-[#6a3b00]">₱5,000</span><small className="font-bold text-[#76551e]">30-day coverage</small></button></div>
-      {selectedCare && <div className="mt-4 rounded-2xl border border-[#dce7df] bg-[#fbfcf8] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.12em] text-[#087f83]">Package breakdown</p><h3 className="mt-1 text-xl font-black">{selectedCare === "daily" ? "Daily Care" : "Monthly Care · 30 Days"}</h3></div><b className="text-xl text-[#07563f]">{selectedCare === "daily" ? "₱160" : "₱5,000"}</b></div><ul className="mt-4 space-y-2 text-sm font-bold text-[#536a68]">{(selectedCare === "daily" ? ["Today’s standard care procedure", "Standard feed for today included", "Safety and condition check", "Photo documentation after care", "Verified update saved in this Diary"] : ["Daily care for 30 days", "Consistent care throughout the coverage", "Daily photos and documentation", "Coverage status shown in this Diary", "Age-based feed requirement uses your available feed"]).map((item) => <li key={item} className="flex gap-2"><span className="text-[#087f83]">✓</span><span>{item}</span></li>)}</ul>{paymentError && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">{paymentError}</p>}<button type="button" disabled={paying} onClick={() => void startCarePayment()} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-[#f4c430] px-5 py-3 text-center font-black text-[#041f22] disabled:opacity-60">{paying ? "Preparing Payment..." : `Pay ${selectedCare === "daily" ? "₱160" : "₱5,000"}`}</button><p className="mt-2 text-center text-xs font-bold text-[#65746b]">You will go directly to payment details and receipt upload.</p></div>}</div>}
+      {selectedCare && <div className="mt-4 rounded-2xl border border-[#dce7df] bg-[#fbfcf8] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.12em] text-[#087f83]">Package breakdown</p><h3 className="mt-1 text-xl font-black">{selectedCare === "daily" ? "Daily Care" : "Monthly Care · 30 Days"}</h3></div><b className="text-xl text-[#07563f]">{selectedCare === "daily" ? "₱160" : "₱5,000"}</b></div><ul className="mt-4 space-y-2 text-sm font-bold text-[#536a68]">{(selectedCare === "daily" ? ["Today’s standard care procedure", "Standard feed for today included", "Safety and condition check", "Photo documentation after care", "Verified update saved in this Diary"] : ["Daily care for 30 days", "Consistent care throughout the coverage", "Daily photos and documentation", "Coverage status shown in this Diary", "Age-based feed requirement uses your available feed"]).map((item) => <li key={item} className="flex gap-2"><span className="text-[#087f83]">✓</span><span>{item}</span></li>)}</ul>{paymentError && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-800">{paymentError}</p>}<button type="button" disabled={paying} onClick={() => void startCarePayment()} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-[#f4c430] px-5 py-3 text-center font-black text-[#041f22] disabled:opacity-60">{paying ? "Preparing Payment..." : `Pay ${selectedCare === "daily" ? "₱160" : "₱5,000"}`}</button><p className="mt-2 text-center text-xs font-bold text-[#65746b]">Payment details will open here without leaving the Diary.</p></div>}</div>}
         </section>
 
         <div className="flex items-center justify-between px-1"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#087f83]">Documentation</p><h2 className="text-xl font-black">Photos & Updates</h2></div><span className="text-xs font-black text-[#65746b]">Newest first</span></div>
@@ -5131,6 +5150,78 @@ const paymentReceivers = [
     badge: "bg-white/35",
   },
 ];
+
+function InlineCarePaymentModal({ context, onClose, onSubmitted }: { context: PaymentContext; onClose: () => void; onSubmitted: () => void }) {
+  const [method, setMethod] = useState(paymentReceivers[0]);
+  const [qrOpen, setQrOpen] = useState<(typeof paymentReceivers)[number] | null>(null);
+  const [sender, setSender] = useState("");
+  const [reference, setReference] = useState("");
+  const [receipt, setReceipt] = useState("");
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const operationKey = useRef("");
+  const ready = sender.trim().length >= 3 && reference.trim().length >= 4 && Boolean(receipt);
+  const title = context.sourceType === "care_plan" ? "Monthly Care" : "Daily Care";
+  const roosterName = String(context.summary?.rooster?.name || "Rooster");
+
+  function chooseReceipt(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
+      setNote("Use a JPG, PNG, or WebP receipt image up to 10 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setReceipt(String(reader.result || ""));
+    reader.readAsDataURL(file);
+  }
+
+  async function submit() {
+    if (!ready || submitting) {
+      if (!ready) setNote("Complete sender name, reference number, and receipt image.");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      setNote("Submitting payment proof...");
+      const profile = await getCurrentProfile();
+      if (!profile) throw new Error("LOGIN_REQUIRED");
+      const operation = await pendingOperation(`payment.${profile.id}.${context.sourceType}.${context.sourceRef}`, { context, method: method.method, receiver: method.account, sender, reference, receipt });
+      operationKey.current = operation.key;
+      const result = await submitManualPaymentRequest({
+        sourceType: context.sourceType,
+        sourceRef: context.sourceRef,
+        amountExpected: context.amountExpected,
+        summary: context.summary,
+        paymentMethod: method.method,
+        receiverAccount: method.account,
+        senderName: sender.trim(),
+        referenceNumber: reference.trim(),
+        receiptImageUrl: receipt,
+        idempotencyKey: operationKey.current,
+      });
+      localStorage.removeItem(operation.storageKey);
+      setNote(result.duplicate ? "This payment was already received." : "Payment submitted for Admin review.");
+      window.setTimeout(onSubmitted, 700);
+    } catch (error) {
+      setNote(`Payment was not submitted: ${readableAppError(error) || "Check the details and try again."}`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-hidden bg-[#041f22]/75 p-2 backdrop-blur-sm sm:p-4" onClick={() => !submitting && onClose()}>
+    <section className="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]" onClick={(event) => event.stopPropagation()}>
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#dce7df] px-4 py-3 sm:px-5"><div><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#087f83]">Care payment</p><h2 className="text-xl font-black sm:text-2xl">{title}: {roosterName}</h2><p className="mt-1 font-black text-[#07563f]">{peso(context.amountExpected)}</p></div><button type="button" disabled={submitting} onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#edf3ef] font-black">×</button></header>
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-4 sm:p-5">
+        <div><p className="mb-3 text-sm font-black text-[#536a68]">Choose payment method</p><div className="grid gap-3 sm:grid-cols-3">{paymentReceivers.map((row) => <button key={row.method} type="button" onClick={() => { setMethod(row); setQrOpen(row); }} className={`relative aspect-[1.58/1] overflow-hidden rounded-[20px] bg-gradient-to-br p-4 text-left shadow-lg ${row.color} ${row.text} ${method.method === row.method ? "ring-4 ring-[#f4c430]" : ""}`}><span className="relative flex h-full flex-col justify-between"><b className="text-xl">{row.method}</b><span><span className="block text-sm font-black">{row.account}</span><small className="font-bold opacity-80">Tap to view QR</small></span></span></button>)}</div></div>
+        <div className="grid gap-3 sm:grid-cols-2"><input value={sender} onChange={(event) => setSender(event.target.value)} placeholder="Sender name" className="rounded-xl border border-[#cfdcd3] p-3 font-bold" /><input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Reference number" className="rounded-xl border border-[#cfdcd3] p-3 font-bold" /><label className="cursor-pointer rounded-xl border-2 border-dashed border-[#cfdcd3] p-4 text-center font-black sm:col-span-2"><input type="file" accept="image/*" className="hidden" onChange={(event) => chooseReceipt(event.target.files?.[0])} />{receipt ? "Receipt attached" : "Upload receipt image"}</label>{receipt && <img src={receipt} alt="Receipt preview" className="max-h-52 w-full rounded-xl object-contain sm:col-span-2" />}</div>
+        {note && <p role="status" className="rounded-xl bg-[#fff7d9] p-3 text-sm font-bold text-[#6f6548]">{note}</p>}
+      </div>
+      <footer className="shrink-0 border-t border-[#dce7df] bg-white p-4"><button type="button" disabled={!ready || submitting} onClick={() => void submit()} className="w-full rounded-xl bg-[#f4c430] px-5 py-3 font-black text-[#041f22] disabled:opacity-50">{submitting ? "Submitting..." : `Submit ${peso(context.amountExpected)} Payment`}</button></footer>
+      {qrOpen && <div className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-[#041f22]/80 p-4" onClick={() => setQrOpen(null)}><section className="my-auto w-full max-w-sm rounded-[26px] bg-white p-5 text-[#10251d] shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between"><div><p className="text-xs font-black uppercase text-[#087f83]">Scan to pay</p><h3 className="text-2xl font-black">{qrOpen.method}</h3><p className="text-sm font-bold text-[#65746b]">{qrOpen.account}</p></div><button type="button" onClick={() => setQrOpen(null)} className="grid h-10 w-10 place-items-center rounded-full bg-[#edf3ef] font-black">×</button></div><div className="mt-4 rounded-3xl border-4 border-[#087f83] p-4"><img src={qrOpen.qr} alt={`${qrOpen.method} payment QR`} className="aspect-square w-full object-contain" /></div><button type="button" onClick={() => setQrOpen(null)} className="mt-4 w-full rounded-xl bg-[#087f83] px-4 py-3 font-black text-white">Done</button></section></div>}
+    </section>
+  </div>;
+}
 
 export function CustomerPaymentPage() {
   const router = useRouter();
