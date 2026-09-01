@@ -1201,6 +1201,16 @@ export async function confirmWithdrawalResult(withdrawalRequestId: string, recei
   return data as string;
 }
 
+export async function adminApproveAndAssignRoosterOrder(paymentRequestId: string, caretakerId: string, note?: string | null) {
+  const { data, error } = await supabase.rpc("admin_approve_assign_rooster_order", {
+    p_payment_request_id: paymentRequestId,
+    p_caretaker_id: caretakerId,
+    p_admin_note: note || null,
+  });
+  if (error) throw error;
+  return data as { status: string; assignment_count: number; task_ids: string[] };
+}
+
 export async function reportWithdrawalProblem(withdrawalRequestId: string, note: string) {
   const { data, error } = await supabase.rpc("customer_report_withdrawal_problem", {
     p_withdrawal_request_id: withdrawalRequestId,

@@ -11,6 +11,7 @@ import { activateAdminCarePlan, adminAssignCareRequest, adminReviewCaretakerAppl
 import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/customer-signup";
 import { adminReviewManualMissionProof } from "@/lib/farmconnect-data";
 import { prepareCustomerCarePlanPayment } from "@/lib/farmconnect-data";
+import { adminApproveAndAssignRoosterOrder } from "@/lib/farmconnect-data";
 import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { supabase } from "@/lib/supabase";
 import { AdminRealtimeStatus, useAdminRealtime } from "@/lib/admin-realtime";
@@ -8726,14 +8727,9 @@ function AdminCustomerRequestsPage() {
   );
 }
 export function AdminRoosterOperations() {
-  const [tab, setTab] = useState<"orders" | "care" | "selling" | "payout">("orders");
-  const tabs = [
-    ["orders", "Orders"],
-    ["care", "Care Payments"],
-    ["selling", "Selling"],
-    ["payout", "Payout"],
-  ] as const;
-  return <Shell role="admin" title="Roosters"><PageTitle title="Roosters" text="Follow every rooster from order and payment to selling and payout." icon="rooster" /><div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{tabs.map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} className={`rounded-2xl px-3 py-3 text-sm font-black ${tab === key ? "bg-[#087f83] text-white" : "bg-white text-[#073b3d]"}`}>{label}</button>)}</div>{tab === "orders" ? <AdminManualPaymentQueue sourceType="farm_buy" /> : tab === "care" ? <AdminManualPaymentQueue sourceType="care" /> : tab === "selling" ? <AdminRoosterSaleQueue /> : <AdminWithdrawalReviewQueue />}</Shell>;
+  const sectionClass="group mb-4 overflow-hidden rounded-[24px] border border-white/70 bg-white/95 shadow-lg";
+  const summaryClass="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 marker:hidden";
+  return <Shell role="admin" title="Roosters"><PageTitle title="Rooster Workflow" text="Open the work you need. Every request, detail, and admin action stays on this one page." icon="rooster" /><div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-900"><b>Simple order:</b> New Order → Care → Sell → Customer Payout. Open only the step that needs your action.</div><details className={sectionClass} open><summary className={summaryClass}><span><b className="block text-lg">1. New Rooster Orders</b><span className="text-xs font-bold text-[#667267]">Check the customer payment and create the owned rooster.</span></span><span className="rounded-full bg-[#ffd84a] px-3 py-2 text-xs font-black">Open</span></summary><div className="border-t border-[#ece6d8] p-4"><AdminManualPaymentQueue sourceType="farm_buy" /></div></details><details className={sectionClass}><summary className={summaryClass}><span><b className="block text-lg">2. Daily & Monthly Care</b><span className="text-xs font-bold text-[#667267]">Review care payment before work is assigned.</span></span><span className="rounded-full bg-[#dff3ef] px-3 py-2 text-xs font-black text-[#087f83]">Open</span></summary><div className="border-t border-[#ece6d8] p-4"><AdminManualPaymentQueue sourceType="care" /></div></details><details className={sectionClass}><summary className={summaryClass}><span><b className="block text-lg">3. Rooster Selling</b><span className="text-xs font-bold text-[#667267]">Review the confirmed sale and release instruction.</span></span><span className="rounded-full bg-[#dff3ef] px-3 py-2 text-xs font-black text-[#087f83]">Open</span></summary><div className="border-t border-[#ece6d8] p-4"><AdminRoosterSaleQueue /></div></details><details className={sectionClass}><summary className={summaryClass}><span><b className="block text-lg">4. Customer Payout</b><span className="text-xs font-bold text-[#667267]">Send the sale proceeds and attach payout proof.</span></span><span className="rounded-full bg-[#dff3ef] px-3 py-2 text-xs font-black text-[#087f83]">Open</span></summary><div className="border-t border-[#ece6d8] p-4"><AdminWithdrawalReviewQueue /></div></details></Shell>;
 }
 
 export function AdminTasksPage() {
@@ -8931,6 +8927,8 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
   const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
   const [viewer, setViewer] = useState<"receipt" | "invoice" | null>(null);
   const [saving, setSaving] = useState(false);
+  const [caretakers, setCaretakers] = useState<any[]>([]);
+  const [caretakerId, setCaretakerId] = useState("");
   const activeRows = rows.filter((row) => {
     const active = ["for_review", "needs_info"].includes(String(row.status || "for_review"));
     const rowSource = String(row.source_type || row.sourceType || "").toLowerCase();
@@ -8958,10 +8956,24 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
   useEffect(() => {
     load();
   }, []);
+  useEffect(() => {
+    if (sourceType !== "farm_buy") return;
+    getActiveCaretakersForAssignment().then((rows) => {
+      setCaretakers(rows);
+      setCaretakerId((current) => current || rows[0]?.id || "");
+    }).catch(() => {
+      setCaretakers([]);
+      setNote("Active caretakers could not be loaded. Approval and assignment remain locked.");
+    });
+  }, [sourceType]);
   const realtime = useAdminRealtime({ tables: ["manual_payment_requests"], refresh: load });
 
   async function submitDecision() {
     if (!selected || !decision || saving) return;
+    if (sourceType === "farm_buy" && decision === "approved" && !caretakerId) {
+      setNote("Choose an active caretaker before approving this rooster order.");
+      return;
+    }
     if (decision === "rejected" && adminNote.trim().length < 5) {
       setNote("Write a clear rejection reason so the customer knows what to correct and resubmit.");
       return;
@@ -8969,8 +8981,13 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     try {
       setSaving(true);
       setNote(`Saving ${decision} decision...`);
-      const result = await adminReviewManualPayment(selected.id, decision, adminNote || "Payment proof checked and approved by admin.");
-      setNote(result.duplicate ? `This request was already ${result.status}. No duplicate action was created.` : decision === "approved" ? "Payment approved. Invoice, inbox, evidence, and linked request records were updated." : "Payment rejected. The customer received your reason and may resubmit corrected proof.");
+      if (sourceType === "farm_buy" && decision === "approved") {
+        const result = await adminApproveAndAssignRoosterOrder(selected.id, caretakerId, adminNote || "Payment approved. Attach and verify the system-generated rooster QR.");
+        setNote(`${result.assignment_count} rooster task${result.assignment_count === 1 ? "" : "s"} approved and assigned. The generated QR is included in the caretaker task.`);
+      } else {
+        const result = await adminReviewManualPayment(selected.id, decision, adminNote || "Payment proof checked and approved by admin.");
+        setNote(result.duplicate ? `This request was already ${result.status}. No duplicate action was created.` : decision === "approved" ? "Payment approved. Invoice, inbox, evidence, and linked request records were updated." : "Payment rejected. The customer received your reason and may resubmit corrected proof.");
+      }
       setDecision(null);
       setAdminNote("");
       setViewer(null);
@@ -9142,6 +9159,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
               Reject
             </button>
           </div>
+          {sourceType === "farm_buy" && <label className="mt-5 block text-sm font-black">Assign Caretaker<select value={caretakerId} onChange={(event) => setCaretakerId(event.target.value)} disabled={!selected || saving} className="mt-2 w-full rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold disabled:opacity-50"><option value="">Choose caretaker</option>{caretakers.map((caretaker: any) => <option key={caretaker.id} value={caretaker.id}>{caretaker.display_name || caretaker.full_name || "Caretaker"}</option>)}</select><span className="mt-2 block text-xs font-bold leading-5 text-[#667267]">The system creates a unique QR automatically and places it inside this caretaker&apos;s task.</span></label>}
           <label className="mt-5 block text-sm font-black">
             Note to Customer
             <textarea value={adminNote} onChange={(event) => setAdminNote(event.target.value)} placeholder="Reason if rejected, or confirmation note if approved..." className="mt-2 h-32 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold leading-6" />
@@ -9154,7 +9172,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
             </button>
           </div>
           <button type="button" data-kafarm-feedback-target="manual-payment-decision-status" disabled={!selected || !decision || saving} onClick={submitDecision} className="mt-4 w-full rounded-2xl bg-[#1f6b45] px-4 py-4 font-black text-white disabled:cursor-not-allowed disabled:bg-[#b9b3a4]">
-            {saving ? "Saving..." : "Submit Decision"}
+            {saving ? "Saving..." : sourceType === "farm_buy" && decision === "approved" ? "Approve & Assign Rooster" : "Submit Decision"}
           </button>
           <p id="manual-payment-decision-status" className="mt-3 rounded-xl bg-[#f4efe4] p-3 text-xs font-bold leading-5 text-[#667267]">
             {note}
@@ -12414,12 +12432,11 @@ export function UnifiedLoginPage({ suggestedRole }: { suggestedRole?: Role }) {
       if (!profile) {
         const { data: application } = await supabase.from("caretaker_applications").select("status,admin_note").eq("auth_user_id", data.user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
         const applicationStatus=String(application?.status || "").toLowerCase();
-        if (["rejected","needs_info"].includes(applicationStatus)) {
-          sessionStorage.setItem("farmconnect.caretaker.resubmit.reason", String(application?.admin_note || "Please correct your application and submit it again."));
-          router.push("/caretaker/signup?resubmit=1");
+        if (["pending_approval","rejected","needs_info"].includes(applicationStatus)) {
+          router.push("/caretaker/dashboard");
           return;
         }
-        setMessage(applicationStatus==="pending_approval" ? "Your caretaker application is waiting for Admin review." : "No app profile found yet. Customer can sign up; caretaker needs application approval.");
+        setMessage("No caretaker application was found. Please submit an application first.");
         return;
       }
 

@@ -448,3 +448,53 @@ export function SecureCaretakerSignupPage() {
   const inputClass="rounded-xl border border-[#ded8c9] bg-white p-3 font-bold";
   return <main className="min-h-screen bg-[#f6f3e8] bg-cover bg-center px-4 py-8 text-[#17251d]" style={{backgroundImage:"linear-gradient(180deg,rgba(255,253,247,.55),rgba(246,243,232,.46)),url('/farmconnect/farmconnect-hero-wallpaper.jpg')"}}><section className="mx-auto max-w-3xl rounded-[28px] border border-[#e3ded0] bg-white/95 p-5 shadow-xl sm:p-7"><p className="text-xs font-black uppercase text-[#1f6b45]">FarmConnect Worker Registration</p><h1 className="mt-1 text-3xl font-black sm:text-4xl">Caretaker Application</h1><p className="mt-2 text-sm font-bold leading-6 text-[#667267]">Send your basic details, selfie, and resume for account review.</p><div className="mt-5 grid gap-3 md:grid-cols-2"><input className={`${inputClass} md:col-span-2`} value={form.fullName} onChange={event=>update("fullName",event.target.value)} placeholder="Full name" /><input className={inputClass} value={form.email} onChange={event=>update("email",event.target.value)} placeholder="Email" type="email" /><input className={inputClass} value={form.phone} onChange={event=>update("phone",event.target.value)} placeholder="Phone" inputMode="tel" /><label className={inputClass}>Selfie photo (required)<input className="mt-2 block w-full text-sm" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={event=>setAvatarFile(event.target.files?.[0] || null)} />{avatarFile && <small className="mt-2 block text-[#1f6b45]">{avatarFile.name}</small>}</label><label className={inputClass}>Resume file (required)<input className="mt-2 block w-full text-sm" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" onChange={event=>setResumeFile(event.target.files?.[0] || null)} />{resumeFile && <small className="mt-2 block text-[#1f6b45]">{resumeFile.name}</small>}</label><input className={inputClass} value={form.password} onChange={event=>update("password",event.target.value)} placeholder="Password" type="password" autoComplete="new-password" /><input className={inputClass} value={form.confirmPassword} onChange={event=>update("confirmPassword",event.target.value)} placeholder="Confirm password" type="password" autoComplete="new-password" /></div><p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-900">KaFarm: {message}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><button disabled={loading} onClick={submit} className="rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white disabled:opacity-60">{loading ? "Submitting..." : "Submit Application"}</button><Link href="/login" className="rounded-xl bg-[#eee8d9] px-5 py-3 text-center font-black">Back to Login</Link></div></section></main>;
 }
+
+type CaretakerApplicationRow = { id:string; status:string; full_name:string; phone:string; admin_note?:string | null };
+
+export function CaretakerApplicationDashboardPage() {
+  const router=useRouter();
+  const [application,setApplication]=useState<CaretakerApplicationRow | null>(null);
+  const [fullName,setFullName]=useState("");
+  const [phone,setPhone]=useState("");
+  const [avatarFile,setAvatarFile]=useState<File | null>(null);
+  const [resumeFile,setResumeFile]=useState<File | null>(null);
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState("Checking your application...");
+
+  async function loadApplication() {
+    setLoading(true);
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!user){ router.replace("/caretaker/login"); return; }
+    const {data,error}=await supabase.from("caretaker_applications").select("id,status,full_name,phone,admin_note").eq("auth_user_id",user.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
+    if(error){ setMessage("Application status could not be loaded. Try again."); setLoading(false); return; }
+    if(!data){ router.replace("/caretaker/signup"); return; }
+    const row=data as CaretakerApplicationRow;
+    if(String(row.status).toLowerCase()==="approved"){ router.replace("/caretaker/tasks"); return; }
+    setApplication(row); setFullName(row.full_name || ""); setPhone(row.phone || "");
+    setMessage(String(row.status).toLowerCase()==="pending_approval" ? "Your application is under review." : row.admin_note || "Please correct your application and submit it again.");
+    setLoading(false);
+  }
+
+  useEffect(()=>{ void loadApplication(); },[]);
+  const status=String(application?.status || "").toLowerCase();
+  const canResubmit=["rejected","needs_info"].includes(status);
+
+  async function resubmit() {
+    if(!fullName.trim() || !phone.trim() || !avatarFile || !resumeFile){ setMessage("Complete your name, phone, new selfie, and updated resume."); return; }
+    setSaving(true); setMessage("Uploading corrections...");
+    try{
+      const resumeTypes=["image/jpeg","image/png","image/webp","application/pdf","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+      if(!resumeTypes.includes(resumeFile.type) || resumeFile.size > 10*1024*1024) throw new Error("Resume must be PDF, DOC, DOCX, JPG, PNG, or WebP and no larger than 10 MB.");
+      if(!["image/jpeg","image/png","image/webp"].includes(avatarFile.type) || avatarFile.size > 5*1024*1024) throw new Error("Selfie must be JPG, PNG, or WebP and no larger than 5 MB.");
+      const resumePath=await uploadPrivateEvidenceFile({bucket:"caretaker-resumes",folder:"applications",kind:"resume",file:resumeFile,maxBytes:10*1024*1024,allowedMimeTypes:resumeTypes});
+      const avatarPath=await uploadPrivateEvidenceFile({bucket:"caretaker-resumes",folder:"applications",kind:"avatar",file:avatarFile,maxBytes:5*1024*1024,allowedMimeTypes:["image/jpeg","image/png","image/webp"]});
+      await submitCaretakerApplication({fullName:fullName.trim(),displayName:fullName.trim(),phone:phone.trim(),avatarUrl:avatarPath,resumeUrl:resumePath,workPinSet:false});
+      setAvatarFile(null); setResumeFile(null); setMessage("Corrections submitted. Your application is under review.");
+      await loadApplication();
+    }catch(error){ setMessage(error instanceof Error ? error.message : "Corrections were not submitted. Try again."); }
+    finally{ setSaving(false); }
+  }
+
+  return <main className="min-h-screen bg-[#f6f3e8] bg-cover bg-center px-4 py-8 text-[#17251d]" style={{backgroundImage:"linear-gradient(180deg,rgba(255,253,247,.6),rgba(246,243,232,.5)),url('/farmconnect/farmconnect-hero-wallpaper.jpg')"}}><section className="mx-auto max-w-3xl rounded-[28px] border border-[#e3ded0] bg-white/95 p-5 shadow-xl sm:p-7"><p className="text-xs font-black uppercase text-[#1f6b45]">Caretaker Dashboard</p><div className="mt-2 flex flex-wrap items-center justify-between gap-3"><h1 className="text-3xl font-black">Application Status</h1><span className={`rounded-full px-4 py-2 text-sm font-black ${canResubmit ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-900"}`}>{loading ? "Checking" : canResubmit ? "Needs Correction" : "Under Review"}</span></div><p className="mt-4 rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-4 text-sm font-bold leading-6">{message}</p>{canResubmit && <div className="mt-5"><h2 className="text-xl font-black">Resubmit Application</h2><p className="mt-1 text-sm font-bold text-[#667267]">Update the requested details and send fresh files for another review.</p><div className="mt-4 grid gap-3 md:grid-cols-2"><input className="rounded-xl border border-[#ded8c9] p-3 font-bold md:col-span-2" value={fullName} onChange={event=>setFullName(event.target.value)} placeholder="Full name" /><input className="rounded-xl border border-[#ded8c9] p-3 font-bold md:col-span-2" value={phone} onChange={event=>setPhone(event.target.value)} placeholder="Phone" inputMode="tel" /><label className="rounded-xl border border-[#ded8c9] bg-white p-3 font-bold">New selfie<input className="mt-2 block w-full text-sm" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={event=>setAvatarFile(event.target.files?.[0] || null)} /></label><label className="rounded-xl border border-[#ded8c9] bg-white p-3 font-bold">Updated resume<input className="mt-2 block w-full text-sm" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" onChange={event=>setResumeFile(event.target.files?.[0] || null)} /></label></div><button disabled={saving} onClick={resubmit} className="mt-4 w-full rounded-xl bg-[#1f6b45] px-5 py-3 font-black text-white disabled:opacity-60">{saving ? "Submitting..." : "Resubmit Application"}</button></div>}<div className="mt-5 flex flex-wrap gap-3"><button onClick={()=>void loadApplication()} className="rounded-xl bg-[#eee8d9] px-5 py-3 font-black">Refresh Status</button><button onClick={async()=>{await supabase.auth.signOut();router.replace("/caretaker/login");}} className="rounded-xl border border-[#ded8c9] bg-white px-5 py-3 font-black">Log Out</button></div></section></main>;
+}
