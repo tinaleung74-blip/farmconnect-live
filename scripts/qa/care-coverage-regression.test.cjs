@@ -10,6 +10,23 @@ mod._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS }
 }).outputText, filename);
 const { selectRoosterCarePlan, careCoverageStatus } = mod.exports;
+const bundleModule = new Module(path.resolve('lib/rooster-bundle.ts'));
+bundleModule._compile(ts.transpileModule(fs.readFileSync('lib/rooster-bundle.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS }
+}).outputText, path.resolve('lib/rooster-bundle.ts'));
+const { roosterCheckoutTotal, roosterBundleSummary } = bundleModule.exports;
+test('rooster and monthly care have one combined total', () => {
+  assert.equal(roosterCheckoutTotal(1000,'monthly'),6000);
+  assert.equal(roosterBundleSummary(1000,'monthly').care_amount,5000);
+  assert.equal(roosterBundleSummary(1000,'monthly').care_bundle_version,'110');
+});
+test('skip neither charges care nor creates bundle intent', () => {
+  assert.equal(roosterCheckoutTotal(1000,'skip'),1000);
+  assert.equal(roosterBundleSummary(1000,'skip').care_bundle_version,undefined);
+});
+test('invalid product prices cannot produce a payment total', () => {
+  for(const price of [NaN,Infinity,-1,0]) assert.throws(()=>roosterCheckoutTotal(price,'monthly'));
+});
 
 test('new draft cannot hide active care on the same rooster', () => {
   const plans = [{ customer_animal_id: 'a', status: 'draft' }, { customer_animal_id: 'a', status: 'active' }];

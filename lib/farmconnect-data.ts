@@ -1015,7 +1015,9 @@ type GuardedWorkflowResult = {
 };
 
 export async function submitManualPaymentRequest(payload: ManualPaymentPayload) {
-  const { data, error } = await supabase.rpc("customer_submit_manual_payment_guarded", {
+  const rpc = payload.sourceType === "farm_buy" && payload.summary.care_bundle_version === "110"
+    ? "customer_submit_rooster_bundle" : "customer_submit_manual_payment_guarded";
+  const { data, error } = await supabase.rpc(rpc, {
     p_source_type: payload.sourceType,
     p_source_ref: payload.sourceRef || null,
     p_amount_expected: payload.amountExpected,
