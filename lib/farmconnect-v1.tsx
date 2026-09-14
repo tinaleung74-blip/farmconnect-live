@@ -12,6 +12,8 @@ import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/custom
 import { adminReviewManualMissionProof } from "@/lib/farmconnect-data";
 import { prepareCustomerCarePlanPayment } from "@/lib/farmconnect-data";
 import { adminApproveAndAssignRoosterOrder } from "@/lib/farmconnect-data";
+import { approveAndAssignCarePayment } from "@/lib/farmconnect-data";
+import { careCoverageStatus } from "@/lib/care-coverage";
 import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { supabase } from "@/lib/supabase";
 import { AdminRealtimeStatus, useAdminRealtime } from "@/lib/admin-realtime";
@@ -1889,20 +1891,20 @@ export function CustomerRoosterDiaryV2() {
 
   useEffect(() => {
     let mounted = true;
-    setDiaryError("");
     const diaryPromise = roosterId
       ? getCustomerRoosterDiary(roosterId).then((rows) => ({ rows, exact: true }))
       : Promise.resolve({ rows: [] as CareLogRecord[], exact: true });
     Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews(), diaryPromise, getCustomerCareRequests()])
       .then(([animals, overviews, diary, careRequests]) => {
         if (!mounted) return;
-        const row: any = animals.find((item: any) => item.id === roosterId) || animals[0] || null;
-        if (!row) return;
+        const row: any = roosterId ? animals.find((item: any) => item.id === roosterId) : animals[0];
+        if (!row) { setRooster(null); setOverview(null); setDailyCareRequest(null); throw new Error("This rooster could not be found in your account."); }
         const metadata = { ...(row.ownership_metadata || {}), acquired_at: row.acquired_at } as Record<string, unknown>;
         const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Breed";
         const animalOverview = overviews.find((item) => item.customerAnimalId === row.id) || null;
         const mapped: RoosterCard = { id: row.id, name: row.animal_name || "Rooster", breed, tag: row.animal_code || "", stage: "Owned Rooster", status: row.status || "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: "", image: roosterBreedImage(breed, metadata.growth_day || animalOverview?.catalogDay || 1), pen: "", caretaker: "", ownershipMetadata: metadata };
         setRooster(mapped);
+        setDiaryError("");
         setOverview(animalOverview);
         setDailyCareRequest(careRequests.find((request: any) => request.customer_animal_id === row.id && request.service_category === "daily_care" && !["completed", "cancelled", "rejected"].includes(String(request.status || ""))) || null);
         setLogs(diary.rows);
@@ -1928,10 +1930,11 @@ export function CustomerRoosterDiaryV2() {
 
   const monthlyStatus = String(overview?.planStatus || "");
   const dailyStatus = String(dailyCareRequest?.status || "");
-  const coverageBadge = monthlyStatus === "active" ? "Monthly Active" : ["paid_pending_setup", "ready"].includes(monthlyStatus) ? "Monthly Paid" : ["payment_for_review", "payment_submitted"].includes(monthlyStatus) ? "Monthly Review" : dailyStatus === "paid_pending_assignment" ? "Daily Approved" : ["assigned", "in_progress", "proof_submitted"].includes(dailyStatus) ? "Daily In Progress" : dailyStatus === "payment_for_review" ? "Daily Payment Review" : "No Active Care";
-  const coverageLabel = monthlyStatus === "active" ? `${overview?.planDay || 1} of ${overview?.durationDays || 30} days` : ["paid_pending_setup", "ready"].includes(monthlyStatus) ? "Payment approved · waiting for caretaker assignment and activation" : ["payment_for_review", "payment_submitted"].includes(monthlyStatus) ? "Monthly Care payment is waiting for Admin review" : dailyStatus === "paid_pending_assignment" ? "Payment approved · waiting for caretaker assignment" : dailyStatus === "assigned" ? "Caretaker assigned · Daily Care is ready" : dailyStatus === "in_progress" ? "Caretaker is completing today's care" : dailyStatus === "proof_submitted" ? "Care proof submitted · waiting for Admin review" : dailyStatus === "payment_for_review" ? "Daily Care payment is waiting for Admin review" : "No active Daily or Monthly Care";
+  const { badge: coverageBadge, label: coverageLabel } = careCoverageStatus(monthlyStatus, dailyStatus, overview?.planDay || 1, overview?.durationDays || 30, Boolean(diaryError));
   async function startCarePayment() {
     if (!rooster || !selectedCare || paying) return;
+    if (diaryError) { setPaymentError("Refresh care status before starting another payment."); return; }
+    if (selectedCare === "monthly" && overview?.paid) { setPaymentError("This rooster already has paid Monthly Care. Do not pay again."); return; }
     if (selectedCare === "daily" && overview?.paid) {
       setPaymentError("Daily care is already included in the active Monthly Care coverage.");
       return;
@@ -9072,10 +9075,8 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     load();
   }, []);
   useEffect(() => {
-    if (sourceType !== "farm_buy") return;
     getActiveCaretakersForAssignment().then((rows) => {
       setCaretakers(rows);
-      setCaretakerId((current) => current || rows[0]?.id || "");
     }).catch(() => {
       setCaretakers([]);
       setNote("Active caretakers could not be loaded. Approval and assignment remain locked.");
@@ -9085,8 +9086,8 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
 
   async function submitDecision() {
     if (!selected || !decision || saving) return;
-    if (sourceType === "farm_buy" && decision === "approved" && !caretakerId) {
-      setNote("Choose an active caretaker before approving this rooster order.");
+    if (selected.source_type === "farm_buy" && decision === "approved" && !caretakerId) {
+      setNote("Choose an active caretaker before approving and assigning this payment.");
       return;
     }
     if (decision === "rejected" && adminNote.trim().length < 5) {
@@ -9096,15 +9097,18 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     try {
       setSaving(true);
       setNote(`Saving ${decision} decision...`);
-      if (sourceType === "farm_buy" && decision === "approved") {
+      if (selected.source_type === "farm_buy" && decision === "approved") {
         const result = await adminApproveAndAssignRoosterOrder(selected.id, caretakerId, adminNote || "Payment approved. Attach and verify the system-generated rooster QR.");
         setNote(`${result.assignment_count} rooster task${result.assignment_count === 1 ? "" : "s"} approved and assigned. The generated QR is included in the caretaker task.`);
       } else {
-        const result = await adminReviewManualPayment(selected.id, decision, adminNote || "Payment proof checked and approved by admin.");
+        const result = ["care_plan", "care_request"].includes(String(selected.source_type)) && decision === "approved"
+          ? await approveAndAssignCarePayment(selected.id, caretakerId, adminNote)
+          : await adminReviewManualPayment(selected.id, decision, adminNote || "Payment proof checked and approved by admin.");
         setNote(result.duplicate ? `This request was already ${result.status}. No duplicate action was created.` : decision === "approved" ? "Payment approved. Invoice, inbox, evidence, and linked request records were updated." : "Payment rejected. The customer received your reason and may resubmit corrected proof.");
       }
       setDecision(null);
       setAdminNote("");
+      setCaretakerId("");
       setViewer(null);
       await load();
     } catch (error) {
@@ -9274,7 +9278,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
               Reject
             </button>
           </div>
-          {sourceType === "farm_buy" && <label className="mt-5 block text-sm font-black">Assign Caretaker<select value={caretakerId} onChange={(event) => setCaretakerId(event.target.value)} disabled={!selected || saving} className="mt-2 w-full rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold disabled:opacity-50"><option value="">Choose caretaker</option>{caretakers.map((caretaker: any) => <option key={caretaker.id} value={caretaker.id}>{caretaker.display_name || caretaker.full_name || "Caretaker"}</option>)}</select><span className="mt-2 block text-xs font-bold leading-5 text-[#667267]">The system creates a unique QR automatically and places it inside this caretaker&apos;s task.</span></label>}
+          {["farm_buy", "care_plan", "care_request"].includes(String(selected?.source_type)) && <label className="mt-5 block text-sm font-black">Caretaker<select value={caretakerId} onChange={(event) => setCaretakerId(event.target.value)} disabled={!selected || saving} className="mt-2 w-full rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold disabled:opacity-50"><option value="">{selected?.source_type === "farm_buy" ? "Choose caretaker" : "Use rooster's assigned caretaker"}</option>{caretakers.map((caretaker: any) => <option key={caretaker.id} value={caretaker.id}>{caretaker.display_name || caretaker.full_name || "Caretaker"}</option>)}</select><span className="mt-2 block text-xs font-bold leading-5 text-[#667267]">Approval and assignment happen together. Choose a caretaker here only if none is assigned or the existing caretaker is unavailable.</span></label>}
           <label className="mt-5 block text-sm font-black">
             Note to Customer
             <textarea value={adminNote} onChange={(event) => setAdminNote(event.target.value)} placeholder="Reason if rejected, or confirmation note if approved..." className="mt-2 h-32 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold leading-6" />

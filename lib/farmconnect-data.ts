@@ -1,6 +1,7 @@
 ﻿import { supabase } from "@/lib/supabase";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { selectRoosterCarePlan } from "@/lib/care-coverage";
 
 export type AppRole = "customer" | "caretaker" | "admin";
 
@@ -297,10 +298,9 @@ function manilaDayNumber(value: string | Date) {
 export async function getCustomerRoosterCareOverviews(): Promise<CustomerRoosterCareOverview[]> {
   const [animals, plans] = await Promise.all([getCustomerOwnedRoosters(), getCustomerCarePlans()]);
   const today = manilaDayNumber(new Date());
-  const liveStatuses = new Set(["draft", "payment_for_review", "payment_submitted", "paid_pending_setup", "ready", "active", "paused"]);
   const paidStatuses = new Set(["paid_pending_setup", "ready", "active", "paused"]);
   const draftRows = animals.map((animal: any) => {
-    const plan = plans.find((row: any) => row.customer_animal_id === animal.id && liveStatuses.has(String(row.status))) || null;
+    const plan = selectRoosterCarePlan<any>(plans, animal.id);
     const acquiredDay = animal.acquired_at ? manilaDayNumber(animal.acquired_at) : today;
     const ownershipDay = Math.min(180, Math.max(1, today - acquiredDay + 1));
     let planDay: number | null = null;
@@ -1072,6 +1072,17 @@ export async function adminReviewManualPayment(paymentRequestId: string, decisio
   const result = data as GuardedWorkflowResult;
   if (!result?.id) throw new Error("WORKFLOW_RESULT_MISSING");
   return result;
+}
+
+export async function approveAndAssignCarePayment(paymentRequestId: string, caretakerId: string, note: string) {
+  const { data, error } = await supabase.rpc("admin_approve_assign_care_payment", {
+    p_payment_request_id: paymentRequestId,
+    p_caretaker_id: caretakerId || null,
+    p_admin_note: note || null,
+  });
+  if (error) throw error; // Never fall back to approving without assignment.
+  if (!data?.id || data.status !== "approved_and_assigned") throw new Error("CARE_ASSIGNMENT_RESULT_MISSING");
+  return data;
 }
 
 export type WithdrawalRequestPayload = {
