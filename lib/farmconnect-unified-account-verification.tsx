@@ -394,15 +394,18 @@ type CaretakerForm = {
 };
 
 export function SecureCaretakerSignupPage() {
+  const router=useRouter();
   const applicantClient=useMemo(()=>createIsolatedSupabaseClient("caretaker-signup"),[]);
   const [form,setForm]=useState<CaretakerForm>({ fullName:"", displayName:"", email:"", phone:"", birthdate:"", addressLine:"", farmRole:"", paymentMethod:"", paymentAccountName:"", paymentAccountNumber:"", emergencyContactName:"", emergencyContactPhone:"", password:"", confirmPassword:"" });
   const [avatarFile,setAvatarFile]=useState<File | null>(null);
   const [resumeFile,setResumeFile]=useState<File | null>(null);
   const [loading,setLoading]=useState(false);
-  const [message,setMessage]=useState("Submit your basic details, selfie, and resume. You can open the caretaker app after approval.");
+  const [message,setMessage]=useState("Submit your details, selfie, and resume. Your dashboard will show your application status while you wait for approval.");
+  const [applicationSubmitted,setApplicationSubmitted]=useState(false);
   const update = (key:keyof CaretakerForm,value:string) => setForm(current=>({...current,[key]:value}));
 
   async function submit() {
+    if (applicationSubmitted || loading) return;
     if (!form.fullName || !form.email || !form.phone || !avatarFile || !resumeFile || !form.password || !form.confirmPassword) { setMessage("Complete your name, email, phone, selfie, resume, and password."); return; }
     if (form.password !== form.confirmPassword) { setMessage("Password and confirmation do not match."); return; }
     if (hasReservedSignupEmailDomain(form.email)) { setMessage(reservedSignupEmailMessage); return; }
@@ -418,8 +421,8 @@ export function SecureCaretakerSignupPage() {
         const text=auth.error.message.toLowerCase();
         if (!text.includes("already") && !text.includes("registered") && !text.includes("exists")) throw auth.error;
         auth=await applicantClient.auth.signInWithPassword({ email:normalizedEmail, password:form.password });
+        if (auth.error) throw new Error("This email already has an account. Sign in with its password or use Forgot Password, then return to your application.");
       }
-      if (auth.error) throw auth.error;
       if (!auth.data.session) {
         throw new Error("Confirm the applicant email first, then return to Login and reopen the caretaker registration link to submit the application.");
       }
@@ -427,7 +430,21 @@ export function SecureCaretakerSignupPage() {
       const resumePath=await uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"resume", file:resumeFile, maxBytes:10*1024*1024, allowedMimeTypes:resumeTypes }, applicantClient);
       const avatarPath=await uploadPrivateEvidenceFile({ bucket:"caretaker-resumes", folder:"applications", kind:"avatar", file:avatarFile, maxBytes:5*1024*1024, allowedMimeTypes:["image/jpeg","image/png","image/webp"] }, applicantClient);
       await submitCaretakerApplication({ fullName:form.fullName, displayName:form.displayName, phone:form.phone, birthdate:form.birthdate || null, addressLine:form.addressLine, avatarUrl:avatarPath, resumeUrl:resumePath, farmRole:form.farmRole, paymentMethod:form.paymentMethod, paymentAccountName:form.paymentAccountName, paymentAccountNumber:form.paymentAccountNumber, emergencyContactName:form.emergencyContactName, emergencyContactPhone:form.emergencyContactPhone, workPinSet:false }, applicantClient);
-      setMessage("Application submitted with private evidence. Admin will review it in Account Verification.");
+      // Keep evidence uploads isolated until the application is saved, then persist
+      // the applicant session used by the dashboard. This does not approve the role.
+      setApplicationSubmitted(true);
+      setMessage("Application submitted. Opening your dashboard...");
+      try {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: auth.data.session.access_token,
+          refresh_token: auth.data.session.refresh_token,
+        });
+        if (sessionError) throw sessionError;
+      } catch {
+        setMessage("Your application was submitted, but automatic sign-in could not finish. Use Back to Login to view your application status. Do not submit again.");
+        return;
+      }
+      router.replace("/caretaker/dashboard");
     } catch (error:unknown) {
       const source=error as { message?:string; details?:string; hint?:string };
       const rawMessage=source.message || source.details || source.hint || "Unknown application error";
