@@ -12,6 +12,9 @@ import { ensureCustomerSignupProfile, isFreshSupabaseSignup } from "@/lib/custom
 import { adminReviewManualMissionProof } from "@/lib/farmconnect-data";
 import { prepareCustomerCarePlanPayment } from "@/lib/farmconnect-data";
 import { adminApproveAndAssignRoosterOrder } from "@/lib/farmconnect-data";
+import { approveAndAssignCarePayment } from "@/lib/farmconnect-data";
+import { careCoverageStatus } from "@/lib/care-coverage";
+import { roosterCheckoutTotal, roosterBundleSummary } from "@/lib/rooster-bundle";
 import { hasReservedSignupEmailDomain, reservedSignupEmailMessage, signupFailureMessage } from "@/lib/signup-validation";
 import { supabase } from "@/lib/supabase";
 import { AdminRealtimeStatus, useAdminRealtime } from "@/lib/admin-realtime";
@@ -1712,6 +1715,14 @@ function AddRoosterOrderModal({ onClose, onSubmitted }: { onClose: () => void; o
   const [catalog, setCatalog] = useState<FarmProductCard[]>([]);
   const [selected, setSelected] = useState<FarmProductCard | null>(null);
   const [care, setCare] = useState<"skip" | "monthly">("skip");
+  const [bundleReady, setBundleReady] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    Promise.resolve(supabase.rpc("rooster_bundle_checkout_version")).then(({ data, error }) => {
+      if (mounted) setBundleReady(!error && data === "110");
+    }).catch(() => { if (mounted) setBundleReady(false); });
+    return () => { mounted = false; };
+  }, []);
   const [method, setMethod] = useState(paymentReceivers[0]);
   const [qrOpen, setQrOpen] = useState<(typeof paymentReceivers)[number] | null>(null);
   const [sender, setSender] = useState("");
@@ -1721,12 +1732,13 @@ function AddRoosterOrderModal({ onClose, onSubmitted }: { onClose: () => void; o
   const [submitting, setSubmitting] = useState(false);
   useEffect(() => { let mounted = true; getFarmProducts().then((rows) => { if (!mounted) return; const seenBreeds = new Set<string>(); const products = rows.filter((row) => (row.product_type === "breed_chick" || normalizeFarmProductCategory(String(row.category || "")) === "Breed Chicks") && isVisibleRoosterCatalogProduct(row)).map((row) => { const name = normalizeFarmProductName(row.name, "Breed Chicks"); const breed = recognizedRoosterBreed(row.breed, row.bloodline, name); return ({ id: row.id, name, category: "Breed Chicks", unit: row.unit_label || "per rooster", price: Number(row.unit_price || 0), stock: Number(row.stock_quantity || 0), image: roosterBreedImage(breed, "chick"), product_type: row.product_type, stage: "chick", bloodline: breed, breed, product_metadata: row.product_metadata }); }).filter((product) => { const key = String(product.breed).toLowerCase(); if (seenBreeds.has(key)) return false; seenBreeds.add(key); return true; }).sort((left, right) => gamefowlBloodlines.indexOf(String(left.breed)) - gamefowlBloodlines.indexOf(String(right.breed))); setCatalog(products); setSelected(products[0] || null); setMessage(products.length ? "Choose one available rooster." : "No rooster is available for a real order right now."); }).catch(() => setMessage("The live rooster catalog could not load. Try again before submitting an order.")); return () => { mounted = false; }; }, []);
   function chooseReceipt(file?: File) { if (!file) return; const reader = new FileReader(); reader.onload = () => setReceipt(String(reader.result || "")); reader.readAsDataURL(file); }
-  async function submitOrder() { if (!selected || submitting) return; if (sender.trim().length < 3 || reference.trim().length < 4 || !receipt) return setMessage("Complete sender name, reference number, and receipt image."); try { setSubmitting(true); setMessage("Sending your rooster order for Admin review..."); const profile = await getCurrentProfile(); if (!profile) throw new Error("LOGIN_REQUIRED"); if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selected.id)) throw new Error("This preview rooster cannot create a real order. Reload the live catalog."); const selectedBreed = recognizedRoosterBreed(selected.breed, selected.bloodline, selected.name); await saveCartItem(selected.id, 1, selected.price, { productType: "breed_chick", bloodline: selected.bloodline || selectedBreed, breed: selected.breed || selectedBreed, productName: selected.name }); const summary = { source: "Add Rooster", lines: [{ id: selected.id, name: selected.name, breed: selectedBreed, bloodline: selectedBreed, image: selected.image || roosterBreedImage(selectedBreed, "chick"), stage: "chick", quantity: 1, unit_price: selected.price, total: selected.price, category: "Breed Chicks" }], total: selected.price, care_preference: care, carePurpose: null, previewOnly: false }; const operation = await pendingOperation(`payment.${profile.id}.farm_buy.active-cart`, { context: summary, method: method.method, receiver: method.account, sender, reference, receipt }); const result = await submitManualPaymentRequest({ sourceType: "farm_buy", sourceRef: "active-cart", amountExpected: selected.price, summary, paymentMethod: method.method, receiverAccount: method.account, senderName: sender, referenceNumber: reference, receiptImageUrl: receipt, idempotencyKey: operation.key }); localStorage.removeItem(operation.storageKey); onSubmitted({ id: result.id, name: selected.name, breed: selectedBreed, image: selected.image || roosterBreedImage(selectedBreed, "chick"), amount: selected.price, care, status: "for_review" }); setStage(3); setMessage(result.duplicate ? "This order was already received. No duplicate was created." : "Purchase submitted. It is now waiting for Admin verification."); } catch (error) { setMessage(`Order not confirmed: ${readableAppError(error) || "Check the same order details and try again."}`); } finally { setSubmitting(false); } }
+  async function submitOrder() { if (!selected || submitting) return; if (care === "monthly" && !bundleReady) return setMessage("Monthly bundle checkout is not ready. Do not transfer payment yet."); if (sender.trim().length < 3 || reference.trim().length < 4 || !receipt) return setMessage("Complete sender name, reference number, and receipt image."); try { setSubmitting(true); setMessage("Sending your rooster order for Admin review..."); const profile = await getCurrentProfile(); if (!profile) throw new Error("LOGIN_REQUIRED"); if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selected.id)) throw new Error("This preview rooster cannot create a real order. Reload the live catalog."); const selectedBreed = recognizedRoosterBreed(selected.breed, selected.bloodline, selected.name); await saveCartItem(selected.id, 1, selected.price, { productType: "breed_chick", bloodline: selected.bloodline || selectedBreed, breed: selected.breed || selectedBreed, productName: selected.name }); const summary = { source: "Add Rooster", lines: [{ id: selected.id, name: selected.name, breed: selectedBreed, bloodline: selectedBreed, image: selected.image || roosterBreedImage(selectedBreed, "chick"), stage: "chick", quantity: 1, unit_price: selected.price, total: selected.price, category: "Breed Chicks" }], ...roosterBundleSummary(selected.price, care), carePurpose: null, previewOnly: false }; const operation = await pendingOperation(`payment.${profile.id}.farm_buy.active-cart`, { context: summary, method: method.method, receiver: method.account, sender, reference, receipt }); const result = await submitManualPaymentRequest({ sourceType: "farm_buy", sourceRef: "active-cart", amountExpected: roosterCheckoutTotal(selected.price, care), summary, paymentMethod: method.method, receiverAccount: method.account, senderName: sender, referenceNumber: reference, receiptImageUrl: receipt, idempotencyKey: operation.key }); localStorage.removeItem(operation.storageKey); onSubmitted({ id: result.id, name: selected.name, breed: selectedBreed, image: selected.image || roosterBreedImage(selectedBreed, "chick"), amount: roosterCheckoutTotal(selected.price, care), care, status: "for_review" }); setStage(3); setMessage(result.duplicate ? "This order was already received. No duplicate was created." : "Purchase submitted. It is now waiting for Admin verification."); } catch (error) { setMessage(`Order not confirmed: ${readableAppError(error) || "Check the same order details and try again."}`); } finally { setSubmitting(false); } }
   const canContinue = stage === 0 ? Boolean(selected) : stage === 1 ? true : sender.trim().length >= 3 && reference.trim().length >= 4 && Boolean(receipt);
   return <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-[#041f22]/70 p-2 backdrop-blur-sm sm:p-4" onClick={() => !submitting && onClose()}><section className="flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl min-w-0 flex-col overflow-hidden rounded-[22px] bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-[28px]" onClick={(event) => event.stopPropagation()}><header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#dce7df] bg-white px-4 py-3 sm:px-5 sm:py-4"><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#087f83]">Add Rooster</p><h2 className="truncate text-xl font-black sm:text-2xl">{stage === 0 ? "Choose a rooster breed" : stage === 1 ? "Add care now?" : stage === 2 ? "Submit payment proof" : "Purchase submitted"}</h2></div><button type="button" onClick={onClose} disabled={submitting} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#edf3ef] font-black">×</button></header><div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5"><div className="mb-5 grid grid-cols-4 gap-2">{[0,1,2,3].map((item) => <span key={item} className={`h-2 rounded-full ${item <= stage ? "bg-[#087f83]" : "bg-[#e5ece7]"}`} />)}</div>
     {stage === 0 && <div className="grid min-w-0 grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3">{catalog.map((product) => <button key={product.id} type="button" onClick={() => setSelected(product)} className={`min-w-0 overflow-hidden rounded-2xl border-2 text-left ${selected?.id === product.id ? "border-[#087f83] bg-[#f0faf4] shadow-lg" : "border-[#dce7df]"}`}><RoosterVisual src={product.image} alt={`${product.breed} starter chick`} variant="catalog" /><div className="p-3"><b className="block truncate leading-tight">{product.breed}</b><small className="mt-1 block font-bold text-[#65746b]">Starter chick</small><strong className="mt-2 block text-[#07563f]">{peso(product.price)}</strong></div></button>)}{!catalog.length && <p className="rounded-2xl bg-amber-50 p-5 font-bold text-amber-900 min-[420px]:col-span-2 sm:col-span-3">No live rooster order is available.</p>}</div>}
-    {stage === 1 && <div><p className="mb-4 text-sm font-bold text-[#65746b]">Daily Care can be ordered later. Monthly Care starts only after its own verified payment and ownership approval.</p><div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={() => setCare("skip")} className={`rounded-2xl border-2 p-5 text-left ${care === "skip" ? "border-[#087f83] bg-[#f0faf4]" : "border-[#dce7df]"}`}><b className="text-xl">Skip for now</b><p className="mt-2 text-sm font-bold text-[#65746b]">Buy the rooster only. Choose care later from this screen.</p><strong className="mt-4 block text-2xl">₱0</strong></button><button type="button" onClick={() => setCare("monthly")} className={`rounded-2xl border-2 p-5 text-left ${care === "monthly" ? "border-[#d6a600] bg-[#fff7d9]" : "border-[#dce7df]"}`}><b className="text-xl">30-Day Monthly Care</b><p className="mt-2 text-sm font-bold text-[#65746b]">Feed, water, cleaning, observation, caretaker work, photos, and Diary updates.</p><strong className="mt-4 block text-2xl">₱5,000 after approval</strong></button></div></div>}
-    {stage === 2 && <div className="space-y-4"><div className="rounded-2xl bg-[#f5f8f5] p-4"><div className="flex justify-between gap-3"><b>{selected?.name}</b><strong>{peso(selected?.price || 0)}</strong></div><p className="mt-1 text-sm font-bold text-[#65746b]">{care === "monthly" ? "Monthly Care preference; separate payment after ownership approval." : "Rooster only"}</p></div><div><p className="mb-3 text-sm font-black text-[#536a68]">Choose a payment method. Tap a card to view its QR.</p><div className="grid gap-3 sm:grid-cols-3">{paymentReceivers.map((row) => <button key={row.method} type="button" onClick={() => { setMethod(row); setQrOpen(row); }} className={`relative aspect-[1.58/1] w-full overflow-hidden rounded-[22px] bg-gradient-to-br p-4 text-left shadow-[0_12px_24px_rgba(4,31,34,.18)] transition hover:-translate-y-1 ${row.color} ${row.text} ${method.method === row.method ? "ring-4 ring-[#f4c430]" : ""}`}><span className="absolute -right-8 -top-10 h-32 w-32 rounded-full border-[18px] border-white/10" /><span className="absolute -bottom-16 -left-8 h-36 w-36 rounded-full bg-black/10" /><span className="relative flex h-full flex-col justify-between"><span className="flex items-start justify-between gap-3"><span><span className="block text-[10px] font-black uppercase tracking-[.16em] opacity-75">FarmConnect</span><b className="mt-1 block text-2xl">{row.method}</b></span><span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${row.badge}`}>Tap for QR</span></span><span><span className="block text-sm font-black">{row.account}</span><span className="mt-1 block text-xs font-bold opacity-80">{row.detail}</span></span></span></button>)}</div></div><div className="grid gap-3 sm:grid-cols-2"><input value={sender} onChange={(event) => setSender(event.target.value)} placeholder="Sender name" className="rounded-xl border border-[#cfdcd3] p-3 font-bold" /><input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Reference number" className="rounded-xl border border-[#cfdcd3] p-3 font-bold" /><label className="cursor-pointer rounded-xl border-2 border-dashed border-[#cfdcd3] p-4 text-center font-black sm:col-span-2"><input type="file" accept="image/*" className="hidden" onChange={(event) => chooseReceipt(event.target.files?.[0])} />{receipt ? "Receipt attached" : "Upload receipt image"}</label>{receipt && <img src={receipt} alt="Receipt preview" className="max-h-52 w-full rounded-xl object-contain sm:col-span-2" />}</div></div>}
+    {stage === 1 && <div><p className="mb-4 text-sm font-bold text-[#65746b]">Monthly Care is included in this single payment when selected. No second care payment is needed after approval.</p><div className="grid gap-3 sm:grid-cols-2"><button type="button" onClick={() => setCare("skip")} className={`rounded-2xl border-2 p-5 text-left ${care === "skip" ? "border-[#087f83] bg-[#f0faf4]" : "border-[#dce7df]"}`}><b className="text-xl">Skip for now</b><p className="mt-2 text-sm font-bold text-[#65746b]">Buy the rooster only. Choose care later from this screen.</p><strong className="mt-4 block text-2xl">₱0</strong></button><button type="button" disabled={!bundleReady} onClick={() => setCare("monthly")} className={`rounded-2xl border-2 p-5 text-left ${care === "monthly" ? "border-[#d6a600] bg-[#fff7d9]" : "border-[#dce7df]"}`}><b className="text-xl">30-Day Monthly Care</b><p className="mt-2 text-sm font-bold text-[#65746b]">Feed, water, cleaning, observation, caretaker work, photos, and Diary updates.</p><strong className="mt-4 block text-2xl">₱5,000 included in total</strong></button></div></div>}
+    {stage === 2 && <div className="space-y-4"><div className="rounded-2xl bg-[#f5f8f5] p-4"><div className="flex justify-between gap-3"><b>{selected?.name}</b><strong>{peso(selected ? roosterCheckoutTotal(selected.price, care) : 0)}</strong></div><p className="mt-1 text-sm font-bold text-[#65746b]">{care === "monthly" ? `Rooster ${peso(selected?.price || 0)} + Monthly Care ₱5,000 · one payment` : "Rooster only"}</p></div><div><p className="mb-3 text-sm font-black text-[#536a68]">Choose a payment method. Tap a card to view its QR.</p><div className="grid gap-3 sm:grid-cols-3">{paymentReceivers.map((row) => <button key={row.method} type="button" onClick={() => { setMethod(row); setQrOpen(row); }} className={`relative aspect-[1.58/1] w-full overflow-hidden rounded-[22px] bg-gradient-to-br p-4 text-left shadow-[0_12px_24px_rgba(4,31,34,.18)] transition hover:-translate-y-1 ${row.color} ${row.text} ${method.method === row.method ? "ring-4 ring-[#f4c430]" : ""}`}><span className="absolute -right-8 -top-10 h-32 w-32 rounded-full border-[18px] border-white/10" /><span className="absolute -bottom-16 -left-8 h-36 w-36 rounded-full bg-black/10" /><span className="relative flex h-full flex-col justify-between"><span className="flex items-start justify-between gap-3"><span><span className="block text-[10px] font-black uppercase tracking-[.16em] opacity-75">FarmConnect</span><b className="mt-1 block text-2xl">{row.method}</b></span><span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${row.badge}`}>Tap for QR</span></span><span><span className="block text-sm font-black">{row.account}</span><span className="mt-1 block text-xs font-bold opacity-80">{row.detail}</span></span></span></button>)}</div></div><div className="grid gap-3 sm:grid-cols-2"><input value={sender} onChange={(event) => setSender(event.target.value)} placeholder="Sender name" className="rounded-xl border border-[#cfdcd3] p-3 font-bold" /><input value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Reference number" className="rounded-xl border border-[#cfdcd3] p-3 font-bold" /><label className="cursor-pointer rounded-xl border-2 border-dashed border-[#cfdcd3] p-4 text-center font-black sm:col-span-2"><input type="file" accept="image/*" className="hidden" onChange={(event) => chooseReceipt(event.target.files?.[0])} />{receipt ? "Receipt attached" : "Upload receipt image"}</label>{receipt && <img src={receipt} alt="Receipt preview" className="max-h-52 w-full rounded-xl object-contain sm:col-span-2" />}</div></div>}
+    {stage === 1 && !bundleReady && <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-900">Monthly bundle checkout is unavailable. You may buy the rooster only, or try again later. Do not send the extra ₱5,000 yet.</p>}
     {stage === 3 && <div className="py-10 text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#dff5f3] text-4xl font-black text-[#087f83]">✓</div><h3 className="mt-4 text-3xl font-black">Purchase Pending</h3></div>}
     {stage < 3 && <p role="status" className="mt-5 rounded-2xl bg-[#fff7d9] p-3 text-sm font-bold text-[#6f6548]">{message}</p>}</div><footer className="grid shrink-0 grid-cols-2 gap-3 border-t border-[#dce7df] bg-white px-4 py-3 sm:flex sm:justify-end sm:px-5 sm:py-4">{stage > 0 && stage < 3 && <button type="button" onClick={() => setStage((stage - 1) as 0 | 1 | 2)} disabled={submitting} className="rounded-xl bg-[#edf3ef] px-5 py-3 font-black">Back</button>}{stage < 2 && <button type="button" disabled={!canContinue} onClick={() => setStage((stage + 1) as 1 | 2)} className={`rounded-xl bg-[#087f83] px-5 py-3 font-black text-white disabled:opacity-40 ${stage === 0 ? "col-span-2" : ""}`}>Continue</button>}{stage === 2 && <button type="button" disabled={!canContinue || submitting} onClick={() => void submitOrder()} className="rounded-xl bg-[#f4c430] px-5 py-3 font-black text-[#041f22] disabled:opacity-40">{submitting ? "Submitting..." : "Submit Purchase"}</button>}{stage === 3 && <button type="button" onClick={onClose} className="col-span-2 rounded-xl bg-[#087f83] px-5 py-3 font-black text-white">Done</button>}</footer>{qrOpen && <div className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-[#041f22]/80 p-4" onClick={() => setQrOpen(null)}><section className="my-auto w-full max-w-sm rounded-[28px] bg-white p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#087f83]">Scan to pay</p><h3 className="mt-1 text-2xl font-black">{qrOpen.method}</h3><p className="mt-1 text-sm font-bold text-[#65746b]">{qrOpen.account} · {qrOpen.detail}</p></div><button type="button" onClick={() => setQrOpen(null)} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#edf3ef] font-black">×</button></div><div className="mt-5 rounded-3xl border-4 border-[#087f83] bg-white p-4"><img src={qrOpen.qr} alt={`${qrOpen.method} payment QR`} className="mx-auto aspect-square w-full object-contain" /></div><button type="button" onClick={() => setQrOpen(null)} className="mt-5 w-full rounded-xl bg-[#087f83] px-5 py-3 font-black text-white">Done</button></section></div>}</section></div>;
 }
@@ -1889,20 +1901,20 @@ export function CustomerRoosterDiaryV2() {
 
   useEffect(() => {
     let mounted = true;
-    setDiaryError("");
     const diaryPromise = roosterId
       ? getCustomerRoosterDiary(roosterId).then((rows) => ({ rows, exact: true }))
       : Promise.resolve({ rows: [] as CareLogRecord[], exact: true });
     Promise.all([getCustomerOwnedRoosters(), getCustomerRoosterCareOverviews(), diaryPromise, getCustomerCareRequests()])
       .then(([animals, overviews, diary, careRequests]) => {
         if (!mounted) return;
-        const row: any = animals.find((item: any) => item.id === roosterId) || animals[0] || null;
-        if (!row) return;
+        const row: any = roosterId ? animals.find((item: any) => item.id === roosterId) : animals[0];
+        if (!row) { setRooster(null); setOverview(null); setDailyCareRequest(null); throw new Error("This rooster could not be found in your account."); }
         const metadata = { ...(row.ownership_metadata || {}), acquired_at: row.acquired_at } as Record<string, unknown>;
         const breed = row.breed_snapshot || row.bloodline_snapshot || "Recorded Breed";
         const animalOverview = overviews.find((item) => item.customerAnimalId === row.id) || null;
         const mapped: RoosterCard = { id: row.id, name: row.animal_name || "Rooster", breed, tag: row.animal_code || "", stage: "Owned Rooster", status: row.status || "In Care", health: String(metadata.health_status || metadata.condition || "Growing Healthy"), value: "", image: roosterBreedImage(breed, metadata.growth_day || animalOverview?.catalogDay || 1), pen: "", caretaker: "", ownershipMetadata: metadata };
         setRooster(mapped);
+        setDiaryError("");
         setOverview(animalOverview);
         setDailyCareRequest(careRequests.find((request: any) => request.customer_animal_id === row.id && request.service_category === "daily_care" && !["completed", "cancelled", "rejected"].includes(String(request.status || ""))) || null);
         setLogs(diary.rows);
@@ -1928,10 +1940,11 @@ export function CustomerRoosterDiaryV2() {
 
   const monthlyStatus = String(overview?.planStatus || "");
   const dailyStatus = String(dailyCareRequest?.status || "");
-  const coverageBadge = monthlyStatus === "active" ? "Monthly Active" : ["paid_pending_setup", "ready"].includes(monthlyStatus) ? "Monthly Paid" : ["payment_for_review", "payment_submitted"].includes(monthlyStatus) ? "Monthly Review" : dailyStatus === "paid_pending_assignment" ? "Daily Approved" : ["assigned", "in_progress", "proof_submitted"].includes(dailyStatus) ? "Daily In Progress" : dailyStatus === "payment_for_review" ? "Daily Payment Review" : "No Active Care";
-  const coverageLabel = monthlyStatus === "active" ? `${overview?.planDay || 1} of ${overview?.durationDays || 30} days` : ["paid_pending_setup", "ready"].includes(monthlyStatus) ? "Payment approved · waiting for caretaker assignment and activation" : ["payment_for_review", "payment_submitted"].includes(monthlyStatus) ? "Monthly Care payment is waiting for Admin review" : dailyStatus === "paid_pending_assignment" ? "Payment approved · waiting for caretaker assignment" : dailyStatus === "assigned" ? "Caretaker assigned · Daily Care is ready" : dailyStatus === "in_progress" ? "Caretaker is completing today's care" : dailyStatus === "proof_submitted" ? "Care proof submitted · waiting for Admin review" : dailyStatus === "payment_for_review" ? "Daily Care payment is waiting for Admin review" : "No active Daily or Monthly Care";
+  const { badge: coverageBadge, label: coverageLabel } = careCoverageStatus(monthlyStatus, dailyStatus, overview?.planDay || 1, overview?.durationDays || 30, Boolean(diaryError));
   async function startCarePayment() {
     if (!rooster || !selectedCare || paying) return;
+    if (diaryError) { setPaymentError("Refresh care status before starting another payment."); return; }
+    if (selectedCare === "monthly" && overview?.paid) { setPaymentError("This rooster already has paid Monthly Care. Do not pay again."); return; }
     if (selectedCare === "daily" && overview?.paid) {
       setPaymentError("Daily care is already included in the active Monthly Care coverage.");
       return;
@@ -2563,6 +2576,14 @@ export function FarmBuy() {
           });
         }
       }
+      if (careOption === "monthly") {
+        if (cartEntries.length !== 1 || cartEntries[0].qty !== 1 || cartEntries[0].product.product_type !== "breed_chick") {
+          setMarketNote("Monthly bundle checkout supports one rooster per order. Keep one rooster or choose Skip."); return;
+        }
+        const { data, error } = await supabase.rpc("rooster_bundle_checkout_version");
+        if (error || data !== "110") { setMarketNote("Monthly bundle checkout is not ready. Do not transfer payment yet."); return; }
+      }
+      const checkoutTotal = careOption === "monthly" ? roosterCheckoutTotal(total, careOption) : total;
       const summary = {
         source: "Farm Buy",
         lines: cartEntries.map((row) => ({
@@ -2573,8 +2594,8 @@ export function FarmBuy() {
           total: row.product.price * row.qty,
           category: row.product.category,
         })),
-        total,
-        care_preference: careOption,
+        ...(careOption === "monthly" ? roosterBundleSummary(total, careOption) : { care_preference: "skip" }),
+        total: checkoutTotal,
         carePurpose,
         previewOnly: hasPreviewProduct,
       };
@@ -2583,7 +2604,7 @@ export function FarmBuy() {
         JSON.stringify({
           sourceType: "farm_buy",
           sourceRef: hasPreviewProduct ? "preview-cart" : "active-cart",
-          amountExpected: total,
+          amountExpected: checkoutTotal,
           summary,
         }),
       );
@@ -2631,9 +2652,9 @@ export function FarmBuy() {
           <p className="text-xs font-black uppercase tracking-[.14em] text-[#087f83]">Step 2 · Care choice</p><h2 className="mt-1 text-2xl font-black">Add care later?</h2><p className="mt-2 text-sm font-bold text-[#65746b]">Your rooster must be approved first. Monthly Care payment starts after ownership is active.</p>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <button type="button" onClick={()=>setCareOption("skip")} className={`rounded-[22px] border-2 p-5 text-left ${careOption==="skip"?"border-[#087f83] bg-[#eaf8f5]":"border-[#e3ded0] bg-[#fffdf7]"}`}><b className="text-xl">Skip for now</b><p className="mt-2 text-sm font-bold text-[#65746b]">Buy the rooster only. Choose Daily or Monthly Care later from its Diary.</p><strong className="mt-5 block text-2xl">₱0</strong></button>
-            <button type="button" onClick={()=>setCareOption("monthly")} className={`rounded-[22px] border-2 p-5 text-left ${careOption==="monthly"?"border-[#d6a600] bg-[#fff3cf]":"border-[#e3ded0] bg-[#fffdf7]"}`}><b className="text-xl">30-Day Monthly Care</b><p className="mt-2 text-sm font-bold text-[#65746b]">Feed, water, cleaning, routine observation, caretaker work, photos, and Diary updates.</p><strong className="mt-5 block text-2xl">₱5,000 after approval</strong></button>
+            <button type="button" onClick={()=>setCareOption("monthly")} className={`rounded-[22px] border-2 p-5 text-left ${careOption==="monthly"?"border-[#d6a600] bg-[#fff3cf]":"border-[#e3ded0] bg-[#fffdf7]"}`}><b className="text-xl">30-Day Monthly Care</b><p className="mt-2 text-sm font-bold text-[#65746b]">Feed, water, cleaning, routine observation, caretaker work, photos, and Diary updates.</p><strong className="mt-5 block text-2xl">₱5,000 included in total</strong></button>
           </div>
-          {careOption==="monthly"&&<div className="mt-4 rounded-2xl border border-[#f4c430]/60 bg-[#fff9df] p-4 text-sm font-bold text-[#6a5200]">This records your preference only. It will not charge or activate care until the rooster is approved and you confirm the separate Monthly Care payment.</div>}
+          {careOption==="monthly"&&<div className="mt-4 rounded-2xl border border-[#f4c430]/60 bg-[#fff9df] p-4 text-sm font-bold text-[#6a5200]">Monthly Care adds ₱5,000 to this order. One payment covers the rooster and its 30-day care package.</div>}
           <div className="mt-6 rounded-2xl bg-[#f4f2e8] p-4"><div className="flex items-center justify-between gap-3"><span className="font-black">Rooster payment</span><strong className="text-2xl">{peso(total)}</strong></div><p className="mt-2 text-xs font-bold text-[#65746b]">Next: payment method, reference number, sender name, and receipt upload.</p></div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2"><button type="button" onClick={()=>setWizardStep(0)} className="min-h-12 rounded-xl bg-[#edf3ef] px-5 py-3 font-black text-[#063b3f]">Back</button><button type="button" onClick={()=>void buyCart()} disabled={total<=0} className="min-h-12 rounded-xl bg-[#f4c430] px-5 py-3 font-black text-[#041f22] disabled:opacity-50">Continue to Payment</button></div>
         </section>}
@@ -9072,10 +9093,8 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     load();
   }, []);
   useEffect(() => {
-    if (sourceType !== "farm_buy") return;
     getActiveCaretakersForAssignment().then((rows) => {
       setCaretakers(rows);
-      setCaretakerId((current) => current || rows[0]?.id || "");
     }).catch(() => {
       setCaretakers([]);
       setNote("Active caretakers could not be loaded. Approval and assignment remain locked.");
@@ -9085,8 +9104,8 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
 
   async function submitDecision() {
     if (!selected || !decision || saving) return;
-    if (sourceType === "farm_buy" && decision === "approved" && !caretakerId) {
-      setNote("Choose an active caretaker before approving this rooster order.");
+    if (selected.source_type === "farm_buy" && decision === "approved" && !caretakerId) {
+      setNote("Choose an active caretaker before approving and assigning this payment.");
       return;
     }
     if (decision === "rejected" && adminNote.trim().length < 5) {
@@ -9096,15 +9115,18 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
     try {
       setSaving(true);
       setNote(`Saving ${decision} decision...`);
-      if (sourceType === "farm_buy" && decision === "approved") {
+      if (selected.source_type === "farm_buy" && decision === "approved") {
         const result = await adminApproveAndAssignRoosterOrder(selected.id, caretakerId, adminNote || "Payment approved. Attach and verify the system-generated rooster QR.");
         setNote(`${result.assignment_count} rooster task${result.assignment_count === 1 ? "" : "s"} approved and assigned. The generated QR is included in the caretaker task.`);
       } else {
-        const result = await adminReviewManualPayment(selected.id, decision, adminNote || "Payment proof checked and approved by admin.");
+        const result = ["care_plan", "care_request"].includes(String(selected.source_type)) && decision === "approved"
+          ? await approveAndAssignCarePayment(selected.id, caretakerId, adminNote)
+          : await adminReviewManualPayment(selected.id, decision, adminNote || "Payment proof checked and approved by admin.");
         setNote(result.duplicate ? `This request was already ${result.status}. No duplicate action was created.` : decision === "approved" ? "Payment approved. Invoice, inbox, evidence, and linked request records were updated." : "Payment rejected. The customer received your reason and may resubmit corrected proof.");
       }
       setDecision(null);
       setAdminNote("");
+      setCaretakerId("");
       setViewer(null);
       await load();
     } catch (error) {
@@ -9274,7 +9296,7 @@ function AdminManualPaymentQueue({ sourceType }: { sourceType?: "farm_buy" | "ca
               Reject
             </button>
           </div>
-          {sourceType === "farm_buy" && <label className="mt-5 block text-sm font-black">Assign Caretaker<select value={caretakerId} onChange={(event) => setCaretakerId(event.target.value)} disabled={!selected || saving} className="mt-2 w-full rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold disabled:opacity-50"><option value="">Choose caretaker</option>{caretakers.map((caretaker: any) => <option key={caretaker.id} value={caretaker.id}>{caretaker.display_name || caretaker.full_name || "Caretaker"}</option>)}</select><span className="mt-2 block text-xs font-bold leading-5 text-[#667267]">The system creates a unique QR automatically and places it inside this caretaker&apos;s task.</span></label>}
+          {["farm_buy", "care_plan", "care_request"].includes(String(selected?.source_type)) && <label className="mt-5 block text-sm font-black">Caretaker<select value={caretakerId} onChange={(event) => setCaretakerId(event.target.value)} disabled={!selected || saving} className="mt-2 w-full rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold disabled:opacity-50"><option value="">{selected?.source_type === "farm_buy" ? "Choose caretaker" : "Use rooster's assigned caretaker"}</option>{caretakers.map((caretaker: any) => <option key={caretaker.id} value={caretaker.id}>{caretaker.display_name || caretaker.full_name || "Caretaker"}</option>)}</select><span className="mt-2 block text-xs font-bold leading-5 text-[#667267]">Approval and assignment happen together. Choose a caretaker here only if none is assigned or the existing caretaker is unavailable.</span></label>}
           <label className="mt-5 block text-sm font-black">
             Note to Customer
             <textarea value={adminNote} onChange={(event) => setAdminNote(event.target.value)} placeholder="Reason if rejected, or confirmation note if approved..." className="mt-2 h-32 w-full resize-none rounded-2xl border border-[#ded8c9] bg-[#fffdf7] p-3 text-sm font-bold leading-6" />
